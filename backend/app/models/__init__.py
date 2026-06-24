@@ -1,0 +1,16 @@
+"""SQLAlchemy models. Importing registers them on the Base metadata."""
+from app.db.base import Base
+from app.models.dashboard import Dashboard, Widget
+from app.models.datasource import DataSource, DBType
+from app.models.query_log import QueryLog
+from app.models.user import User
+
+__all__ = [
+    "Base",
+    "User",
+    "DataSource",
+    "DBType",
+    "QueryLog",
+    "Dashboard",
+    "Widget",
+]
