@@ -8,7 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
-import { AXIS, GRID, INK, tooltipStyle } from './theme'
+import { ACCENT, AXIS, GRID, tooltipLabel, tooltipStyle } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -24,8 +24,12 @@ export function BarChartWidget({ data, config }: Props) {
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
         <XAxis dataKey={x} stroke={AXIS} fontSize={12} tickLine={false} />
         <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
-        <Tooltip cursor={{ fill: '#221F520a' }} contentStyle={tooltipStyle} />
-        <Bar dataKey={y} fill={INK} radius={[6, 6, 0, 0]} maxBarSize={48} />
+        <Tooltip
+          cursor={{ fill: 'rgba(14,159,110,0.08)' }}
+          contentStyle={tooltipStyle}
+          labelStyle={tooltipLabel}
+        />
+        <Bar dataKey={y} fill={ACCENT} radius={[6, 6, 0, 0]} maxBarSize={48} />
       </BarChart>
     </ResponsiveContainer>
   )

@@ -1,4 +1,4 @@
-import { CornerDownLeft } from 'lucide-react'
+import { ArrowUp } from 'lucide-react'
 import { useState } from 'react'
 
 interface Props {
@@ -22,23 +22,24 @@ export function NLQueryInput({ onSubmit, loading }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="group relative rounded-2xl border border-grid bg-panel shadow-card transition focus-within:border-brand">
-        <div className="plot-grid pointer-events-none absolute inset-0 rounded-2xl opacity-40" />
+      <div className="group relative overflow-hidden rounded-2xl border border-line bg-surface shadow-card transition focus-within:border-accent">
+        <div className="plot-grid pointer-events-none absolute inset-0" />
         <div className="relative flex items-center gap-3 px-5 py-4">
-          <span className="font-mono text-sm text-signal">›</span>
+          <span className="font-mono text-base text-accent">›</span>
           <input
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
             placeholder="Datana sual ver — adi dildə yaz…"
-            className="flex-1 bg-transparent text-lg text-ink placeholder:text-muted/70 focus:outline-none"
+            className="flex-1 bg-transparent text-lg text-ink placeholder:text-ink-faint focus:outline-none"
           />
           <button
             onClick={() => submit()}
             disabled={loading || !value.trim()}
-            className="flex items-center gap-2 rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-brand shadow-key transition active:translate-y-0.5 active:shadow-none disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Soruş"
+            className="grid h-9 w-9 place-items-center rounded-xl bg-accent text-bg transition hover:bg-accent-press active:translate-y-px disabled:cursor-not-allowed disabled:opacity-30"
           >
-            Soruş <CornerDownLeft size={15} strokeWidth={2.5} />
+            <ArrowUp size={18} strokeWidth={2.5} />
           </button>
         </div>
       </div>
@@ -52,7 +53,7 @@ export function NLQueryInput({ onSubmit, loading }: Props) {
               submit(ex)
             }}
             disabled={loading}
-            className="rounded-full border border-grid bg-panel px-3 py-1.5 text-xs text-muted transition hover:border-brand hover:text-ink disabled:opacity-50"
+            className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-50"
           >
             {ex}
           </button>

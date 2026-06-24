@@ -12,26 +12,47 @@
     margin: 0;
   }
   body {
-    @apply bg-paper text-ink font-sans antialiased;
+    @apply font-sans antialiased;
+    background-color: #131418;
+    color: #eceae6;
+    -webkit-font-smoothing: antialiased;
   }
   ::selection {
-    background: #f4a10033;
+    background: rgba(14, 159, 110, 0.25);
   }
   *:focus-visible {
-    outline: 2px solid #221f52;
+    outline: 2px solid #0e9f6e;
     outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* Custom scrollbar — quiet, dark */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2e35;
+    border-radius: 8px;
+    border: 2px solid #131418;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #363b43;
   }
 }
 
 @layer components {
-  /* Faint coordinate grid — the plotting substrate. */
+  /* Faint plotting substrate — low-opacity light lines on dark. */
   .plot-grid {
-    background-image: linear-gradient(to right, #e6e2d8 1px, transparent 1px),
-      linear-gradient(to bottom, #e6e2d8 1px, transparent 1px);
-    background-size: 28px 28px;
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 30px 30px;
   }
   .eyebrow {
-    @apply font-mono text-[11px] uppercase tracking-[0.18em] text-muted;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: #6e747d;
   }
 }
 

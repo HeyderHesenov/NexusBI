@@ -8,7 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
-import { ACCENT, AXIS, GRID, INK, tooltipStyle } from './theme'
+import { ACCENT, AXIS, GRID, tooltipLabel, tooltipStyle } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -24,11 +24,11 @@ export function LineChartWidget({ data, config }: Props) {
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
         <XAxis dataKey={x} stroke={AXIS} fontSize={12} tickLine={false} />
         <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
-        <Tooltip contentStyle={tooltipStyle} />
+        <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} />
         <Line
           type="monotone"
           dataKey={y}
-          stroke={INK}
+          stroke={ACCENT}
           strokeWidth={2.5}
           dot={{ r: 3, fill: ACCENT, strokeWidth: 0 }}
           activeDot={{ r: 5, fill: ACCENT }}

@@ -25,12 +25,13 @@ export default function App() {
         position="top-right"
         toastOptions={{
           style: {
-            background: '#FFFFFF',
-            color: '#161820',
-            border: '1px solid #E6E2D8',
+            background: '#1A1C21',
+            color: '#ECEAE6',
+            border: '1px solid #2A2E35',
             borderRadius: '12px',
             fontSize: '14px',
           },
+          success: { iconTheme: { primary: '#0E9F6E', secondary: '#131418' } },
         }}
       />
       <Routes>

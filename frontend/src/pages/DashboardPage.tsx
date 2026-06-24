@@ -21,7 +21,7 @@ export function DashboardPage() {
         </div>
         <button
           onClick={() => setModal(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-brand shadow-key transition active:translate-y-0.5 active:shadow-none"
+          className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
         >
           <Plus size={16} strokeWidth={2.5} /> Yeni
         </button>
@@ -35,8 +35,8 @@ export function DashboardPage() {
               onClick={() => open(d.id)}
               className={`rounded-full border px-4 py-1.5 text-sm transition ${
                 current?.id === d.id
-                  ? 'border-brand bg-brand text-white'
-                  : 'border-grid bg-panel text-muted hover:border-brand hover:text-ink'
+                  ? 'border-accent bg-accent-soft text-ink'
+                  : 'border-line bg-surface text-ink-soft hover:border-accent hover:text-ink'
               }`}
             >
               {d.name}
@@ -48,9 +48,9 @@ export function DashboardPage() {
       {current ? (
         <DashboardGrid dashboard={current} />
       ) : (
-        <div className="plot-grid rounded-2xl border border-dashed border-grid px-6 py-16 text-center">
+        <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <p className="font-display text-lg text-ink">Dashboard seç və ya yarat</p>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-sm text-ink-soft">
             Sorğularını bir yerə yığıb canlı panel düzəlt.
           </p>
         </div>

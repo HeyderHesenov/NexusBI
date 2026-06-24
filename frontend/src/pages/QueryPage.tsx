@@ -1,4 +1,4 @@
-import { Lightbulb, Sparkles, Clock } from 'lucide-react'
+import { Clock, Lightbulb } from 'lucide-react'
 import { useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { ChartRenderer } from '../components/charts/ChartRenderer'
@@ -40,24 +40,21 @@ export function QueryPage() {
         {result && !loading && (
           <div className="space-y-4">
             {result.insight && (
-              <div className="flex gap-3 rounded-2xl border border-signal/40 bg-signal/10 px-5 py-4">
-                <Lightbulb size={18} className="mt-0.5 shrink-0 text-signal-press" />
+              <div className="flex gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-5 py-4">
+                <Lightbulb size={18} className="mt-0.5 shrink-0 text-accent" />
                 <div>
-                  <p className="eyebrow mb-1 text-signal-press">İnsight</p>
+                  <p className="eyebrow mb-1 text-accent">İnsight</p>
                   <p className="text-sm leading-relaxed text-ink">{result.insight}</p>
                 </div>
               </div>
             )}
 
-            <div className="rounded-2xl border border-grid bg-panel p-5 shadow-card">
+            <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
               <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles size={15} className="text-brand" />
-                  <span className="font-mono text-xs uppercase tracking-wider text-muted">
-                    {result.chart_config.chart_type}
-                  </span>
-                </div>
-                <span className="font-mono text-[11px] text-muted">
+                <span className="font-mono text-xs uppercase tracking-wider text-ink-soft">
+                  {result.chart_config.chart_type}
+                </span>
+                <span className="font-mono text-[11px] text-ink-faint">
                   {result.data.length} sətir · {result.execution_time_ms} ms
                 </span>
               </div>
@@ -68,7 +65,7 @@ export function QueryPage() {
 
             <button
               onClick={() => toast.success('Dashboard funksiyası tezliklə.')}
-              className="rounded-xl border border-brand px-4 py-2 text-sm font-medium text-brand transition hover:bg-brand hover:text-white"
+              className="rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
             >
               Dashboard-a saxla
             </button>
@@ -78,13 +75,13 @@ export function QueryPage() {
         {!result && !loading && <EmptyState />}
       </div>
 
-      <aside className="lg:border-l lg:border-grid lg:pl-6">
+      <aside className="lg:border-l lg:border-line lg:pl-6">
         <div className="mb-3 flex items-center gap-2">
-          <Clock size={14} className="text-muted" />
+          <Clock size={14} className="text-ink-faint" />
           <span className="eyebrow">Son sorğular</span>
         </div>
         {history.length === 0 ? (
-          <p className="text-sm text-muted">Hələ sorğu yoxdur.</p>
+          <p className="text-sm text-ink-faint">Hələ sorğu yoxdur.</p>
         ) : (
           <ul className="space-y-1">
             {history.slice(0, 12).map((item) => (
@@ -92,7 +89,7 @@ export function QueryPage() {
                 <button
                   onClick={() => onAsk(item.natural_language)}
                   title={item.natural_language}
-                  className="w-full truncate rounded-lg px-2 py-1.5 text-left text-sm text-muted transition hover:bg-panel hover:text-ink"
+                  className="w-full truncate rounded-lg px-2 py-1.5 text-left text-sm text-ink-soft transition hover:bg-surface hover:text-ink"
                 >
                   {item.natural_language}
                 </button>
@@ -108,20 +105,20 @@ export function QueryPage() {
 function LoadingState() {
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm text-muted">
-        <span className="h-2 w-2 animate-ping rounded-full bg-signal" />
+      <div className="flex items-center gap-2 text-sm text-ink-soft">
+        <span className="h-2 w-2 animate-ping rounded-full bg-accent" />
         Data plota çevrilir…
       </div>
-      <div className="h-72 animate-pulse rounded-2xl border border-grid bg-panel" />
+      <div className="h-72 animate-pulse rounded-2xl border border-line bg-surface" />
     </div>
   )
 }
 
 function EmptyState() {
   return (
-    <div className="plot-grid rounded-2xl border border-dashed border-grid px-6 py-16 text-center">
+    <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
       <p className="font-display text-lg text-ink">Nəticə burada plot olunacaq</p>
-      <p className="mt-1 text-sm text-muted">
+      <p className="mt-1 text-sm text-ink-soft">
         Yuxarıdakı nümunələrdən birinə toxun və ya öz sualını yaz.
       </p>
     </div>

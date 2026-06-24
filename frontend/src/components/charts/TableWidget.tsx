@@ -19,12 +19,12 @@ export function TableWidget({ data }: Props) {
     })
   }, [data, sortKey, asc])
 
-  if (!columns.length) return <p className="text-muted">Nəticə yoxdur.</p>
+  if (!columns.length) return <p className="text-ink-soft">Nəticə yoxdur.</p>
 
   return (
-    <div className="max-h-96 overflow-auto rounded-xl border border-grid">
+    <div className="max-h-96 overflow-auto rounded-xl border border-line">
       <table className="w-full text-left text-sm">
-        <thead className="sticky top-0 bg-paper">
+        <thead className="sticky top-0 bg-surface-2">
           <tr>
             {columns.map((c) => (
               <th
@@ -36,7 +36,7 @@ export function TableWidget({ data }: Props) {
                     setAsc(true)
                   }
                 }}
-                className="cursor-pointer border-b border-grid px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider text-muted transition hover:text-brand"
+                className="cursor-pointer border-b border-line px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider text-ink-soft transition hover:text-accent"
               >
                 {c}
                 {sortKey === c ? (asc ? ' ↑' : ' ↓') : ''}
@@ -46,7 +46,7 @@ export function TableWidget({ data }: Props) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-t border-grid transition hover:bg-paper">
+            <tr key={i} className="border-t border-line transition hover:bg-surface-2">
               {columns.map((c) => (
                 <td key={c} className="px-4 py-2.5 text-ink">
                   {String(row[c])}

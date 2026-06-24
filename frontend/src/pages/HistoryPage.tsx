@@ -12,14 +12,14 @@ export function HistoryPage() {
       <p className="eyebrow">Jurnal</p>
       <h2 className="mb-6 mt-1 font-display text-3xl font-bold text-ink">Sorğu tarixçəsi</h2>
 
-      <div className="overflow-hidden rounded-2xl border border-grid bg-panel shadow-card">
+      <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-grid">
+            <tr className="border-b border-line">
               {['Sorğu', 'Chart', 'ms', 'Tarix'].map((h) => (
                 <th
                   key={h}
-                  className="px-5 py-3 font-mono text-[11px] uppercase tracking-wider text-muted"
+                  className="px-5 py-3 font-mono text-[11px] uppercase tracking-wider text-ink-faint"
                 >
                   {h}
                 </th>
@@ -29,21 +29,21 @@ export function HistoryPage() {
           <tbody>
             {history.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-muted">
+                <td colSpan={4} className="px-5 py-10 text-center text-ink-soft">
                   Hələ sorğu yoxdur.
                 </td>
               </tr>
             ) : (
               history.map((h) => (
-                <tr key={h.id} className="border-t border-grid transition hover:bg-paper">
+                <tr key={h.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-5 py-3 text-ink">{h.natural_language}</td>
                   <td className="px-5 py-3">
-                    <span className="rounded-full bg-brand/8 px-2 py-0.5 font-mono text-[11px] text-brand">
+                    <span className="rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[11px] text-accent">
                       {h.chart_type}
                     </span>
                   </td>
-                  <td className="px-5 py-3 font-mono text-muted">{h.execution_time_ms}</td>
-                  <td className="px-5 py-3 font-mono text-xs text-muted">
+                  <td className="px-5 py-3 font-mono text-ink-soft">{h.execution_time_ms}</td>
+                  <td className="px-5 py-3 font-mono text-xs text-ink-faint">
                     {h.created_at.slice(0, 19).replace('T', ' ')}
                   </td>
                 </tr>

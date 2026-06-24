@@ -1,4 +1,4 @@
-import { CornerDownLeft } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
@@ -13,6 +13,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false)
 
   const submit = async () => {
+    if (busy) return
     setBusy(true)
     try {
       if (mode === 'login') await login(email, password)
@@ -26,34 +27,39 @@ export function LoginPage() {
   }
 
   const field =
-    'w-full rounded-xl border border-grid bg-paper px-4 py-2.5 text-ink placeholder:text-muted/70 focus:border-brand focus:bg-panel focus:outline-none'
+    'w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint transition focus:border-accent focus:outline-none'
 
   return (
-    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
-      {/* Brand thesis panel */}
-      <div className="plot-grid relative hidden flex-col justify-between bg-brand p-12 text-white lg:flex">
-        <span className="font-display text-2xl font-bold">
-          Nexus<span className="text-signal">BI</span>
-        </span>
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
+    <div className="grid min-h-screen grid-cols-1 bg-bg lg:grid-cols-2">
+      {/* Feature side — dark canvas, faint grid, no saturated wall */}
+      <div className="plot-grid relative hidden flex-col justify-between border-r border-line p-12 lg:flex">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent">
+            <span className="h-2.5 w-2.5 rounded-full bg-bg" />
+          </span>
+          <span className="font-display text-lg font-bold tracking-tight text-ink">NexusBI</span>
+        </div>
+
+        <div className="max-w-md">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
             words → SQL → plot
           </p>
-          <h1 className="mt-4 font-display text-5xl font-bold leading-[1.05]">
+          <h1 className="mt-4 font-display text-5xl font-bold leading-[1.04] text-ink">
             Sual ver.
             <br />
             Cavabı gör.
           </h1>
-          <p className="mt-5 max-w-sm text-white/65">
+          <p className="mt-5 text-ink-soft">
             SQL bilmədən datanla danış. NexusBI sualını sorğuya çevirir, icra edir
             və ən uyğun chart-la cavablandırır.
           </p>
         </div>
-        <p className="font-mono text-xs text-white/40">demo · sales · customers · products</p>
+
+        <p className="font-mono text-xs text-ink-faint">demo · sales · customers · products</p>
       </div>
 
-      {/* Form */}
-      <div className="flex items-center justify-center bg-paper px-6 py-12">
+      {/* Form side */}
+      <div className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <p className="eyebrow">{mode === 'login' ? 'Yenidən xoş gəldin' : 'Başla'}</p>
           <h2 className="mt-1 font-display text-3xl font-bold text-ink">
@@ -90,15 +96,15 @@ export function LoginPage() {
           <button
             onClick={submit}
             disabled={busy}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-signal py-3 font-semibold text-brand shadow-key transition active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-50"
           >
             {mode === 'login' ? 'Daxil ol' : 'Qeydiyyatdan keç'}
-            <CornerDownLeft size={16} strokeWidth={2.5} />
+            <ArrowRight size={16} strokeWidth={2.5} />
           </button>
 
           <button
             onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-            className="mt-4 w-full text-sm text-muted transition hover:text-ink"
+            className="mt-4 w-full text-sm text-ink-soft transition hover:text-ink"
           >
             {mode === 'login' ? 'Hesabın yoxdur? Qeydiyyat' : 'Hesabın var? Daxil ol'}
           </button>
