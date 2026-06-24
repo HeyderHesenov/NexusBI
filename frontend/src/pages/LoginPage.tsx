@@ -87,7 +87,7 @@ export function LoginPage() {
 
       {/* Form side */}
       <div className="relative z-10 flex items-center justify-center px-6 py-12">
-        <div className="reveal reveal-d2 w-full max-w-sm rounded-2xl border border-line bg-surface/80 p-8 shadow-card backdrop-blur">
+        <div className="reveal reveal-d2 w-full max-w-sm rounded-2xl border border-line bg-surface p-8 shadow-card">
           <p className="eyebrow">{mode === 'login' ? 'Yenidən xoş gəldin' : 'Başla'}</p>
           <h2 className="mt-1 font-display text-3xl font-bold text-ink">
             {mode === 'login' ? 'Daxil ol' : 'Hesab yarat'}

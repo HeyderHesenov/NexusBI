@@ -2,10 +2,11 @@ import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
+import { LoginPage } from './pages/LoginPage'
 import { useAuthStore } from './store/authStore'
 
-// Route-level code splitting — each page ships as its own chunk.
-const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
+// Login is the entry route — load it eagerly so first paint (and its reveal
+// animation) is instant, with no Suspense flash. Authed pages stay split.
 const QueryPage = lazy(() => import('./pages/QueryPage').then((m) => ({ default: m.QueryPage })))
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),

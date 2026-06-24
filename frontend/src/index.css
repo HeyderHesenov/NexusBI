@@ -84,7 +84,10 @@
     position: absolute;
     border-radius: 9999px;
     filter: blur(70px);
-    will-change: transform, opacity;
+    /* Promote to its own compositor layer so the blurred bitmap is rasterized
+       once and only cheaply translated each frame (no per-frame re-blur). */
+    transform: translateZ(0);
+    will-change: transform;
   }
   .aurora-1 {
     top: -10%;
@@ -112,49 +115,50 @@
   }
 }
 
+/* Only opacity + transform animate — both GPU-composited, never repainted. */
 @keyframes reveal-up {
   0% {
     opacity: 0;
-    transform: translateY(14px);
-    filter: blur(6px);
+    transform: translate3d(0, 16px, 0);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
+/* Translate-only drift on a pre-rasterized blurred layer — no scale, so the
+   blur bitmap is never recomputed. Smooth on the compositor thread. */
 @keyframes aurora-drift-a {
   0%,
   100% {
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0);
     opacity: 0.85;
   }
   50% {
-    transform: translate3d(6%, 8%, 0) scale(1.12);
+    transform: translate3d(5%, 7%, 0);
     opacity: 1;
   }
 }
 @keyframes aurora-drift-b {
   0%,
   100% {
-    transform: translate3d(0, 0, 0) scale(1.05);
+    transform: translate3d(0, 0, 0);
     opacity: 0.7;
   }
   50% {
-    transform: translate3d(-7%, -6%, 0) scale(1);
+    transform: translate3d(-6%, -5%, 0);
     opacity: 0.95;
   }
 }
 @keyframes aurora-drift-c {
   0%,
   100% {
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0);
     opacity: 0.6;
   }
   50% {
-    transform: translate3d(-5%, 7%, 0) scale(1.15);
+    transform: translate3d(-4%, 6%, 0);
     opacity: 0.85;
   }
 }
