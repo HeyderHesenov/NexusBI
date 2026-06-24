@@ -20,7 +20,7 @@ openai==1.59.6
 # ─── Auth / security ───
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-bcrypt==4.2.1
+bcrypt==4.0.1
 cryptography==44.0.0
 
 # ─── Cache ───

@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     """Typed application configuration. All values come from env / .env."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Supports running from repo root (.env) or backend/ (../.env).
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
