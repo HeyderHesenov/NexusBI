@@ -1,26 +1,72 @@
+import { GripVertical, X } from 'lucide-react'
+import { useMemo } from 'react'
+import { Responsive, WidthProvider, type Layout, type Layouts } from 'react-grid-layout'
 import type { Dashboard } from '../../types'
-import { DashboardCard } from './DashboardCard'
+import { ChartRenderer } from '../charts/ChartRenderer'
+
+const ResponsiveGridLayout = WidthProvider(Responsive)
 
 interface Props {
   dashboard: Dashboard
-  onRemoveWidget?: (id: string) => void
+  onRemoveWidget: (id: string) => void
+  onLayoutChange: (layouts: Layouts) => void
 }
 
-export function DashboardGrid({ dashboard, onRemoveWidget }: Props) {
-  if (!dashboard.widgets.length) {
+/** Preserve every saved breakpoint; ensure lg has an entry per widget. */
+function buildLayouts(dashboard: Dashboard): Layouts {
+  const saved = (dashboard.layout as Layouts | null) ?? {}
+  const byId = new Map((saved.lg ?? []).map((l) => [l.i, l]))
+  const lg: Layout[] = dashboard.widgets.map((w, i) => {
+    const found = byId.get(w.id)
     return (
-      <p className="rounded-2xl border border-dashed border-line px-5 py-10 text-center text-ink-soft">
-        Widget yoxdur. Sorğudan əlavə et.
-      </p>
+      found ?? { i: w.id, x: (i % 2) * 6, y: Math.floor(i / 2) * 9, w: 6, h: 9, minW: 3, minH: 5 }
     )
-  }
+  })
+  return { ...saved, lg }
+}
+
+export function DashboardGrid({ dashboard, onRemoveWidget, onLayoutChange }: Props) {
+  const layouts = useMemo(() => buildLayouts(dashboard), [dashboard.layout, dashboard.widgets])
+
   return (
-    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+    <ResponsiveGridLayout
+      className="-mx-2"
+      layouts={layouts}
+      breakpoints={{ lg: 1024, md: 768, sm: 0 }}
+      cols={{ lg: 12, md: 8, sm: 4 }}
+      rowHeight={34}
+      margin={[16, 16]}
+      draggableHandle=".drag-handle"
+      onLayoutChange={(_current, all) => onLayoutChange(all)}
+    >
       {dashboard.widgets.map((w) => (
-        <DashboardCard key={w.id} widget={w} onRemove={onRemoveWidget}>
-          <p className="font-mono text-xs text-ink-faint">query_log: {w.query_log_id ?? '—'}</p>
-        </DashboardCard>
+        <div key={w.id} className="flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+          <div className="drag-handle flex cursor-move items-center justify-between border-b border-line px-4 py-2.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <GripVertical size={14} className="shrink-0 text-ink-faint" />
+              <span className="truncate text-sm font-medium text-ink">
+                {w.title || w.chart?.natural_language || 'Widget'}
+              </span>
+            </div>
+            <button
+              onClick={() => onRemoveWidget(w.id)}
+              aria-label="Sil"
+              className="shrink-0 text-ink-faint transition hover:text-[#D87C6B]"
+            >
+              <X size={15} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 p-3">
+            {w.chart && w.chart.data.length ? (
+              <ChartRenderer data={w.chart.data} config={w.chart.chart_config} height="100%" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-ink-faint">
+                Bu sorğunun nəticəsi yoxdur.
+              </div>
+            )}
+          </div>
+        </div>
       ))}
-    </div>
+    </ResponsiveGridLayout>
   )
 }

@@ -163,6 +163,22 @@
   }
 }
 
+/* react-grid-layout — dark theme overrides */
+.react-grid-item.react-grid-placeholder {
+  background: rgba(14, 159, 110, 0.18) !important;
+  border: 1px dashed #0e9f6e;
+  border-radius: 16px;
+  opacity: 1;
+}
+.react-grid-item > .react-resizable-handle::after {
+  border-right-color: #6e747d;
+  border-bottom-color: #6e747d;
+}
+.react-grid-item.react-draggable-dragging {
+  z-index: 30;
+  cursor: grabbing;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

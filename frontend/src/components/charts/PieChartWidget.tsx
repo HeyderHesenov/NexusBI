@@ -5,13 +5,14 @@ import { SERIES, tooltipLabel, tooltipStyle } from './theme'
 interface Props {
   data: Record<string, unknown>[]
   config: ChartConfig
+  height?: number | string
 }
 
-export function PieChartWidget({ data, config }: Props) {
+export function PieChartWidget({ data, config, height = 320 }: Props) {
   const name = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const value = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   return (
-    <ResponsiveContainer width="100%" height={320}>
+    <ResponsiveContainer width="100%" height={height}>
       <PieChart>
         <Pie
           data={data}

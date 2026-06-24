@@ -52,6 +52,16 @@ export interface DataSource {
   created_at: string
 }
 
+export interface WidgetChart {
+  chart_type: ChartType
+  chart_config: ChartConfig
+  columns: string[]
+  data: Record<string, unknown>[]
+  insight: string
+  sql: string
+  natural_language: string
+}
+
 export interface Widget {
   id: string
   title: string
@@ -60,6 +70,7 @@ export interface Widget {
   position_y: number
   width: number
   height: number
+  chart: WidgetChart | null
 }
 
 export interface Dashboard {

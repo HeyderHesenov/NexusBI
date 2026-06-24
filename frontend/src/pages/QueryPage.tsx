@@ -1,13 +1,14 @@
-import { Clock, Lightbulb } from 'lucide-react'
-import { useEffect } from 'react'
-import toast from 'react-hot-toast'
+import { Clock, Lightbulb, LayoutGrid } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { ChartRenderer } from '../components/charts/ChartRenderer'
+import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
 import { NLQueryInput } from '../components/query/NLQueryInput'
 import { SQLPreview } from '../components/query/SQLPreview'
 import { useQueryStore } from '../store/queryStore'
 
 export function QueryPage() {
   const { result, loading, ask, history, loadHistory } = useQueryStore()
+  const [saveOpen, setSaveOpen] = useState(false)
 
   useEffect(() => {
     loadHistory().catch(() => undefined)
@@ -22,6 +23,7 @@ export function QueryPage() {
   }
 
   return (
+    <>
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_240px]">
       <div className="min-w-0 space-y-6">
         <header>
@@ -64,10 +66,10 @@ export function QueryPage() {
             <SQLPreview sql={result.sql} />
 
             <button
-              onClick={() => toast.success('Dashboard funksiyası tezliklə.')}
-              className="rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+              onClick={() => result.query_log_id && setSaveOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
             >
-              Dashboard-a saxla
+              <LayoutGrid size={15} /> Dashboard-a saxla
             </button>
           </div>
         )}
@@ -99,6 +101,16 @@ export function QueryPage() {
         )}
       </aside>
     </div>
+
+    {result?.query_log_id && (
+      <SaveToDashboardModal
+        open={saveOpen}
+        queryLogId={result.query_log_id}
+        title=""
+        onClose={() => setSaveOpen(false)}
+      />
+    )}
+    </>
   )
 }
 
