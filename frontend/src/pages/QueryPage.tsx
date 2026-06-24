@@ -1,6 +1,6 @@
 import { Clock, Lightbulb, LayoutGrid } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { ChartRenderer } from '../components/charts/ChartRenderer'
+import { ChartView } from '../components/charts/ChartView'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
 import { NLQueryInput } from '../components/query/NLQueryInput'
 import { SQLPreview } from '../components/query/SQLPreview'
@@ -52,15 +52,12 @@ export function QueryPage() {
             )}
 
             <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="font-mono text-xs uppercase tracking-wider text-ink-soft">
-                  {result.chart_config.chart_type}
-                </span>
+              <div className="mb-3 flex items-center justify-end">
                 <span className="font-mono text-[11px] text-ink-faint">
                   {result.data.length} sətir · {result.execution_time_ms} ms
                 </span>
               </div>
-              <ChartRenderer data={result.data} config={result.chart_config} />
+              <ChartView data={result.data} config={result.chart_config} exportName="nexusbi-query" />
             </div>
 
             <SQLPreview sql={result.sql} />

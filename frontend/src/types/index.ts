@@ -6,6 +6,7 @@ export interface ColumnInfo {
 export type ChartType =
   | 'bar'
   | 'line'
+  | 'area'
   | 'pie'
   | 'scatter'
   | 'table'

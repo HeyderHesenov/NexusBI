@@ -1,7 +1,8 @@
+import { useId } from 'react'
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -16,25 +17,33 @@ interface Props {
   height?: number | string
 }
 
-export function LineChartWidget({ data, config, height = 320 }: Props) {
+export function AreaChartWidget({ data, config, height = 320 }: Props) {
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
+  const gid = `nx-area-${useId()}`
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={ACCENT} stopOpacity={0.35} />
+            <stop offset="100%" stopColor={ACCENT} stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
         <XAxis dataKey={x} stroke={AXIS} fontSize={12} tickLine={false} />
         <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
         <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} itemStyle={tooltipItem} />
-        <Line
+        <Area
           type="monotone"
           dataKey={y}
           stroke={ACCENT}
           strokeWidth={2.5}
-          dot={{ r: 3, fill: ACCENT, strokeWidth: 0 }}
+          fill={`url(#${gid})`}
+          dot={false}
           activeDot={{ r: 5, fill: ACCENT }}
         />
-      </LineChart>
+      </AreaChart>
     </ResponsiveContainer>
   )
 }

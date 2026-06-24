@@ -8,7 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
-import { ACCENT, AXIS, GRID, tooltipLabel, tooltipStyle } from './theme'
+import { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -29,6 +29,7 @@ export function BarChartWidget({ data, config, height = 320 }: Props) {
           cursor={{ fill: 'rgba(14,159,110,0.08)' }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabel}
+          itemStyle={tooltipItem}
         />
         <Bar dataKey={y} fill={ACCENT} radius={[6, 6, 0, 0]} maxBarSize={48} />
       </BarChart>
