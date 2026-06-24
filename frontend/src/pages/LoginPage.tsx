@@ -17,6 +17,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const [providers, setProviders] = useState<AuthProviders | null>(null)
 
   useEffect(() => {
@@ -27,16 +28,25 @@ export function LoginPage() {
 
   const submit = async () => {
     if (busy) return
+    setError('')
     setBusy(true)
     try {
       if (mode === 'login') await login(email, password)
       else await register(email, password, fullName)
       navigate('/')
-    } catch {
-      /* toast handled by interceptor */
+    } catch (err: unknown) {
+      const fallback =
+        mode === 'login' ? 'Email və ya şifrə yanlışdır.' : 'Qeydiyyat alınmadı.'
+      const e = err as { response?: { data?: { message?: string; detail?: string } } }
+      setError(e.response?.data?.message ?? e.response?.data?.detail ?? fallback)
     } finally {
       setBusy(false)
     }
+  }
+
+  const switchMode = () => {
+    setError('')
+    setMode(mode === 'login' ? 'register' : 'login')
   }
 
   const onGoogleCredential = useCallback(
@@ -150,17 +160,23 @@ export function LoginPage() {
             />
           </div>
 
+          {error && (
+            <p className="mt-3 rounded-xl border border-[#D87C6B]/40 bg-[#D87C6B]/10 px-3 py-2 text-sm text-[#E0998A]">
+              {error}
+            </p>
+          )}
+
           <button
             onClick={submit}
             disabled={busy}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-50"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
-            {mode === 'login' ? 'Daxil ol' : 'Qeydiyyatdan keç'}
-            <ArrowRight size={16} strokeWidth={2.5} />
+            {busy ? 'Gözləyin…' : mode === 'login' ? 'Daxil ol' : 'Qeydiyyatdan keç'}
+            {!busy && <ArrowRight size={16} strokeWidth={2.5} />}
           </button>
 
           <button
-            onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+            onClick={switchMode}
             className="mt-4 w-full text-sm text-ink-soft transition hover:text-ink"
           >
             {mode === 'login' ? 'Hesabın yoxdur? Qeydiyyat' : 'Hesabın var? Daxil ol'}
