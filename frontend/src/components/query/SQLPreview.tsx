@@ -1,19 +1,20 @@
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Database } from 'lucide-react'
 import { useState } from 'react'
 
 export function SQLPreview({ sql }: { sql: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900">
+    <div className="overflow-hidden rounded-2xl border border-grid bg-panel">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-1 px-3 py-2 text-sm text-slate-300"
+        className="flex w-full items-center gap-2 px-5 py-3 text-sm text-muted transition hover:text-ink"
       >
-        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        Generasiya olunmuş SQL
+        {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        <Database size={14} />
+        <span className="font-mono text-xs uppercase tracking-wider">Generasiya olunmuş SQL</span>
       </button>
       {open && (
-        <pre className="overflow-auto border-t border-slate-700 px-4 py-3 text-xs text-teal-300">
+        <pre className="overflow-auto border-t border-grid bg-brand px-5 py-4 text-xs leading-relaxed text-signal/90">
           {sql}
         </pre>
       )}

@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { DashboardGrid } from '../components/dashboard/DashboardGrid'
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
@@ -13,29 +14,47 @@ export function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-100">Dashboard-lar</h2>
+      <div className="mb-6 flex items-end justify-between">
+        <div>
+          <p className="eyebrow">Kolleksiyalar</p>
+          <h2 className="mt-1 font-display text-3xl font-bold text-ink">Dashboard-lar</h2>
+        </div>
         <button
           onClick={() => setModal(true)}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-slate-900"
+          className="flex items-center gap-1.5 rounded-xl bg-signal px-4 py-2 text-sm font-semibold text-brand shadow-key transition active:translate-y-0.5 active:shadow-none"
         >
-          Yeni Dashboard
+          <Plus size={16} strokeWidth={2.5} /> Yeni
         </button>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        {list.map((d) => (
-          <button
-            key={d.id}
-            onClick={() => open(d.id)}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 hover:border-brand"
-          >
-            {d.name}
-          </button>
-        ))}
-      </div>
+      {list.length > 0 && (
+        <div className="mb-8 flex flex-wrap gap-2">
+          {list.map((d) => (
+            <button
+              key={d.id}
+              onClick={() => open(d.id)}
+              className={`rounded-full border px-4 py-1.5 text-sm transition ${
+                current?.id === d.id
+                  ? 'border-brand bg-brand text-white'
+                  : 'border-grid bg-panel text-muted hover:border-brand hover:text-ink'
+              }`}
+            >
+              {d.name}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {current && <DashboardGrid dashboard={current} />}
+      {current ? (
+        <DashboardGrid dashboard={current} />
+      ) : (
+        <div className="plot-grid rounded-2xl border border-dashed border-grid px-6 py-16 text-center">
+          <p className="font-display text-lg text-ink">Dashboard seç və ya yarat</p>
+          <p className="mt-1 text-sm text-muted">
+            Sorğularını bir yerə yığıb canlı panel düzəlt.
+          </p>
+        </div>
+      )}
 
       <SaveDashboardModal
         open={modal}

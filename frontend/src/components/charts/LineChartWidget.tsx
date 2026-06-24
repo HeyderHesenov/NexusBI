@@ -8,6 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
+import { ACCENT, AXIS, GRID, INK, tooltipStyle } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -19,12 +20,19 @@ export function LineChartWidget({ data, config }: Props) {
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-        <XAxis dataKey={x} stroke="#94a3b8" />
-        <YAxis stroke="#94a3b8" />
-        <Tooltip contentStyle={{ background: '#1e293b', border: 'none' }} />
-        <Line type="monotone" dataKey={y} stroke="#14b8a6" strokeWidth={2} dot={false} />
+      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
+        <XAxis dataKey={x} stroke={AXIS} fontSize={12} tickLine={false} />
+        <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
+        <Tooltip contentStyle={tooltipStyle} />
+        <Line
+          type="monotone"
+          dataKey={y}
+          stroke={INK}
+          strokeWidth={2.5}
+          dot={{ r: 3, fill: ACCENT, strokeWidth: 0 }}
+          activeDot={{ r: 5, fill: ACCENT }}
+        />
       </LineChart>
     </ResponsiveContainer>
   )

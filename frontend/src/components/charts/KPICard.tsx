@@ -10,9 +10,12 @@ export function KPICard({ data, config }: Props) {
   const key = config.y_axis ?? Object.keys(row)[0]
   const value = key ? row[key] : '—'
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl bg-slate-800 p-8">
-      <span className="text-sm uppercase tracking-wide text-slate-400">{key}</span>
-      <span className="mt-2 text-4xl font-bold text-brand">{String(value)}</span>
+    <div className="plot-grid relative flex flex-col items-start justify-center rounded-2xl border border-grid bg-panel p-10">
+      <span className="eyebrow">{key}</span>
+      <span className="mt-2 font-display text-6xl font-bold leading-none text-brand">
+        {String(value)}
+      </span>
+      <span className="absolute right-6 top-6 h-2 w-2 rounded-full bg-signal" />
     </div>
   )
 }

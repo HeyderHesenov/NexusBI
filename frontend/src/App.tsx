@@ -21,7 +21,18 @@ export default function App() {
 
   return (
     <>
-      <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#f1f5f9' } }} />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#FFFFFF',
+            color: '#161820',
+            border: '1px solid #E6E2D8',
+            borderRadius: '12px',
+            fontSize: '14px',
+          },
+        }}
+      />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<ProtectedRoute />}>

@@ -12,7 +12,7 @@ interface Props {
 
 export function ChartRenderer({ data, config }: Props) {
   if (!data.length) {
-    return <p className="text-slate-400">Nəticə tapılmadı.</p>
+    return <p className="text-muted">Nəticə tapılmadı.</p>
   }
   switch (config.chart_type) {
     case 'bar':

@@ -1,7 +1,6 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import type { ChartConfig } from '../../types'
-
-const COLORS = ['#14b8a6', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#10b981', '#ec4899']
+import { SERIES, tooltipStyle } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -14,12 +13,21 @@ export function PieChartWidget({ data, config }: Props) {
   return (
     <ResponsiveContainer width="100%" height={320}>
       <PieChart>
-        <Pie data={data} dataKey={value} nameKey={name} outerRadius={120} label>
+        <Pie
+          data={data}
+          dataKey={value}
+          nameKey={name}
+          innerRadius={62}
+          outerRadius={118}
+          paddingAngle={2}
+          stroke="#FFFFFF"
+          strokeWidth={2}
+        >
           {data.map((_, i) => (
-            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            <Cell key={i} fill={SERIES[i % SERIES.length]} />
           ))}
         </Pie>
-        <Tooltip contentStyle={{ background: '#1e293b', border: 'none' }} />
+        <Tooltip contentStyle={tooltipStyle} />
       </PieChart>
     </ResponsiveContainer>
   )

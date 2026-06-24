@@ -9,11 +9,14 @@ interface Props {
 
 export function DashboardCard({ widget, onRemove, children }: Props) {
   return (
-    <div className="flex h-full flex-col rounded-xl border border-slate-700 bg-slate-900 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-200">{widget.title || 'Widget'}</span>
+    <div className="flex h-full flex-col rounded-2xl border border-grid bg-panel p-4 shadow-card">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-ink">{widget.title || 'Widget'}</span>
         {onRemove && (
-          <button onClick={() => onRemove(widget.id)} className="text-slate-500 hover:text-red-400">
+          <button
+            onClick={() => onRemove(widget.id)}
+            className="text-muted transition hover:text-[#C84B5A]"
+          >
             <X size={16} />
           </button>
         )}

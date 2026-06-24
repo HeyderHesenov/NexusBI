@@ -1,9 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+  }
+  ::selection {
+    background: #f4a10033;
+  }
+  *:focus-visible {
+    outline: 2px solid #221f52;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Faint coordinate grid — the plotting substrate. */
+  .plot-grid {
+    background-image: linear-gradient(to right, #e6e2d8 1px, transparent 1px),
+      linear-gradient(to bottom, #e6e2d8 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.18em] text-muted;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
