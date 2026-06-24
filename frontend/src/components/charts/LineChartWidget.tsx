@@ -13,13 +13,14 @@ import { ACCENT, AXIS, GRID, tooltipLabel, tooltipStyle } from './theme'
 interface Props {
   data: Record<string, unknown>[]
   config: ChartConfig
+  height?: number | string
 }
 
-export function LineChartWidget({ data, config }: Props) {
+export function LineChartWidget({ data, config, height = 320 }: Props) {
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   return (
-    <ResponsiveContainer width="100%" height={320}>
+    <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
         <XAxis dataKey={x} stroke={AXIS} fontSize={12} tickLine={false} />

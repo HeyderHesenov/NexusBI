@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ModalShell } from '../ui/ModalShell'
 
 interface Props {
   open: boolean
@@ -8,20 +9,15 @@ interface Props {
 
 export function SaveDashboardModal({ open, onClose, onSave }: Props) {
   const [name, setName] = useState('')
-  if (!open) return null
+  const submit = () => name.trim() && onSave(name.trim())
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-80 rounded-2xl border border-line bg-surface p-6 shadow-pop">
-        <h3 className="mb-1 font-display text-xl font-bold text-ink">Dashboard-a saxla</h3>
-        <p className="mb-4 text-sm text-ink-soft">Panelinə ad ver.</p>
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && name.trim() && onSave(name.trim())}
-          placeholder="Dashboard adı"
-          className="mb-4 w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-        />
+    <ModalShell
+      open={open}
+      onClose={onClose}
+      title="Yeni dashboard"
+      subtitle="Panelinə ad ver."
+      footer={
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
@@ -30,13 +26,24 @@ export function SaveDashboardModal({ open, onClose, onSave }: Props) {
             Ləğv et
           </button>
           <button
-            onClick={() => name.trim() && onSave(name.trim())}
+            onClick={submit}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
           >
-            Saxla
+            Yarat
           </button>
         </div>
+      }
+    >
+      <div className="p-5">
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          placeholder="Dashboard adı"
+          className="w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+        />
       </div>
-    </div>
+    </ModalShell>
   )
 }

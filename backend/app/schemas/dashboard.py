@@ -15,6 +15,19 @@ class WidgetCreate(BaseModel):
     height: int = 4
 
 
+class WidgetChart(BaseModel):
+    """Rendered snapshot of the linked query, embedded so the dashboard renders
+    in a single request (no per-widget round trips)."""
+
+    chart_type: str
+    chart_config: dict[str, Any] = Field(default_factory=dict)
+    columns: list[str] = []
+    data: list[dict[str, Any]] = []
+    insight: str = ""
+    sql: str = ""
+    natural_language: str = ""
+
+
 class WidgetResponse(BaseModel):
     id: str
     title: str
@@ -23,6 +36,7 @@ class WidgetResponse(BaseModel):
     position_y: int
     width: int
     height: int
+    chart: WidgetChart | None = None
 
     model_config = {"from_attributes": True}
 

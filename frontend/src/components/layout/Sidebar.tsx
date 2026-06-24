@@ -1,5 +1,6 @@
 import { History, LayoutDashboard, MessageSquare } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { NexusMark } from '../brand/NexusMark'
 
 const items = [
   { to: '/', label: 'Soruş', icon: MessageSquare },
@@ -11,11 +12,13 @@ export function Sidebar() {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-surface">
       <div className="flex items-center gap-2.5 px-6 py-6">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent">
-          <span className="h-2.5 w-2.5 rounded-full bg-bg" />
+        <span className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface-2">
+          <NexusMark size={20} />
         </span>
         <div className="leading-none">
-          <span className="font-display text-lg font-bold tracking-tight text-ink">NexusBI</span>
+          <span className="font-display text-lg font-bold tracking-tight text-ink">
+            Nexus<span className="text-accent">BI</span>
+          </span>
           <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-ink-faint">
             words → data
           </p>

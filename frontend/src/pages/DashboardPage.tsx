@@ -1,30 +1,56 @@
-import { Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { LayoutGrid, Plus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
+import type { Layouts } from 'react-grid-layout'
+import { AddWidgetModal } from '../components/dashboard/AddWidgetModal'
 import { DashboardGrid } from '../components/dashboard/DashboardGrid'
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
 import { useDashboardStore } from '../store/dashboardStore'
 
 export function DashboardPage() {
-  const { list, current, loadList, open, create } = useDashboardStore()
-  const [modal, setModal] = useState(false)
+  const { list, current, loadList, open, create, addWidget, removeWidget, saveLayout } =
+    useDashboardStore()
+  const [createOpen, setCreateOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
     loadList().catch(() => undefined)
   }, [loadList])
 
+  // Persist layout changes, debounced so dragging doesn't spam the API.
+  const onLayoutChange = (layouts: Layouts) => {
+    if (!current) return
+    const id = current.id
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      saveLayout(id, layouts as unknown as Record<string, unknown>).catch(() => undefined)
+    }, 800)
+  }
+
   return (
     <div>
-      <div className="mb-6 flex items-end justify-between">
+      <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Kolleksiyalar</p>
           <h2 className="mt-1 font-display text-3xl font-bold text-ink">Dashboard-lar</h2>
         </div>
-        <button
-          onClick={() => setModal(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
-        >
-          <Plus size={16} strokeWidth={2.5} /> Yeni
-        </button>
+        <div className="flex gap-2">
+          {current && (
+            <button
+              onClick={() => setAddOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+            >
+              <Plus size={16} /> Widget
+            </button>
+          )}
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
+          >
+            <Plus size={16} strokeWidth={2.5} /> Yeni
+          </button>
+        </div>
       </div>
 
       {list.length > 0 && (
@@ -46,24 +72,65 @@ export function DashboardPage() {
       )}
 
       {current ? (
-        <DashboardGrid dashboard={current} />
+        current.widgets.length ? (
+          <DashboardGrid
+            dashboard={current}
+            onRemoveWidget={(wid) => removeWidget(current.id, wid).catch(() => undefined)}
+            onLayoutChange={onLayoutChange}
+          />
+        ) : (
+          <EmptyDashboard onAdd={() => setAddOpen(true)} />
+        )
       ) : (
-        <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-          <p className="font-display text-lg text-ink">Dashboard seç və ya yarat</p>
-          <p className="mt-1 text-sm text-ink-soft">
-            Sorğularını bir yerə yığıb canlı panel düzəlt.
-          </p>
-        </div>
+        <EmptyState />
       )}
 
       <SaveDashboardModal
-        open={modal}
-        onClose={() => setModal(false)}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
         onSave={async (name) => {
-          await create(name)
-          setModal(false)
+          const dash = await create(name)
+          await open(dash.id)
+          setCreateOpen(false)
         }}
       />
+
+      {current && (
+        <AddWidgetModal
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          onPick={async (item) => {
+            await addWidget(current.id, item.id, item.natural_language)
+            toast.success('Widget əlavə olundu.')
+            setAddOpen(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function EmptyState() {
+  return (
+    <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+      <LayoutGrid size={28} className="mx-auto text-ink-faint" />
+      <p className="mt-3 font-display text-lg text-ink">Dashboard seç və ya yarat</p>
+      <p className="mt-1 text-sm text-ink-soft">Sorğularını bir yerə yığıb canlı panel düzəlt.</p>
+    </div>
+  )
+}
+
+function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+      <p className="font-display text-lg text-ink">Bu panel boşdur</p>
+      <p className="mt-1 text-sm text-ink-soft">Tarixçədən sorğu seçib widget əlavə et.</p>
+      <button
+        onClick={onAdd}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press"
+      >
+        <Plus size={16} strokeWidth={2.5} /> Widget əlavə et
+      </button>
     </div>
   )
 }

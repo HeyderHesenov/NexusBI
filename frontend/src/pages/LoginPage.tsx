@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { GoogleButton } from '../components/auth/GoogleButton'
+import { NexusMark } from '../components/brand/NexusMark'
 import { AuroraBackground } from '../components/layout/AuroraBackground'
 import { getProviders } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
@@ -60,10 +61,12 @@ export function LoginPage() {
       {/* Feature side */}
       <div className="relative z-10 hidden flex-col justify-between border-r border-line/60 p-12 lg:flex">
         <div className="reveal flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent">
-            <span className="h-2.5 w-2.5 rounded-full bg-bg" />
+          <span className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface-2">
+            <NexusMark size={20} />
           </span>
-          <span className="font-display text-lg font-bold tracking-tight text-ink">NexusBI</span>
+          <span className="font-display text-lg font-bold tracking-tight text-ink">
+            Nexus<span className="text-accent">BI</span>
+          </span>
         </div>
 
         <div className="max-w-md">
