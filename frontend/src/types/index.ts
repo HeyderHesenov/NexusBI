@@ -82,3 +82,8 @@ export interface AuthUser {
   full_name: string
   is_active: boolean
 }
+
+export interface AuthProviders {
+  google_enabled: boolean
+  google_client_id: string | null
+}

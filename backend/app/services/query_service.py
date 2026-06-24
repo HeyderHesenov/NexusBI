@@ -1,6 +1,7 @@
 """Core orchestration: NL query -> SQL -> execute -> chart -> insight -> log."""
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -38,8 +39,11 @@ async def process_nl_query(
         )
         resolved_ds_id = datasource_id
 
-    chart_config = await select_chart_type(columns, rows, nl_query)
-    insight = await generate_insight(rows, nl_query, chart_config)
+    # Chart selection and insight generation are independent — run concurrently.
+    chart_config, insight = await asyncio.gather(
+        select_chart_type(columns, rows, nl_query),
+        generate_insight(rows, nl_query),
+    )
     elapsed_ms = int((time.perf_counter() - started) * 1000)
 
     log = QueryLog(

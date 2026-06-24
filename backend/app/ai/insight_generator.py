@@ -6,19 +6,22 @@ from typing import Any
 
 from app.ai.client import chat_text
 from app.ai.prompt_templates import INSIGHT_GENERATOR_PROMPT, INSIGHT_GENERATOR_USER_PROMPT
-from app.ai.types import ChartConfig
 
 
 async def generate_insight(
-    data: list[dict[str, Any]], nl_query: str, chart_config: ChartConfig
+    data: list[dict[str, Any]], nl_query: str, chart_type: str = ""
 ) -> str:
-    """Return 2-3 sentence insight; empty string on failure or no data."""
+    """Return 2-3 sentence insight; empty string on failure or no data.
+
+    Takes only chart_type (not the full config) so it can run concurrently with
+    chart selection.
+    """
     if not data:
         return ""
     try:
         user = INSIGHT_GENERATOR_USER_PROMPT.format(
             nl_query=nl_query,
-            chart_type=chart_config.chart_type,
+            chart_type=chart_type or "auto",
             data=json.dumps(data[:50], ensure_ascii=False, default=str),
         )
         return await chat_text(INSIGHT_GENERATOR_PROMPT, user)

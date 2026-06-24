@@ -54,6 +54,72 @@
     letter-spacing: 0.18em;
     color: #6e747d;
   }
+
+  /* Aurora glow — soft drifting blobs. Only transform/opacity animate. */
+  .aurora-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(70px);
+    will-change: transform, opacity;
+  }
+  .aurora-1 {
+    top: -10%;
+    left: -8%;
+    width: 46vw;
+    height: 46vw;
+    background: radial-gradient(circle at center, rgba(14, 159, 110, 0.5), transparent 68%);
+    animation: aurora-drift-a 24s ease-in-out infinite;
+  }
+  .aurora-2 {
+    bottom: -16%;
+    right: -10%;
+    width: 52vw;
+    height: 52vw;
+    background: radial-gradient(circle at center, rgba(14, 159, 110, 0.28), transparent 70%);
+    animation: aurora-drift-b 30s ease-in-out infinite;
+  }
+  .aurora-3 {
+    top: 28%;
+    right: 18%;
+    width: 34vw;
+    height: 34vw;
+    background: radial-gradient(circle at center, rgba(91, 199, 154, 0.18), transparent 72%);
+    animation: aurora-drift-c 27s ease-in-out infinite;
+  }
+}
+
+@keyframes aurora-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(6%, 8%, 0) scale(1.12);
+    opacity: 1;
+  }
+}
+@keyframes aurora-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.05);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(-7%, -6%, 0) scale(1);
+    opacity: 0.95;
+  }
+}
+@keyframes aurora-drift-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate3d(-5%, 7%, 0) scale(1.15);
+    opacity: 0.85;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
