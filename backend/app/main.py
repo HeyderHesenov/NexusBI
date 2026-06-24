@@ -20,8 +20,21 @@ configure_logging()
 log = get_logger()
 
 
+def _assert_production_secrets() -> None:
+    """Fail fast if a non-demo deploy is missing real secrets."""
+    if settings.DEMO_MODE:
+        return
+    if not settings.SECRET_KEY or settings.SECRET_KEY == "dev-insecure-change-me" or len(
+        settings.SECRET_KEY
+    ) < 32:
+        raise RuntimeError("SECRET_KEY must be set to a strong value (>=32 chars) in production.")
+    if not settings.FERNET_KEY:
+        raise RuntimeError("FERNET_KEY must be set in production.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _assert_production_secrets()
     app.state.cache = await build_cache_service()
     log.info("startup", demo_mode=settings.DEMO_MODE, cache=app.state.cache.available)
     yield
@@ -38,9 +51,10 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        # Bearer-token auth (no cookies) — credentials not needed; scope methods/headers.
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
     @app.middleware("http")

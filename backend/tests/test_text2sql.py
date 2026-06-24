@@ -63,3 +63,23 @@ def test_sql_guard_blocks_writes():
         with pytest.raises(InvalidSQLError):
             validate_select_only(bad)
     assert validate_select_only("SELECT 1").lower() == "select 1"
+
+
+def test_sql_guard_blocks_dangerous_functions():
+    for bad in [
+        "SELECT load_extension('x')",
+        "SELECT pg_sleep(10)",
+        "SELECT * FROM t WHERE x = sleep(5)",
+        "SELECT pg_read_file('/etc/passwd')",
+        "SELECT * INTO OUTFILE '/tmp/x' FROM t",
+    ]:
+        with pytest.raises(InvalidSQLError):
+            validate_select_only(bad)
+
+
+def test_sql_guard_allows_keywords_inside_literals():
+    # A forbidden word inside a string literal must not trip the guard.
+    sql = "SELECT name FROM products WHERE category = 'delete' AND note = 'drop in price'"
+    assert validate_select_only(sql).startswith("SELECT")
+    # REPLACE() is a legitimate read-side function, not a write statement.
+    assert validate_select_only("SELECT REPLACE(name, 'a', 'b') FROM t").startswith("SELECT")

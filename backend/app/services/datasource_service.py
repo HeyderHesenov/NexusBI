@@ -8,6 +8,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.ai.schema_introspector import format_schema_for_prompt, get_schema
+from app.ai.sql_guard import validate_select_only
 from app.core.exceptions import DataSourceConnectionError, SchemaNotFoundError
 from app.core.logging import get_logger
 from app.core.security import decrypt_secret, encrypt_secret
@@ -77,8 +78,16 @@ async def get_schema_cached(
     return schema
 
 
+MAX_RESULT_ROWS = 10000
+
+
 async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict[str, Any]]]:
-    """Run a validated SELECT and return (columns, rows)."""
+    """Run a validated SELECT and return (columns, rows).
+
+    Re-validates at the executor (defense in depth — never trust the caller) and
+    hard-caps fetched rows so a huge result can't exhaust memory.
+    """
+    sql = validate_select_only(sql)
     conn_str = decrypt_secret(ds.connection_string_encrypted)
     engine = create_async_engine(conn_str)
     started = time.perf_counter()
@@ -86,7 +95,7 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
         async with engine.connect() as conn:
             result = await conn.execute(text(sql))
             columns = list(result.keys())
-            rows = [dict(r) for r in result.mappings().all()]
+            rows = [dict(r) for r in result.mappings().fetchmany(MAX_RESULT_ROWS)]
         log.info(
             "sql_execution",
             datasource_id=ds.id,

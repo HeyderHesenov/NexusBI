@@ -19,6 +19,23 @@ from app.services.cache_service import CacheService
 
 _engine = Text2SQLEngine()
 
+_SNAPSHOT_MAX_ROWS = 1000
+_SNAPSHOT_MAX_BYTES = 256 * 1024  # cap the persisted JSON snapshot at ~256 KB
+
+
+def _snapshot_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Bound the persisted result snapshot by both row count and byte size."""
+    import json
+
+    capped: list[dict[str, Any]] = []
+    size = 0
+    for row in rows[:_SNAPSHOT_MAX_ROWS]:
+        size += len(json.dumps(row, default=str))
+        if size > _SNAPSHOT_MAX_BYTES:
+            break
+        capped.append(row)
+    return capped
+
 
 async def process_nl_query(
     nl_query: str,
@@ -53,7 +70,7 @@ async def process_nl_query(
         generated_sql=sql_result.sql,
         chart_type=chart_config.chart_type,
         chart_config=chart_config.model_dump(),
-        result_data={"columns": columns, "rows": rows[:1000]},
+        result_data={"columns": columns, "rows": _snapshot_rows(rows)},
         insight=insight,
         execution_time_ms=elapsed_ms,
     )

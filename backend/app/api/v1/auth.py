@@ -37,8 +37,13 @@ async def register(payload: RegisterRequest, db: DbDep) -> TokenResponse:
         full_name=payload.full_name,
     )
     db.add(user)
-    await db.flush()
-    await db.refresh(user)
+    try:
+        await db.flush()
+        await db.refresh(user)
+    except IntegrityError:
+        # Lost the race against a concurrent registration with the same email.
+        await db.rollback()
+        raise NexusBIException("Bu email artıq qeydiyyatdadır.") from None
     return TokenResponse(access_token=create_access_token(user.id))
 
 

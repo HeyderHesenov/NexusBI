@@ -9,6 +9,7 @@ import sqlite3
 from typing import Any
 
 from app.ai.schema_introspector import format_schema_for_prompt
+from app.ai.sql_guard import validate_select_only
 from app.core.exceptions import InvalidSQLError
 
 DEMO_SCHEMA: dict[str, list[str]] = {
@@ -100,8 +101,14 @@ def format_demo_schema() -> str:
 
 def execute_demo_sql(sql: str) -> tuple[list[str], list[dict[str, Any]]]:
     """Run the SELECT against a freshly seeded in-memory database."""
+    sql = validate_select_only(sql)  # defense in depth
     conn = sqlite3.connect(":memory:")
     try:
+        # Never allow extension loading even on a throwaway connection.
+        try:
+            conn.enable_load_extension(False)
+        except AttributeError:
+            pass
         _seed(conn)
         conn.row_factory = sqlite3.Row
         cur = conn.execute(sql)

@@ -18,7 +18,8 @@ def get_client() -> AsyncOpenAI:
     """Lazily build a singleton AsyncOpenAI client."""
     global _client
     if _client is None:
-        _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        # Bound each request so a hung OpenAI call can't stall the pipeline.
+        _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=30.0, max_retries=0)
     return _client
 
 
