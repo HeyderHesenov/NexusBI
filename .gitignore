@@ -40,3 +40,6 @@ logs/
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# TS build cache
+*.tsbuildinfo
