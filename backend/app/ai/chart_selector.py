@@ -1,0 +1,51 @@
+"""Pick an optimal chart type for a query result."""
+from __future__ import annotations
+
+import json
+from typing import Any
+
+from app.ai.client import chat_json
+from app.ai.prompt_templates import CHART_SELECTOR_PROMPT, CHART_SELECTOR_USER_PROMPT
+from app.ai.types import ChartConfig
+
+_NUMERIC = (int, float)
+
+
+def _rule_based(columns: list[str], data: list[dict[str, Any]]) -> ChartConfig:
+    """Deterministic fallback when the LLM is unavailable."""
+    if not columns:
+        return ChartConfig(chart_type="table")
+
+    if len(data) == 1 and len(columns) == 1:
+        return ChartConfig(chart_type="kpi_card", y_axis=columns[0])
+
+    sample = data[0] if data else {}
+    numeric = [c for c in columns if isinstance(sample.get(c), _NUMERIC)]
+    categorical = [c for c in columns if c not in numeric]
+
+    if len(columns) == 2 and numeric and categorical:
+        cat = categorical[0]
+        if len(data) <= 6:
+            return ChartConfig(chart_type="pie", x_axis=cat, y_axis=numeric[0])
+        is_time = any(k in cat.lower() for k in ("date", "month", "year", "day", "time"))
+        ctype = "line" if is_time else "bar"
+        return ChartConfig(chart_type=ctype, x_axis=cat, y_axis=numeric[0])
+
+    return ChartConfig(chart_type="table")
+
+
+async def select_chart_type(
+    columns: list[str], data: list[dict[str, Any]], nl_query: str
+) -> ChartConfig:
+    """LLM-driven selection with a rule-based fallback."""
+    try:
+        user = CHART_SELECTOR_USER_PROMPT.format(
+            nl_query=nl_query,
+            columns=json.dumps(columns, ensure_ascii=False),
+            sample=json.dumps(data[:3], ensure_ascii=False, default=str),
+            row_count=len(data),
+        )
+        raw = await chat_json(CHART_SELECTOR_PROMPT, user)
+        return ChartConfig(**raw)
+    except Exception:
+        return _rule_based(columns, data)
