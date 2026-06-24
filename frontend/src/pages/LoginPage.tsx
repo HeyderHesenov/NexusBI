@@ -59,7 +59,7 @@ export function LoginPage() {
 
       {/* Feature side */}
       <div className="relative z-10 hidden flex-col justify-between border-r border-line/60 p-12 lg:flex">
-        <div className="flex items-center gap-2.5">
+        <div className="reveal flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent">
             <span className="h-2.5 w-2.5 rounded-full bg-bg" />
           </span>
@@ -67,26 +67,27 @@ export function LoginPage() {
         </div>
 
         <div className="max-w-md">
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
+          <p className="reveal reveal-d1 font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
             words → SQL → plot
           </p>
           <h1 className="mt-4 font-display text-5xl font-bold leading-[1.04] text-ink">
-            Sual ver.
-            <br />
-            Cavabı gör.
+            <span className="reveal reveal-d2 block">Sual ver.</span>
+            <span className="reveal reveal-d3 block">Cavabı gör.</span>
           </h1>
-          <p className="mt-5 text-ink-soft">
+          <p className="reveal reveal-d4 mt-5 text-ink-soft">
             SQL bilmədən datanla danış. NexusBI sualını sorğuya çevirir, icra edir
             və ən uyğun chart-la cavablandırır.
           </p>
         </div>
 
-        <p className="font-mono text-xs text-ink-faint">demo · sales · customers · products</p>
+        <p className="reveal reveal-d5 font-mono text-xs text-ink-faint">
+          demo · sales · customers · products
+        </p>
       </div>
 
       {/* Form side */}
       <div className="relative z-10 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm rounded-2xl border border-line bg-surface/80 p-8 shadow-card backdrop-blur">
+        <div className="reveal reveal-d2 w-full max-w-sm rounded-2xl border border-line bg-surface/80 p-8 shadow-card backdrop-blur">
           <p className="eyebrow">{mode === 'login' ? 'Yenidən xoş gəldin' : 'Başla'}</p>
           <h2 className="mt-1 font-display text-3xl font-bold text-ink">
             {mode === 'login' ? 'Daxil ol' : 'Hesab yarat'}

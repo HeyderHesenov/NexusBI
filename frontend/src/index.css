@@ -55,6 +55,30 @@
     color: #6e747d;
   }
 
+  /* Entrance reveal — runs once on load; staggered via .reveal-dN. */
+  .reveal {
+    opacity: 0;
+    animation: reveal-up 0.75s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .reveal-d1 {
+    animation-delay: 0.08s;
+  }
+  .reveal-d2 {
+    animation-delay: 0.18s;
+  }
+  .reveal-d3 {
+    animation-delay: 0.3s;
+  }
+  .reveal-d4 {
+    animation-delay: 0.44s;
+  }
+  .reveal-d5 {
+    animation-delay: 0.58s;
+  }
+  .reveal-d6 {
+    animation-delay: 0.72s;
+  }
+
   /* Aurora glow — soft drifting blobs. Only transform/opacity animate. */
   .aurora-blob {
     position: absolute;
@@ -85,6 +109,19 @@
     height: 34vw;
     background: radial-gradient(circle at center, rgba(91, 199, 154, 0.18), transparent 72%);
     animation: aurora-drift-c 27s ease-in-out infinite;
+  }
+}
+
+@keyframes reveal-up {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
   }
 }
 
