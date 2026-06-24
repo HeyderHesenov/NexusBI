@@ -38,7 +38,8 @@ class Text2SQLEngine:
                 )
             except (json.JSONDecodeError, ValueError, TypeError) as exc:
                 last_error = exc
-            await asyncio.sleep(0.5 * (2**attempt))
+            if attempt < self.max_retries - 1:
+                await asyncio.sleep(0.5 * (2**attempt))
 
         raise AIGenerationError(
             "SQL generasiyası alınmadı.",
