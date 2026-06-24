@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = Field(default="")
     OPENAI_MODEL: str = Field(default="gpt-4o")
 
+    # ─── OAuth ───
+    GOOGLE_CLIENT_ID: str = Field(default="")
+
     # ─── Database ───
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///./nexusbi.db")
 

@@ -1,16 +1,30 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
-import { DashboardPage } from './pages/DashboardPage'
-import { HistoryPage } from './pages/HistoryPage'
-import { LoginPage } from './pages/LoginPage'
-import { QueryPage } from './pages/QueryPage'
 import { useAuthStore } from './store/authStore'
+
+// Route-level code splitting — each page ships as its own chunk.
+const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
+const QueryPage = lazy(() => import('./pages/QueryPage').then((m) => ({ default: m.QueryPage })))
+const DashboardPage = lazy(() =>
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+)
+const HistoryPage = lazy(() =>
+  import('./pages/HistoryPage').then((m) => ({ default: m.HistoryPage })),
+)
 
 function ProtectedRoute() {
   const token = useAuthStore((s) => s.token)
   return token ? <Outlet /> : <Navigate to="/login" replace />
+}
+
+function RouteFallback() {
+  return (
+    <div className="flex h-full min-h-[40vh] items-center justify-center">
+      <span className="h-2 w-2 animate-ping rounded-full bg-accent" />
+    </div>
+  )
 }
 
 export default function App() {
@@ -34,16 +48,18 @@ export default function App() {
           success: { iconTheme: { primary: '#0E9F6E', secondary: '#131418' } },
         }}
       />
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
-            <Route path="/" element={<QueryPage />} />
-            <Route path="/dashboards" element={<DashboardPage />} />
-            <Route path="/history" element={<HistoryPage />} />
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              <Route path="/" element={<QueryPage />} />
+              <Route path="/dashboards" element={<DashboardPage />} />
+              <Route path="/history" element={<HistoryPage />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
+        </Routes>
+      </Suspense>
     </>
   )
 }

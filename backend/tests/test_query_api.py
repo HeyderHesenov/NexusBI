@@ -20,7 +20,7 @@ def _mock_ai(monkeypatch):
     async def fake_chart(columns, data, nl):
         return ChartConfig(chart_type="bar", x_axis="product_name", y_axis="total")
 
-    async def fake_insight(data, nl, cfg):
+    async def fake_insight(data, nl, chart_type=""):
         return "Ən çox satan məhsul liderdir."
 
     monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", fake_sql)

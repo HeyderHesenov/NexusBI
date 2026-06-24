@@ -1,5 +1,5 @@
 import { client } from './client'
-import type { AuthUser } from '../types'
+import type { AuthProviders, AuthUser } from '../types'
 
 interface TokenResponse {
   access_token: string
@@ -27,4 +27,14 @@ export async function register(
 export async function me(): Promise<AuthUser> {
   const { data } = await client.get<AuthUser>('/auth/me')
   return data
+}
+
+export async function getProviders(): Promise<AuthProviders> {
+  const { data } = await client.get<AuthProviders>('/auth/providers')
+  return data
+}
+
+export async function googleLogin(credential: string): Promise<string> {
+  const { data } = await client.post<TokenResponse>('/auth/google', { credential })
+  return data.access_token
 }

@@ -15,6 +15,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: str = Field(min_length=1)
+
+
+class ProvidersResponse(BaseModel):
+    google_enabled: bool
+    google_client_id: str | None = None
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
