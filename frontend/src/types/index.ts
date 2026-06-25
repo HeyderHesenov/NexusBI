@@ -132,3 +132,18 @@ export interface AnomalyResult {
   label_col: string
   value_col: string
 }
+
+export interface ForecastPoint {
+  label: string
+  value: number | null
+  lower: number | null
+  upper: number | null
+}
+
+export interface ForecastResult {
+  forecast: ForecastPoint[]
+  narrative: string
+  label_col: string
+  value_col: string
+  history: Record<string, unknown>[]
+}
