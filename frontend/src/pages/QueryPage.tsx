@@ -1,9 +1,10 @@
-import { AlertTriangle, Clock, Database, Lightbulb, LayoutGrid, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Bookmark, Clock, Database, Lightbulb, LayoutGrid, RefreshCw } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ChartView } from '../components/charts/ChartView'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
 import { DatasourcePicker } from '../components/query/DatasourcePicker'
 import { NLQueryInput } from '../components/query/NLQueryInput'
+import { SaveQueryModal } from '../components/query/SaveQueryModal'
 import { SchemaBrowser } from '../components/query/SchemaBrowser'
 import { SQLPreview } from '../components/query/SQLPreview'
 import { useQueryStore } from '../store/queryStore'
@@ -11,9 +12,11 @@ import { useDatasourceStore } from '../store/datasourceStore'
 import { buildSamples } from '../lib/sampleQueries'
 
 export function QueryPage() {
-  const { result, loading, error, ask, retry, history, loadHistory, datasourceId } = useQueryStore()
+  const { result, loading, error, ask, retry, history, loadHistory, datasourceId, lastQuery } =
+    useQueryStore()
   const { schemas, loadSchema } = useDatasourceStore()
   const [saveOpen, setSaveOpen] = useState(false)
+  const [saveQueryOpen, setSaveQueryOpen] = useState(false)
 
   useEffect(() => {
     loadHistory().catch(() => undefined)
@@ -107,12 +110,20 @@ export function QueryPage() {
 
             <SQLPreview sql={result.sql} />
 
-            <button
-              onClick={() => result.query_log_id && setSaveOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
-            >
-              <LayoutGrid size={15} /> Dashboard-a saxla
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => result.query_log_id && setSaveOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+              >
+                <LayoutGrid size={15} /> Dashboard-a saxla
+              </button>
+              <button
+                onClick={() => setSaveQueryOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+              >
+                <Bookmark size={15} /> Sorğunu saxla
+              </button>
+            </div>
           </div>
         )}
 
@@ -162,6 +173,15 @@ export function QueryPage() {
         queryLogId={result.query_log_id}
         title=""
         onClose={() => setSaveOpen(false)}
+      />
+    )}
+
+    {lastQuery && (
+      <SaveQueryModal
+        open={saveQueryOpen}
+        onClose={() => setSaveQueryOpen(false)}
+        nlQuery={lastQuery}
+        datasourceId={datasourceId}
       />
     )}
     </>
