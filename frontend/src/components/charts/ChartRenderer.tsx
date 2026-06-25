@@ -15,6 +15,8 @@ interface Props {
   showLegend?: boolean
   /** Drill-down: fired when a chart element is clicked (categorical charts). */
   onPointClick?: (field: string, value: unknown) => void
+  /** Labels (x-axis values) flagged as anomalies — highlighted on bar charts. */
+  anomalyLabels?: Set<string>
 }
 
 export function ChartRenderer({
@@ -23,13 +25,22 @@ export function ChartRenderer({
   height = 320,
   showLegend = false,
   onPointClick,
+  anomalyLabels,
 }: Props) {
   if (!data.length) {
     return <p className="text-ink-soft">Nəticə tapılmadı.</p>
   }
   switch (config.chart_type) {
     case 'bar':
-      return <BarChartWidget data={data} config={config} height={height} onPointClick={onPointClick} />
+      return (
+        <BarChartWidget
+          data={data}
+          config={config}
+          height={height}
+          onPointClick={onPointClick}
+          anomalyLabels={anomalyLabels}
+        />
+      )
     case 'line':
       return <LineChartWidget data={data} config={config} height={height} />
     case 'area':

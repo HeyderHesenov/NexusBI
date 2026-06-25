@@ -57,7 +57,12 @@ export function QueryPage() {
                   {result.data.length} sətir · {result.execution_time_ms} ms
                 </span>
               </div>
-              <ChartView data={result.data} config={result.chart_config} exportName="nexusbi-query" />
+              <ChartView
+                data={result.data}
+                config={result.chart_config}
+                exportName="nexusbi-query"
+                queryLogId={result.query_log_id}
+              />
             </div>
 
             <SQLPreview sql={result.sql} />

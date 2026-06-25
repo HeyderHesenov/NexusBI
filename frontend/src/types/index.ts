@@ -118,3 +118,17 @@ export interface AuthProviders {
   google_enabled: boolean
   google_client_id: string | null
 }
+
+export interface AnomalyPoint {
+  label: string | null
+  value: number | null
+  severity: 'low' | 'medium' | 'high'
+  explanation: string
+}
+
+export interface AnomalyResult {
+  anomalies: AnomalyPoint[]
+  summary: string
+  label_col: string
+  value_col: string
+}
