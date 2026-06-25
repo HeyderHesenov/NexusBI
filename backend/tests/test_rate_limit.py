@@ -67,6 +67,17 @@ async def test_usage_reflects_consumption(client, auth):
     assert body["remaining"] == body["limit"] - 1
 
 
+async def test_unlimited_tier_bypasses_limit(client, auth, _small_free_quota):
+    # Switch to the unlimited (demo) tier, then exceed the tiny free quota freely.
+    up = await client.post("/api/v1/billing/upgrade", json={"tier": "unlimited"}, headers=auth)
+    assert up.status_code == 200
+    body = up.json()
+    assert body["tier"] == "unlimited"
+    assert body["limit"] == -1
+    for _ in range(5):  # well past the free quota of 2
+        assert (await _ask(client, auth)).status_code == 200
+
+
 async def test_plans_catalogue(client, auth):
     resp = await client.get("/api/v1/billing/plans", headers=auth)
     plans = {p["key"]: p for p in resp.json()}
