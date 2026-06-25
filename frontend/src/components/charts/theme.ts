@@ -2,14 +2,14 @@ import { useThemeStore } from '../../store/themeStore'
 
 type Mode = 'light' | 'dark'
 
-// Warm, Claude-leaning categorical palette — reads well on both themes.
+// Emerald-led categorical palette — reads well on both themes.
 export const SERIES = [
-  '#CC785C', // terracotta (accent)
-  '#E0A47F', // peach
-  '#7D9D8C', // sage
-  '#BF9B6F', // tan
-  '#6B8CAE', // dusty blue
-  '#A78BA0', // mauve
+  '#0E9F6E', // emerald (accent)
+  '#5BC79A', // light emerald
+  '#7C9CC4', // dusty blue
+  '#C9A36B', // tan
+  '#A88BC0', // mauve
+  '#8C877E', // neutral
 ]
 
 interface ChartTheme {
@@ -27,7 +27,7 @@ const THEMES: Record<Mode, ChartTheme> = {
     SERIES,
     AXIS: '#8C877E',
     GRID: '#E5E3DC',
-    ACCENT: '#CC785C',
+    ACCENT: '#0E9F6E',
     tooltipStyle: {
       background: '#FFFFFF',
       border: '1px solid #E5E3DC',
@@ -43,7 +43,7 @@ const THEMES: Record<Mode, ChartTheme> = {
     SERIES,
     AXIS: '#7C766E',
     GRID: '#3A3733',
-    ACCENT: '#D98A6E',
+    ACCENT: '#10B981',
     tooltipStyle: {
       background: '#1F1E1D',
       border: '1px solid #3A3733',

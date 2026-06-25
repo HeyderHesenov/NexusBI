@@ -8,8 +8,8 @@ import { useThemeStore } from './store/themeStore'
 
 // Theme-aware toast palette (terracotta accent on warm paper / graphite).
 const TOAST_THEME = {
-  light: { bg: '#FFFFFF', text: '#1F1E1D', line: '#E5E3DC', accent: '#CC785C' },
-  dark: { bg: '#1F1E1D', text: '#EDEAE6', line: '#3A3733', accent: '#D98A6E' },
+  light: { bg: '#FFFFFF', text: '#1F1E1D', line: '#E5E3DC', accent: '#0E9F6E' },
+  dark: { bg: '#1F1E1D', text: '#EDEAE6', line: '#3A3733', accent: '#10B981' },
 }
 
 // Login is the entry route — load it eagerly so first paint (and its reveal

@@ -15,9 +15,9 @@
   --ink: 31 30 29;
   --ink-soft: 91 87 80;
   --ink-faint: 140 135 126;
-  --accent: 204 120 92;
-  --accent-press: 181 101 74;
-  --accent-soft: 244 233 227;
+  --accent: 14 159 110;
+  --accent-press: 11 126 88;
+  --accent-soft: 227 243 236;
   --shadow: 60 50 40;
 }
 
@@ -30,9 +30,9 @@
   --ink: 237 234 230;
   --ink-soft: 168 163 155;
   --ink-faint: 124 118 110;
-  --accent: 217 138 110;
-  --accent-press: 204 120 92;
-  --accent-soft: 54 44 40;
+  --accent: 16 185 129;
+  --accent-press: 14 159 110;
+  --accent-soft: 20 45 38;
   --shadow: 0 0 0;
 }
 
@@ -138,7 +138,7 @@
     right: 18%;
     width: 34vw;
     height: 34vw;
-    background: radial-gradient(circle at center, rgb(217 160 120 / 0.18), transparent 72%);
+    background: radial-gradient(circle at center, rgb(91 199 154 / 0.18), transparent 72%);
     animation: aurora-drift-c 27s ease-in-out infinite;
   }
 }

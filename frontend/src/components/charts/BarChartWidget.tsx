@@ -33,7 +33,7 @@ export function BarChartWidget({ data, config, height = 320, onPointClick, anoma
         <XAxis dataKey={x} stroke={AXIS} fontSize={12} tickLine={false} />
         <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
         <Tooltip
-          cursor={{ fill: 'rgba(204,120,92,0.10)' }}
+          cursor={{ fill: 'rgba(14,159,110,0.10)' }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabel}
           itemStyle={tooltipItem}
