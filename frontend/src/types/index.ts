@@ -63,6 +63,26 @@ export interface DataSourceCreate {
 /** { tableName: [{ name, type }, ...] } */
 export type DataSourceSchema = Record<string, { name: string; type: string }[]>
 
+export type Schedule = 'off' | 'hourly' | 'daily' | 'weekly'
+
+export interface SavedQuery {
+  id: string
+  name: string
+  nl_query: string
+  datasource_id: string | null
+  schedule: Schedule
+  last_run_at: string | null
+  last_query_log_id: string | null
+  created_at: string
+}
+
+export interface SavedQueryCreate {
+  name: string
+  nl_query: string
+  datasource_id: string | null
+  schedule: Schedule
+}
+
 export interface WidgetChart {
   chart_type: ChartType
   chart_config: ChartConfig
