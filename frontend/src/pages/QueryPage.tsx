@@ -1,26 +1,35 @@
-import { Clock, Lightbulb, LayoutGrid } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { AlertTriangle, Clock, Database, Lightbulb, LayoutGrid, RefreshCw } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChartView } from '../components/charts/ChartView'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
 import { DatasourcePicker } from '../components/query/DatasourcePicker'
 import { NLQueryInput } from '../components/query/NLQueryInput'
+import { SchemaBrowser } from '../components/query/SchemaBrowser'
 import { SQLPreview } from '../components/query/SQLPreview'
 import { useQueryStore } from '../store/queryStore'
+import { useDatasourceStore } from '../store/datasourceStore'
+import { buildSamples } from '../lib/sampleQueries'
 
 export function QueryPage() {
-  const { result, loading, ask, history, loadHistory } = useQueryStore()
+  const { result, loading, error, ask, retry, history, loadHistory, datasourceId } = useQueryStore()
+  const { schemas, loadSchema } = useDatasourceStore()
   const [saveOpen, setSaveOpen] = useState(false)
 
   useEffect(() => {
     loadHistory().catch(() => undefined)
   }, [loadHistory])
 
-  const onAsk = async (q: string) => {
-    try {
-      await ask(q)
-    } catch {
-      /* interceptor toast */
-    }
+  useEffect(() => {
+    if (datasourceId) loadSchema(datasourceId).catch(() => undefined)
+  }, [datasourceId, loadSchema])
+
+  const samples = useMemo(
+    () => (datasourceId && schemas[datasourceId] ? buildSamples(schemas[datasourceId]) : undefined),
+    [datasourceId, schemas],
+  )
+
+  const onAsk = (q: string) => {
+    ask(q).catch(() => undefined)
   }
 
   return (
@@ -40,9 +49,30 @@ export function QueryPage() {
           <DatasourcePicker />
         </div>
 
-        <NLQueryInput onSubmit={onAsk} loading={loading} />
+        <NLQueryInput onSubmit={onAsk} loading={loading} samples={samples} />
 
         {loading && <LoadingState />}
+
+        {error && !loading && (
+          <div className="space-y-2 rounded-2xl border border-[#D87C6B]/40 bg-[#D87C6B]/10 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-[#D87C6B]" />
+              <p className="text-sm font-medium text-ink">{error.message}</p>
+            </div>
+            {error.detail && <p className="text-xs text-ink-soft">{error.detail}</p>}
+            {error.sql && (
+              <pre className="overflow-auto rounded-lg border border-line bg-surface-2 p-3 font-mono text-[11px] text-ink-soft">
+                {error.sql}
+              </pre>
+            )}
+            <button
+              onClick={() => retry().catch(() => undefined)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+            >
+              <RefreshCw size={13} /> Yenidən cəhd et
+            </button>
+          </div>
+        )}
 
         {result && !loading && (
           <div className="space-y-4">
@@ -57,7 +87,12 @@ export function QueryPage() {
             )}
 
             <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
-              <div className="mb-3 flex items-center justify-end">
+              <div className="mb-3 flex items-center justify-end gap-2">
+                {result.from_cache && (
+                  <span className="rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent">
+                    keşdən
+                  </span>
+                )}
                 <span className="font-mono text-[11px] text-ink-faint">
                   {result.data.length} sətir · {result.execution_time_ms} ms
                 </span>
@@ -81,10 +116,21 @@ export function QueryPage() {
           </div>
         )}
 
-        {!result && !loading && <EmptyState />}
+        {!result && !loading && !error && <EmptyState />}
       </div>
 
-      <aside className="lg:border-l lg:border-line lg:pl-6">
+      <aside className="space-y-6 lg:border-l lg:border-line lg:pl-6">
+        {datasourceId && (
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <Database size={14} className="text-ink-faint" />
+              <span className="eyebrow">Cədvəllər</span>
+            </div>
+            <SchemaBrowser datasourceId={datasourceId} />
+          </div>
+        )}
+
+        <div>
         <div className="mb-3 flex items-center gap-2">
           <Clock size={14} className="text-ink-faint" />
           <span className="eyebrow">Son sorğular</span>
@@ -106,6 +152,7 @@ export function QueryPage() {
             ))}
           </ul>
         )}
+        </div>
       </aside>
     </div>
 

@@ -17,12 +17,16 @@ client.interceptors.request.use((config) => {
 // not an expired session — let the caller handle these instead of redirecting.
 const AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/google', '/auth/me']
 
+// Endpoints whose errors are shown inline by the page (no toast).
+const INLINE_ERROR_PATHS = ['/query/ask', '/retry']
+
 client.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status
     const url: string = error.config?.url ?? ''
     const isAuthRequest = AUTH_PATHS.some((p) => url.includes(p))
+    const isInlineError = INLINE_ERROR_PATHS.some((p) => url.includes(p))
     const detail =
       error.response?.data?.message ??
       error.response?.data?.detail ??
@@ -40,7 +44,7 @@ client.interceptors.response.use(
       if (!window.location.pathname.includes('/pricing')) {
         window.location.href = '/pricing'
       }
-    } else if (!isAuthRequest) {
+    } else if (!isAuthRequest && !isInlineError) {
       toast.error(typeof detail === 'string' ? detail : 'Xəta baş verdi.')
     }
     // Auth-request errors propagate to the page, which shows them inline.

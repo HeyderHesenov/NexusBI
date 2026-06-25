@@ -1,13 +1,15 @@
 import { create } from 'zustand'
 import toast from 'react-hot-toast'
-import type { DataSource, DataSourceCreate } from '../types'
+import type { DataSource, DataSourceCreate, DataSourceSchema } from '../types'
 import * as dsApi from '../api/datasource'
 import { useQueryStore } from './queryStore'
 
 interface DatasourceState {
   sources: DataSource[]
+  schemas: Record<string, DataSourceSchema>
   loading: boolean
   load: () => Promise<void>
+  loadSchema: (id: string) => Promise<DataSourceSchema>
   create: (payload: DataSourceCreate) => Promise<DataSource>
   uploadFile: (file: File, name: string) => Promise<DataSource>
   test: (id: string) => Promise<boolean>
@@ -16,7 +18,15 @@ interface DatasourceState {
 
 export const useDatasourceStore = create<DatasourceState>((set, get) => ({
   sources: [],
+  schemas: {},
   loading: false,
+  loadSchema: async (id) => {
+    const cached = get().schemas[id]
+    if (cached) return cached
+    const schema = await dsApi.getSchema(id)
+    set({ schemas: { ...get().schemas, [id]: schema } })
+    return schema
+  },
   load: async () => {
     set({ loading: true })
     try {
