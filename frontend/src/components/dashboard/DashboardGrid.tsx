@@ -1,5 +1,5 @@
-import { GripVertical, X } from 'lucide-react'
-import { useMemo } from 'react'
+import { Database, GripVertical, RefreshCw, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Responsive, WidthProvider, type Layout, type Layouts } from 'react-grid-layout'
 import type { Dashboard } from '../../types'
 import { ChartRenderer } from '../charts/ChartRenderer'
@@ -9,6 +9,7 @@ const ResponsiveGridLayout = WidthProvider(Responsive)
 interface Props {
   dashboard: Dashboard
   onRemoveWidget: (id: string) => void
+  onRefreshWidget: (id: string) => Promise<void>
   onLayoutChange: (layouts: Layouts) => void
 }
 
@@ -25,8 +26,18 @@ function buildLayouts(dashboard: Dashboard): Layouts {
   return { ...saved, lg }
 }
 
-export function DashboardGrid({ dashboard, onRemoveWidget, onLayoutChange }: Props) {
+export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLayoutChange }: Props) {
   const layouts = useMemo(() => buildLayouts(dashboard), [dashboard.layout, dashboard.widgets])
+  const [busy, setBusy] = useState<string | null>(null)
+
+  const refresh = async (id: string) => {
+    setBusy(id)
+    try {
+      await onRefreshWidget(id)
+    } finally {
+      setBusy(null)
+    }
+  }
 
   return (
     <ResponsiveGridLayout
@@ -47,14 +58,30 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onLayoutChange }: Pro
               <span className="truncate text-sm font-medium text-ink">
                 {w.title || w.chart?.natural_language || 'Widget'}
               </span>
+              {w.chart?.datasource_name && (
+                <span className="flex shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 text-[10px] text-ink-soft">
+                  <Database size={10} className="text-accent" />
+                  {w.chart.datasource_name}
+                </span>
+              )}
             </div>
-            <button
-              onClick={() => onRemoveWidget(w.id)}
-              aria-label="Sil"
-              className="shrink-0 text-ink-faint transition hover:text-[#D87C6B]"
-            >
-              <X size={15} />
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                onClick={() => refresh(w.id)}
+                disabled={busy === w.id}
+                aria-label="Yenilə"
+                className="text-ink-faint transition hover:text-accent disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={busy === w.id ? 'animate-spin' : ''} />
+              </button>
+              <button
+                onClick={() => onRemoveWidget(w.id)}
+                aria-label="Sil"
+                className="text-ink-faint transition hover:text-[#D87C6B]"
+              >
+                <X size={15} />
+              </button>
+            </div>
           </div>
           <div className="min-h-0 flex-1 p-3">
             {w.chart && w.chart.data.length ? (

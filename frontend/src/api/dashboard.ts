@@ -41,3 +41,18 @@ export async function removeWidget(
 ): Promise<void> {
   await client.delete(`/dashboard/${dashboardId}/widget/${widgetId}`)
 }
+
+export async function refreshWidget(
+  dashboardId: string,
+  widgetId: string,
+): Promise<Widget> {
+  const { data } = await client.post<Widget>(
+    `/dashboard/${dashboardId}/widget/${widgetId}/refresh`,
+  )
+  return data
+}
+
+export async function refreshAll(dashboardId: string): Promise<Dashboard> {
+  const { data } = await client.post<Dashboard>(`/dashboard/${dashboardId}/refresh-all`)
+  return data
+}

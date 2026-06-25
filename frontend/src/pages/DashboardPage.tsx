@@ -1,4 +1,4 @@
-import { LayoutGrid, Plus } from 'lucide-react'
+import { LayoutGrid, Plus, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import type { Layouts } from 'react-grid-layout'
@@ -8,8 +8,10 @@ import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
 import { useDashboardStore } from '../store/dashboardStore'
 
 export function DashboardPage() {
-  const { list, current, loadList, open, create, addWidget, removeWidget, saveLayout } =
-    useDashboardStore()
+  const {
+    list, current, refreshing, loadList, open, create,
+    addWidget, removeWidget, refreshWidget, refreshAll, saveLayout,
+  } = useDashboardStore()
   const [createOpen, setCreateOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -36,6 +38,15 @@ export function DashboardPage() {
           <h2 className="mt-1 font-display text-3xl font-bold text-ink">Dashboard-lar</h2>
         </div>
         <div className="flex gap-2">
+          {current && current.widgets.length > 0 && (
+            <button
+              onClick={() => refreshAll(current.id)}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> Hamısını yenilə
+            </button>
+          )}
           {current && (
             <button
               onClick={() => setAddOpen(true)}
@@ -76,6 +87,7 @@ export function DashboardPage() {
           <DashboardGrid
             dashboard={current}
             onRemoveWidget={(wid) => removeWidget(current.id, wid).catch(() => undefined)}
+            onRefreshWidget={(wid) => refreshWidget(current.id, wid).catch(() => undefined)}
             onLayoutChange={onLayoutChange}
           />
         ) : (
