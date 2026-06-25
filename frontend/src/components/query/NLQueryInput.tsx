@@ -4,16 +4,19 @@ import { useState } from 'react'
 interface Props {
   onSubmit: (q: string) => void
   loading: boolean
+  /** Schema-aware examples for the active source; falls back to demo examples. */
+  samples?: string[]
 }
 
-const EXAMPLES = [
+const DEMO_EXAMPLES = [
   'Ən çox satan 5 məhsul hansıdır?',
   'Aylıq gəlir trendi necədir?',
   'Regionlar üzrə satış payı',
   'Ölkələrə görə müştəri sayı',
 ]
 
-export function NLQueryInput({ onSubmit, loading }: Props) {
+export function NLQueryInput({ onSubmit, loading, samples }: Props) {
+  const examples = samples && samples.length ? samples : DEMO_EXAMPLES
   const [value, setValue] = useState('')
   const submit = (q?: string) => {
     const text = (q ?? value).trim()
@@ -45,7 +48,7 @@ export function NLQueryInput({ onSubmit, loading }: Props) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {EXAMPLES.map((ex) => (
+        {examples.map((ex) => (
           <button
             key={ex}
             onClick={() => {

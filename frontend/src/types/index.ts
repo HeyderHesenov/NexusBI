@@ -28,6 +28,7 @@ export interface QueryResult {
   insight: string
   execution_time_ms: number
   query_log_id: string | null
+  from_cache?: boolean
 }
 
 export interface QueryHistoryItem {
