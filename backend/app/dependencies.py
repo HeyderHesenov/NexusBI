@@ -43,3 +43,16 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def enforce_rate_limit(
+    user: Annotated[User, Depends(get_current_user)], db: DbDep
+) -> User:
+    """Consume one monthly AI quota unit or raise 429. Use on AI endpoints."""
+    from app.billing import usage_service
+
+    await usage_service.check_and_consume(db, user)
+    return user
+
+
+RateLimitedUser = Annotated[User, Depends(enforce_rate_limit)]

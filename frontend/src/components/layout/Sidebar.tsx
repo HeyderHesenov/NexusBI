@@ -1,4 +1,4 @@
-import { History, LayoutDashboard, MessageSquare } from 'lucide-react'
+import { CreditCard, History, LayoutDashboard, MessageSquare } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { NexusMark } from '../brand/NexusMark'
 
@@ -6,6 +6,7 @@ const items = [
   { to: '/', label: 'Soruş', icon: MessageSquare },
   { to: '/dashboards', label: 'Dashboard-lar', icon: LayoutDashboard },
   { to: '/history', label: 'Tarixçə', icon: History },
+  { to: '/pricing', label: 'Planlar', icon: CreditCard },
 ]
 
 export function Sidebar() {

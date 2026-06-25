@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 
 from app.core.exceptions import SchemaNotFoundError
-from app.dependencies import CacheDep, CurrentUser, DbDep
+from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.models.query_log import QueryLog
 from app.schemas.query import (
     QueryHistoryItem,
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/query", tags=["query"])
 
 @router.post("/ask", response_model=QueryResult)
 async def ask(
-    payload: QueryRequest, user: CurrentUser, db: DbDep, cache: CacheDep
+    payload: QueryRequest, user: RateLimitedUser, db: DbDep, cache: CacheDep
 ) -> QueryResult:
     return await query_service.process_nl_query(
         payload.nl_query, payload.datasource_id, user.id, db, cache
@@ -77,7 +77,7 @@ async def get_one(query_id: str, user: CurrentUser, db: DbDep) -> QueryResult:
 
 @router.post("/{query_id}/retry", response_model=QueryResult)
 async def retry(
-    query_id: str, user: CurrentUser, db: DbDep, cache: CacheDep
+    query_id: str, user: RateLimitedUser, db: DbDep, cache: CacheDep
 ) -> QueryResult:
     log = await _get_log(db, user.id, query_id)
     return await query_service.process_nl_query(
