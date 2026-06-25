@@ -1,15 +1,37 @@
-import { LogOut, Moon, Sun } from 'lucide-react'
+import { useEffect } from 'react'
+import { Bell, LogOut, Moon, Sun } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useThemeStore } from '../../store/themeStore'
+import { useNotificationStore } from '../../store/notificationStore'
 import { UsageMeter } from '../billing/UsageMeter'
 
 export function TopBar() {
   const { user, logout } = useAuthStore()
   const { mode, toggle } = useThemeStore()
+  const { unread, load } = useNotificationStore()
   const initial = (user?.full_name || user?.email || '?').charAt(0).toUpperCase()
+
+  useEffect(() => {
+    load().catch(() => undefined)
+  }, [load])
+
   return (
     <header className="flex items-center justify-end gap-4 border-b border-line bg-bg/70 px-8 py-3.5 backdrop-blur">
       <UsageMeter />
+      <Link
+        to="/notifications"
+        aria-label="Bildirişlər"
+        title="Bildirişlər"
+        className="relative grid h-8 w-8 place-items-center rounded-lg border border-line text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+      >
+        <Bell size={15} />
+        {unread > 0 && (
+          <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[9px] font-semibold text-bg">
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </Link>
       <button
         onClick={toggle}
         aria-label={mode === 'dark' ? 'İşıqlı tema' : 'Tünd tema'}

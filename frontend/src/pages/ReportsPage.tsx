@@ -1,7 +1,10 @@
-import { useEffect } from 'react'
-import { Clock, Play, Trash2, BookMarked } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
+import { BellPlus, Clock, Play, Trash2, BookMarked } from 'lucide-react'
 import { useSavedQueryStore } from '../store/savedQueryStore'
-import type { Schedule } from '../types'
+import { ModalShell } from '../components/ui/ModalShell'
+import * as alertApi from '../api/alert'
+import type { AlertOperator, Schedule } from '../types'
 
 const SCHEDULES: { value: Schedule; label: string }[] = [
   { value: 'off', label: 'Cədvəl yox' },
@@ -17,6 +20,7 @@ function fmt(ts: string | null): string {
 
 export function ReportsPage() {
   const { items, load, run, remove, setSchedule } = useSavedQueryStore()
+  const [alertFor, setAlertFor] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     load().catch(() => undefined)
@@ -74,6 +78,13 @@ export function ReportsPage() {
                     <Play size={15} />
                   </button>
                   <button
+                    onClick={() => setAlertFor({ id: s.id, name: s.name })}
+                    title="Alert qur"
+                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-accent hover:text-accent"
+                  >
+                    <BellPlus size={15} />
+                  </button>
+                  <button
                     onClick={() => remove(s.id)}
                     title="Sil"
                     className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
@@ -86,6 +97,96 @@ export function ReportsPage() {
           ))}
         </ul>
       )}
+
+      {alertFor && (
+        <AlertModal
+          savedQueryId={alertFor.id}
+          savedQueryName={alertFor.name}
+          onClose={() => setAlertFor(null)}
+        />
+      )}
     </div>
+  )
+}
+
+const field =
+  'w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none'
+const OPERATORS: AlertOperator[] = ['>', '<', '>=', '<=', '==', '!=']
+
+function AlertModal({
+  savedQueryId,
+  savedQueryName,
+  onClose,
+}: {
+  savedQueryId: string
+  savedQueryName: string
+  onClose: () => void
+}) {
+  const [name, setName] = useState('')
+  const [column, setColumn] = useState('')
+  const [operator, setOperator] = useState<AlertOperator>('>')
+  const [threshold, setThreshold] = useState('0')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async () => {
+    if (!name.trim() || !column.trim() || busy) return
+    setBusy(true)
+    try {
+      await alertApi.createAlert({
+        saved_query_id: savedQueryId,
+        name: name.trim(),
+        column: column.trim(),
+        operator,
+        threshold: Number(threshold) || 0,
+      })
+      toast.success('Alert quruldu.')
+      onClose()
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <ModalShell
+      open
+      onClose={onClose}
+      title="Alert qur"
+      subtitle={`“${savedQueryName}” işləyəndə şərt pozulsa bildiriş gəlir.`}
+      footer={
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
+            Ləğv et
+          </button>
+          <button
+            onClick={submit}
+            disabled={busy}
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
+          >
+            Qur
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-3 p-5">
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad (məs. Gəlir düşdü)" className={field} />
+        <input value={column} onChange={(e) => setColumn(e.target.value)} placeholder="Sütun (məs. total)" className={`${field} font-mono text-sm`} />
+        <div className="flex gap-2">
+          <select value={operator} onChange={(e) => setOperator(e.target.value as AlertOperator)} className={`${field} w-24`}>
+            {OPERATORS.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            value={threshold}
+            onChange={(e) => setThreshold(e.target.value)}
+            placeholder="Hədd"
+            className={`${field} font-mono`}
+          />
+        </div>
+      </div>
+    </ModalShell>
   )
 }

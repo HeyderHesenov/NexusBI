@@ -81,6 +81,37 @@ export interface MetricCreate {
   datasource_id: string | null
 }
 
+export type AlertOperator = '>' | '<' | '>=' | '<=' | '==' | '!='
+
+export interface Alert {
+  id: string
+  saved_query_id: string
+  name: string
+  column: string
+  operator: string
+  threshold: number
+  active: boolean
+  last_triggered_at: string | null
+  created_at: string
+}
+
+export interface AlertCreate {
+  saved_query_id: string
+  name: string
+  column: string
+  operator: AlertOperator
+  threshold: number
+}
+
+export interface AppNotification {
+  id: string
+  title: string
+  body: string
+  read: boolean
+  alert_id: string | null
+  created_at: string
+}
+
 export type Schedule = 'off' | 'hourly' | 'daily' | 'weekly'
 
 export interface SavedQuery {

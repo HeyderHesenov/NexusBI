@@ -1,5 +1,6 @@
 """SQLAlchemy models. Importing registers them on the Base metadata."""
 from app.db.base import Base
+from app.models.alert import Alert, Notification
 from app.models.dashboard import Dashboard, Widget
 from app.models.datasource import DataSource, DBType
 from app.models.metric import Metric
@@ -17,4 +18,6 @@ __all__ = [
     "Widget",
     "SavedQuery",
     "Metric",
+    "Alert",
+    "Notification",
 ]

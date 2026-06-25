@@ -70,13 +70,16 @@ async def delete(db: AsyncSession, user_id: str, sq_id: str) -> None:
 
 
 async def run(db: AsyncSession, cache: CacheService, sq: SavedQuery) -> QueryResult:
-    """Execute the saved query, recording the run on the SavedQuery row."""
+    """Execute the saved query, record the run, and evaluate its alerts."""
+    from app.services import alert_service
+
     result = await query_service.process_nl_query(
         sq.nl_query, sq.datasource_id, sq.user_id, db, cache
     )
     sq.last_run_at = datetime.now(timezone.utc)
     sq.last_query_log_id = result.query_log_id
     await db.flush()
+    await alert_service.check_saved_query(db, sq, result)
     return result
 
 
@@ -91,7 +94,7 @@ def is_due(sq: SavedQuery, now: datetime) -> bool:
 
 
 async def run_due(db: AsyncSession, cache: CacheService) -> int:
-    """Run every scheduled query that is due. Returns how many ran."""
+    """Run every scheduled query that is due (run() also evaluates alerts). Returns count."""
     now = datetime.now(timezone.utc)
     result = await db.execute(
         select(SavedQuery).where(SavedQuery.schedule != "off")
