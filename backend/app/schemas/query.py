@@ -16,6 +16,8 @@ class ColumnInfo(BaseModel):
 class QueryRequest(BaseModel):
     nl_query: str = Field(min_length=1, max_length=2000)
     datasource_id: str | None = None
+    # Previous turn for multi-turn "chat with your data" follow-ups.
+    previous_query_log_id: str | None = None
 
 
 class QueryResult(BaseModel):

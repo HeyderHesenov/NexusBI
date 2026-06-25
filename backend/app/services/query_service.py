@@ -6,6 +6,7 @@ import hashlib
 import time
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.chart_selector import select_chart_type
@@ -54,6 +55,7 @@ async def process_nl_query(
     cache: CacheService,
     *,
     bypass_cache: bool = False,
+    previous_query_log_id: str | None = None,
 ) -> QueryResult:
     """Run the full pipeline and persist a query log.
 
@@ -66,6 +68,21 @@ async def process_nl_query(
     # Semantic layer: inject the user's metric definitions for this source.
     metrics = await metric_service.list_for(db, user_id, datasource_id)
     extra_context = metric_service.metrics_as_prompt(metrics)
+
+    # Multi-turn: include the previous turn so follow-ups ("break it down by month") resolve.
+    if previous_query_log_id:
+        prev = await db.execute(
+            select(QueryLog).where(
+                QueryLog.id == previous_query_log_id, QueryLog.user_id == user_id
+            )
+        )
+        prev_log = prev.scalar_one_or_none()
+        if prev_log is not None:
+            block = (
+                "ƏVVƏLKİ SUAL (bu, davam sualıdır — kontekst kimi nəzərə al):\n"
+                f"Sual: {prev_log.natural_language}\nSQL: {prev_log.generated_sql}"
+            )
+            extra_context = f"{extra_context}\n\n{block}" if extra_context else block
 
     key = _cache_key(datasource_id, nl_query, extra_context)
 

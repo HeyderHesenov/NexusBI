@@ -4,10 +4,12 @@ import type { QueryHistoryPage, QueryResult } from '../types'
 export async function askQuery(
   nl_query: string,
   datasource_id: string | null,
+  previous_query_log_id: string | null = null,
 ): Promise<QueryResult> {
   const { data } = await client.post<QueryResult>('/query/ask', {
     nl_query,
     datasource_id,
+    previous_query_log_id,
   })
   return data
 }

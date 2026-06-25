@@ -25,7 +25,12 @@ async def ask(
     payload: QueryRequest, user: RateLimitedUser, db: DbDep, cache: CacheDep
 ) -> QueryResult:
     return await query_service.process_nl_query(
-        payload.nl_query, payload.datasource_id, user.id, db, cache
+        payload.nl_query,
+        payload.datasource_id,
+        user.id,
+        db,
+        cache,
+        previous_query_log_id=payload.previous_query_log_id,
     )
 
 
