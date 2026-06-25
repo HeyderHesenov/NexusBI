@@ -34,6 +34,12 @@ client.interceptors.response.use(
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login'
       }
+    } else if (status === 429) {
+      // Quota exhausted — nudge the user toward an upgrade.
+      toast.error('Aylıq AI limitiniz doldu. Planınızı yüksəldin.')
+      if (!window.location.pathname.includes('/pricing')) {
+        window.location.href = '/pricing'
+      }
     } else if (!isAuthRequest) {
       toast.error(typeof detail === 'string' ? detail : 'Xəta baş verdi.')
     }

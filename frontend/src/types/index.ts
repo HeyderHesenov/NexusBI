@@ -93,6 +93,25 @@ export interface AuthUser {
   email: string
   full_name: string
   is_active: boolean
+  subscription_tier: string
+}
+
+export interface Plan {
+  key: string
+  name: string
+  price_usd: number
+  monthly_quota: number
+  features: string[]
+}
+
+export interface Usage {
+  tier: string
+  tier_name: string
+  used: number
+  limit: number
+  remaining: number
+  period_start: string | null
+  resets_at: string | null
 }
 
 export interface AuthProviders {

@@ -34,3 +34,4 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     is_active: bool
+    subscription_tier: str = "free"
