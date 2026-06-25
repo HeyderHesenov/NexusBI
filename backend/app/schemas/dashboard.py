@@ -26,6 +26,8 @@ class WidgetChart(BaseModel):
     insight: str = ""
     sql: str = ""
     natural_language: str = ""
+    datasource_id: str | None = None
+    datasource_name: str = "Demo"
 
 
 class WidgetResponse(BaseModel):

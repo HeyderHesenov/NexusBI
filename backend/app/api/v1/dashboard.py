@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Response, status
 
-from app.dependencies import CurrentUser, DbDep
+from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.schemas.dashboard import (
     DashboardCreate,
     DashboardResponse,
@@ -69,6 +69,23 @@ async def add_widget(
     widget = await svc.add_widget(db, user.id, dashboard_id, payload.model_dump())
     responses = await svc.widgets_to_response(db, [widget], user.id)
     return responses[0]
+
+
+@router.post("/{dashboard_id}/widget/{widget_id}/refresh", response_model=WidgetResponse)
+async def refresh_widget(
+    dashboard_id: str, widget_id: str, user: CurrentUser, db: DbDep, cache: CacheDep
+) -> WidgetResponse:
+    widget = await svc.refresh_widget(db, cache, user.id, dashboard_id, widget_id)
+    responses = await svc.widgets_to_response(db, [widget], user.id)
+    return responses[0]
+
+
+@router.post("/{dashboard_id}/refresh-all", response_model=DashboardResponse)
+async def refresh_all(
+    dashboard_id: str, user: CurrentUser, db: DbDep, cache: CacheDep
+) -> DashboardResponse:
+    dash = await svc.refresh_all_widgets(db, cache, user.id, dashboard_id)
+    return await _dashboard_response(db, user.id, dash)
 
 
 @router.delete("/{dashboard_id}/widget/{widget_id}", status_code=status.HTTP_204_NO_CONTENT)

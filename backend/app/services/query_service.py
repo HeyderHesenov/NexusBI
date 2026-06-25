@@ -50,16 +50,19 @@ async def process_nl_query(
     user_id: str,
     db: AsyncSession,
     cache: CacheService,
+    *,
+    bypass_cache: bool = False,
 ) -> QueryResult:
     """Run the full pipeline and persist a query log.
 
     Identical questions on the same source return from cache (no AI/DB), while
     still recording a QueryLog so history and dashboards keep working.
+    ``bypass_cache`` forces a fresh run (used by widget refresh).
     """
     started = time.perf_counter()
     key = _cache_key(datasource_id, nl_query)
 
-    cached = await cache.get(key)
+    cached = None if bypass_cache else await cache.get(key)
     if cached:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         return await _finalize(

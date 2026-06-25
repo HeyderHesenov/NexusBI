@@ -112,6 +112,48 @@ async def test_widget_embeds_query_snapshot(client: AsyncClient, auth: dict, mon
     assert chart["insight"] == "Region trendi."
 
 
+async def test_widget_refresh_reruns_and_repoints(client: AsyncClient, auth: dict, monkeypatch):
+    _mock_query_ai(monkeypatch)
+    qid = await _make_query(client, auth)
+    dash_id = (
+        await client.post("/api/v1/dashboard/", json={"name": "D"}, headers=auth)
+    ).json()["id"]
+    widget = (
+        await client.post(
+            f"/api/v1/dashboard/{dash_id}/widget",
+            json={"query_log_id": qid, "title": "W"},
+            headers=auth,
+        )
+    ).json()
+    wid = widget["id"]
+
+    refreshed = await client.post(
+        f"/api/v1/dashboard/{dash_id}/widget/{wid}/refresh", headers=auth
+    )
+    assert refreshed.status_code == 200, refreshed.text
+    body = refreshed.json()
+    # A refresh re-runs the query → a NEW query_log is linked, fresh chart returned.
+    assert body["query_log_id"] != qid
+    assert body["chart"]["data"]
+    assert body["chart"]["datasource_name"] == "Demo"
+
+
+async def test_refresh_all_widgets(client: AsyncClient, auth: dict, monkeypatch):
+    _mock_query_ai(monkeypatch)
+    qid = await _make_query(client, auth)
+    dash_id = (
+        await client.post("/api/v1/dashboard/", json={"name": "D"}, headers=auth)
+    ).json()["id"]
+    await client.post(
+        f"/api/v1/dashboard/{dash_id}/widget",
+        json={"query_log_id": qid, "title": "W"},
+        headers=auth,
+    )
+    resp = await client.post(f"/api/v1/dashboard/{dash_id}/refresh-all", headers=auth)
+    assert resp.status_code == 200, resp.text
+    assert len(resp.json()["widgets"]) == 1
+
+
 async def test_dashboard_requires_auth(client: AsyncClient):
     resp = await client.get("/api/v1/dashboard/")
     assert resp.status_code == 401

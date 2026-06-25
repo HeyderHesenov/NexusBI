@@ -8,9 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import SchemaNotFoundError
+from app.models.datasource import DataSource
 from app.models.dashboard import Dashboard, Widget
 from app.models.query_log import QueryLog
 from app.schemas.dashboard import WidgetChart, WidgetResponse
+from app.services import query_service
+from app.services.cache_service import CacheService
 
 
 async def create_dashboard(
@@ -42,7 +45,7 @@ async def get_dashboard(db: AsyncSession, user_id: str, dashboard_id: str) -> Da
     return dash
 
 
-def _widget_chart(widget: Widget, log: QueryLog | None) -> WidgetChart | None:
+def _widget_chart(log: QueryLog | None, ds_names: dict[str, str]) -> WidgetChart | None:
     """Build the embedded render snapshot for a widget from its query log."""
     if log is None:
         return None
@@ -62,13 +65,15 @@ def _widget_chart(widget: Widget, log: QueryLog | None) -> WidgetChart | None:
         insight=log.insight,
         sql=log.generated_sql,
         natural_language=log.natural_language,
+        datasource_id=log.datasource_id,
+        datasource_name=ds_names.get(log.datasource_id, "Demo") if log.datasource_id else "Demo",
     )
 
 
 async def widgets_to_response(
     db: AsyncSession, widgets: list[Widget], user_id: str
 ) -> list[WidgetResponse]:
-    """Serialize widgets, batch-loading their query logs in one query (no N+1).
+    """Serialize widgets, batch-loading query logs + datasources (no N+1).
 
     Query logs are scoped to ``user_id`` so a widget can never surface another
     user's data even if it references a foreign query_log_id.
@@ -82,6 +87,15 @@ async def widgets_to_response(
             )
         )
         by_id = {q.id: q for q in rows.scalars().all()}
+
+    ds_ids = {q.datasource_id for q in by_id.values() if q.datasource_id}
+    ds_names: dict[str, str] = {}
+    if ds_ids:
+        rows = await db.execute(
+            select(DataSource.id, DataSource.name).where(DataSource.id.in_(ds_ids))
+        )
+        ds_names = {ds_id: name for ds_id, name in rows.all()}
+
     return [
         WidgetResponse(
             id=w.id,
@@ -91,7 +105,7 @@ async def widgets_to_response(
             position_y=w.position_y,
             width=w.width,
             height=w.height,
-            chart=_widget_chart(w, by_id.get(w.query_log_id) if w.query_log_id else None),
+            chart=_widget_chart(by_id.get(w.query_log_id) if w.query_log_id else None, ds_names),
         )
         for w in widgets
     ]
@@ -134,6 +148,55 @@ async def add_widget(
     await db.flush()
     await db.refresh(widget)
     return widget
+
+
+async def _get_widget(
+    db: AsyncSession, user_id: str, dashboard_id: str, widget_id: str
+) -> Widget:
+    await get_dashboard(db, user_id, dashboard_id)  # ownership check
+    result = await db.execute(
+        select(Widget).where(Widget.id == widget_id, Widget.dashboard_id == dashboard_id)
+    )
+    widget = result.scalar_one_or_none()
+    if widget is None:
+        raise SchemaNotFoundError("Widget tapılmadı.")
+    return widget
+
+
+async def _refresh(db: AsyncSession, cache: CacheService, user_id: str, widget: Widget) -> Widget:
+    """Re-run the widget's query against its own datasource and repoint it."""
+    if not widget.query_log_id:
+        return widget
+    log_row = await db.execute(
+        select(QueryLog).where(
+            QueryLog.id == widget.query_log_id, QueryLog.user_id == user_id
+        )
+    )
+    log = log_row.scalar_one_or_none()
+    if log is None:
+        return widget
+    result = await query_service.process_nl_query(
+        log.natural_language, log.datasource_id, user_id, db, cache, bypass_cache=True
+    )
+    widget.query_log_id = result.query_log_id
+    await db.flush()
+    return widget
+
+
+async def refresh_widget(
+    db: AsyncSession, cache: CacheService, user_id: str, dashboard_id: str, widget_id: str
+) -> Widget:
+    widget = await _get_widget(db, user_id, dashboard_id, widget_id)
+    return await _refresh(db, cache, user_id, widget)
+
+
+async def refresh_all_widgets(
+    db: AsyncSession, cache: CacheService, user_id: str, dashboard_id: str
+) -> Dashboard:
+    dash = await get_dashboard(db, user_id, dashboard_id)
+    for widget in list(dash.widgets):
+        await _refresh(db, cache, user_id, widget)
+    return await get_dashboard(db, user_id, dashboard_id)
 
 
 async def delete_widget(
