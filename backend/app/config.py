@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     DEMO_MODE: bool = Field(default=True)
     CORS_ORIGINS: str = Field(default="http://localhost:5173")
 
+    # ─── Uploads (CSV/Excel datasources) ───
+    UPLOAD_DIR: str = Field(default="./data/uploads")
+    UPLOAD_MAX_BYTES: int = Field(default=10 * 1024 * 1024)  # 10 MB
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
