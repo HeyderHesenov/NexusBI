@@ -10,7 +10,7 @@ from app.services import query_service
 
 @pytest.fixture(autouse=True)
 def _mock_ai(monkeypatch):
-    async def fake_sql(self, nl, schema, dtype="sqlite"):
+    async def fake_sql(self, nl, schema, dtype="sqlite", extra_context=""):
         return Text2SQLResult(
             sql="SELECT product_name, SUM(revenue) AS total FROM sales "
                 "GROUP BY product_name ORDER BY total DESC LIMIT 5",
@@ -70,7 +70,7 @@ async def test_result_cache_skips_ai_on_repeat(monkeypatch):
 
     calls = {"sql": 0}
 
-    async def counting_sql(self, nl, schema, dtype="sqlite"):
+    async def counting_sql(self, nl, schema, dtype="sqlite", extra_context=""):
         calls["sql"] += 1
         from app.ai.types import Text2SQLResult
 

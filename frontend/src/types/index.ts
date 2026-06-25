@@ -63,6 +63,24 @@ export interface DataSourceCreate {
 /** { tableName: [{ name, type }, ...] } */
 export type DataSourceSchema = Record<string, { name: string; type: string }[]>
 
+export interface Metric {
+  id: string
+  name: string
+  expression: string
+  description: string
+  synonyms: string
+  datasource_id: string | null
+  created_at: string
+}
+
+export interface MetricCreate {
+  name: string
+  expression: string
+  description: string
+  synonyms: string
+  datasource_id: string | null
+}
+
 export type Schedule = 'off' | 'hourly' | 'daily' | 'weekly'
 
 export interface SavedQuery {

@@ -12,7 +12,7 @@ from app.services import query_service
 
 @pytest.fixture(autouse=True)
 def _mock_ai(monkeypatch):
-    async def fake_sql(self, nl, schema, dtype="sqlite"):
+    async def fake_sql(self, nl, schema, dtype="sqlite", extra_context=""):
         return Text2SQLResult(
             sql="SELECT product_name, SUM(revenue) AS total FROM sales "
                 "GROUP BY product_name ORDER BY total DESC LIMIT 5",

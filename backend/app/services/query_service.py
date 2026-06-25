@@ -17,11 +17,13 @@ from app.core.exceptions import NexusBIException
 from app.models.query_log import QueryLog
 from app.schemas.query import ColumnInfo, QueryResult
 from app.services import datasource_service as ds_service
+from app.services import metric_service
 from app.services.cache_service import CacheService
 
 
-def _cache_key(datasource_id: str | None, nl_query: str) -> str:
-    h = hashlib.sha1(nl_query.strip().lower().encode()).hexdigest()
+def _cache_key(datasource_id: str | None, nl_query: str, extra_context: str = "") -> str:
+    raw = f"{nl_query.strip().lower()}|{extra_context}"
+    h = hashlib.sha1(raw.encode()).hexdigest()
     return f"qcache:{datasource_id or 'demo'}:{h}"
 
 _engine = Text2SQLEngine()
@@ -60,7 +62,12 @@ async def process_nl_query(
     ``bypass_cache`` forces a fresh run (used by widget refresh).
     """
     started = time.perf_counter()
-    key = _cache_key(datasource_id, nl_query)
+
+    # Semantic layer: inject the user's metric definitions for this source.
+    metrics = await metric_service.list_for(db, user_id, datasource_id)
+    extra_context = metric_service.metrics_as_prompt(metrics)
+
+    key = _cache_key(datasource_id, nl_query, extra_context)
 
     cached = None if bypass_cache else await cache.get(key)
     if cached:
@@ -78,11 +85,11 @@ async def process_nl_query(
         )
 
     if settings.DEMO_MODE and not datasource_id:
-        sql_result, columns, rows = await _demo_pipeline(nl_query)
+        sql_result, columns, rows = await _demo_pipeline(nl_query, extra_context)
         resolved_ds_id: str | None = None
     else:
         sql_result, columns, rows = await _live_pipeline(
-            nl_query, datasource_id, user_id, db, cache
+            nl_query, datasource_id, user_id, db, cache, extra_context
         )
         resolved_ds_id = datasource_id
 
@@ -173,11 +180,14 @@ async def _live_pipeline(
     user_id: str,
     db: AsyncSession,
     cache: CacheService,
+    extra_context: str = "",
 ) -> tuple[Text2SQLResult, list[str], list[dict[str, Any]]]:
     ds = await ds_service.get_datasource(db, user_id, datasource_id or "")
     schema = await ds_service.get_schema_cached(ds, cache)
     schema_text = ds_service.schema_as_prompt(schema)
-    sql_result = await _engine.generate_sql(nl_query, schema_text, ds.db_type.value)
+    sql_result = await _engine.generate_sql(
+        nl_query, schema_text, ds.db_type.value, extra_context
+    )
     try:
         columns, rows = await ds_service.execute_select(ds, sql_result.sql)
     except NexusBIException as exc:
@@ -189,10 +199,11 @@ async def _live_pipeline(
 
 async def _demo_pipeline(
     nl_query: str,
+    extra_context: str = "",
 ) -> tuple[Text2SQLResult, list[str], list[dict[str, Any]]]:
     from app.db import demo_data
 
     schema_text = demo_data.format_demo_schema()
-    sql_result = await _engine.generate_sql(nl_query, schema_text, "sqlite")
+    sql_result = await _engine.generate_sql(nl_query, schema_text, "sqlite", extra_context)
     columns, rows = demo_data.execute_demo_sql(sql_result.sql)
     return sql_result, columns, rows

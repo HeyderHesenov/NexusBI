@@ -30,6 +30,9 @@ const DataSourcesPage = lazy(() =>
 const ReportsPage = lazy(() =>
   import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 )
+const MetricsPage = lazy(() =>
+  import('./pages/MetricsPage').then((m) => ({ default: m.MetricsPage })),
+)
 
 function ProtectedRoute() {
   const token = useAuthStore((s) => s.token)
@@ -75,6 +78,7 @@ export default function App() {
               <Route path="/" element={<QueryPage />} />
               <Route path="/sources" element={<DataSourcesPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/metrics" element={<MetricsPage />} />
               <Route path="/dashboards" element={<DashboardPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/pricing" element={<PricingPage />} />

@@ -31,7 +31,7 @@ def _mock_query_ai(monkeypatch):
     from app.ai.types import ChartConfig, Text2SQLResult
     from app.services import query_service
 
-    async def fake_sql(self, nl, schema, dtype="sqlite"):
+    async def fake_sql(self, nl, schema, dtype="sqlite", extra_context=""):
         return Text2SQLResult(
             sql="SELECT region, SUM(revenue) AS total FROM sales GROUP BY region",
             explanation="x", confidence=0.9, warnings=[],

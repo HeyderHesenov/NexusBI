@@ -28,7 +28,7 @@ OUTPUT FORMAT (JSON):
 TEXT2SQL_USER_PROMPT = """
 DATABASE SCHEMA:
 {schema}
-
+{context}
 NATURAL LANGUAGE SORĞU:
 {nl_query}
 """.strip()

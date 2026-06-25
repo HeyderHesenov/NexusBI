@@ -18,10 +18,15 @@ class Text2SQLEngine:
         self.max_retries = max_retries
 
     async def generate_sql(
-        self, nl_query: str, schema: str, datasource_type: str = "sqlite"
+        self,
+        nl_query: str,
+        schema: str,
+        datasource_type: str = "sqlite",
+        extra_context: str = "",
     ) -> Text2SQLResult:
         system = TEXT2SQL_SYSTEM_PROMPT.format(dialect=datasource_type)
-        user = TEXT2SQL_USER_PROMPT.format(schema=schema, nl_query=nl_query)
+        context = f"\n{extra_context}\n" if extra_context else "\n"
+        user = TEXT2SQL_USER_PROMPT.format(schema=schema, context=context, nl_query=nl_query)
 
         last_error: Exception | None = None
         for attempt in range(self.max_retries):

@@ -28,7 +28,7 @@ def sqlite_source(tmp_path: Path) -> str:
 
 @pytest.fixture(autouse=True)
 def _mock_sql(monkeypatch):
-    async def fake_sql(self, nl, schema, dtype="sqlite"):
+    async def fake_sql(self, nl, schema, dtype="sqlite", extra_context=""):
         return Text2SQLResult(sql="SELECT product, revenue FROM sales", confidence=0.9)
 
     async def fake_chart(columns, data, nl):
