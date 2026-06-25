@@ -20,6 +20,30 @@ export function PieChartWidget({
   const { SERIES, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const name = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const value = config.y_axis ?? Object.keys(data[0] ?? {})[1]
+
+  const total = data.reduce((sum, row) => sum + (Number(row[value]) || 0), 0)
+
+  const renderTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean
+    payload?: { payload?: Record<string, unknown> }[]
+  }) => {
+    if (!active || !payload?.length) return null
+    const row = payload[0].payload ?? {}
+    const v = Number(row[value]) || 0
+    const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0'
+    return (
+      <div style={{ ...tooltipStyle, padding: '8px 10px' }}>
+        <div style={{ ...tooltipLabel, marginBottom: 2 }}>{String(row[name] ?? '')}</div>
+        <div style={tooltipItem}>
+          {v.toLocaleString()} ({pct}%)
+        </div>
+      </div>
+    )
+  }
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
@@ -43,11 +67,7 @@ export function PieChartWidget({
             <Cell key={i} fill={SERIES[i % SERIES.length]} />
           ))}
         </Pie>
-        <Tooltip
-          contentStyle={tooltipStyle}
-          labelStyle={tooltipLabel}
-          itemStyle={tooltipItem}
-        />
+        <Tooltip content={renderTooltip} />
         {showLegend && (
           <Legend wrapperStyle={{ fontSize: 12, color: 'rgb(var(--ink-soft))' }} />
         )}
