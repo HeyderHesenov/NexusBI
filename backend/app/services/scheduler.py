@@ -26,7 +26,7 @@ async def _tick(cache: CacheService) -> None:
                 log.info("scheduler_ran", count=ran)
         except Exception as exc:  # noqa: BLE001 — never let one tick kill the loop
             await db.rollback()
-            log.warning("scheduler_tick_failed", error=str(exc))
+            log.error("scheduler_tick_failed", error=str(exc))
 
 
 async def run_loop(cache: CacheService) -> None:

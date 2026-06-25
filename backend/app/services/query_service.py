@@ -70,6 +70,7 @@ async def process_nl_query(
             sql=cached["sql"],
             columns=cached["columns"],
             rows=cached["rows"],
+            snapped=cached["rows"],  # cached rows are already snapshotted
             chart_config=ChartConfig(**cached["chart_config"]),
             insight=cached["insight"],
             elapsed_ms=elapsed_ms,
@@ -77,10 +78,10 @@ async def process_nl_query(
         )
 
     if settings.DEMO_MODE and not datasource_id:
-        sql_result, columns, rows, dialect = await _demo_pipeline(nl_query)
+        sql_result, columns, rows = await _demo_pipeline(nl_query)
         resolved_ds_id: str | None = None
     else:
-        sql_result, columns, rows, dialect = await _live_pipeline(
+        sql_result, columns, rows = await _live_pipeline(
             nl_query, datasource_id, user_id, db, cache
         )
         resolved_ds_id = datasource_id
@@ -92,12 +93,14 @@ async def process_nl_query(
     )
     elapsed_ms = int((time.perf_counter() - started) * 1000)
 
+    # Snapshot once; reuse for both the cache payload and the persisted log.
+    snapped = _snapshot_rows(rows)
     await cache.set(
         key,
         {
             "sql": sql_result.sql,
             "columns": columns,
-            "rows": _snapshot_rows(rows),
+            "rows": snapped,
             "chart_config": chart_config.model_dump(),
             "insight": insight,
         },
@@ -109,6 +112,7 @@ async def process_nl_query(
         sql=sql_result.sql,
         columns=columns,
         rows=rows,
+        snapped=snapped,
         chart_config=chart_config,
         insight=insight,
         elapsed_ms=elapsed_ms,
@@ -125,12 +129,17 @@ async def _finalize(
     sql: str,
     columns: list[str],
     rows: list[dict[str, Any]],
+    snapped: list[dict[str, Any]],
     chart_config: ChartConfig,
     insight: str,
     elapsed_ms: int,
     from_cache: bool,
 ) -> QueryResult:
-    """Persist a QueryLog and build the response (shared by cache hit + miss)."""
+    """Persist a QueryLog and build the response (shared by cache hit + miss).
+
+    ``rows`` is the full result for the response; ``snapped`` is the bounded
+    snapshot persisted to the log (already computed by the caller).
+    """
     log = QueryLog(
         user_id=user_id,
         datasource_id=datasource_id,
@@ -138,7 +147,7 @@ async def _finalize(
         generated_sql=sql,
         chart_type=chart_config.chart_type,
         chart_config=chart_config.model_dump(),
-        result_data={"columns": columns, "rows": _snapshot_rows(rows)},
+        result_data={"columns": columns, "rows": snapped},
         insight=insight,
         execution_time_ms=elapsed_ms,
     )
@@ -164,7 +173,7 @@ async def _live_pipeline(
     user_id: str,
     db: AsyncSession,
     cache: CacheService,
-) -> tuple[Text2SQLResult, list[str], list[dict[str, Any]], str]:
+) -> tuple[Text2SQLResult, list[str], list[dict[str, Any]]]:
     ds = await ds_service.get_datasource(db, user_id, datasource_id or "")
     schema = await ds_service.get_schema_cached(ds, cache)
     schema_text = ds_service.schema_as_prompt(schema)
@@ -175,16 +184,15 @@ async def _live_pipeline(
         # Surface the generated SQL so the user can see what failed.
         exc.sql = sql_result.sql
         raise
-    return sql_result, columns, rows, ds.db_type.value
+    return sql_result, columns, rows
 
 
 async def _demo_pipeline(
     nl_query: str,
-) -> tuple[Text2SQLResult, list[str], list[dict[str, Any]], str]:
-    # Demo executor is provided in Step 7.
+) -> tuple[Text2SQLResult, list[str], list[dict[str, Any]]]:
     from app.db import demo_data
 
     schema_text = demo_data.format_demo_schema()
     sql_result = await _engine.generate_sql(nl_query, schema_text, "sqlite")
     columns, rows = demo_data.execute_demo_sql(sql_result.sql)
-    return sql_result, columns, rows, "sqlite"
+    return sql_result, columns, rows

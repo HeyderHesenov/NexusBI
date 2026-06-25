@@ -1,6 +1,7 @@
 """DataSource endpoints."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter, File, Form, Response, UploadFile, status
@@ -30,7 +31,10 @@ async def upload(
 ) -> DataSourceResponse:
     """Ingest a CSV/Excel file into a SQLite-backed datasource owned by the user."""
     content = await file.read()
-    conn_str, _table, _rows = upload_service.ingest_file(file.filename or "data.csv", content)
+    # pandas parse + to_sql are blocking/CPU-bound — keep them off the event loop.
+    conn_str, _table, _rows = await asyncio.to_thread(
+        upload_service.ingest_file, file.filename or "data.csv", content
+    )
     label = name.strip() or (file.filename or "Yüklənmiş fayl")
     ds = await svc.add_datasource(db, user.id, label, "sqlite", conn_str)
     return DataSourceResponse.model_validate(ds)

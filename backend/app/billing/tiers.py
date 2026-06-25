@@ -69,7 +69,3 @@ def is_unlimited(key: str | None) -> bool:
 def get_tier(key: str | None) -> Tier:
     """Return the tier for a key, falling back to Free for unknown values."""
     return TIERS.get(key or DEFAULT_TIER, TIERS[DEFAULT_TIER])
-
-
-def monthly_quota(key: str | None) -> int:
-    return get_tier(key).monthly_quota
