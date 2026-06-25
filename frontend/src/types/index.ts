@@ -53,6 +53,15 @@ export interface DataSource {
   created_at: string
 }
 
+export interface DataSourceCreate {
+  name: string
+  db_type: 'postgresql' | 'sqlite'
+  connection_string: string
+}
+
+/** { tableName: [{ name, type }, ...] } */
+export type DataSourceSchema = Record<string, { name: string; type: string }[]>
+
 export interface WidgetChart {
   chart_type: ChartType
   chart_config: ChartConfig

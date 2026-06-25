@@ -2,6 +2,7 @@ import { Clock, Lightbulb, LayoutGrid } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ChartView } from '../components/charts/ChartView'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
+import { DatasourcePicker } from '../components/query/DatasourcePicker'
 import { NLQueryInput } from '../components/query/NLQueryInput'
 import { SQLPreview } from '../components/query/SQLPreview'
 import { useQueryStore } from '../store/queryStore'
@@ -34,6 +35,10 @@ export function QueryPage() {
             cavabı plotda gör.
           </h1>
         </header>
+
+        <div className="flex items-center justify-between gap-2">
+          <DatasourcePicker />
+        </div>
 
         <NLQueryInput onSubmit={onAsk} loading={loading} />
 

@@ -1,0 +1,152 @@
+import { useEffect, useState } from 'react'
+import { Database, Plug, Plus, Table2, Trash2, UploadCloud } from 'lucide-react'
+import { useDatasourceStore } from '../store/datasourceStore'
+import { useQueryStore } from '../store/queryStore'
+import * as dsApi from '../api/datasource'
+import type { DataSourceSchema } from '../types'
+import { ConnectSourceModal } from '../components/datasource/ConnectSourceModal'
+import { UploadSourceModal } from '../components/datasource/UploadSourceModal'
+
+export function DataSourcesPage() {
+  const { sources, load, test, remove } = useDatasourceStore()
+  const { datasourceId, setDatasource } = useQueryStore()
+  const [connectOpen, setConnectOpen] = useState(false)
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [openSchema, setOpenSchema] = useState<string | null>(null)
+  const [schema, setSchema] = useState<DataSourceSchema | null>(null)
+
+  useEffect(() => {
+    load().catch(() => undefined)
+  }, [load])
+
+  const toggleSchema = async (id: string) => {
+    if (openSchema === id) {
+      setOpenSchema(null)
+      return
+    }
+    setOpenSchema(id)
+    setSchema(null)
+    try {
+      setSchema(await dsApi.getSchema(id))
+    } catch {
+      setSchema({})
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl">
+      <header className="mb-6 flex items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">Mənbələr</p>
+          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
+            Verilənlər mənbələri
+          </h1>
+          <p className="mt-1 text-sm text-ink-soft">
+            Öz SQL bazanı qoş və ya CSV/Excel yüklə, sonra təbii dillə sorğula.
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+          >
+            <UploadCloud size={15} /> CSV/Excel
+          </button>
+          <button
+            onClick={() => setConnectOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
+          >
+            <Plus size={15} /> Baza qoş
+          </button>
+        </div>
+      </header>
+
+      {sources.length === 0 ? (
+        <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+          <Database size={22} className="mx-auto text-ink-faint" />
+          <p className="mt-2 font-display text-lg text-ink">Hələ mənbə yoxdur</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Demo data ilə işləyə, ya da öz mənbəni qoşa bilərsən.
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {sources.map((s) => (
+            <li key={s.id} className="rounded-2xl border border-line bg-surface p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface-2">
+                    <Database size={16} className="text-accent" />
+                  </span>
+                  <div>
+                    <p className="font-medium text-ink">{s.name}</p>
+                    <p className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">
+                      {s.db_type}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setDatasource(datasourceId === s.id ? null : s.id)}
+                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                      datasourceId === s.id
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-line text-ink-soft hover:text-ink'
+                    }`}
+                  >
+                    {datasourceId === s.id ? 'Aktiv' : 'Seç'}
+                  </button>
+                  <button
+                    onClick={() => toggleSchema(s.id)}
+                    title="Schema"
+                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:text-ink"
+                  >
+                    <Table2 size={15} />
+                  </button>
+                  <button
+                    onClick={() => test(s.id)}
+                    title="Bağlantını yoxla"
+                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:text-ink"
+                  >
+                    <Plug size={15} />
+                  </button>
+                  <button
+                    onClick={() => remove(s.id)}
+                    title="Sil"
+                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+
+              {openSchema === s.id && (
+                <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3">
+                  {schema === null ? (
+                    <p className="text-sm text-ink-faint">Schema yüklənir…</p>
+                  ) : Object.keys(schema).length === 0 ? (
+                    <p className="text-sm text-ink-faint">Schema tapılmadı.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(schema).map(([table, cols]) => (
+                        <div key={table}>
+                          <p className="font-mono text-xs font-medium text-ink">{table}</p>
+                          <p className="font-mono text-[11px] text-ink-faint">
+                            {cols.map((c) => c.name).join(', ')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <ConnectSourceModal open={connectOpen} onClose={() => setConnectOpen(false)} />
+      <UploadSourceModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+    </div>
+  )
+}
