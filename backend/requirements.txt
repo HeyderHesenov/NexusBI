@@ -36,6 +36,10 @@ structlog==24.4.0
 # ─── HTTP / utils ───
 httpx==0.28.1
 
+# ─── Data ingest (CSV/Excel uploads) ───
+pandas==2.2.3
+openpyxl==3.1.5
+
 # ─── Tests ───
 pytest==8.3.4
 pytest-asyncio==0.25.1

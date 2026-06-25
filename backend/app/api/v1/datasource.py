@@ -3,11 +3,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, File, Form, Response, UploadFile, status
 
 from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.schemas.datasource import DataSourceCreate, DataSourceResponse
 from app.services import datasource_service as svc
+from app.services import upload_service
 
 router = APIRouter(prefix="/datasource", tags=["datasource"])
 
@@ -17,6 +18,21 @@ async def create(payload: DataSourceCreate, user: CurrentUser, db: DbDep) -> Dat
     ds = await svc.add_datasource(
         db, user.id, payload.name, payload.db_type, payload.connection_string
     )
+    return DataSourceResponse.model_validate(ds)
+
+
+@router.post("/upload", response_model=DataSourceResponse, status_code=status.HTTP_201_CREATED)
+async def upload(
+    user: CurrentUser,
+    db: DbDep,
+    file: UploadFile = File(...),
+    name: str = Form(default=""),
+) -> DataSourceResponse:
+    """Ingest a CSV/Excel file into a SQLite-backed datasource owned by the user."""
+    content = await file.read()
+    conn_str, _table, _rows = upload_service.ingest_file(file.filename or "data.csv", content)
+    label = name.strip() or (file.filename or "Yüklənmiş fayl")
+    ds = await svc.add_datasource(db, user.id, label, "sqlite", conn_str)
     return DataSourceResponse.model_validate(ds)
 
 
