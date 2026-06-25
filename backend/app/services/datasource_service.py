@@ -5,12 +5,13 @@ import time
 from typing import Any
 
 from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.schema_introspector import format_schema_for_prompt, get_schema
 from app.ai.sql_guard import validate_select_only
 from app.core import metrics
 from app.core.exceptions import DataSourceConnectionError, SchemaNotFoundError
+from app.db import engine_pool
 from app.core.logging import get_logger
 from app.core.security import decrypt_secret, encrypt_secret
 from app.models.datasource import DataSource, DBType
@@ -55,15 +56,13 @@ async def get_datasource(db: AsyncSession, user_id: str, datasource_id: str) -> 
 
 async def test_connection(ds: DataSource) -> bool:
     conn_str = decrypt_secret(ds.connection_string_encrypted)
-    engine = create_async_engine(conn_str)
+    engine = await engine_pool.get_engine(conn_str)
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         return True
     except Exception as exc:
         raise DataSourceConnectionError("Bağlantı uğursuz.", detail=str(exc)) from exc
-    finally:
-        await engine.dispose()
 
 
 async def get_schema_cached(
@@ -90,7 +89,7 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
     """
     sql = validate_select_only(sql)
     conn_str = decrypt_secret(ds.connection_string_encrypted)
-    engine = create_async_engine(conn_str)
+    engine = await engine_pool.get_engine(conn_str)
     started = time.perf_counter()
     try:
         async with engine.connect() as conn:
@@ -108,8 +107,6 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
     except Exception as exc:
         metrics.sql_executions_total.labels("error").inc()
         raise DataSourceConnectionError("Sorğu icra olunmadı.", detail=str(exc)) from exc
-    finally:
-        await engine.dispose()
 
 
 def schema_as_prompt(schema: dict[str, Any]) -> str:

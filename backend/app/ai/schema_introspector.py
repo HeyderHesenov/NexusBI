@@ -4,33 +4,29 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
-
 _SCHEMA_CACHE_TTL = 3600
 
 
 async def get_schema(connection_string: str) -> dict[str, list[dict[str, str]]]:
     """Introspect tables and columns from a database connection string."""
-    engine = create_async_engine(connection_string)
+    from app.db import engine_pool
+
+    engine = await engine_pool.get_engine(connection_string)
     schema: dict[str, list[dict[str, str]]] = {}
-    try:
-        async with engine.connect() as conn:
-            def _inspect(sync_conn: Any) -> dict[str, list[dict[str, str]]]:
-                from sqlalchemy import inspect
+    async with engine.connect() as conn:
+        def _inspect(sync_conn: Any) -> dict[str, list[dict[str, str]]]:
+            from sqlalchemy import inspect
 
-                inspector = inspect(sync_conn)
-                out: dict[str, list[dict[str, str]]] = {}
-                for table in inspector.get_table_names():
-                    out[table] = [
-                        {"name": col["name"], "type": str(col["type"])}
-                        for col in inspector.get_columns(table)
-                    ]
-                return out
+            inspector = inspect(sync_conn)
+            out: dict[str, list[dict[str, str]]] = {}
+            for table in inspector.get_table_names():
+                out[table] = [
+                    {"name": col["name"], "type": str(col["type"])}
+                    for col in inspector.get_columns(table)
+                ]
+            return out
 
-            schema = await conn.run_sync(_inspect)
-    finally:
-        await engine.dispose()
+        schema = await conn.run_sync(_inspect)
     return schema
 
 

@@ -78,6 +78,9 @@ async def lifespan(app: FastAPI):
     yield
     if scheduler_task:
         scheduler_task.cancel()
+    from app.db import engine_pool
+
+    await engine_pool.dispose_all()
 
 
 def create_app() -> FastAPI:

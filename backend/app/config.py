@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(default="redis://localhost:6379/0")
     CACHE_TTL_SECONDS: int = Field(default=300)  # query result cache TTL
 
+    # ─── Datasource connection pooling ───
+    DATASOURCE_POOL_SIZE: int = Field(default=5)
+    DATASOURCE_POOL_MAX_OVERFLOW: int = Field(default=10)
+    DATASOURCE_POOL_RECYCLE_SECONDS: int = Field(default=1800)
+    DATASOURCE_MAX_ENGINES: int = Field(default=20)
+
     # ─── Security ───
     SECRET_KEY: str = Field(default="dev-insecure-change-me")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60)

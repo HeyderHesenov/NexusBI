@@ -58,7 +58,11 @@ async def test(datasource_id: str, user: CurrentUser, db: DbDep) -> dict[str, bo
 
 @router.delete("/{datasource_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete(datasource_id: str, user: CurrentUser, db: DbDep) -> Response:
+    from app.core.security import decrypt_secret
+    from app.db import engine_pool
+
     ds = await svc.get_datasource(db, user.id, datasource_id)
+    await engine_pool.evict(decrypt_secret(ds.connection_string_encrypted))
     await db.delete(ds)
     await db.flush()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
