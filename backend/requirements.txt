@@ -30,8 +30,9 @@ cryptography==44.0.0
 # ─── Cache ───
 redis==5.2.1
 
-# ─── Logging ───
+# ─── Logging / metrics ───
 structlog==24.4.0
+prometheus-client==0.21.1
 
 # ─── HTTP / utils ───
 httpx==0.28.1

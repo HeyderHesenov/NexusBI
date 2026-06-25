@@ -8,10 +8,12 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api.v1.router import api_router
 from app.config import settings
+from app.core import metrics
 from app.core.exceptions import NexusBIException
 from app.core.logging import configure_logging, get_logger
 from app.services.cache_service import build_cache_service
@@ -93,15 +95,26 @@ def create_app() -> FastAPI:
         request.state.request_id = request_id
         structlog.contextvars.bind_contextvars(request_id=request_id)
         started = time.perf_counter()
+        status_code = 500
         try:
             response = await call_next(request)
+            status_code = response.status_code
         finally:
-            elapsed = int((time.perf_counter() - started) * 1000)
+            elapsed_s = time.perf_counter() - started
+            # Use the route template (not the raw path) to keep label cardinality low.
+            route = request.scope.get("route")
+            route_label = getattr(route, "path", None) or "other"
+            metrics.http_requests_total.labels(
+                request.method, route_label, str(status_code)
+            ).inc()
+            metrics.http_request_duration_seconds.labels(
+                request.method, route_label
+            ).observe(elapsed_s)
             log.info(
                 "request",
                 method=request.method,
                 path=request.url.path,
-                execution_time_ms=elapsed,
+                execution_time_ms=int(elapsed_s * 1000),
             )
             structlog.contextvars.clear_contextvars()
         response.headers["X-Request-ID"] = request_id
@@ -117,6 +130,7 @@ def create_app() -> FastAPI:
                 "error": exc.__class__.__name__,
                 "message": exc.message,
                 "detail": exc.detail,
+                "sql": getattr(exc, "sql", None),
                 "request_id": request_id,
             },
         )
@@ -138,6 +152,10 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, object]:
         return {"status": "ok", "demo_mode": settings.DEMO_MODE}
+
+    @app.get("/metrics", tags=["health"])
+    async def prometheus_metrics() -> Response:
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     app.include_router(api_router)
     return app

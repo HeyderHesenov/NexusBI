@@ -8,6 +8,7 @@ from typing import Any
 from openai import AsyncOpenAI
 
 from app.config import settings
+from app.core import metrics
 from app.core.logging import get_logger
 
 log = get_logger("nexusbi.ai")
@@ -40,13 +41,7 @@ async def chat_json(
             {"role": "user", "content": user},
         ],
     )
-    log.info(
-        "ai_call",
-        model=settings.OPENAI_MODEL,
-        tokens_used=getattr(resp.usage, "total_tokens", None),
-        latency_ms=int((time.perf_counter() - started) * 1000),
-        kind="json",
-    )
+    _record_call(resp, started, "json")
     content = resp.choices[0].message.content or "{}"
     return json.loads(content)
 
@@ -67,11 +62,20 @@ async def chat_text(
             {"role": "user", "content": user},
         ],
     )
+    _record_call(resp, started, "text")
+    return (resp.choices[0].message.content or "").strip()
+
+
+def _record_call(resp: Any, started: float, kind: str) -> None:
+    """Log + count an OpenAI call and its token usage."""
+    tokens = getattr(resp.usage, "total_tokens", None)
     log.info(
         "ai_call",
         model=settings.OPENAI_MODEL,
-        tokens_used=getattr(resp.usage, "total_tokens", None),
+        tokens_used=tokens,
         latency_ms=int((time.perf_counter() - started) * 1000),
-        kind="text",
+        kind=kind,
     )
-    return (resp.choices[0].message.content or "").strip()
+    metrics.ai_calls_total.labels(kind).inc()
+    if tokens:
+        metrics.ai_tokens_total.inc(tokens)

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.ai.schema_introspector import format_schema_for_prompt, get_schema
 from app.ai.sql_guard import validate_select_only
+from app.core import metrics
 from app.core.exceptions import DataSourceConnectionError, SchemaNotFoundError
 from app.core.logging import get_logger
 from app.core.security import decrypt_secret, encrypt_secret
@@ -102,8 +103,10 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
             execution_time_ms=int((time.perf_counter() - started) * 1000),
             row_count=len(rows),
         )
+        metrics.sql_executions_total.labels("success").inc()
         return columns, rows
     except Exception as exc:
+        metrics.sql_executions_total.labels("error").inc()
         raise DataSourceConnectionError("Sorğu icra olunmadı.", detail=str(exc)) from exc
     finally:
         await engine.dispose()
