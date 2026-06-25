@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { Responsive, WidthProvider, type Layout, type Layouts } from 'react-grid-layout'
 import type { Dashboard } from '../../types'
 import { ChartRenderer } from '../charts/ChartRenderer'
+import { FilterPills, type Filter } from '../charts/FilterPills'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -29,6 +30,8 @@ function buildLayouts(dashboard: Dashboard): Layouts {
 export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLayoutChange }: Props) {
   const layouts = useMemo(() => buildLayouts(dashboard), [dashboard.layout, dashboard.widgets])
   const [busy, setBusy] = useState<string | null>(null)
+  // Cross-filter: click a chart element → filter every widget that has that field.
+  const [crossFilter, setCrossFilter] = useState<Filter | null>(null)
 
   const refresh = async (id: string) => {
     setBusy(id)
@@ -39,7 +42,22 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
     }
   }
 
+  const widgetData = (cols: string[], data: Record<string, unknown>[]) => {
+    if (!crossFilter || !cols.includes(crossFilter.field)) return data
+    return data.filter((row) => String(row[crossFilter.field]) === crossFilter.value)
+  }
+
   return (
+    <>
+    {crossFilter && (
+      <div className="mb-4">
+        <FilterPills
+          filters={[crossFilter]}
+          onRemove={() => setCrossFilter(null)}
+          onClear={() => setCrossFilter(null)}
+        />
+      </div>
+    )}
     <ResponsiveGridLayout
       className="-mx-2"
       layouts={layouts}
@@ -85,7 +103,14 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
           </div>
           <div className="min-h-0 flex-1 p-3">
             {w.chart && w.chart.data.length ? (
-              <ChartRenderer data={w.chart.data} config={w.chart.chart_config} height="100%" />
+              <ChartRenderer
+                data={widgetData(w.chart.columns, w.chart.data)}
+                config={w.chart.chart_config}
+                height="100%"
+                onPointClick={(field, value) =>
+                  setCrossFilter({ field, value: String(value) })
+                }
+              />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-ink-faint">
                 Bu sorğunun nəticəsi yoxdur.
@@ -95,5 +120,6 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
         </div>
       ))}
     </ResponsiveGridLayout>
+    </>
   )
 }
