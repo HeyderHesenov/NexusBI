@@ -4,9 +4,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 
+from app.ai import analysis
 from app.core.exceptions import SchemaNotFoundError
 from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.models.query_log import QueryLog
+from app.schemas.analysis import AnomalyResponse
 from app.schemas.query import (
     QueryHistoryItem,
     QueryHistoryPage,
@@ -83,6 +85,16 @@ async def retry(
     return await query_service.process_nl_query(
         log.natural_language, log.datasource_id, user.id, db, cache
     )
+
+
+@router.post("/{query_id}/anomalies", response_model=AnomalyResponse)
+async def anomalies(query_id: str, user: RateLimitedUser, db: DbDep) -> AnomalyResponse:
+    log = await _get_log(db, user.id, query_id)
+    data = log.result_data or {"columns": [], "rows": []}
+    result = await analysis.detect_anomalies(
+        data.get("columns", []), data.get("rows", []), log.natural_language
+    )
+    return AnomalyResponse(**result)
 
 
 async def _get_log(db: DbDep, user_id: str, query_id: str) -> QueryLog:
