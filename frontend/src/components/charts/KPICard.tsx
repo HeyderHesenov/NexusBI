@@ -15,7 +15,7 @@ export function KPICard({ data, config }: Props) {
       <span className="mt-2 font-display text-6xl font-bold leading-none text-ink">
         {String(value)}
       </span>
-      <span className="absolute right-6 top-6 h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_#0E9F6E]" />
+      <span className="absolute right-6 top-6 h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_rgb(var(--accent))]" />
     </div>
   )
 }

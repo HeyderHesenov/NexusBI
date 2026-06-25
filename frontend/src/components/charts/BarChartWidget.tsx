@@ -9,7 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
-import { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } from './theme'
+import { useChartTheme } from './theme'
 
 const ANOMALY_FILL = '#EF4444'
 
@@ -22,6 +22,7 @@ interface Props {
 }
 
 export function BarChartWidget({ data, config, height = 320, onPointClick, anomalyLabels }: Props) {
+  const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   const hasAnomalies = !!anomalyLabels?.size
@@ -32,7 +33,7 @@ export function BarChartWidget({ data, config, height = 320, onPointClick, anoma
         <XAxis dataKey={x} stroke={AXIS} fontSize={12} tickLine={false} />
         <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
         <Tooltip
-          cursor={{ fill: 'rgba(14,159,110,0.08)' }}
+          cursor={{ fill: 'rgba(204,120,92,0.10)' }}
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabel}
           itemStyle={tooltipItem}

@@ -10,7 +10,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ForecastResult } from '../../types'
-import { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } from './theme'
+import { useChartTheme } from './theme'
 
 interface Props {
   result: ForecastResult
@@ -19,6 +19,7 @@ interface Props {
 
 /** Historical series (solid) + forecast (dashed) with an 80% confidence band. */
 export function ForecastChartWidget({ result, height = 320 }: Props) {
+  const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const { history, forecast, label_col, value_col } = result
 
   const hist = history.map((row) => ({
@@ -46,9 +47,9 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
         <XAxis dataKey="label" stroke={AXIS} fontSize={12} tickLine={false} />
         <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
         <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} itemStyle={tooltipItem} />
-        <Legend wrapperStyle={{ fontSize: 12, color: '#A8ADB5' }} />
+        <Legend wrapperStyle={{ fontSize: 12, color: 'rgb(var(--ink-soft))' }} />
 
-        {/* Confidence band: transparent base + emerald-soft span stacked on top. */}
+        {/* Confidence band: transparent base + accent-soft span stacked on top. */}
         <Area
           stackId="band"
           dataKey="bandBase"
@@ -62,7 +63,7 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
           stackId="band"
           dataKey="bandSpan"
           stroke="none"
-          fill="rgba(14,159,110,0.15)"
+          fill="rgb(var(--accent) / 0.16)"
           name="Güvən aralığı"
           isAnimationActive={false}
         />

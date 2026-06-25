@@ -4,6 +4,13 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
 import { LoginPage } from './pages/LoginPage'
 import { useAuthStore } from './store/authStore'
+import { useThemeStore } from './store/themeStore'
+
+// Theme-aware toast palette (terracotta accent on warm paper / graphite).
+const TOAST_THEME = {
+  light: { bg: '#FFFFFF', text: '#1F1E1D', line: '#E5E3DC', accent: '#CC785C' },
+  dark: { bg: '#1F1E1D', text: '#EDEAE6', line: '#3A3733', accent: '#D98A6E' },
+}
 
 // Login is the entry route — load it eagerly so first paint (and its reveal
 // animation) is instant, with no Suspense flash. Authed pages stay split.
@@ -33,6 +40,8 @@ function RouteFallback() {
 
 export default function App() {
   const loadUser = useAuthStore((s) => s.loadUser)
+  const mode = useThemeStore((s) => s.mode)
+  const t = TOAST_THEME[mode]
   useEffect(() => {
     loadUser().catch(() => undefined)
   }, [loadUser])
@@ -43,13 +52,13 @@ export default function App() {
         position="top-right"
         toastOptions={{
           style: {
-            background: '#1A1C21',
-            color: '#ECEAE6',
-            border: '1px solid #2A2E35',
+            background: t.bg,
+            color: t.text,
+            border: `1px solid ${t.line}`,
             borderRadius: '12px',
             fontSize: '14px',
           },
-          success: { iconTheme: { primary: '#0E9F6E', secondary: '#131418' } },
+          success: { iconTheme: { primary: t.accent, secondary: t.bg } },
         }}
       />
       <Suspense fallback={<RouteFallback />}>

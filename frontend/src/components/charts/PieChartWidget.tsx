@@ -1,6 +1,6 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import type { ChartConfig } from '../../types'
-import { SERIES, tooltipItem, tooltipLabel, tooltipStyle } from './theme'
+import { useChartTheme } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -17,6 +17,7 @@ export function PieChartWidget({
   showLegend = false,
   onPointClick,
 }: Props) {
+  const { SERIES, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const name = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const value = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   return (
@@ -29,7 +30,7 @@ export function PieChartWidget({
           innerRadius={62}
           outerRadius={118}
           paddingAngle={2}
-          stroke="#1A1C21"
+          stroke="rgb(var(--surface))"
           strokeWidth={2}
           className={onPointClick ? 'cursor-pointer' : undefined}
           onClick={
@@ -47,7 +48,9 @@ export function PieChartWidget({
           labelStyle={tooltipLabel}
           itemStyle={tooltipItem}
         />
-        {showLegend && <Legend wrapperStyle={{ fontSize: 12, color: '#A8ADB5' }} />}
+        {showLegend && (
+          <Legend wrapperStyle={{ fontSize: 12, color: 'rgb(var(--ink-soft))' }} />
+        )}
       </PieChart>
     </ResponsiveContainer>
   )

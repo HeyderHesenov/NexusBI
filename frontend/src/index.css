@@ -1,8 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Theme tokens (RGB channel triplets, consumed by tailwind.config.js) ──
+   Light is the default (Claude-like warm paper); .dark flips to a warm graphite. */
+:root {
+  --bg: 250 249 245;
+  --surface: 255 255 255;
+  --surface-2: 245 244 238;
+  --line: 229 227 220;
+  --line-strong: 214 211 202;
+  --ink: 31 30 29;
+  --ink-soft: 91 87 80;
+  --ink-faint: 140 135 126;
+  --accent: 204 120 92;
+  --accent-press: 181 101 74;
+  --accent-soft: 244 233 227;
+  --shadow: 60 50 40;
+}
+
+.dark {
+  --bg: 23 22 21;
+  --surface: 31 30 29;
+  --surface-2: 41 39 37;
+  --line: 58 55 51;
+  --line-strong: 74 70 65;
+  --ink: 237 234 230;
+  --ink-soft: 168 163 155;
+  --ink-faint: 124 118 110;
+  --accent: 217 138 110;
+  --accent-press: 204 120 92;
+  --accent-soft: 54 44 40;
+  --shadow: 0 0 0;
+}
 
 @layer base {
   html,
@@ -12,39 +44,37 @@
     margin: 0;
   }
   body {
-    @apply font-sans antialiased;
-    background-color: #131418;
-    color: #eceae6;
+    @apply bg-bg font-sans text-ink antialiased;
     -webkit-font-smoothing: antialiased;
   }
   ::selection {
-    background: rgba(14, 159, 110, 0.25);
+    background: rgb(var(--accent) / 0.22);
   }
   *:focus-visible {
-    outline: 2px solid #0e9f6e;
+    outline: 2px solid rgb(var(--accent));
     outline-offset: 2px;
     border-radius: 4px;
   }
-  /* Custom scrollbar — quiet, dark */
+  /* Custom scrollbar — quiet, theme-aware */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a2e35;
+    background: rgb(var(--line-strong));
     border-radius: 8px;
-    border: 2px solid #131418;
+    border: 2px solid rgb(var(--bg));
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #363b43;
+    background: rgb(var(--ink-faint));
   }
 }
 
 @layer components {
-  /* Faint plotting substrate — low-opacity light lines on dark. */
+  /* Faint plotting substrate — low-opacity ink lines, works on both themes. */
   .plot-grid {
-    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-image: linear-gradient(to right, rgb(var(--ink) / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--ink) / 0.04) 1px, transparent 1px);
     background-size: 30px 30px;
   }
   .eyebrow {
@@ -52,7 +82,7 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    color: #6e747d;
+    color: rgb(var(--ink-faint));
   }
 
   /* Entrance reveal — runs once on load; staggered via .reveal-dN. */
@@ -79,13 +109,11 @@
     animation-delay: 0.72s;
   }
 
-  /* Aurora glow — soft drifting blobs. Only transform/opacity animate. */
+  /* Aurora glow — soft drifting warm blobs. Only transform/opacity animate. */
   .aurora-blob {
     position: absolute;
     border-radius: 9999px;
-    filter: blur(70px);
-    /* Promote to its own compositor layer so the blurred bitmap is rasterized
-       once and only cheaply translated each frame (no per-frame re-blur). */
+    filter: blur(80px);
     transform: translateZ(0);
     will-change: transform;
   }
@@ -94,7 +122,7 @@
     left: -8%;
     width: 46vw;
     height: 46vw;
-    background: radial-gradient(circle at center, rgba(14, 159, 110, 0.5), transparent 68%);
+    background: radial-gradient(circle at center, rgb(var(--accent) / 0.32), transparent 68%);
     animation: aurora-drift-a 24s ease-in-out infinite;
   }
   .aurora-2 {
@@ -102,7 +130,7 @@
     right: -10%;
     width: 52vw;
     height: 52vw;
-    background: radial-gradient(circle at center, rgba(14, 159, 110, 0.28), transparent 70%);
+    background: radial-gradient(circle at center, rgb(var(--accent) / 0.2), transparent 70%);
     animation: aurora-drift-b 30s ease-in-out infinite;
   }
   .aurora-3 {
@@ -110,7 +138,7 @@
     right: 18%;
     width: 34vw;
     height: 34vw;
-    background: radial-gradient(circle at center, rgba(91, 199, 154, 0.18), transparent 72%);
+    background: radial-gradient(circle at center, rgb(217 160 120 / 0.18), transparent 72%);
     animation: aurora-drift-c 27s ease-in-out infinite;
   }
 }
@@ -127,8 +155,6 @@
   }
 }
 
-/* Translate-only drift on a pre-rasterized blurred layer — no scale, so the
-   blur bitmap is never recomputed. Smooth on the compositor thread. */
 @keyframes aurora-drift-a {
   0%,
   100% {
@@ -163,16 +189,16 @@
   }
 }
 
-/* react-grid-layout — dark theme overrides */
+/* react-grid-layout — theme-aware overrides */
 .react-grid-item.react-grid-placeholder {
-  background: rgba(14, 159, 110, 0.18) !important;
-  border: 1px dashed #0e9f6e;
+  background: rgb(var(--accent) / 0.16) !important;
+  border: 1px dashed rgb(var(--accent));
   border-radius: 16px;
   opacity: 1;
 }
 .react-grid-item > .react-resizable-handle::after {
-  border-right-color: #6e747d;
-  border-bottom-color: #6e747d;
+  border-right-color: rgb(var(--ink-faint));
+  border-bottom-color: rgb(var(--ink-faint));
 }
 .react-grid-item.react-draggable-dragging {
   z-index: 30;
