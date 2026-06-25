@@ -8,7 +8,7 @@ from app.ai import analysis
 from app.core.exceptions import SchemaNotFoundError
 from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.models.query_log import QueryLog
-from app.schemas.analysis import AnomalyResponse
+from app.schemas.analysis import AnomalyResponse, ForecastRequest, ForecastResponse
 from app.schemas.query import (
     QueryHistoryItem,
     QueryHistoryPage,
@@ -95,6 +95,19 @@ async def anomalies(query_id: str, user: RateLimitedUser, db: DbDep) -> AnomalyR
         data.get("columns", []), data.get("rows", []), log.natural_language
     )
     return AnomalyResponse(**result)
+
+
+@router.post("/{query_id}/forecast", response_model=ForecastResponse)
+async def forecast(
+    query_id: str, payload: ForecastRequest, user: RateLimitedUser, db: DbDep
+) -> ForecastResponse:
+    log = await _get_log(db, user.id, query_id)
+    data = log.result_data or {"columns": [], "rows": []}
+    rows = data.get("rows", [])
+    result = await analysis.forecast(
+        data.get("columns", []), rows, log.natural_language, payload.periods
+    )
+    return ForecastResponse(**result, history=rows)
 
 
 async def _get_log(db: DbDep, user_id: str, query_id: str) -> QueryLog:

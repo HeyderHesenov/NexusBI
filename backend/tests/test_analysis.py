@@ -54,3 +54,21 @@ async def test_anomalies_endpoint(client, auth, monkeypatch):
     body = resp.json()
     assert body["anomalies"][0]["severity"] == "high"
     assert body["value_col"] == "total"
+
+
+async def test_forecast_endpoint(client, auth, monkeypatch):
+    async def fake_chat_json(system, user, **kw):
+        return {
+            "forecast": [{"label": "Next", "value": 1200, "lower": 1000, "upper": 1400}],
+            "narrative": "Artım gözlənilir.",
+        }
+
+    monkeypatch.setattr(analysis, "chat_json", fake_chat_json)
+    qid = await _make_query(client, auth)
+    resp = await client.post(
+        f"/api/v1/query/{qid}/forecast", json={"periods": 3}, headers=auth
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["forecast"][0]["value"] == 1200
+    assert len(body["history"]) == 5
