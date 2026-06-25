@@ -1,5 +1,7 @@
 # NexusBI — Natural Language to Dashboard
 
+[![CI](https://github.com/HeyderHesenov/nexusbi/actions/workflows/ci.yml/badge.svg)](https://github.com/HeyderHesenov/nexusbi/actions/workflows/ci.yml)
+
 Biznes sualını adi dildə yaz → NexusBI avtomatik **SQL qurur, icra edir, optimal
 chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rəhbərlər
 üçün AI-powered BI platforması.
