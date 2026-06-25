@@ -15,11 +15,12 @@ interface Props {
   data: Record<string, unknown>[]
   config: ChartConfig
   height?: number | string
+  onPointClick?: (field: string, value: unknown) => void
 }
 
 /** Scatter needs two numeric axes; falls back to row index for X when the
  *  configured X column isn't numeric. */
-export function ScatterChartWidget({ data, config, height = 320 }: Props) {
+export function ScatterChartWidget({ data, config, height = 320, onPointClick }: Props) {
   const keys = Object.keys(data[0] ?? {})
   const numeric = keys.filter((k) => typeof data[0]?.[k] === 'number')
   const x = (config.x_axis && numeric.includes(config.x_axis) && config.x_axis) || numeric[0] || keys[0]
@@ -42,7 +43,13 @@ export function ScatterChartWidget({ data, config, height = 320 }: Props) {
           labelStyle={tooltipLabel}
           itemStyle={tooltipItem}
         />
-        <Scatter data={data} fill={ACCENT} fillOpacity={0.75} />
+        <Scatter
+          data={data}
+          fill={ACCENT}
+          fillOpacity={0.75}
+          className={onPointClick ? 'cursor-pointer' : undefined}
+          onClick={onPointClick ? (e: { [k: string]: unknown }) => onPointClick(x, e?.[x]) : undefined}
+        />
       </ScatterChart>
     </ResponsiveContainer>
   )

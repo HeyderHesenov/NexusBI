@@ -7,9 +7,16 @@ interface Props {
   config: ChartConfig
   height?: number | string
   showLegend?: boolean
+  onPointClick?: (field: string, value: unknown) => void
 }
 
-export function PieChartWidget({ data, config, height = 320, showLegend = false }: Props) {
+export function PieChartWidget({
+  data,
+  config,
+  height = 320,
+  showLegend = false,
+  onPointClick,
+}: Props) {
   const name = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const value = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   return (
@@ -24,6 +31,12 @@ export function PieChartWidget({ data, config, height = 320, showLegend = false 
           paddingAngle={2}
           stroke="#1A1C21"
           strokeWidth={2}
+          className={onPointClick ? 'cursor-pointer' : undefined}
+          onClick={
+            onPointClick
+              ? (e: { payload?: Record<string, unknown> }) => onPointClick(name, e?.payload?.[name])
+              : undefined
+          }
         >
           {data.map((_, i) => (
             <Cell key={i} fill={SERIES[i % SERIES.length]} />

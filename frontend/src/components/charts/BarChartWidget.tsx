@@ -14,9 +14,10 @@ interface Props {
   data: Record<string, unknown>[]
   config: ChartConfig
   height?: number | string
+  onPointClick?: (field: string, value: unknown) => void
 }
 
-export function BarChartWidget({ data, config, height = 320 }: Props) {
+export function BarChartWidget({ data, config, height = 320, onPointClick }: Props) {
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   return (
@@ -31,7 +32,14 @@ export function BarChartWidget({ data, config, height = 320 }: Props) {
           labelStyle={tooltipLabel}
           itemStyle={tooltipItem}
         />
-        <Bar dataKey={y} fill={ACCENT} radius={[6, 6, 0, 0]} maxBarSize={48} />
+        <Bar
+          dataKey={y}
+          fill={ACCENT}
+          radius={[6, 6, 0, 0]}
+          maxBarSize={48}
+          className={onPointClick ? 'cursor-pointer' : undefined}
+          onClick={onPointClick ? (e: { [k: string]: unknown }) => onPointClick(x, e?.[x]) : undefined}
+        />
       </BarChart>
     </ResponsiveContainer>
   )
