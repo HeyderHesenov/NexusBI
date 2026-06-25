@@ -91,6 +91,8 @@ export interface WidgetChart {
   insight: string
   sql: string
   natural_language: string
+  datasource_id?: string | null
+  datasource_name?: string
 }
 
 export interface Widget {
