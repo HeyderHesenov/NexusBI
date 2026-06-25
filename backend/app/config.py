@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = Field(default="./data/uploads")
     UPLOAD_MAX_BYTES: int = Field(default=10 * 1024 * 1024)  # 10 MB
 
+    # ─── Scheduler (saved-query refresh) ───
+    SCHEDULER_ENABLED: bool = Field(default=True)
+    SCHEDULER_INTERVAL_SECONDS: int = Field(default=60)  # how often due jobs are checked
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

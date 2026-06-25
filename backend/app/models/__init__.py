@@ -3,6 +3,7 @@ from app.db.base import Base
 from app.models.dashboard import Dashboard, Widget
 from app.models.datasource import DataSource, DBType
 from app.models.query_log import QueryLog
+from app.models.saved_query import SavedQuery
 from app.models.user import User
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "QueryLog",
     "Dashboard",
     "Widget",
+    "SavedQuery",
 ]
