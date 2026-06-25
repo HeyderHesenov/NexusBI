@@ -27,8 +27,8 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 |-------|------|----------------|
 | API | `api/v1/*` | Thin routers: auth, query, datasource, dashboard, metric, saved_query, billing |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
-| Services | `services/*` | Business logic (query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, cache_service, upload_service, billing/usage_service) |
-| AI | `ai/*` | text2sql, chart_selector, insight_generator, analysis (forecast/anomaly), sql_guard, schema_introspector, prompt_templates, client |
+| Services | `services/*` | Business logic (query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, decision_service, cache_service, upload_service, billing/usage_service) |
+| AI | `ai/*` | text2sql, chart_selector, insight_generator, analysis (forecast/anomaly/explain), sql_guard, schema_introspector, prompt_templates, client |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet), exceptions, metrics, logging, google |
 | DB | `db/*` | engine/session, engine_pool, migrations (Alembic), demo_data |
@@ -68,15 +68,27 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
   is client-side (a click filters every widget sharing that field).
 - **Saved queries + scheduler:** `saved_queries` rows; an in-process asyncio loop
   (`services/scheduler`) refreshes due ones (hourly/daily/weekly) into a fresh QueryLog.
+- **Alerts & notifications:** an `alerts` row (threshold on a saved query's column) is
+  evaluated by `alert_service` whenever that saved query runs (scheduler or manual); a
+  breach writes a `notifications` row (bell + Notifications page).
+- **Augmented analytics:** `analysis.explain` (root-cause drivers) is an on-demand AI call
+  per result (like forecast/anomaly), rate-limited; what-if is pure client-side math.
+- **Decision log:** `decisions` (insight→action→outcome + status) link an insight to a
+  tracked decision via `decision_service`; optional `query_log_id` back-reference.
+- **Sharing / embed:** `dashboards.share_token` (nullable, unique). Public router
+  `api/v1/public` serves a read-only snapshot by token with NO auth, scoped to the owner's
+  user_id (snapshot only — no datasource secrets). Revoke clears the token.
 - **Billing / tiers:** `billing/tiers` is the single source of truth for quotas;
   `usage_service` enforces a monthly window. Upgrade is a mock (Stripe-ready).
+- **CI:** `.github/workflows/ci.yml` runs ruff + pytest (backend) and build (frontend) on push/PR.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters at
   `/metrics`; structured logs via structlog.
 
 ## Data model (app DB)
 
-`users` (1)─<(N)) `datasources`, `query_logs`, `dashboards`, `saved_queries`, `metrics`;
-`dashboards` (1)─<(N) `widgets`; `widgets.query_log_id` → `query_logs`;
+`users` (1)─<(N)) `datasources`, `query_logs`, `dashboards`, `saved_queries`, `metrics`,
+`alerts`, `notifications`, `decisions`; `dashboards` (1)─<(N) `widgets`; `alerts` → `saved_queries`;
+`widgets.query_log_id` → `query_logs`;
 `query_logs.datasource_id` / `metrics.datasource_id` / `saved_queries.datasource_id` → `datasources`.
 Migrations are Alembic, chained under `db/migrations/versions`.
 

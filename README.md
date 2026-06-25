@@ -21,6 +21,13 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   CSV export, drill-down filtr (qrafik elementinə klik).
 - 💡 **AI insight** — nəticədən qısa biznes təhlili (sorğunun dilində).
 - 🔮 **Proqnoz (forecast)** + 🚨 **anomaliya aşkarlama** — gpt-4o ilə.
+- 🧭 **"Bunu izah et" (kök-səbəb)** — nəticəni ən böyük driver-lərə parçalayır (seqment + töhfə %).
+- 🎚️ **What-if ssenari** — metrikə % düzəliş → faktiki vs proqnoz (client-side).
+
+### Qərarlar & izləmə
+- 🎯 **Qərar jurnalı** — insight → action → outcome; status izləmə (analitikanı təsirə bağlayır).
+- 🔔 **Alert-lər & monitorlar** — saxlanan sorğuya threshold bağla → şərt pozulanda bildiriş mərkəzi.
+- 🔗 **Paylaşma & embed** — tokenli read-only public dashboard linki + iframe.
 
 ### Data mənbələri
 - 🔌 **Öz SQL bazanı qoş** — PostgreSQL / SQLite (connection string, şifrəli saxlanılır).
@@ -128,10 +135,14 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST | `/api/v1/datasource/upload` | CSV/Excel → SQLite datasource |
 | POST | `/api/v1/query/ask` | NL sorğu (+ `previous_query_log_id` follow-up) → QueryResult |
 | GET | `/api/v1/query/history` · `/{id}` | Tarixçə · saxlanmış nəticə |
-| POST | `/api/v1/query/{id}/retry` · `/anomalies` · `/forecast` | Yenidən · anomaliya · proqnoz |
+| POST | `/api/v1/query/{id}/retry` · `/anomalies` · `/forecast` · `/explain` | Yenidən · anomaliya · proqnoz · kök-səbəb |
 | POST/GET/PUT/DELETE | `/api/v1/dashboard/...` | Dashboard CRUD + widget (+ refresh / refresh-all) |
+| POST/DELETE | `/api/v1/dashboard/{id}/share` | Public paylaşım tokeni (yarat / ləğv et) |
+| GET | `/api/v1/public/dashboard/{token}` | Auth-suz read-only paylaşılan dashboard |
 | POST/GET/DELETE | `/api/v1/metrics/...` | Metrik (semantik qat) CRUD |
 | POST/GET/PUT/DELETE | `/api/v1/saved/...` (+ `/{id}/run`) | Saxlanan sorğular + cədvəl |
+| POST/GET/DELETE | `/api/v1/alerts` · `/notifications` (+ read-all) | Monitorlar · bildirişlər |
+| POST/GET/PUT/DELETE | `/api/v1/decisions/...` | Qərar jurnalı (insight→action→outcome) |
 | GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` | Planlar · istifadə · (mock) upgrade |
 | GET | `/health` · `/metrics` | Sağlamlıq · Prometheus metrikləri |
 
@@ -159,11 +170,13 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 39 test
+cd backend && pytest        # 46 test
 ```
-Əhatə: text2sql/SQL-guard · query pipeline & cache · dashboard (+refresh) · auth ·
-rate-limit & tiers · datasource & CSV upload · anomaly/forecast · saved-query &
-scheduler · engine pool · metric catalog · chat context.
+Əhatə: text2sql/SQL-guard · query pipeline & cache · dashboard (+refresh/share) · auth ·
+rate-limit & tiers · datasource & CSV upload · anomaly/forecast/explain · saved-query &
+scheduler · engine pool · metric catalog · chat context · alerts & notifications · decisions.
+
+CI: hər push/PR-da GitHub Actions backend (ruff + pytest) və frontend (build) işlədir.
 
 ---
 
