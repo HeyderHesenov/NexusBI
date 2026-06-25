@@ -1,19 +1,21 @@
-import { LayoutGrid, Plus, RefreshCw } from 'lucide-react'
+import { LayoutGrid, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import type { Layouts } from 'react-grid-layout'
 import { AddWidgetModal } from '../components/dashboard/AddWidgetModal'
 import { DashboardGrid } from '../components/dashboard/DashboardGrid'
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { useDashboardStore } from '../store/dashboardStore'
 
 export function DashboardPage() {
   const {
-    list, current, refreshing, loadList, open, create,
+    list, current, refreshing, loadList, open, create, remove,
     addWidget, removeWidget, refreshWidget, refreshAll, saveLayout,
   } = useDashboardStore()
   const [createOpen, setCreateOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
@@ -53,6 +55,14 @@ export function DashboardPage() {
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
             >
               <Plus size={16} /> Widget
+            </button>
+          )}
+          {current && (
+            <button
+              onClick={() => setDeleteOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+            >
+              <Trash2 size={16} /> Sil
             </button>
           )}
           <button
@@ -106,6 +116,16 @@ export function DashboardPage() {
           setCreateOpen(false)
         }}
       />
+
+      {current && (
+        <ConfirmDialog
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => remove(current.id)}
+          title="Dashboard-u sil"
+          message={`“${current.name}” paneli və bütün widgetləri həmişəlik silinəcək. Bu əməliyyat geri qaytarıla bilməz.`}
+        />
+      )}
 
       {current && (
         <AddWidgetModal

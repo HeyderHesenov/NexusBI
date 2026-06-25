@@ -27,6 +27,10 @@ export async function updateDashboard(
   return data
 }
 
+export async function deleteDashboard(id: string): Promise<void> {
+  await client.delete(`/dashboard/${id}`)
+}
+
 export async function addWidget(
   dashboardId: string,
   payload: { query_log_id: string; title: string },

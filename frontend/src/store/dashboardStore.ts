@@ -10,6 +10,7 @@ interface DashboardState {
   loadList: () => Promise<void>
   open: (id: string) => Promise<void>
   create: (name: string) => Promise<Dashboard>
+  remove: (id: string) => Promise<void>
   addWidget: (dashboardId: string, queryLogId: string, title: string) => Promise<void>
   removeWidget: (dashboardId: string, widgetId: string) => Promise<void>
   refreshWidget: (dashboardId: string, widgetId: string) => Promise<void>
@@ -31,6 +32,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     const dash = await dashApi.createDashboard(name)
     set((s) => ({ list: [...s.list, { id: dash.id, name: dash.name, description: dash.description }] }))
     return dash
+  },
+  remove: async (id) => {
+    await dashApi.deleteDashboard(id)
+    set((s) => ({
+      list: s.list.filter((d) => d.id !== id),
+      current: s.current?.id === id ? null : s.current,
+    }))
+    toast.success('Dashboard silindi.')
   },
   addWidget: async (dashboardId, queryLogId, title) => {
     const widget = await dashApi.addWidget(dashboardId, { query_log_id: queryLogId, title })
