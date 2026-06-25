@@ -26,6 +26,7 @@ class QueryResult(BaseModel):
     insight: str = ""
     execution_time_ms: int = 0
     query_log_id: str | None = None
+    from_cache: bool = False
 
 
 class QueryHistoryItem(BaseModel):

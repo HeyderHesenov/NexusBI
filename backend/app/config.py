@@ -30,6 +30,7 @@ class Settings(BaseSettings):
 
     # ─── Redis ───
     REDIS_URL: str = Field(default="redis://localhost:6379/0")
+    CACHE_TTL_SECONDS: int = Field(default=300)  # query result cache TTL
 
     # ─── Security ───
     SECRET_KEY: str = Field(default="dev-insecure-change-me")

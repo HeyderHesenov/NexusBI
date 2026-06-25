@@ -60,3 +60,49 @@ async def test_invalid_datasource(client: AsyncClient, auth: dict):
         headers=auth,
     )
     assert resp.status_code == 404
+
+
+async def test_result_cache_skips_ai_on_repeat(monkeypatch):
+    """Second identical query returns from cache without re-running text2sql."""
+    from app.db.session import AsyncSessionLocal
+    from app.models.user import User
+    from app.services import query_service
+
+    calls = {"sql": 0}
+
+    async def counting_sql(self, nl, schema, dtype="sqlite"):
+        calls["sql"] += 1
+        from app.ai.types import Text2SQLResult
+
+        return Text2SQLResult(
+            sql="SELECT product_name, SUM(revenue) AS total FROM sales "
+                "GROUP BY product_name ORDER BY total DESC LIMIT 5",
+            confidence=0.9,
+        )
+
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", counting_sql)
+
+    class FakeCache:
+        def __init__(self):
+            self.store = {}
+
+        async def get(self, k):
+            return self.store.get(k)
+
+        async def set(self, k, v, ttl=300):
+            import json
+
+            self.store[k] = json.loads(json.dumps(v, default=str))
+
+    cache = FakeCache()
+    async with AsyncSessionLocal() as db:
+        user = User(email="cache@nexusbi.io", hashed_password="x", full_name="C")
+        db.add(user)
+        await db.flush()
+
+        first = await query_service.process_nl_query("eyni sual", None, user.id, db, cache)
+        second = await query_service.process_nl_query("eyni sual", None, user.id, db, cache)
+
+    assert first.from_cache is False
+    assert second.from_cache is True
+    assert calls["sql"] == 1  # AI ran only once
