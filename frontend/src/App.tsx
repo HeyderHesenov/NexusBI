@@ -39,6 +39,9 @@ const NotificationsPage = lazy(() =>
 const PublicDashboardPage = lazy(() =>
   import('./pages/PublicDashboardPage').then((m) => ({ default: m.PublicDashboardPage })),
 )
+const DecisionsPage = lazy(() =>
+  import('./pages/DecisionsPage').then((m) => ({ default: m.DecisionsPage })),
+)
 
 function ProtectedRoute() {
   const token = useAuthStore((s) => s.token)
@@ -85,6 +88,7 @@ export default function App() {
               <Route path="/" element={<QueryPage />} />
               <Route path="/sources" element={<DataSourcesPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/decisions" element={<DecisionsPage />} />
               <Route path="/metrics" element={<MetricsPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/dashboards" element={<DashboardPage />} />

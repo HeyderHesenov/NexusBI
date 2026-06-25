@@ -1,7 +1,8 @@
-import { AlertTriangle, Bookmark, Clock, Database, Lightbulb, LayoutGrid, MessageSquarePlus, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Bookmark, Clock, Database, Lightbulb, LayoutGrid, MessageSquarePlus, RefreshCw, Target } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ChartView } from '../components/charts/ChartView'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
+import { CreateDecisionModal } from '../components/query/CreateDecisionModal'
 import { DatasourcePicker } from '../components/query/DatasourcePicker'
 import { NLQueryInput } from '../components/query/NLQueryInput'
 import { SaveQueryModal } from '../components/query/SaveQueryModal'
@@ -17,6 +18,7 @@ export function QueryPage() {
   const { schemas, loadSchema } = useDatasourceStore()
   const [saveLogId, setSaveLogId] = useState<string | null>(null)
   const [saveQ, setSaveQ] = useState<string | null>(null)
+  const [decideFor, setDecideFor] = useState<{ insight: string; logId: string | null } | null>(null)
 
   useEffect(() => {
     loadHistory().catch(() => undefined)
@@ -97,6 +99,9 @@ export function QueryPage() {
               turn={turn}
               onSaveDashboard={() => turn.result.query_log_id && setSaveLogId(turn.result.query_log_id)}
               onSaveQuery={() => setSaveQ(turn.q)}
+              onMakeDecision={() =>
+                setDecideFor({ insight: turn.result.insight || turn.q, logId: turn.result.query_log_id })
+              }
             />
           ))}
 
@@ -157,6 +162,15 @@ export function QueryPage() {
           datasourceId={datasourceId}
         />
       )}
+
+      {decideFor && (
+        <CreateDecisionModal
+          open={!!decideFor}
+          onClose={() => setDecideFor(null)}
+          insight={decideFor.insight}
+          queryLogId={decideFor.logId}
+        />
+      )}
     </>
   )
 }
@@ -165,10 +179,12 @@ function TurnCard({
   turn,
   onSaveDashboard,
   onSaveQuery,
+  onMakeDecision,
 }: {
   turn: ChatTurn
   onSaveDashboard: () => void
   onSaveQuery: () => void
+  onMakeDecision: () => void
 }) {
   const { result, q } = turn
   return (
@@ -223,6 +239,12 @@ function TurnCard({
           className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
         >
           <Bookmark size={15} /> Sorğunu saxla
+        </button>
+        <button
+          onClick={onMakeDecision}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+        >
+          <Target size={15} /> Qərara çevir
         </button>
       </div>
     </div>
