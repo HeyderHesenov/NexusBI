@@ -102,3 +102,36 @@ async def test_upload_rejects_bad_extension(client: AsyncClient, auth: dict):
         headers=auth,
     )
     assert bad.status_code == 400
+
+
+async def test_query_error_surfaces_generated_sql(
+    client: AsyncClient, auth: dict, sqlite_source: str, monkeypatch
+):
+    from app.core.exceptions import DataSourceConnectionError
+    from app.services import datasource_service
+
+    async def boom(ds, sql):
+        raise DataSourceConnectionError("Sorğu icra olunmadı.", detail="no such column")
+
+    monkeypatch.setattr(datasource_service, "execute_select", boom)
+
+    created = await client.post(
+        "/api/v1/datasource/",
+        json={"name": "S", "db_type": "sqlite", "connection_string": sqlite_source},
+        headers=auth,
+    )
+    ds_id = created.json()["id"]
+    res = await client.post(
+        "/api/v1/query/ask",
+        json={"nl_query": "nəsə", "datasource_id": ds_id},
+        headers=auth,
+    )
+    assert res.status_code == 502
+    body = res.json()
+    assert body["sql"] == "SELECT product, revenue FROM sales"  # generated SQL surfaced
+
+
+async def test_metrics_endpoint(client: AsyncClient):
+    resp = await client.get("/metrics")
+    assert resp.status_code == 200
+    assert "nexusbi_http_requests_total" in resp.text

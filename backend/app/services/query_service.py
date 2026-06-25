@@ -13,6 +13,7 @@ from app.ai.insight_generator import generate_insight
 from app.ai.text2sql import Text2SQLEngine
 from app.ai.types import ChartConfig, Text2SQLResult
 from app.config import settings
+from app.core.exceptions import NexusBIException
 from app.models.query_log import QueryLog
 from app.schemas.query import ColumnInfo, QueryResult
 from app.services import datasource_service as ds_service
@@ -165,7 +166,12 @@ async def _live_pipeline(
     schema = await ds_service.get_schema_cached(ds, cache)
     schema_text = ds_service.schema_as_prompt(schema)
     sql_result = await _engine.generate_sql(nl_query, schema_text, ds.db_type.value)
-    columns, rows = await ds_service.execute_select(ds, sql_result.sql)
+    try:
+        columns, rows = await ds_service.execute_select(ds, sql_result.sql)
+    except NexusBIException as exc:
+        # Surface the generated SQL so the user can see what failed.
+        exc.sql = sql_result.sql
+        raise
     return sql_result, columns, rows, ds.db_type.value
 
 
