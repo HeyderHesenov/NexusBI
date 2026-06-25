@@ -3,6 +3,7 @@ from app.db.base import Base
 from app.models.alert import Alert, Notification
 from app.models.dashboard import Dashboard, Widget
 from app.models.datasource import DataSource, DBType
+from app.models.decision import Decision
 from app.models.metric import Metric
 from app.models.query_log import QueryLog
 from app.models.saved_query import SavedQuery
@@ -20,4 +21,5 @@ __all__ = [
     "Metric",
     "Alert",
     "Notification",
+    "Decision",
 ]

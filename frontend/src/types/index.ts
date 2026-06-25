@@ -112,6 +112,26 @@ export interface AppNotification {
   created_at: string
 }
 
+export type DecisionStatus = 'open' | 'in_progress' | 'done'
+
+export interface Decision {
+  id: string
+  title: string
+  insight: string
+  action: string
+  status: DecisionStatus
+  outcome: string
+  query_log_id: string | null
+  created_at: string
+}
+
+export interface DecisionCreate {
+  title: string
+  insight: string
+  action: string
+  query_log_id: string | null
+}
+
 export type Schedule = 'off' | 'hourly' | 'daily' | 'weekly'
 
 export interface SavedQuery {
