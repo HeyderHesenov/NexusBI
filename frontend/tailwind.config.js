@@ -1,24 +1,35 @@
 /** @type {import('tailwindcss').Config} */
+
+// Semantic tokens resolve to CSS variables (RGB channel triplets) so the same
+// utility classes work in both light and dark themes, and opacity modifiers
+// (bg-bg/70, border-accent/30) keep working via the <alpha-value> placeholder.
+const token = (name) => `rgb(var(${name}) / <alpha-value>)`
+
 export default {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        bg: '#131418',
-        surface: { DEFAULT: '#1A1C21', '2': '#212429' },
-        line: { DEFAULT: '#2A2E35', strong: '#363B43' },
-        ink: { DEFAULT: '#ECEAE6', soft: '#A8ADB5', faint: '#6E747D' },
-        accent: { DEFAULT: '#0E9F6E', press: '#0B7E58', soft: 'rgba(14,159,110,0.12)' },
+        bg: token('--bg'),
+        surface: { DEFAULT: token('--surface'), '2': token('--surface-2') },
+        line: { DEFAULT: token('--line'), strong: token('--line-strong') },
+        ink: { DEFAULT: token('--ink'), soft: token('--ink-soft'), faint: token('--ink-faint') },
+        accent: {
+          DEFAULT: token('--accent'),
+          press: token('--accent-press'),
+          soft: token('--accent-soft'),
+        },
       },
       fontFamily: {
-        display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
+        display: ['"Source Serif 4"', 'Georgia', 'serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        card: '0 1px 0 rgba(255,255,255,0.03) inset, 0 14px 32px -18px rgba(0,0,0,0.7)',
-        pop: '0 8px 24px -10px rgba(0,0,0,0.6)',
+        // Soft, Claude-like elevation — quiet borders, gentle drop.
+        card: '0 1px 2px rgb(var(--shadow) / 0.04), 0 8px 24px -16px rgb(var(--shadow) / 0.25)',
+        pop: '0 8px 28px -12px rgb(var(--shadow) / 0.30)',
       },
     },
   },

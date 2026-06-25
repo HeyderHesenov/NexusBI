@@ -13,7 +13,7 @@ export function NexusMark({ size = 24, className = '' }: { size?: number; classN
       aria-hidden="true"
     >
       {/* links */}
-      <g stroke="#0E9F6E" strokeWidth="1.6" strokeLinecap="round" opacity="0.55">
+      <g stroke="rgb(var(--accent))" strokeWidth="1.6" strokeLinecap="round" opacity="0.55">
         <line x1="6" y1="6" x2="18" y2="6" />
         <line x1="6" y1="6" x2="6" y2="18" />
         <line x1="18" y1="6" x2="18" y2="18" />
@@ -21,13 +21,13 @@ export function NexusMark({ size = 24, className = '' }: { size?: number; classN
         <line x1="6" y1="6" x2="18" y2="18" />
       </g>
       {/* nodes */}
-      <g fill="#131418" stroke="#0E9F6E" strokeWidth="1.6">
+      <g fill="rgb(var(--surface-2))" stroke="rgb(var(--accent))" strokeWidth="1.6">
         <circle cx="6" cy="18" r="2.4" />
         <circle cx="18" cy="6" r="2.4" />
         <circle cx="6" cy="6" r="2.4" />
       </g>
       {/* active node — the resolved insight */}
-      <circle cx="18" cy="18" r="3" fill="#0E9F6E" />
+      <circle cx="18" cy="18" r="3" fill="rgb(var(--accent))" />
     </svg>
   )
 }

@@ -8,7 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
-import { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } from './theme'
+import { useChartTheme } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -17,6 +17,7 @@ interface Props {
 }
 
 export function LineChartWidget({ data, config, height = 320 }: Props) {
+  const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   return (

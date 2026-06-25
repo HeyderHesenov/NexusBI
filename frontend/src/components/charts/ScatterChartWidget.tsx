@@ -9,7 +9,7 @@ import {
   ZAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
-import { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } from './theme'
+import { useChartTheme } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -21,6 +21,7 @@ interface Props {
 /** Scatter needs two numeric axes; falls back to row index for X when the
  *  configured X column isn't numeric. */
 export function ScatterChartWidget({ data, config, height = 320, onPointClick }: Props) {
+  const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const keys = Object.keys(data[0] ?? {})
   const numeric = keys.filter((k) => typeof data[0]?.[k] === 'number')
   const x = (config.x_axis && numeric.includes(config.x_axis) && config.x_axis) || numeric[0] || keys[0]

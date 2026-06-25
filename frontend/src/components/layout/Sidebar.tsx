@@ -59,7 +59,7 @@ export function Sidebar() {
 
       <div className="mt-auto px-5 py-5">
         <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_6px_#0E9F6E]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_6px_rgb(var(--accent))]" />
           <span className="font-mono text-[10px] uppercase tracking-wider text-ink-soft">
             Demo mode
           </span>
