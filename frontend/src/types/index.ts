@@ -228,3 +228,15 @@ export interface ForecastResult {
   value_col: string
   history: Record<string, unknown>[]
 }
+
+export interface ExplainDriver {
+  label: string | null
+  contribution: number | null
+  direction: string
+  note: string
+}
+
+export interface ExplainResult {
+  drivers: ExplainDriver[]
+  summary: string
+}

@@ -8,6 +8,8 @@ from app.ai.client import chat_json
 from app.ai.prompt_templates import (
     ANOMALY_DETECTOR_PROMPT,
     ANOMALY_DETECTOR_USER_PROMPT,
+    EXPLAIN_PROMPT,
+    EXPLAIN_USER_PROMPT,
     FORECAST_PROMPT,
     FORECAST_USER_PROMPT,
 )
@@ -75,3 +77,21 @@ async def forecast(
         "label_col": label_col,
         "value_col": value_col,
     }
+
+
+async def explain(
+    columns: list[str], rows: list[dict[str, Any]], nl_query: str
+) -> dict[str, Any]:
+    """Root-cause: decompose the result into the biggest drivers via the LLM."""
+    if not rows or not columns:
+        raise AIGenerationError("Təhlil üçün data yoxdur.")
+    user = EXPLAIN_USER_PROMPT.format(
+        nl_query=nl_query,
+        columns=json.dumps(columns, ensure_ascii=False),
+        data=json.dumps(rows[:_MAX_ROWS], ensure_ascii=False, default=str),
+    )
+    try:
+        raw = await chat_json(EXPLAIN_PROMPT, user)
+    except Exception as exc:  # noqa: BLE001
+        raise AIGenerationError("İzah alınmadı.") from exc
+    return {"drivers": raw.get("drivers", []), "summary": raw.get("summary", "")}

@@ -37,3 +37,15 @@ class ForecastResponse(BaseModel):
     label_col: str
     value_col: str
     history: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class ExplainDriver(BaseModel):
+    label: str | None = None
+    contribution: float | None = None
+    direction: str = ""
+    note: str = ""
+
+
+class ExplainResponse(BaseModel):
+    drivers: list[ExplainDriver] = Field(default_factory=list)
+    summary: str = ""

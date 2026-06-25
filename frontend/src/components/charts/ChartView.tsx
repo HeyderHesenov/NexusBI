@@ -1,9 +1,10 @@
-import { AlertTriangle, Download, Tags, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Download, Sparkles, Tags, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import type { AnomalyResult, ChartConfig, ChartType, ForecastResult } from '../../types'
+import type { AnomalyResult, ChartConfig, ChartType, ExplainResult, ForecastResult } from '../../types'
 import { downloadCsv } from '../../lib/csv'
 import * as analysisApi from '../../api/analysis'
 import { AnomalyPanel } from './AnomalyPanel'
+import { ExplainPanel } from './ExplainPanel'
 import { ChartRenderer } from './ChartRenderer'
 import { CHART_BTN, ChartToolbar } from './ChartToolbar'
 import { FilterPills, type Filter } from './FilterPills'
@@ -28,6 +29,8 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
   const [detecting, setDetecting] = useState(false)
   const [forecast, setForecast] = useState<ForecastResult | null>(null)
   const [forecasting, setForecasting] = useState(false)
+  const [explanation, setExplanation] = useState<ExplainResult | null>(null)
+  const [explaining, setExplaining] = useState(false)
 
   // Reset view state when a new result arrives.
   useEffect(() => {
@@ -35,7 +38,20 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
     setFilters([])
     setAnomalies(null)
     setForecast(null)
+    setExplanation(null)
   }, [config.chart_type, data])
+
+  const runExplain = async () => {
+    if (!queryLogId) return
+    setExplaining(true)
+    try {
+      setExplanation(await analysisApi.explain(queryLogId))
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setExplaining(false)
+    }
+  }
 
   const runForecast = async () => {
     if (!queryLogId) return
@@ -120,6 +136,15 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
               >
                 <AlertTriangle size={14} /> {detecting ? 'Təhlil…' : 'Anomaliyalar'}
               </button>
+              <button
+                onClick={runExplain}
+                disabled={explaining}
+                className={`${CHART_BTN} border ${
+                  explanation ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
+                }`}
+              >
+                <Sparkles size={14} /> {explaining ? 'İzah…' : 'Bunu izah et'}
+              </button>
             </>
           )}
           <button
@@ -147,6 +172,8 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
       />
 
       {anomalies && <AnomalyPanel result={anomalies} />}
+
+      {explanation && <ExplainPanel result={explanation} />}
 
       {forecast && (
         <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">

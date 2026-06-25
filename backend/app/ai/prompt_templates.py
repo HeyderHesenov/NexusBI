@@ -118,3 +118,27 @@ DƏYƏR SÜTUNU: {value_col}
 DÖVR SAYI: {periods}
 TARİXİ DATA: {data}
 """.strip()
+
+EXPLAIN_PROMPT = """
+Sen senior biznes analitiksən. Verilmiş nəticə üçün KÖK-SƏBƏB analizi apar:
+- Ən böyük töhfə verən seqmentləri (driver) müəyyən et — hansı kateqoriya/ölçü
+  nəticəni ən çox formalaşdırır.
+- Əgər tarix/dövr ölçüsü varsa, dəyişikliyi izah et (nə artdı/azaldı və nə qədər).
+- Hər driver üçün təxmini töhfə faizi (contribution) və istiqamət (up/down) ver.
+Qısa, idarəçi üçün aydın dildə. Sorğu hansı dildədirsə, o dildə cavab ver.
+
+OUTPUT FORMAT (JSON):
+{{
+  "drivers": [
+    {{"label": "Qərb regionu", "contribution": 62.0, "direction": "down",
+      "note": "Ən böyük düşüş mənbəyi"}}
+  ],
+  "summary": "Düşüşün əsas hissəsi Qərb regionundandır."
+}}
+""".strip()
+
+EXPLAIN_USER_PROMPT = """
+SORĞU: {nl_query}
+SÜTUNLAR: {columns}
+DATA: {data}
+""".strip()
