@@ -36,7 +36,7 @@ export function PieChartWidget({
     const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0'
     return (
       <div style={{ ...tooltipStyle, padding: '8px 10px' }}>
-        <div style={{ ...tooltipLabel, marginBottom: 2 }}>{String(row[name] ?? '')}</div>
+        <div style={{ ...tooltipLabel, marginBottom: 2 }}>{value}</div>
         <div style={tooltipItem}>
           {v.toLocaleString()} ({pct}%)
         </div>
