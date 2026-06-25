@@ -1,6 +1,7 @@
 """Dashboard and widget CRUD business logic."""
 from __future__ import annotations
 
+import secrets
 from typing import Any
 
 from sqlalchemy import select
@@ -14,6 +15,32 @@ from app.models.query_log import QueryLog
 from app.schemas.dashboard import WidgetChart, WidgetResponse
 from app.services import query_service
 from app.services.cache_service import CacheService
+
+
+async def enable_share(db: AsyncSession, user_id: str, dashboard_id: str) -> str:
+    dash = await get_dashboard(db, user_id, dashboard_id)
+    if not dash.share_token:
+        dash.share_token = secrets.token_urlsafe(24)
+        await db.flush()
+    return dash.share_token
+
+
+async def disable_share(db: AsyncSession, user_id: str, dashboard_id: str) -> None:
+    dash = await get_dashboard(db, user_id, dashboard_id)
+    dash.share_token = None
+    await db.flush()
+
+
+async def get_by_token(db: AsyncSession, token: str) -> Dashboard:
+    result = await db.execute(
+        select(Dashboard)
+        .where(Dashboard.share_token == token)
+        .options(selectinload(Dashboard.widgets))
+    )
+    dash = result.scalar_one_or_none()
+    if dash is None:
+        raise SchemaNotFoundError("Paylaşılan dashboard tapılmadı.")
+    return dash
 
 
 async def create_dashboard(

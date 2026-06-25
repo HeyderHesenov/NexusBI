@@ -1,10 +1,11 @@
-import { LayoutGrid, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { LayoutGrid, Plus, RefreshCw, Share2, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import type { Layouts } from 'react-grid-layout'
 import { AddWidgetModal } from '../components/dashboard/AddWidgetModal'
 import { DashboardGrid } from '../components/dashboard/DashboardGrid'
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
+import { ShareDashboardModal } from '../components/dashboard/ShareDashboardModal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { useDashboardStore } from '../store/dashboardStore'
 
@@ -16,6 +17,7 @@ export function DashboardPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
@@ -55,6 +57,14 @@ export function DashboardPage() {
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
             >
               <Plus size={16} /> Widget
+            </button>
+          )}
+          {current && (
+            <button
+              onClick={() => setShareOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+            >
+              <Share2 size={16} /> Paylaş
             </button>
           )}
           {current && (
@@ -116,6 +126,14 @@ export function DashboardPage() {
           setCreateOpen(false)
         }}
       />
+
+      {current && (
+        <ShareDashboardModal
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          dashboardId={current.id}
+        />
+      )}
 
       {current && (
         <ConfirmDialog

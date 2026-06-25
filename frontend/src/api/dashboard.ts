@@ -60,3 +60,17 @@ export async function refreshAll(dashboardId: string): Promise<Dashboard> {
   const { data } = await client.post<Dashboard>(`/dashboard/${dashboardId}/refresh-all`)
   return data
 }
+
+export async function enableShare(dashboardId: string): Promise<string> {
+  const { data } = await client.post<{ token: string }>(`/dashboard/${dashboardId}/share`)
+  return data.token
+}
+
+export async function disableShare(dashboardId: string): Promise<void> {
+  await client.delete(`/dashboard/${dashboardId}/share`)
+}
+
+export async function getPublicDashboard(token: string): Promise<Dashboard> {
+  const { data } = await client.get<Dashboard>(`/public/dashboard/${token}`)
+  return data
+}

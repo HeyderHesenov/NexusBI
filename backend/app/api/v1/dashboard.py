@@ -63,6 +63,18 @@ async def delete(dashboard_id: str, user: CurrentUser, db: DbDep) -> Response:
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/{dashboard_id}/share")
+async def enable_share(dashboard_id: str, user: CurrentUser, db: DbDep) -> dict[str, str]:
+    token = await svc.enable_share(db, user.id, dashboard_id)
+    return {"token": token}
+
+
+@router.delete("/{dashboard_id}/share", status_code=status.HTTP_204_NO_CONTENT)
+async def disable_share(dashboard_id: str, user: CurrentUser, db: DbDep) -> Response:
+    await svc.disable_share(db, user.id, dashboard_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/{dashboard_id}/widget", response_model=WidgetResponse, status_code=status.HTTP_201_CREATED)
 async def add_widget(
     dashboard_id: str, payload: WidgetCreate, user: CurrentUser, db: DbDep
