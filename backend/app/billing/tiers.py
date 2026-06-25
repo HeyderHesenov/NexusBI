@@ -48,7 +48,22 @@ TIERS: dict[str, Tier] = {
         monthly_quota=3000,
         features=["Aylıq 3000 AI sorğusu (10x)", "Bütün Max üstünlükləri", "Ən yüksək limit"],
     ),
+    # Internal demo/test tier — unlimited usage, not shown as a purchasable plan.
+    "unlimited": Tier(
+        key="unlimited",
+        name="Limitsiz",
+        price_usd=0,
+        monthly_quota=10**9,
+        features=["Limitsiz AI sorğusu", "Bütün özəlliklər"],
+    ),
 }
+
+#: Tiers offered for purchase on the pricing page (excludes internal "unlimited").
+PURCHASABLE = ["free", "pro", "max", "max_plus"]
+
+
+def is_unlimited(key: str | None) -> bool:
+    return key == "unlimited"
 
 
 def get_tier(key: str | None) -> Tier:

@@ -32,10 +32,40 @@ def _assert_production_secrets() -> None:
         raise RuntimeError("FERNET_KEY must be set in production.")
 
 
+async def _seed_demo_account() -> None:
+    """Idempotently ensure an unlimited demo login exists (DEMO_MODE only)."""
+    from sqlalchemy import select
+
+    from app.core.security import hash_password
+    from app.db.session import AsyncSessionLocal
+    from app.models.user import User
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.email == "demo@nexusbi.io"))
+        user = result.scalar_one_or_none()
+        if user is None:
+            db.add(
+                User(
+                    email="demo@nexusbi.io",
+                    hashed_password=hash_password("demo1234"),
+                    full_name="Demo",
+                    subscription_tier="unlimited",
+                )
+            )
+        elif user.subscription_tier != "unlimited":
+            user.subscription_tier = "unlimited"
+        await db.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _assert_production_secrets()
     app.state.cache = await build_cache_service()
+    if settings.DEMO_MODE:
+        try:
+            await _seed_demo_account()
+        except Exception as exc:  # noqa: BLE001 — never block startup on seeding
+            log.warning("demo_seed_failed", error=str(exc))
     log.info("startup", demo_mode=settings.DEMO_MODE, cache=app.state.cache.available)
     yield
 

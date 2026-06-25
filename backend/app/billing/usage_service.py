@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.billing.tiers import get_tier
+from app.billing.tiers import get_tier, is_unlimited
 from app.core.exceptions import RateLimitError
 from app.models.user import User
 
@@ -29,6 +29,8 @@ def _reset_if_expired(user: User, now: datetime) -> None:
 
 async def check_and_consume(db: AsyncSession, user: User) -> None:
     """Reset the window if elapsed, enforce the tier quota, then consume one call."""
+    if is_unlimited(user.subscription_tier):
+        return  # demo/test account — no counting, no limit
     now = datetime.now(timezone.utc)
     _reset_if_expired(user, now)
     quota = get_tier(user.subscription_tier).monthly_quota
@@ -44,6 +46,17 @@ async def check_and_consume(db: AsyncSession, user: User) -> None:
 def get_usage(user: User) -> dict[str, Any]:
     """Snapshot the user's current quota state (no mutation)."""
     tier = get_tier(user.subscription_tier)
+    if is_unlimited(user.subscription_tier):
+        # Sentinel limit = -1 tells the frontend to render "unlimited".
+        return {
+            "tier": tier.key,
+            "tier_name": tier.name,
+            "used": 0,
+            "limit": -1,
+            "remaining": -1,
+            "period_start": None,
+            "resets_at": None,
+        }
     start = _aware(user.usage_period_start)
     used = user.ai_calls_used
     if start is None or datetime.now(timezone.utc) - start >= PERIOD:

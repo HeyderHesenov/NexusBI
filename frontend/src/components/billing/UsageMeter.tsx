@@ -12,6 +12,24 @@ export function UsageMeter() {
 
   if (!usage) return null
 
+  const unlimited = usage.limit < 0
+
+  if (unlimited) {
+    return (
+      <Link
+        to="/pricing"
+        title="Plan və istifadə"
+        className="flex items-center gap-2 rounded-lg border border-accent/40 bg-accent-soft px-3 py-1.5 transition-colors hover:border-accent"
+      >
+        <Zap size={13} className="text-accent" />
+        <span className="font-mono text-[10px] uppercase tracking-wider text-ink-soft">
+          {usage.tier_name}
+        </span>
+        <span className="font-mono text-[11px] text-accent">∞</span>
+      </Link>
+    )
+  }
+
   const pct = usage.limit > 0 ? Math.min(100, (usage.used / usage.limit) * 100) : 0
   const low = usage.remaining <= Math.max(1, usage.limit * 0.1)
 

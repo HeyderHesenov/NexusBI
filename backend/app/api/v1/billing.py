@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.billing import usage_service
-from app.billing.tiers import TIERS, get_tier
+from app.billing.tiers import PURCHASABLE, TIERS, get_tier
 from app.core.exceptions import NexusBIException
 from app.dependencies import CurrentUser, DbDep
 from app.schemas.billing import PlanInfo, UpgradeRequest, UsageResponse
@@ -27,7 +27,7 @@ async def plans() -> list[PlanInfo]:
             monthly_quota=t.monthly_quota,
             features=t.features,
         )
-        for t in TIERS.values()
+        for t in (TIERS[k] for k in PURCHASABLE)
     ]
 
 

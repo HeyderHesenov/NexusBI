@@ -14,6 +14,7 @@ export function PricingPage() {
   }, [loadPlans, loadUsage])
 
   const currentTier = usage?.tier ?? 'free'
+  const unlimited = (usage?.limit ?? 0) < 0
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -26,6 +27,16 @@ export function PricingPage() {
           Aylıq AI sorğu limitləri. İstədiyiniz vaxt yüksəldin və ya endirin.
         </p>
       </div>
+
+      {unlimited && (
+        <div className="mb-6 flex items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent-soft px-4 py-3 text-sm text-ink">
+          <Sparkles size={15} className="text-accent" />
+          <span>
+            <span className="font-semibold">Demo · Limitsiz</span> — hesabınızda limit
+            yoxdur, hər özəlliyi sərbəst sınaya bilərsiniz.
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {plans.map((plan) => (
@@ -40,7 +51,7 @@ export function PricingPage() {
         ))}
       </div>
 
-      {usage && (
+      {usage && !unlimited && (
         <p className="mt-6 text-center font-mono text-xs text-ink-faint">
           Bu ay: {usage.used} / {usage.limit} sorğu istifadə olunub
         </p>
