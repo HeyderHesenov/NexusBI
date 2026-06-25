@@ -51,8 +51,9 @@ async def get_one(dashboard_id: str, user: CurrentUser, db: DbDep) -> DashboardR
 async def update(
     dashboard_id: str, payload: DashboardUpdate, user: CurrentUser, db: DbDep
 ) -> DashboardResponse:
-    await svc.update_dashboard(db, user.id, dashboard_id, payload.model_dump(exclude_unset=True))
-    dash = await svc.get_dashboard(db, user.id, dashboard_id)
+    dash = await svc.update_dashboard(
+        db, user.id, dashboard_id, payload.model_dump(exclude_unset=True)
+    )
     return await _dashboard_response(db, user.id, dash)
 
 

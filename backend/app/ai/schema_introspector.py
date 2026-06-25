@@ -1,10 +1,7 @@
-"""Read DB schema and format it as LLM context, with Redis caching."""
+"""Read DB schema and format it as LLM context."""
 from __future__ import annotations
 
-import json
 from typing import Any
-
-_SCHEMA_CACHE_TTL = 3600
 
 
 async def get_schema(connection_string: str) -> dict[str, list[dict[str, str]]]:
@@ -40,18 +37,3 @@ def format_schema_for_prompt(schema: dict[str, Any]) -> str:
             cols = ", ".join(str(c) for c in columns)
         lines.append(f"- {table}({cols})")
     return "\n".join(lines)
-
-
-async def cache_schema(datasource_id: str, schema: dict[str, Any], redis_client: Any) -> None:
-    if redis_client is None:
-        return
-    await redis_client.set(
-        f"schema:{datasource_id}", json.dumps(schema), ex=_SCHEMA_CACHE_TTL
-    )
-
-
-async def get_cached_schema(datasource_id: str, redis_client: Any) -> dict[str, Any] | None:
-    if redis_client is None:
-        return None
-    raw = await redis_client.get(f"schema:{datasource_id}")
-    return json.loads(raw) if raw else None
