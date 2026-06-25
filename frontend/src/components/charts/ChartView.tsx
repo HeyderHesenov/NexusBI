@@ -1,10 +1,11 @@
-import { AlertTriangle, Download, Sparkles, Tags, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Download, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { AnomalyResult, ChartConfig, ChartType, ExplainResult, ForecastResult } from '../../types'
 import { downloadCsv } from '../../lib/csv'
 import * as analysisApi from '../../api/analysis'
 import { AnomalyPanel } from './AnomalyPanel'
 import { ExplainPanel } from './ExplainPanel'
+import { ScenarioPanel } from './ScenarioPanel'
 import { ChartRenderer } from './ChartRenderer'
 import { CHART_BTN, ChartToolbar } from './ChartToolbar'
 import { FilterPills, type Filter } from './FilterPills'
@@ -31,6 +32,7 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
   const [forecasting, setForecasting] = useState(false)
   const [explanation, setExplanation] = useState<ExplainResult | null>(null)
   const [explaining, setExplaining] = useState(false)
+  const [scenario, setScenario] = useState(false)
 
   // Reset view state when a new result arrives.
   useEffect(() => {
@@ -39,7 +41,15 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
     setAnomalies(null)
     setForecast(null)
     setExplanation(null)
+    setScenario(false)
   }, [config.chart_type, data])
+
+  // Numeric metric column for what-if (y_axis if numeric, else first numeric column).
+  const valueCol = useMemo(() => {
+    const sample = data[0] ?? {}
+    if (config.y_axis && typeof sample[config.y_axis] === 'number') return config.y_axis
+    return Object.keys(sample).find((k) => typeof sample[k] === 'number') ?? null
+  }, [data, config.y_axis])
 
   const runExplain = async () => {
     if (!queryLogId) return
@@ -147,6 +157,17 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
               </button>
             </>
           )}
+          {valueCol && (
+            <button
+              onClick={() => setScenario((v) => !v)}
+              aria-pressed={scenario}
+              className={`${CHART_BTN} border ${
+                scenario ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
+              }`}
+            >
+              <SlidersHorizontal size={14} /> Ssenari
+            </button>
+          )}
           <button
             onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
             aria-label="CSV yüklə"
@@ -174,6 +195,8 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
       {anomalies && <AnomalyPanel result={anomalies} />}
 
       {explanation && <ExplainPanel result={explanation} />}
+
+      {scenario && <ScenarioPanel data={filtered} valueCol={valueCol} />}
 
       {forecast && (
         <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">
