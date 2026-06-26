@@ -1,6 +1,7 @@
 import { AlertTriangle, Bookmark, Clock, Database, Lightbulb, LayoutGrid, MessageSquarePlus, RefreshCw, Target } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ChartView } from '../components/charts/ChartView'
+import { TypewriterText } from '../components/charts/TypewriterText'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
 import { CreateDecisionModal } from '../components/query/CreateDecisionModal'
 import { DatasourcePicker } from '../components/query/DatasourcePicker'
@@ -201,7 +202,11 @@ function TurnCard({
           <Lightbulb size={18} className="mt-0.5 shrink-0 text-accent" />
           <div>
             <p className="eyebrow mb-1 text-accent">İnsight</p>
-            <p className="text-sm leading-relaxed text-ink">{result.insight}</p>
+            <TypewriterText
+              key={result.query_log_id ?? result.insight}
+              text={result.insight}
+              className="text-sm leading-relaxed text-ink"
+            />
           </div>
         </div>
       )}
