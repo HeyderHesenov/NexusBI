@@ -222,6 +222,7 @@ function TurnCard({
           config={result.chart_config}
           exportName="nexusbi-query"
           queryLogId={result.query_log_id}
+          title={q}
         />
       </div>
 

@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Download, Maximize2, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { AnomalyResult, ChartConfig, ChartType, ExplainResult, ForecastResult } from '../../types'
 import { downloadCsv } from '../../lib/csv'
@@ -7,6 +7,7 @@ import { AnomalyPanel } from './AnomalyPanel'
 import { ExplainPanel } from './ExplainPanel'
 import { ScenarioPanel } from './ScenarioPanel'
 import { ChartRenderer } from './ChartRenderer'
+import { ChartFullscreenModal } from './ChartFullscreenModal'
 import { CHART_BTN, ChartToolbar } from './ChartToolbar'
 import { FilterPills, type Filter } from './FilterPills'
 import { ForecastChartWidget } from './ForecastChartWidget'
@@ -18,11 +19,13 @@ interface Props {
   exportName?: string
   /** When set, enables AI anomaly detection on this result. */
   queryLogId?: string | null
+  /** Heading shown in the fullscreen overlay (e.g. the NL question). */
+  title?: string
 }
 
 /** Interactive chart with a type switcher, legend toggle, CSV export,
  *  click-to-drill-down filtering and AI anomaly detection. */
-export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: Props) {
+export function ChartView({ data, config, exportName = 'nexusbi', queryLogId, title }: Props) {
   const [type, setType] = useState<ChartType>(config.chart_type)
   const [showLegend, setShowLegend] = useState(false)
   const [filters, setFilters] = useState<Filter[]>([])
@@ -33,6 +36,7 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
   const [explanation, setExplanation] = useState<ExplainResult | null>(null)
   const [explaining, setExplaining] = useState(false)
   const [scenario, setScenario] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
 
   // Reset view state when a new result arrives.
   useEffect(() => {
@@ -110,6 +114,17 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
 
   const activeConfig: ChartConfig = { ...config, chart_type: type }
 
+  const renderChart = (height: number | string) => (
+    <ChartRenderer
+      data={filtered}
+      config={activeConfig}
+      height={height}
+      showLegend={showLegend}
+      onPointClick={addFilter}
+      anomalyLabels={anomalyLabels}
+    />
+  )
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -169,6 +184,13 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
             </button>
           )}
           <button
+            onClick={() => setFullscreen(true)}
+            aria-label="Tam ekran"
+            className={`${CHART_BTN} border border-line text-ink-soft hover:border-accent hover:text-ink`}
+          >
+            <Maximize2 size={14} /> Tam ekran
+          </button>
+          <button
             onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
             aria-label="CSV yüklə"
             className={`${CHART_BTN} border border-line text-ink-soft hover:border-accent hover:text-ink`}
@@ -184,13 +206,7 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
         onClear={() => setFilters([])}
       />
 
-      <ChartRenderer
-        data={filtered}
-        config={activeConfig}
-        showLegend={showLegend}
-        onPointClick={addFilter}
-        anomalyLabels={anomalyLabels}
-      />
+      {renderChart(320)}
 
       {anomalies && <AnomalyPanel result={anomalies} />}
 
@@ -210,6 +226,22 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId }: 
           )}
         </div>
       )}
+
+      <ChartFullscreenModal
+        open={fullscreen}
+        onClose={() => setFullscreen(false)}
+        title={title}
+      >
+        <div className="flex h-full flex-col gap-3">
+          <ChartToolbar value={type} onChange={setType} />
+          <FilterPills
+            filters={filters}
+            onRemove={(i) => setFilters((cur) => cur.filter((_, idx) => idx !== i))}
+            onClear={() => setFilters([])}
+          />
+          <div className="min-h-0 flex-1">{renderChart('100%')}</div>
+        </div>
+      </ChartFullscreenModal>
     </div>
   )
 }
