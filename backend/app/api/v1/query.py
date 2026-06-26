@@ -1,7 +1,7 @@
 """Query endpoints — the NL → dashboard pipeline."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response, status
 from sqlalchemy import func, select
 
 from app.ai import analysis
@@ -85,6 +85,14 @@ async def get_one(query_id: str, user: CurrentUser, db: DbDep) -> QueryResult:
         execution_time_ms=log.execution_time_ms,
         query_log_id=log.id,
     )
+
+
+@router.delete("/{query_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_one(query_id: str, user: CurrentUser, db: DbDep) -> Response:
+    log = await _get_log(db, user.id, query_id)
+    await db.delete(log)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{query_id}/retry", response_model=QueryResult)

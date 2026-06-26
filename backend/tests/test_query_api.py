@@ -46,6 +46,43 @@ async def test_full_query_pipeline(client: AsyncClient, auth: dict):
     assert hist.json()["total"] >= 1
 
 
+async def test_delete_query_removes_it(client: AsyncClient, auth: dict):
+    ask = await client.post(
+        "/api/v1/query/ask",
+        json={"nl_query": "silinəcək sorğu", "datasource_id": None},
+        headers=auth,
+    )
+    qid = ask.json()["query_log_id"]
+
+    delete = await client.delete(f"/api/v1/query/{qid}", headers=auth)
+    assert delete.status_code == 204
+
+    gone = await client.get(f"/api/v1/query/{qid}", headers=auth)
+    assert gone.status_code == 404
+
+
+async def test_delete_query_rejects_other_user(client: AsyncClient, auth: dict):
+    ask = await client.post(
+        "/api/v1/query/ask",
+        json={"nl_query": "sahibinin sorğusu", "datasource_id": None},
+        headers=auth,
+    )
+    qid = ask.json()["query_log_id"]
+
+    other = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "intruder@nexusbi.io", "password": "pw1234", "full_name": "X"},
+    )
+    other_auth = {"Authorization": f"Bearer {other.json()['access_token']}"}
+
+    resp = await client.delete(f"/api/v1/query/{qid}", headers=other_auth)
+    assert resp.status_code == 404
+
+    # owner can still read it
+    still = await client.get(f"/api/v1/query/{qid}", headers=auth)
+    assert still.status_code == 200
+
+
 async def test_unauthorized_access(client: AsyncClient):
     resp = await client.post(
         "/api/v1/query/ask", json={"nl_query": "x", "datasource_id": None}

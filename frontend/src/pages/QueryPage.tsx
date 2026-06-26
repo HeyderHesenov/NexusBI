@@ -1,6 +1,8 @@
-import { AlertTriangle, Bookmark, Clock, Database, Lightbulb, LayoutGrid, MessageSquarePlus, RefreshCw, Target } from 'lucide-react'
+import { AlertTriangle, Bookmark, Clock, Database, Lightbulb, LayoutGrid, MessageSquarePlus, RefreshCw, Target, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ChartView } from '../components/charts/ChartView'
+import { HistoryDeleteUI } from '../components/query/HistoryDeleteUI'
+import { useHistoryDelete } from '../hooks/useHistoryDelete'
 import { TypewriterText } from '../components/charts/TypewriterText'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
 import { CreateDecisionModal } from '../components/query/CreateDecisionModal'
@@ -17,6 +19,7 @@ export function QueryPage() {
   const { thread, loading, error, ask, retry, newChat, history, loadHistory, datasourceId } =
     useQueryStore()
   const { schemas, loadSchema } = useDatasourceStore()
+  const del = useHistoryDelete()
   const [saveLogId, setSaveLogId] = useState<string | null>(null)
   const [saveQ, setSaveQ] = useState<string | null>(null)
   const [decideFor, setDecideFor] = useState<{ insight: string; logId: string | null } | null>(null)
@@ -130,13 +133,21 @@ export function QueryPage() {
             ) : (
               <ul className="space-y-1">
                 {history.slice(0, 12).map((item) => (
-                  <li key={item.id}>
+                  <li key={item.id} className="group relative">
                     <button
                       onClick={() => onAsk(item.natural_language)}
+                      onContextMenu={(e) => del.openMenu(item.id, e)}
                       title={item.natural_language}
-                      className="w-full truncate rounded-lg px-2 py-1.5 text-left text-sm text-ink-soft transition hover:bg-surface hover:text-ink"
+                      className="w-full truncate rounded-lg px-2 py-1.5 pr-8 text-left text-sm text-ink-soft transition hover:bg-surface hover:text-ink"
                     >
                       {item.natural_language}
+                    </button>
+                    <button
+                      onClick={() => del.askDelete(item.id)}
+                      aria-label="Sorğunu sil"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-faint opacity-0 transition hover:bg-surface-2 hover:text-[#D87C6B] focus:opacity-100 group-hover:opacity-100"
+                    >
+                      <Trash2 size={14} />
                     </button>
                   </li>
                 ))}
@@ -172,6 +183,8 @@ export function QueryPage() {
           queryLogId={decideFor.logId}
         />
       )}
+
+      <HistoryDeleteUI del={del} />
     </>
   )
 }

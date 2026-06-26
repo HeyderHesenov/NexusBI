@@ -1,8 +1,12 @@
 import { useEffect } from 'react'
+import { Trash2 } from 'lucide-react'
 import { useQueryStore } from '../store/queryStore'
+import { HistoryDeleteUI } from '../components/query/HistoryDeleteUI'
+import { useHistoryDelete } from '../hooks/useHistoryDelete'
 
 export function HistoryPage() {
   const { history, loadHistory } = useQueryStore()
+  const del = useHistoryDelete()
   useEffect(() => {
     loadHistory().catch(() => undefined)
   }, [loadHistory])
@@ -16,9 +20,9 @@ export function HistoryPage() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-line">
-              {['Sorğu', 'Chart', 'ms', 'Tarix'].map((h) => (
+              {['Sorğu', 'Chart', 'ms', 'Tarix', ''].map((h, i) => (
                 <th
-                  key={h}
+                  key={i}
                   className="px-5 py-3 font-mono text-[11px] uppercase tracking-wider text-ink-faint"
                 >
                   {h}
@@ -29,13 +33,17 @@ export function HistoryPage() {
           <tbody>
             {history.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-ink-soft">
+                <td colSpan={5} className="px-5 py-10 text-center text-ink-soft">
                   Hələ sorğu yoxdur.
                 </td>
               </tr>
             ) : (
               history.map((h) => (
-                <tr key={h.id} className="border-t border-line transition hover:bg-surface-2">
+                <tr
+                  key={h.id}
+                  onContextMenu={(e) => del.openMenu(h.id, e)}
+                  className="group border-t border-line transition hover:bg-surface-2"
+                >
                   <td className="px-5 py-3 text-ink">{h.natural_language}</td>
                   <td className="px-5 py-3">
                     <span className="rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[11px] text-accent">
@@ -46,12 +54,23 @@ export function HistoryPage() {
                   <td className="px-5 py-3 font-mono text-xs text-ink-faint">
                     {h.created_at.slice(0, 19).replace('T', ' ')}
                   </td>
+                  <td className="px-3 py-3 text-right">
+                    <button
+                      onClick={() => del.askDelete(h.id)}
+                      aria-label="Sorğunu sil"
+                      className="rounded-md p-1.5 text-ink-faint opacity-0 transition hover:bg-surface hover:text-[#D87C6B] focus:opacity-100 group-hover:opacity-100"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      <HistoryDeleteUI del={del} />
     </div>
   )
 }

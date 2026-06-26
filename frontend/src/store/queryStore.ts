@@ -26,6 +26,7 @@ interface QueryState {
   retry: () => Promise<void>
   newChat: () => void
   loadHistory: () => Promise<void>
+  deleteHistoryItem: (id: string) => Promise<void>
 }
 
 export const useQueryStore = create<QueryState>((set, get) => ({
@@ -68,5 +69,15 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   loadHistory: async () => {
     const page = await queryApi.getHistory(1, 20)
     set({ history: page.items })
+  },
+  deleteHistoryItem: async (id) => {
+    await queryApi.deleteQuery(id)
+    // Optimistic removal for snappy UX; reload refills from the next page so the
+    // capped list doesn't silently shrink below its limit.
+    set((s) => ({
+      history: s.history.filter((h) => h.id !== id),
+      thread: s.thread.filter((t) => t.result.query_log_id !== id),
+    }))
+    await get().loadHistory()
   },
 }))
