@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BellOff, CheckCheck } from 'lucide-react'
+import { BellOff, CheckCheck, Sparkles } from 'lucide-react'
 import { useNotificationStore } from '../store/notificationStore'
 
 function fmt(ts: string): string {
@@ -7,7 +7,7 @@ function fmt(ts: string): string {
 }
 
 export function NotificationsPage() {
-  const { items, unread, load, markAllRead } = useNotificationStore()
+  const { items, unread, generating, load, generate, markAllRead } = useNotificationStore()
 
   useEffect(() => {
     load().catch(() => undefined)
@@ -20,14 +20,24 @@ export function NotificationsPage() {
           <p className="eyebrow">Bildirişlər</p>
           <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">Bildirişlər</h1>
         </div>
-        {unread > 0 && (
+        <div className="flex gap-2">
           <button
-            onClick={() => markAllRead()}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+            onClick={() => generate()}
+            disabled={generating}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3 py-2 text-sm font-semibold text-accent transition hover:border-accent disabled:opacity-60"
           >
-            <CheckCheck size={15} /> Hamısını oxudum
+            <Sparkles size={15} className={generating ? 'animate-pulse' : ''} />
+            {generating ? 'Təhlil…' : 'Smart insight yarat'}
           </button>
-        )}
+          {unread > 0 && (
+            <button
+              onClick={() => markAllRead()}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+            >
+              <CheckCheck size={15} /> Hamısını oxudum
+            </button>
+          )}
+        </div>
       </header>
 
       {items.length === 0 ? (

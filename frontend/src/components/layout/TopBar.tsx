@@ -14,6 +14,9 @@ export function TopBar() {
 
   useEffect(() => {
     load().catch(() => undefined)
+    // Light polling so smart-insight notifications surface without a refresh.
+    const id = setInterval(() => load().catch(() => undefined), 60_000)
+    return () => clearInterval(id)
   }, [load])
 
   return (

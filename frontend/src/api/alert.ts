@@ -27,3 +27,8 @@ export async function readAll(): Promise<void> {
 export async function readOne(id: string): Promise<void> {
   await client.post(`/notifications/${id}/read`)
 }
+
+export async function generateInsights(): Promise<{ created: number }> {
+  const { data } = await client.post<{ created: number }>('/notifications/generate-insights')
+  return data
+}

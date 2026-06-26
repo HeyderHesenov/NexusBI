@@ -70,8 +70,19 @@ async def delete(db: AsyncSession, user_id: str, sq_id: str) -> None:
 
 
 async def run(db: AsyncSession, cache: CacheService, sq: SavedQuery) -> QueryResult:
-    """Execute the saved query, record the run, and evaluate its alerts."""
-    from app.services import alert_service
+    """Execute the saved query, record the run, evaluate alerts + smart insights."""
+    from app.models.query_log import QueryLog
+    from app.services import alert_service, insight_service
+
+    # Capture the previous run's rows before we repoint last_query_log_id.
+    prev_rows: list = []
+    if sq.last_query_log_id:
+        prev = await db.execute(
+            select(QueryLog).where(QueryLog.id == sq.last_query_log_id)
+        )
+        prev_log = prev.scalar_one_or_none()
+        if prev_log and prev_log.result_data:
+            prev_rows = prev_log.result_data.get("rows", [])
 
     result = await query_service.process_nl_query(
         sq.nl_query, sq.datasource_id, sq.user_id, db, cache
@@ -80,6 +91,7 @@ async def run(db: AsyncSession, cache: CacheService, sq: SavedQuery) -> QueryRes
     sq.last_query_log_id = result.query_log_id
     await db.flush()
     await alert_service.check_saved_query(db, sq, result)
+    await insight_service.from_saved_query_run(db, sq, prev_rows, result)
     return result
 
 

@@ -194,3 +194,25 @@ DASHBOARD_PLANNER_USER_PROMPT = """
 MƏQSƏD: {goal}
 MÖVCUD DATA HAQQINDA: {schema_hint}
 """.strip()
+
+
+INSIGHT_DIGEST_PROMPT = """
+Sən proaktiv BI analitiki kimi çıxış edirsən. Sənə bir sorğu və onun nəticəsi
+(bəzən əvvəlki nəticə ilə birlikdə) verilir. Vəzifən: data-da DİQQƏTƏLAYIQ,
+biznes üçün dəyərli bir müşahidə varsa, onu 1 qısa cümlə ilə bildir
+(məs. kəskin artım/azalma, lider/zəif seqment, qeyri-adi konsentrasiya).
+Əgər diqqətəlayiq heç nə yoxdursa, "notable": false qaytar. Şişirtmə, uydurma.
+İstifadəçi hansı dildə soruşubsa, o dildə cavab ver.
+
+OUTPUT FORMAT (JSON):
+{{
+  "notable": true,
+  "insight": "Qərb regionu ümumi gəlirin 48%-ni təşkil edir — güclü konsentrasiya."
+}}
+""".strip()
+
+INSIGHT_DIGEST_USER_PROMPT = """
+SORĞU: {nl_query}
+ƏVVƏLKİ NƏTİCƏ (boş ola bilər): {prev}
+CARİ NƏTİCƏ: {curr}
+""".strip()

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Response, status
 from app.dependencies import CurrentUser, DbDep
 from app.schemas.alert import AlertCreate, AlertResponse, NotificationResponse
 from app.services import alert_service as svc
+from app.services import insight_service
 
 router = APIRouter(tags=["alerts"])
 
@@ -31,6 +32,13 @@ async def delete_alert(alert_id: str, user: CurrentUser, db: DbDep) -> Response:
 async def list_notifications(user: CurrentUser, db: DbDep) -> list[NotificationResponse]:
     items = await svc.list_notifications(db, user.id)
     return [NotificationResponse.model_validate(n) for n in items]
+
+
+@router.post("/notifications/generate-insights")
+async def generate_insights(user: CurrentUser, db: DbDep) -> dict[str, int]:
+    """Scan the user's recent queries and emit notable smart-insight notifications."""
+    created = await insight_service.generate_for_user(db, user.id)
+    return {"created": created}
 
 
 @router.post("/notifications/read-all", status_code=status.HTTP_204_NO_CONTENT)
