@@ -109,6 +109,12 @@
     animation-delay: 0.72s;
   }
 
+  /* Login suggestion popover — soft ease-out entrance (transform/opacity only). */
+  .hint-pop {
+    transform-origin: top center;
+    animation: hint-pop 0.18s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
   /* Aurora glow — soft drifting warm blobs. Only transform/opacity animate. */
   .aurora-blob {
     position: absolute;
@@ -152,6 +158,17 @@
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes hint-pop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 

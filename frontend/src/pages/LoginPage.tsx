@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Lock, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
@@ -9,6 +9,9 @@ import { getProviders } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 import { clearHint, readHint, saveHint } from '../lib/loginHint'
 import type { AuthProviders } from '../types'
+
+const field =
+  'w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint transition focus:border-accent focus:outline-none'
 
 export function LoginPage() {
   const { login, register, googleLogin } = useAuthStore()
@@ -29,8 +32,10 @@ export function LoginPage() {
       .catch(() => setProviders({ google_enabled: false, google_client_id: null }))
   }, [])
 
-  const submit = async () => {
+  const submit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     if (busy) return
+    setShowHint(false)
     setError('')
     setBusy(true)
     try {
@@ -50,8 +55,22 @@ export function LoginPage() {
 
   const switchMode = () => {
     setError('')
+    setShowHint(false)
     setMode(mode === 'login' ? 'register' : 'login')
   }
+
+  const fillFromHint = useCallback(() => {
+    if (!hint) return
+    setEmail(hint.email)
+    setPassword(hint.password)
+    setShowHint(false)
+  }, [hint])
+
+  const dismissHint = useCallback(() => {
+    clearHint()
+    setHint(null)
+    setShowHint(false)
+  }, [])
 
   const onGoogleCredential = useCallback(
     async (credential: string) => {
@@ -64,9 +83,6 @@ export function LoginPage() {
     },
     [googleLogin, navigate],
   )
-
-  const field =
-    'w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint transition focus:border-accent focus:outline-none'
 
   return (
     <div className="relative grid min-h-screen grid-cols-1 overflow-hidden bg-bg lg:grid-cols-2">
@@ -137,12 +153,13 @@ export function LoginPage() {
             <span className="h-px flex-1 bg-line" />
           </div>
 
-          <div className="space-y-3">
+          <form onSubmit={submit} className="space-y-3" noValidate>
             {mode === 'register' && (
               <input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                name="name"
+                autoComplete="name"
                 placeholder="Ad Soyad"
                 className={field}
               />
@@ -151,42 +168,62 @@ export function LoginPage() {
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && submit()}
                 onFocus={() => hint && mode === 'login' && setShowHint(true)}
                 onBlur={() => setShowHint(false)}
+                onKeyDown={(e) => e.key === 'Escape' && setShowHint(false)}
+                name="email"
+                type="email"
+                autoComplete="email"
                 placeholder="Email"
                 className={field}
               />
               {mode === 'login' && showHint && hint && (
-                <div className="absolute left-0 right-0 top-full z-20 mt-1.5 flex items-center gap-2 rounded-xl border border-line bg-surface-2 p-1.5 shadow-card">
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      setEmail(hint.email)
-                      setPassword(hint.password)
-                      setShowHint(false)
-                    }}
-                    className="flex flex-1 flex-col items-start rounded-lg px-2.5 py-1.5 text-left transition hover:bg-surface"
-                  >
-                    <span className="text-sm text-ink">{hint.email}</span>
-                    <span className="font-mono text-xs tracking-widest text-ink-faint">
-                      ••••••••
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Təklifi sil"
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      clearHint()
-                      setHint(null)
-                      setShowHint(false)
-                    }}
-                    className="grid h-7 w-7 place-items-center rounded-lg text-ink-faint transition hover:bg-surface hover:text-ink"
-                  >
-                    ×
-                  </button>
+                <div
+                  role="listbox"
+                  aria-label="Son giriş təklifi"
+                  className="hint-pop absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-line bg-surface shadow-card"
+                >
+                  <p className="border-b border-line/70 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+                    Son giriş
+                  </p>
+                  <div className="flex items-center gap-1.5 p-1.5">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected="true"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        fillFromHint()
+                      }}
+                      className="flex flex-1 items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none"
+                    >
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent-soft font-display text-sm font-bold uppercase text-accent">
+                        {hint.email.charAt(0) || '?'}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-ink">
+                          {hint.email}
+                        </span>
+                        <span className="mt-0.5 flex items-center gap-1 text-ink-faint">
+                          <Lock size={11} strokeWidth={2} />
+                          <span className="font-mono text-xs tracking-[0.25em]">
+                            ••••••••
+                          </span>
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Təklifi sil"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        dismissHint()
+                      }}
+                      className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-lg text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink focus-visible:bg-surface-2 focus-visible:text-ink focus-visible:outline-none"
+                    >
+                      <X size={16} strokeWidth={2.25} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -194,26 +231,30 @@ export function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && submit()}
+              name="password"
+              autoComplete="current-password"
               placeholder="Şifrə"
               className={field}
             />
-          </div>
 
-          {error && (
-            <p className="mt-3 rounded-xl border border-[#D87C6B]/40 bg-[#D87C6B]/10 px-3 py-2 text-sm text-[#E0998A]">
-              {error}
-            </p>
-          )}
+            {error && (
+              <p
+                role="alert"
+                className="rounded-xl border border-[#D87C6B]/40 bg-[#D87C6B]/10 px-3 py-2 text-sm text-[#E0998A]"
+              >
+                {error}
+              </p>
+            )}
 
-          <button
-            onClick={submit}
-            disabled={busy}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
-          >
-            {busy ? 'Gözləyin…' : mode === 'login' ? 'Daxil ol' : 'Qeydiyyatdan keç'}
-            {!busy && <ArrowRight size={16} strokeWidth={2.5} />}
-          </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? 'Gözləyin…' : mode === 'login' ? 'Daxil ol' : 'Qeydiyyatdan keç'}
+              {!busy && <ArrowRight size={16} strokeWidth={2.5} />}
+            </button>
+          </form>
 
           <button
             onClick={switchMode}
