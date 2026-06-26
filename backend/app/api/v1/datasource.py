@@ -7,7 +7,12 @@ from typing import Any
 from fastapi import APIRouter, File, Form, Response, UploadFile, status
 
 from app.dependencies import CacheDep, CurrentUser, DbDep
-from app.schemas.datasource import DataSourceCreate, DataSourceResponse
+from app.schemas.datasource import (
+    DataSourceCreate,
+    DataSourceResponse,
+    PowerBIConnectRequest,
+    PowerBIDataset,
+)
 from app.services import datasource_service as svc
 from app.services import upload_service
 
@@ -37,6 +42,31 @@ async def upload(
     )
     label = name.strip() or (file.filename or "Yüklənmiş fayl")
     ds = await svc.add_datasource(db, user.id, label, "sqlite", conn_str)
+    return DataSourceResponse.model_validate(ds)
+
+
+@router.get("/powerbi/datasets", response_model=list[PowerBIDataset])
+async def powerbi_datasets(user: CurrentUser) -> list[PowerBIDataset]:
+    """List Power BI datasets available to connect (sample list in mock mode)."""
+    from app.services.powerbi.provider import get_provider
+
+    datasets = await get_provider().list_datasets()
+    return [PowerBIDataset(**d) for d in datasets]
+
+
+@router.post(
+    "/connect-powerbi",
+    response_model=DataSourceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def connect_powerbi(
+    payload: PowerBIConnectRequest, user: CurrentUser, db: DbDep
+) -> DataSourceResponse:
+    """Create a Power BI datasource pointing at a dataset (live DAX queries)."""
+    import json
+
+    config = json.dumps({"provider": "auto", "dataset_id": payload.dataset_id})
+    ds = await svc.add_datasource(db, user.id, payload.name, "powerbi", config)
     return DataSourceResponse.model_validate(ds)
 
 

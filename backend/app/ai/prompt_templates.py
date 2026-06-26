@@ -33,6 +33,39 @@ NATURAL LANGUAGE SORĞU:
 {nl_query}
 """.strip()
 
+TEXT2DAX_SYSTEM_PROMPT = """
+Sen Power BI üzrə expert analyst və DAX mütəxəssisisən.
+Verilmiş tabular model və natural language sorğu əsasında DƏQİQ bir DAX query yaz.
+
+CƏDDI QAYDALAR (yalnız bu konstruksiyalardan istifadə et):
+- Query MÜTLƏQ "EVALUATE" ilə başlamalıdır.
+- İcazə verilən yeganə formalar:
+  1) EVALUATE 'TableName'
+  2) EVALUATE SUMMARIZECOLUMNS('Table'[col], "Ölçü Adı", SUM('Table'[metric]))
+  3) EVALUATE TOPN(N, SUMMARIZECOLUMNS('Table'[col], "Ölçü Adı", SUM('Table'[metric])), [Ölçü Adı], DESC)
+  4) İstənilən formanın sonunda: ORDER BY [Ölçü Adı] DESC (və ya ASC)
+- Aqreqatlar: SUM, AVERAGE, MIN, MAX, COUNTROWS('Table'), DISTINCTCOUNT('Table'[col]).
+- FILTER, CALCULATE, ADDCOLUMNS, VAR, RETURN, ölçü-yaratma İSTİFADƏ ETMƏ.
+- Yalnız modeldə olan cədvəl və sütunlara istinad et. Cədvəl adları tək dırnaqda 'Sales' kimi.
+- Cavabı YALNIZ JSON formatında ver.
+
+OUTPUT FORMAT (JSON):
+{{
+  "dax": "EVALUATE ...",
+  "explanation": "Bu DAX ...",
+  "confidence": 0.95,
+  "warnings": []
+}}
+""".strip()
+
+TEXT2DAX_USER_PROMPT = """
+POWER BI MODEL (tables / columns):
+{schema}
+{context}
+NATURAL LANGUAGE SORĞU:
+{nl_query}
+""".strip()
+
 CHART_SELECTOR_PROMPT = """
 Sen data visualization expertisən. SQL nəticəsinin strukturuna bax:
 - Hansı sütunlar var, tipi nədir (numeric, text, date)?

@@ -18,6 +18,7 @@ class DBType(str, enum.Enum):
     postgresql = "postgresql"
     mysql = "mysql"
     sqlite = "sqlite"
+    powerbi = "powerbi"
 
 
 class DataSource(Base, TimestampMixin):

@@ -13,6 +13,17 @@ class DataSourceCreate(BaseModel):
     connection_string: str = Field(min_length=1)
 
 
+class PowerBIConnectRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    dataset_id: str = Field(min_length=1)
+
+
+class PowerBIDataset(BaseModel):
+    id: str
+    name: str
+    workspace: str = ""
+
+
 class DataSourceResponse(BaseModel):
     id: str
     name: str

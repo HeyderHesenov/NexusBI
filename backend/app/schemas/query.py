@@ -22,6 +22,8 @@ class QueryRequest(BaseModel):
 
 class QueryResult(BaseModel):
     sql: str
+    # "sql" for database sources, "dax" for Power BI sources (UI labels it).
+    query_language: str = "sql"
     data: list[dict[str, Any]]
     columns: list[ColumnInfo]
     chart_config: ChartConfig

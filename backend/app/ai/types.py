@@ -15,6 +15,13 @@ class Text2SQLResult(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class DAXResult(BaseModel):
+    dax: str
+    explanation: str = ""
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class ChartConfig(BaseModel):
     chart_type: ChartType = "table"
     x_axis: str | None = None

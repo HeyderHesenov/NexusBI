@@ -1,6 +1,7 @@
 """DataSource lifecycle: create, list, test, schema, encrypted execution."""
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
@@ -54,7 +55,20 @@ async def get_datasource(db: AsyncSession, user_id: str, datasource_id: str) -> 
     return ds
 
 
+def powerbi_config(ds: DataSource) -> dict[str, Any]:
+    """Decrypt and parse a Power BI datasource's stored config JSON."""
+    return json.loads(decrypt_secret(ds.connection_string_encrypted))
+
+
 async def test_connection(ds: DataSource) -> bool:
+    if ds.db_type == DBType.powerbi:
+        from app.services.powerbi.provider import get_provider
+
+        try:
+            datasets = await get_provider().list_datasets()
+            return bool(datasets)
+        except Exception as exc:
+            raise DataSourceConnectionError("Power BI bağlantısı uğursuz.", detail=str(exc)) from exc
     conn_str = decrypt_secret(ds.connection_string_encrypted)
     engine = await engine_pool.get_engine(conn_str)
     try:
@@ -68,12 +82,18 @@ async def test_connection(ds: DataSource) -> bool:
 async def get_schema_cached(
     ds: DataSource, cache: CacheService
 ) -> dict[str, Any]:
-    """Return schema, preferring cache, then introspection."""
+    """Return schema, preferring cache, then introspection (or provider)."""
     cached = await cache.get(f"schema:{ds.id}")
     if cached:
         return cached
-    conn_str = decrypt_secret(ds.connection_string_encrypted)
-    schema = await get_schema(conn_str)
+    if ds.db_type == DBType.powerbi:
+        from app.services.powerbi.provider import get_provider
+
+        cfg = powerbi_config(ds)
+        schema = await get_provider().get_model_schema(cfg["dataset_id"])
+    else:
+        conn_str = decrypt_secret(ds.connection_string_encrypted)
+        schema = await get_schema(conn_str)
     await cache.set(f"schema:{ds.id}", schema, ttl=3600)
     return schema
 

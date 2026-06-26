@@ -11,11 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.chart_selector import select_chart_type
 from app.ai.insight_generator import generate_insight
+from app.ai.text2dax import Text2DAXEngine
 from app.ai.text2sql import Text2SQLEngine
-from app.ai.types import ChartConfig, Text2SQLResult
+from app.ai.types import ChartConfig
 from app.config import settings
 from app.core.exceptions import AIGenerationError, NexusBIException
 from app.core.logging import get_logger
+from app.models.datasource import DBType
 from app.models.query_log import QueryLog
 from app.schemas.query import ColumnInfo, QueryResult
 from app.services import datasource_service as ds_service
@@ -29,6 +31,7 @@ def _cache_key(datasource_id: str | None, nl_query: str, extra_context: str = ""
     return f"qcache:{datasource_id or 'demo'}:{h}"
 
 _engine = Text2SQLEngine()
+_dax_engine = Text2DAXEngine()
 _log = get_logger("nexusbi.query")
 
 _SNAPSHOT_MAX_ROWS = 1000
@@ -94,6 +97,7 @@ async def process_nl_query(
         return await _finalize(
             db, user_id, datasource_id, nl_query,
             sql=cached["sql"],
+            query_language=cached.get("query_language", "sql"),
             columns=cached["columns"],
             rows=cached["rows"],
             snapped=cached["rows"],  # cached rows are already snapshotted
@@ -104,10 +108,11 @@ async def process_nl_query(
         )
 
     if settings.DEMO_MODE and not datasource_id:
-        sql_result, columns, rows = await _demo_pipeline(nl_query, extra_context)
+        query_text, columns, rows = await _demo_pipeline(nl_query, extra_context)
         resolved_ds_id: str | None = None
+        query_language = "sql"
     else:
-        sql_result, columns, rows = await _live_pipeline(
+        query_text, columns, rows, query_language = await _live_pipeline(
             nl_query, datasource_id, user_id, db, cache, extra_context
         )
         resolved_ds_id = datasource_id
@@ -133,7 +138,8 @@ async def process_nl_query(
     await cache.set(
         key,
         {
-            "sql": sql_result.sql,
+            "sql": query_text,
+            "query_language": query_language,
             "columns": columns,
             "rows": snapped,
             "chart_config": chart_config.model_dump(),
@@ -144,7 +150,8 @@ async def process_nl_query(
 
     return await _finalize(
         db, user_id, resolved_ds_id, nl_query,
-        sql=sql_result.sql,
+        sql=query_text,
+        query_language=query_language,
         columns=columns,
         rows=rows,
         snapped=snapped,
@@ -162,6 +169,7 @@ async def _finalize(
     nl_query: str,
     *,
     sql: str,
+    query_language: str = "sql",
     columns: list[str],
     rows: list[dict[str, Any]],
     snapped: list[dict[str, Any]],
@@ -192,6 +200,7 @@ async def _finalize(
 
     return QueryResult(
         sql=sql,
+        query_language=query_language,
         data=rows,
         columns=[ColumnInfo(name=c, type="unknown") for c in columns],
         chart_config=chart_config,
@@ -209,8 +218,10 @@ async def _live_pipeline(
     db: AsyncSession,
     cache: CacheService,
     extra_context: str = "",
-) -> tuple[Text2SQLResult, list[str], list[dict[str, Any]]]:
+) -> tuple[str, list[str], list[dict[str, Any]], str]:
     ds = await ds_service.get_datasource(db, user_id, datasource_id or "")
+    if ds.db_type == DBType.powerbi:
+        return await _powerbi_pipeline(nl_query, ds, cache, extra_context)
     schema = await ds_service.get_schema_cached(ds, cache)
     schema_text = ds_service.schema_as_prompt(schema)
     sql_result = await _engine.generate_sql(
@@ -222,13 +233,47 @@ async def _live_pipeline(
         # Surface the generated SQL so the user can see what failed.
         exc.sql = sql_result.sql
         raise
-    return sql_result, columns, rows
+    return sql_result.sql, columns, rows, "sql"
+
+
+def _dax_schema_text(schema: dict[str, Any]) -> str:
+    """Render a Power BI model schema dict for the NL->DAX prompt."""
+    lines: list[str] = []
+    for table, cols in schema.items():
+        names = ", ".join(c["name"] for c in cols)
+        nums = ", ".join(c["name"] for c in cols if c.get("type") == "NUMERIC")
+        lines.append(f"- Table '{table}': columns [{names}] | numeric (measures): [{nums}]")
+    return "\n".join(lines)
+
+
+async def _powerbi_pipeline(
+    nl_query: str,
+    ds: Any,
+    cache: CacheService,
+    extra_context: str = "",
+) -> tuple[str, list[str], list[dict[str, Any]], str]:
+    """Power BI path: NL -> DAX -> provider.execute_dax. Mirrors the SQL path."""
+    from app.ai import rule_based_dax
+    from app.services.powerbi.provider import get_provider
+
+    cfg = ds_service.powerbi_config(ds)
+    dataset_id = cfg["dataset_id"]
+    schema = await ds_service.get_schema_cached(ds, cache)
+    schema_text = _dax_schema_text(schema)
+    try:
+        dax_result = await _dax_engine.generate_dax(nl_query, schema_text, extra_context)
+    except AIGenerationError as exc:
+        # No working AI — keep Power BI demo usable with a deterministic DAX fallback.
+        _log.warning("powerbi_dax_fallback", error=exc.message, detail=exc.detail)
+        dax_result = rule_based_dax.generate_dax_fallback(nl_query)
+    columns, rows = await get_provider().execute_dax(dataset_id, dax_result.dax)
+    return dax_result.dax, columns, rows, "dax"
 
 
 async def _demo_pipeline(
     nl_query: str,
     extra_context: str = "",
-) -> tuple[Text2SQLResult, list[str], list[dict[str, Any]]]:
+) -> tuple[str, list[str], list[dict[str, Any]]]:
     from app.ai import rule_based_sql
     from app.db import demo_data
 
@@ -241,4 +286,4 @@ async def _demo_pipeline(
         _log.warning("demo_ai_fallback", error=exc.message, detail=exc.detail)
         sql_result = rule_based_sql.generate_sql_fallback(nl_query)
     columns, rows = demo_data.execute_demo_sql(sql_result.sql)
-    return sql_result, columns, rows
+    return sql_result.sql, columns, rows

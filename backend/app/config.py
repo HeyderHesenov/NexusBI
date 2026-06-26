@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     # ─── OAuth ───
     GOOGLE_CLIENT_ID: str = Field(default="")
 
+    # ─── Power BI (Azure AD) ── empty creds => mock provider (no license needed)
+    POWERBI_TENANT_ID: str = Field(default="")
+    POWERBI_CLIENT_ID: str = Field(default="")
+    POWERBI_CLIENT_SECRET: str = Field(default="")
+    POWERBI_API_BASE: str = Field(default="https://api.powerbi.com/v1.0/myorg")
+    POWERBI_MAX_ROWS: int = Field(default=10000)
+
     # ─── Database ───
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///./nexusbi.db")
     # App-DB connection pool (ignored for SQLite, which doesn't use a sized pool).
