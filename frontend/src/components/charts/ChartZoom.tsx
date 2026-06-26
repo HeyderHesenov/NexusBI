@@ -46,7 +46,9 @@ export function ChartZoom({ data, children, wheelAlways = false }: Props) {
       e.preventDefault()
       const rect = el.getBoundingClientRect()
       const ratio = rect.width ? (e.clientX - rect.left) / rect.width : 0.5
-      zoomRef.current(e.deltaY > 0 ? 0.85 : 1.18, ratio)
+      // Per-notch step (~12%), softened 20% from the original 0.85/1.18 so wheel
+      // zoom isn't too sensitive. 1.14 ≈ 1/0.88 keeps in/out symmetric.
+      zoomRef.current(e.deltaY > 0 ? 0.88 : 1.14, ratio)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
