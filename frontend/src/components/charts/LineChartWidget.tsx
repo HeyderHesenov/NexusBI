@@ -8,6 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
+import { TruncatedTick } from './axis'
 import { useChartTheme } from './theme'
 
 interface Props {
@@ -20,11 +21,17 @@ export function LineChartWidget({ data, config, height = 320 }: Props) {
   const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
+  const longX = data.some((d) => String(d[x] ?? '').length > 10)
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
-        <XAxis dataKey={x} stroke={AXIS} fontSize={12} tickLine={false} />
+        <XAxis
+          dataKey={x}
+          stroke={AXIS}
+          tickLine={false}
+          tick={longX ? <TruncatedTick max={10} anchor="middle" /> : { fontSize: 12, fill: AXIS }}
+        />
         <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
         <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} itemStyle={tooltipItem} />
         <Line
