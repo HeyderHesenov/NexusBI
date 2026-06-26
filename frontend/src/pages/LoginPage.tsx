@@ -7,6 +7,7 @@ import { NexusMark } from '../components/brand/NexusMark'
 import { AuroraBackground } from '../components/layout/AuroraBackground'
 import { getProviders } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
+import { clearHint, readHint, saveHint } from '../lib/loginHint'
 import type { AuthProviders } from '../types'
 
 export function LoginPage() {
@@ -19,6 +20,8 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [providers, setProviders] = useState<AuthProviders | null>(null)
+  const [hint, setHint] = useState(() => readHint())
+  const [showHint, setShowHint] = useState(false)
 
   useEffect(() => {
     getProviders()
@@ -33,6 +36,7 @@ export function LoginPage() {
     try {
       if (mode === 'login') await login(email, password)
       else await register(email, password, fullName)
+      saveHint(email, password)
       navigate('/')
     } catch (err: unknown) {
       const fallback =
@@ -143,13 +147,49 @@ export function LoginPage() {
                 className={field}
               />
             )}
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && submit()}
-              placeholder="Email"
-              className={field}
-            />
+            <div className="relative">
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                onFocus={() => hint && mode === 'login' && setShowHint(true)}
+                onBlur={() => setShowHint(false)}
+                placeholder="Email"
+                className={field}
+              />
+              {mode === 'login' && showHint && hint && (
+                <div className="absolute left-0 right-0 top-full z-20 mt-1.5 flex items-center gap-2 rounded-xl border border-line bg-surface-2 p-1.5 shadow-card">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      setEmail(hint.email)
+                      setPassword(hint.password)
+                      setShowHint(false)
+                    }}
+                    className="flex flex-1 flex-col items-start rounded-lg px-2.5 py-1.5 text-left transition hover:bg-surface"
+                  >
+                    <span className="text-sm text-ink">{hint.email}</span>
+                    <span className="font-mono text-xs tracking-widest text-ink-faint">
+                      ••••••••
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Təklifi sil"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      clearHint()
+                      setHint(null)
+                      setShowHint(false)
+                    }}
+                    className="grid h-7 w-7 place-items-center rounded-lg text-ink-faint transition hover:bg-surface hover:text-ink"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
             <input
               type="password"
               value={password}
