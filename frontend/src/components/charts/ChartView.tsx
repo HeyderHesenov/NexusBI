@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, Maximize2, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Download, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { AnomalyResult, ChartConfig, ChartType, ExplainResult, ForecastResult } from '../../types'
 import { downloadCsv } from '../../lib/csv'
@@ -22,11 +22,23 @@ interface Props {
   queryLogId?: string | null
   /** Heading shown in the fullscreen overlay (e.g. the NL question). */
   title?: string
+  /** Controlled fullscreen state — when provided, the trigger lives outside
+   *  (e.g. an icon on the result card header). Falls back to internal state. */
+  fullscreen?: boolean
+  onFullscreenChange?: (open: boolean) => void
 }
 
 /** Interactive chart with a type switcher, legend toggle, CSV export,
  *  click-to-drill-down filtering and AI anomaly detection. */
-export function ChartView({ data, config, exportName = 'nexusbi', queryLogId, title }: Props) {
+export function ChartView({
+  data,
+  config,
+  exportName = 'nexusbi',
+  queryLogId,
+  title,
+  fullscreen,
+  onFullscreenChange,
+}: Props) {
   const [type, setType] = useState<ChartType>(config.chart_type)
   const [showLegend, setShowLegend] = useState(false)
   const [filters, setFilters] = useState<Filter[]>([])
@@ -37,7 +49,10 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId, ti
   const [explanation, setExplanation] = useState<ExplainResult | null>(null)
   const [explaining, setExplaining] = useState(false)
   const [scenario, setScenario] = useState(false)
-  const [fullscreen, setFullscreen] = useState(false)
+  const [internalFs, setInternalFs] = useState(false)
+  // Controlled if the parent passes fullscreen/onFullscreenChange, else internal.
+  const fsOpen = fullscreen ?? internalFs
+  const setFs = onFullscreenChange ?? setInternalFs
 
   // Reset view state when a new result arrives.
   useEffect(() => {
@@ -192,13 +207,6 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId, ti
             </button>
           )}
           <button
-            onClick={() => setFullscreen(true)}
-            aria-label="Tam ekran"
-            className={`${CHART_BTN} border border-line text-ink-soft hover:border-accent hover:text-ink`}
-          >
-            <Maximize2 size={14} /> Tam ekran
-          </button>
-          <button
             onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
             aria-label="CSV yüklə"
             className={`${CHART_BTN} border border-line text-ink-soft hover:border-accent hover:text-ink`}
@@ -236,8 +244,8 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId, ti
       )}
 
       <ChartFullscreenModal
-        open={fullscreen}
-        onClose={() => setFullscreen(false)}
+        open={fsOpen}
+        onClose={() => setFs(false)}
         title={title}
       >
         <div className="flex h-full flex-col gap-3">

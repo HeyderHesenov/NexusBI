@@ -91,7 +91,7 @@ export function ChartZoom({ data, children }: Props) {
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
-      className={`relative ${zoomed ? 'cursor-grab active:cursor-grabbing' : ''}`}
+      className={`relative h-full ${zoomed ? 'cursor-grab active:cursor-grabbing' : ''}`}
     >
       <div className="pointer-events-none absolute right-1 top-1 z-10 flex items-center gap-1">
         {zoomed && (

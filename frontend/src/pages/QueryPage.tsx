@@ -1,4 +1,4 @@
-import { AlertTriangle, Bookmark, Clock, Database, Lightbulb, LayoutGrid, MessageSquarePlus, RefreshCw, Target, Trash2 } from 'lucide-react'
+import { AlertTriangle, Bookmark, Clock, Database, Lightbulb, LayoutGrid, Maximize2, MessageSquarePlus, RefreshCw, Target, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ChartView } from '../components/charts/ChartView'
 import { HistoryDeleteUI } from '../components/query/HistoryDeleteUI'
@@ -201,6 +201,7 @@ function TurnCard({
   onMakeDecision: () => void
 }) {
   const { result, q } = turn
+  const [fs, setFs] = useState(false)
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-2">
@@ -234,6 +235,14 @@ function TurnCard({
           <span className="font-mono text-[11px] text-ink-faint">
             {result.data.length} sətir · {result.execution_time_ms} ms
           </span>
+          <button
+            onClick={() => setFs(true)}
+            aria-label="Tam ekran"
+            title="Tam ekran"
+            className="rounded-md p-1 text-ink-faint transition hover:bg-surface-2 hover:text-accent"
+          >
+            <Maximize2 size={15} />
+          </button>
         </div>
         <ChartView
           data={result.data}
@@ -241,6 +250,8 @@ function TurnCard({
           exportName="nexusbi-query"
           queryLogId={result.query_log_id}
           title={q}
+          fullscreen={fs}
+          onFullscreenChange={setFs}
         />
       </div>
 
