@@ -60,12 +60,12 @@ class ConnectionHub:
     async def broadcast(
         self, room: str, message: dict[str, Any], exclude: Connection | None = None
     ) -> None:
-        dead: list[Connection] = []
-        for c in list(self._rooms.get(room, set())):
-            if c is exclude:
-                continue
-            if not await self._send(c, message):
-                dead.append(c)
+        targets = [c for c in self._rooms.get(room, set()) if c is not exclude]
+        if not targets:
+            return
+        # Fan out concurrently so one slow/stuck socket can't stall the room.
+        results = await asyncio.gather(*(self._send(c, message) for c in targets))
+        dead = [c for c, ok in zip(targets, results) if not ok]
         if dead:
             async with self._lock:
                 conns = self._rooms.get(room)

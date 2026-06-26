@@ -95,9 +95,10 @@ async def generate_dashboard(
         raise SchemaNotFoundError("Dashboard planı yaradıla bilmədi.")
 
     results = await asyncio.gather(
-        *[_run_planned_query(cache, user_id, datasource_id, q) for q in questions]
+        *[_run_planned_query(cache, user_id, datasource_id, q) for q in questions],
+        return_exceptions=True,
     )
-    widgets = [r for r in results if r is not None]
+    widgets = [r for r in results if r is not None and not isinstance(r, BaseException)]
     if not widgets:
         raise SchemaNotFoundError("Sual nəticələri alınmadı.")
 

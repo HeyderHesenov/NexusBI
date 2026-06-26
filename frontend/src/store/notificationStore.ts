@@ -33,8 +33,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({ generating: true })
     try {
       const { created } = await api.generateInsights()
+      // load() already toasts the freshly created insights; only speak up here
+      // when nothing notable was found (load() stays silent in that case).
       await get().load()
-      toast.success(created ? `${created} smart insight yaradıldı.` : 'Yeni insight tapılmadı.')
+      if (!created) toast('Yeni insight tapılmadı.', { icon: 'ℹ️' })
     } catch {
       /* interceptor toast */
     } finally {

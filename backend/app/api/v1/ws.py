@@ -36,17 +36,18 @@ async def _resolve_access(
         ).scalar_one_or_none()
         if dash is None:
             return None
+        # Try JWT first (owner). If it doesn't grant access, fall through to the
+        # share token so a logged-in visitor can still join via a share link.
         if token:
             try:
                 payload = decode_access_token(token)
-            except Exception:  # noqa: BLE001
-                return None
-            user = (
-                await db.execute(select(User).where(User.id == payload.get("sub")))
-            ).scalar_one_or_none()
-            if user and user.id == dash.user_id:
-                return user.id, (user.full_name or user.email)
-            return None
+                user = (
+                    await db.execute(select(User).where(User.id == payload.get("sub")))
+                ).scalar_one_or_none()
+                if user and user.id == dash.user_id:
+                    return user.id, (user.full_name or user.email)
+            except Exception:  # noqa: BLE001 — bad token just isn't owner auth
+                pass
         if share and dash.share_token and share == dash.share_token:
             return None, None  # guest via share link
         return None
@@ -75,7 +76,12 @@ async def dashboard_ws(ws: WebSocket, dashboard_id: str) -> None:
     await hub.connect(dashboard_id, conn)
     try:
         while True:
-            msg = await ws.receive_json()
+            try:
+                msg = await ws.receive_json()
+            except WebSocketDisconnect:
+                raise
+            except Exception:  # noqa: BLE001 — skip a malformed frame, keep the session
+                continue
             kind = msg.get("type")
             if kind == "cursor":
                 # Ephemeral — never persisted.

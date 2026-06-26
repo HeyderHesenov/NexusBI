@@ -48,9 +48,11 @@ function wsUrl(dashboardId: string, auth: Auth): string {
 }
 
 // Module-scoped socket so the store stays serialisable and only one is ever open.
+// `epoch` invalidates a previous connection: any stale socket whose captured
+// epoch no longer matches must not reconnect or mutate state. This makes
+// switching dashboards (and React StrictMode's double-invoke) race-free.
 let ws: WebSocket | null = null
-let closing = false
-let retries = 0
+let epoch = 0
 
 export const useCollabStore = create<CollabState>((set) => ({
   connected: false,
@@ -59,17 +61,31 @@ export const useCollabStore = create<CollabState>((set) => ({
   messages: [],
 
   connect: (dashboardId, auth, history) => {
-    closing = false
-    set({ messages: history, participants: [], cursors: {} })
+    epoch += 1
+    const myEpoch = epoch
+    if (ws) {
+      try {
+        ws.close()
+      } catch {
+        /* ignore */
+      }
+      ws = null
+    }
+    set({ messages: history, participants: [], cursors: {}, connected: false })
+    let retries = 0
 
     const open = () => {
-      ws = new WebSocket(wsUrl(dashboardId, auth))
+      if (myEpoch !== epoch) return
+      const sock = new WebSocket(wsUrl(dashboardId, auth))
+      ws = sock
 
-      ws.onopen = () => {
+      sock.onopen = () => {
+        if (myEpoch !== epoch) return
         retries = 0
         set({ connected: true })
       }
-      ws.onmessage = (ev) => {
+      sock.onmessage = (ev) => {
+        if (myEpoch !== epoch) return
         let msg: Record<string, unknown>
         try {
           msg = JSON.parse(ev.data)
@@ -112,23 +128,30 @@ export const useCollabStore = create<CollabState>((set) => ({
             break
         }
       }
-      ws.onclose = () => {
+      sock.onclose = () => {
+        if (myEpoch !== epoch) return
         set({ connected: false })
-        // Reconnect a few times unless we closed on purpose.
-        if (!closing && retries < 5) {
+        // Reconnect a few times unless this connection has been superseded.
+        if (retries < 5) {
           retries += 1
           setTimeout(open, Math.min(500 * retries, 3000))
         }
       }
-      ws.onerror = () => ws?.close()
+      sock.onerror = () => sock.close()
     }
     open()
   },
 
   disconnect: () => {
-    closing = true
-    ws?.close()
-    ws = null
+    epoch += 1 // invalidate the active connection so it won't reconnect
+    if (ws) {
+      try {
+        ws.close()
+      } catch {
+        /* ignore */
+      }
+      ws = null
+    }
     set({ connected: false, participants: [], cursors: {}, messages: [] })
   },
 
