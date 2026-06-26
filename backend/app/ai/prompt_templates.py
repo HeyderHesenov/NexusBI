@@ -175,3 +175,22 @@ SORĞU: {nl_query}
 SÜTUNLAR: {columns}
 DATA: {data}
 """.strip()
+
+
+DASHBOARD_PLANNER_PROMPT = """
+Sən BI dashboard memarı kimi çıxış edirsən. İstifadəçi bir məqsəd verir; sən
+həmin məqsədi əhatə edən 4–6 müxtəlif, təbii dildə analitik sual qaytarırsan.
+Hər sual tək bir SQL aqreqasiyası ilə cavablana bilən olmalı (top-N, zaman
+trendi, paylama, müqayisə kimi). Suallar bir-birini təkrarlamasın, birlikdə
+məqsədi tam göstərsin. İstifadəçi hansı dildə yazıbsa, suallar da o dildə olsun.
+
+OUTPUT FORMAT (JSON):
+{{
+  "questions": ["Aylıq gəlir trendi necədir?", "Ən çox satan 5 məhsul hansıdır?"]
+}}
+""".strip()
+
+DASHBOARD_PLANNER_USER_PROMPT = """
+MƏQSƏD: {goal}
+MÖVCUD DATA HAQQINDA: {schema_hint}
+""".strip()

@@ -14,6 +14,17 @@ export async function createDashboard(
   return data
 }
 
+export async function generateDashboard(
+  goal: string,
+  datasourceId: string | null,
+): Promise<Dashboard> {
+  const { data } = await client.post<Dashboard>('/dashboard/generate', {
+    goal,
+    datasource_id: datasourceId,
+  })
+  return data
+}
+
 export async function getDashboard(id: string): Promise<Dashboard> {
   const { data } = await client.get<Dashboard>(`/dashboard/${id}`)
   return data

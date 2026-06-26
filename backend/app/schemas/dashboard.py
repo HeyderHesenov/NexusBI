@@ -48,6 +48,11 @@ class DashboardCreate(BaseModel):
     description: str = Field(default="", max_length=2000)
 
 
+class DashboardGenerate(BaseModel):
+    goal: str = Field(min_length=1, max_length=500)
+    datasource_id: str | None = None
+
+
 class DashboardUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     description: str | None = Field(default=None, max_length=2000)

@@ -10,6 +10,7 @@ interface DashboardState {
   loadList: () => Promise<void>
   open: (id: string) => Promise<void>
   create: (name: string) => Promise<Dashboard>
+  generate: (goal: string, datasourceId: string | null) => Promise<Dashboard>
   remove: (id: string) => Promise<void>
   addWidget: (dashboardId: string, queryLogId: string, title: string) => Promise<void>
   removeWidget: (dashboardId: string, widgetId: string) => Promise<void>
@@ -31,6 +32,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   create: async (name) => {
     const dash = await dashApi.createDashboard(name)
     set((s) => ({ list: [...s.list, { id: dash.id, name: dash.name, description: dash.description }] }))
+    return dash
+  },
+  generate: async (goal, datasourceId) => {
+    const dash = await dashApi.generateDashboard(goal, datasourceId)
+    set((s) => ({
+      list: [...s.list, { id: dash.id, name: dash.name, description: dash.description }],
+      current: dash,
+    }))
     return dash
   },
   remove: async (id) => {

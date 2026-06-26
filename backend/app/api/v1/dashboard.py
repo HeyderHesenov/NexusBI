@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Response, status
 
-from app.dependencies import CacheDep, CurrentUser, DbDep
+from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.schemas.dashboard import (
     DashboardCreate,
+    DashboardGenerate,
     DashboardResponse,
     DashboardSummary,
     DashboardUpdate,
@@ -23,6 +24,16 @@ async def create(payload: DashboardCreate, user: CurrentUser, db: DbDep) -> Dash
     return DashboardResponse(
         id=dash.id, name=dash.name, description=dash.description, layout=dash.layout, widgets=[]
     )
+
+
+@router.post("/generate", response_model=DashboardResponse, status_code=status.HTTP_201_CREATED)
+async def generate(
+    payload: DashboardGenerate, user: RateLimitedUser, db: DbDep, cache: CacheDep
+) -> DashboardResponse:
+    """AI auto-dashboard: plans questions for a goal, runs them, assembles widgets.
+    Rate-limited because it fans out into several AI calls internally."""
+    dash = await svc.generate_dashboard(db, cache, user.id, payload.goal, payload.datasource_id)
+    return await _dashboard_response(db, user.id, dash)
 
 
 @router.get("/", response_model=list[DashboardSummary])

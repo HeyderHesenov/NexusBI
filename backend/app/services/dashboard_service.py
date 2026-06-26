@@ -58,6 +58,72 @@ async def create_dashboard(
     return dash
 
 
+async def _run_planned_query(
+    cache: CacheService, user_id: str, datasource_id: str | None, question: str
+) -> tuple[str, str] | None:
+    """Run one planned question in an isolated session. Returns (title, query_log_id)."""
+    async with AsyncSessionLocal() as qdb:
+        try:
+            result = await query_service.process_nl_query(
+                question, datasource_id, user_id, qdb, cache
+            )
+            await qdb.commit()
+        except Exception as exc:  # noqa: BLE001 — one bad question shouldn't sink the board
+            _log.warning("planned_query_failed", question=question[:80], error=str(exc)[:200])
+            return None
+    if not result.query_log_id or not result.data:
+        return None
+    return question, result.query_log_id
+
+
+async def generate_dashboard(
+    db: AsyncSession,
+    cache: CacheService,
+    user_id: str,
+    goal: str,
+    datasource_id: str | None,
+) -> Dashboard:
+    """Plan questions for ``goal``, run them concurrently, and assemble a dashboard.
+
+    Each question runs in its own session (AsyncSession isn't concurrency-safe);
+    widgets are laid out in a 2-column grid. Raises if nothing usable came back.
+    """
+    from app.ai import dashboard_planner
+
+    questions = await dashboard_planner.plan_dashboard(goal)
+    if not questions:
+        raise SchemaNotFoundError("Dashboard planı yaradıla bilmədi.")
+
+    results = await asyncio.gather(
+        *[_run_planned_query(cache, user_id, datasource_id, q) for q in questions]
+    )
+    widgets = [r for r in results if r is not None]
+    if not widgets:
+        raise SchemaNotFoundError("Sual nəticələri alınmadı.")
+
+    dash = await create_dashboard(db, user_id, goal[:255], f"AI tərəfindən yaradıldı: {goal}"[:2000])
+    # 2-column grid, 12 cols, each widget 6 wide × 8 tall.
+    for i, (title, query_log_id) in enumerate(widgets):
+        await add_widget(
+            db,
+            user_id,
+            dash.id,
+            {
+                "query_log_id": query_log_id,
+                "title": title[:255],
+                "position_x": (i % 2) * 6,
+                "position_y": (i // 2) * 8,
+                "width": 6,
+                "height": 8,
+            },
+        )
+    await db.flush()
+    # add_widget's ownership check eager-loaded dash.widgets as empty; drop that
+    # cached collection so the reload below sees the freshly inserted widgets.
+    db.expire(dash, ["widgets"])
+    return await get_dashboard(db, user_id, dash.id)
+
+
 async def list_dashboards(db: AsyncSession, user_id: str) -> list[Dashboard]:
     result = await db.execute(
         select(Dashboard).where(Dashboard.user_id == user_id)

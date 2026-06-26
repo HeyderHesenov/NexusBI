@@ -1,9 +1,10 @@
-import { LayoutGrid, Plus, RefreshCw, Share2, Trash2 } from 'lucide-react'
+import { LayoutGrid, Plus, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import type { Layouts } from 'react-grid-layout'
 import { AddWidgetModal } from '../components/dashboard/AddWidgetModal'
 import { DashboardGrid } from '../components/dashboard/DashboardGrid'
+import { GenerateDashboardModal } from '../components/dashboard/GenerateDashboardModal'
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
 import { ShareDashboardModal } from '../components/dashboard/ShareDashboardModal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
@@ -11,10 +12,11 @@ import { useDashboardStore } from '../store/dashboardStore'
 
 export function DashboardPage() {
   const {
-    list, current, refreshing, loadList, open, create, remove,
+    list, current, refreshing, loadList, open, create, generate, remove,
     addWidget, removeWidget, refreshWidget, refreshAll, saveLayout,
   } = useDashboardStore()
   const [createOpen, setCreateOpen] = useState(false)
+  const [generateOpen, setGenerateOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -76,6 +78,12 @@ export function DashboardPage() {
             </button>
           )}
           <button
+            onClick={() => setGenerateOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent active:translate-y-px"
+          >
+            <Sparkles size={16} strokeWidth={2.5} /> AI ilə qur
+          </button>
+          <button
             onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
           >
@@ -124,6 +132,20 @@ export function DashboardPage() {
           const dash = await create(name)
           await open(dash.id)
           setCreateOpen(false)
+        }}
+      />
+
+      <GenerateDashboardModal
+        open={generateOpen}
+        onClose={() => setGenerateOpen(false)}
+        onGenerate={async (goal) => {
+          try {
+            const dash = await generate(goal, null)
+            setGenerateOpen(false)
+            toast.success(`“${dash.name}” hazırdır — ${dash.widgets.length} widget.`)
+          } catch {
+            /* interceptor toast */
+          }
         }}
       />
 
