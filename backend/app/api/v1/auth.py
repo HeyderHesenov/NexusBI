@@ -4,12 +4,13 @@ from __future__ import annotations
 import asyncio
 import secrets
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
 from app.core.exceptions import AuthError, NexusBIException
+from app.core.rate_limit import rate_limit
 from app.core.google import google_enabled, verify_google_token
 from app.core.security import create_access_token, hash_password, verify_password
 from app.dependencies import CurrentUser, DbDep
@@ -26,7 +27,12 @@ from app.schemas.auth import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("register", limit=5, window_seconds=60))],
+)
 async def register(payload: RegisterRequest, db: DbDep) -> TokenResponse:
     existing = await db.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none():
@@ -47,7 +53,11 @@ async def register(payload: RegisterRequest, db: DbDep) -> TokenResponse:
     return TokenResponse(access_token=create_access_token(user.id))
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("login", limit=10, window_seconds=60))],
+)
 async def login(payload: LoginRequest, db: DbDep) -> TokenResponse:
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()

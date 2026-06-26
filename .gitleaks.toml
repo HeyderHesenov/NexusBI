@@ -1,0 +1,24 @@
+# gitleaks configuration for NexusBI.
+# Extends the built-in rule set and allowlists the committed *.env.example
+# placeholders (which intentionally contain empty / sample values).
+title = "NexusBI gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore example env files, lockfiles, and test-only constants"
+paths = [
+  '''\.env\.example$''',
+  '''frontend/\.env\.example$''',
+  '''\.gitleaks\.toml$''',
+  '''package-lock\.json$''',
+  '''.*\.lock$''',
+  # Test fixture: a throwaway Fernet key used only to run the suite, never prod.
+  '''backend/tests/conftest\.py$''',
+]
+regexes = [
+  # docker-compose / README sample DSNs with literal user:pass placeholders.
+  '''postgresql\+asyncpg://user:pass@''',
+  '''sqlite\+aiosqlite:///''',
+]

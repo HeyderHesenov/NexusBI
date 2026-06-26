@@ -68,14 +68,32 @@ async def test_usage_reflects_consumption(client, auth):
 
 
 async def test_unlimited_tier_bypasses_limit(client, auth, _small_free_quota):
-    # Switch to the unlimited (demo) tier, then exceed the tiny free quota freely.
-    up = await client.post("/api/v1/billing/upgrade", json={"tier": "unlimited"}, headers=auth)
-    assert up.status_code == 200
-    body = up.json()
-    assert body["tier"] == "unlimited"
-    assert body["limit"] == -1
+    # The "unlimited" tier is internal — assigned server-side (e.g. the demo seed),
+    # NOT purchasable via /upgrade. Set it directly, then exceed the tiny quota.
+    from sqlalchemy import select
+
+    from app.db.session import AsyncSessionLocal
+    from app.models.user import User
+
+    async with AsyncSessionLocal() as db:
+        user = (
+            await db.execute(select(User).where(User.email == "test@nexusbi.io"))
+        ).scalar_one()
+        user.subscription_tier = "unlimited"
+        await db.commit()
+
+    usage = await client.get("/api/v1/billing/usage", headers=auth)
+    assert usage.json()["limit"] == -1
     for _ in range(5):  # well past the free quota of 2
         assert (await _ask(client, auth)).status_code == 200
+
+
+async def test_upgrade_rejects_unlimited_escalation(client, auth):
+    # A normal user must NOT be able to self-assign the internal unlimited tier.
+    resp = await client.post(
+        "/api/v1/billing/upgrade", json={"tier": "unlimited"}, headers=auth
+    )
+    assert resp.status_code == 400, resp.text
 
 
 async def test_plans_catalogue(client, auth):

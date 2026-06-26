@@ -39,6 +39,10 @@ app.dependency_overrides[get_db] = _override_get_db
 
 @pytest_asyncio.fixture(autouse=True)
 async def _schema() -> AsyncGenerator[None, None]:
+    # Reset the in-memory IP rate-limit store so counts don't bleed across tests.
+    from app.core import rate_limit
+
+    rate_limit._HITS.clear()
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield

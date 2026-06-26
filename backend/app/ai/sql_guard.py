@@ -23,6 +23,14 @@ _FORBIDDEN_FUNCTIONS = re.compile(
     re.IGNORECASE,
 )
 
+# Statement keywords that must never appear, even though a single SELECT/WITH
+# start already blocks them as leading tokens (defense in depth vs. clever
+# embedding / parser quirks): SQLite PRAGMA/ATTACH/DETACH/VACUUM, etc.
+_FORBIDDEN_KEYWORDS = re.compile(
+    r"\b(pragma|attach|detach|vacuum|reindex)\b",
+    re.IGNORECASE,
+)
+
 
 def _strip_comments(sql: str) -> str:
     sql = re.sub(r"--[^\n]*", " ", sql)
@@ -53,5 +61,7 @@ def validate_select_only(sql: str) -> str:
         raise InvalidSQLError("SELECT … INTO is not permitted.")
     if _FORBIDDEN_FUNCTIONS.search(scrubbed):
         raise InvalidSQLError("Disallowed SQL function detected.")
+    if _FORBIDDEN_KEYWORDS.search(scrubbed):
+        raise InvalidSQLError("Disallowed SQL keyword detected.")
 
     return cleaned

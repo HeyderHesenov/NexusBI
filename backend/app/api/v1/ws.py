@@ -7,6 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 from app.core.logging import get_logger
+from app.core.rate_limit import check_ip
 from app.core.security import decode_access_token
 from app.db.session import AsyncSessionLocal
 from app.models.dashboard import Dashboard
@@ -56,6 +57,12 @@ async def _resolve_access(
 @router.websocket("/dashboard/{dashboard_id}")
 async def dashboard_ws(ws: WebSocket, dashboard_id: str) -> None:
     global _guest_seq
+    # Throttle connection attempts per IP so share tokens can't be brute-forced
+    # over a flood of WebSocket handshakes.
+    ip = ws.client.host if ws.client else "unknown"
+    if not check_ip("ws_connect", ip, limit=30, window_seconds=60):
+        await ws.close(code=4429)
+        return
     access = await _resolve_access(
         dashboard_id, ws.query_params.get("token"), ws.query_params.get("share")
     )

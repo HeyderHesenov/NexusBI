@@ -50,10 +50,15 @@ class Settings(BaseSettings):
     DATASOURCE_MAX_ENGINES: int = Field(default=20)
 
     # ─── Security ───
-    SECRET_KEY: str = Field(default="dev-insecure-change-me")
+    # Empty by default: demo generates an ephemeral key at startup; production
+    # must supply a strong value (enforced in app.main._assert_production_secrets).
+    SECRET_KEY: str = Field(default="")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60)
     ALGORITHM: str = Field(default="HS256")
     FERNET_KEY: str = Field(default="")
+    # Optional bearer token to gate the Prometheus /metrics scrape endpoint.
+    # Empty => /metrics is only reachable from loopback.
+    METRICS_TOKEN: str = Field(default="")
 
     # ─── App ───
     DEMO_MODE: bool = Field(default=True)

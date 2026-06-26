@@ -1,6 +1,7 @@
 """DataSource lifecycle: create, list, test, schema, encrypted execution."""
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any
@@ -10,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.schema_introspector import format_schema_for_prompt, get_schema
 from app.ai.sql_guard import validate_select_only
-from app.core import metrics
+from app.core import metrics, net_guard
 from app.core.exceptions import DataSourceConnectionError, SchemaNotFoundError
 from app.db import engine_pool
 from app.core.logging import get_logger
@@ -21,13 +22,22 @@ from app.services.cache_service import CacheService
 log = get_logger("nexusbi.sql")
 
 
+async def _guard_conn_str(conn_str: str) -> None:
+    """SSRF check (DNS resolution is blocking → off-loop). Skip in tests-friendly
+    fashion handled by the guard itself for sqlite/file URLs."""
+    await asyncio.to_thread(net_guard.assert_safe_connection_string, conn_str)
+
+
 async def add_datasource(
     db: AsyncSession, user_id: str, name: str, db_type: str, connection_string: str
 ) -> DataSource:
+    dtype = DBType(db_type)
+    if dtype != DBType.powerbi:  # powerbi stores a JSON config, not a SQLAlchemy URL
+        await _guard_conn_str(connection_string)
     ds = DataSource(
         user_id=user_id,
         name=name,
-        db_type=DBType(db_type),
+        db_type=dtype,
         connection_string_encrypted=encrypt_secret(connection_string),
     )
     db.add(ds)
@@ -70,6 +80,7 @@ async def test_connection(ds: DataSource) -> bool:
         except Exception as exc:
             raise DataSourceConnectionError("Power BI bağlantısı uğursuz.", detail=str(exc)) from exc
     conn_str = decrypt_secret(ds.connection_string_encrypted)
+    await _guard_conn_str(conn_str)  # re-check at connect time (DNS-rebind window)
     engine = await engine_pool.get_engine(conn_str)
     try:
         async with engine.connect() as conn:
@@ -93,6 +104,7 @@ async def get_schema_cached(
         schema = await get_provider().get_model_schema(cfg["dataset_id"])
     else:
         conn_str = decrypt_secret(ds.connection_string_encrypted)
+        await _guard_conn_str(conn_str)
         schema = await get_schema(conn_str)
     await cache.set(f"schema:{ds.id}", schema, ttl=3600)
     return schema
@@ -109,6 +121,7 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
     """
     sql = validate_select_only(sql)
     conn_str = decrypt_secret(ds.connection_string_encrypted)
+    await _guard_conn_str(conn_str)
     engine = await engine_pool.get_engine(conn_str)
     started = time.perf_counter()
     try:

@@ -23,6 +23,16 @@ configure_logging()
 log = get_logger()
 
 
+def _apply_security_headers(response) -> None:
+    """Baseline security headers — applied to normal AND error responses."""
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+    if not settings.DEMO_MODE:
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+
+
 def _assert_production_secrets() -> None:
     """Fail fast if a non-demo deploy is missing real secrets."""
     if settings.DEMO_MODE:
@@ -35,6 +45,28 @@ def _assert_production_secrets() -> None:
         raise RuntimeError("FERNET_KEY must be set in production.")
     if not settings.OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY must be set in production.")
+
+
+def _harden_demo_secrets() -> None:
+    """In demo, never fall back to a predictable signing key.
+
+    If SECRET_KEY is unset, mint a random ephemeral one (tokens become invalid on
+    restart — acceptable for demo, far safer than a committed constant). Warn when
+    FERNET_KEY is missing since datasource connection strings would then be
+    unencryptable.
+    """
+    import secrets as _secrets
+
+    if not settings.DEMO_MODE:
+        return
+    if not settings.SECRET_KEY or settings.SECRET_KEY == "dev-insecure-change-me":
+        settings.SECRET_KEY = _secrets.token_urlsafe(48)
+        log.warning("ephemeral_secret_key", msg="SECRET_KEY boşdur — efemer açar yaradıldı.")
+    if not settings.FERNET_KEY:
+        log.warning(
+            "fernet_key_missing",
+            msg="FERNET_KEY boşdur — datasource bağlantıları şifrələnə bilməz.",
+        )
 
 
 async def _seed_demo_account() -> None:
@@ -65,6 +97,7 @@ async def _seed_demo_account() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _assert_production_secrets()
+    _harden_demo_secrets()
     if not settings.OPENAI_API_KEY:
         # Demo mode still works via the rule-based SQL fallback, but warn loudly
         # so a misconfigured key is obvious in the logs instead of silent 401s.
@@ -93,11 +126,17 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    # Interactive API docs reveal the full schema; expose them in demo only.
+    _docs = "/docs" if settings.DEMO_MODE else None
+    _redoc = "/redoc" if settings.DEMO_MODE else None
     app = FastAPI(
         title="NexusBI",
         description="Natural Language to Dashboard platform.",
         version="0.1.0",
         lifespan=lifespan,
+        docs_url=_docs,
+        redoc_url=_redoc,
+        openapi_url="/openapi.json" if settings.DEMO_MODE else None,
     )
 
     app.add_middleware(
@@ -138,13 +177,14 @@ def create_app() -> FastAPI:
             )
             structlog.contextvars.clear_contextvars()
         response.headers["X-Request-ID"] = request_id
+        _apply_security_headers(response)
         return response
 
     @app.exception_handler(NexusBIException)
     async def _domain_error(request: Request, exc: NexusBIException) -> JSONResponse:
         request_id = getattr(request.state, "request_id", None)
         log.warning("domain_error", error=exc.__class__.__name__, message=exc.message)
-        return JSONResponse(
+        resp = JSONResponse(
             status_code=exc.status_code,
             content={
                 "error": exc.__class__.__name__,
@@ -154,12 +194,14 @@ def create_app() -> FastAPI:
                 "request_id": request_id,
             },
         )
+        _apply_security_headers(resp)
+        return resp
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
         request_id = getattr(request.state, "request_id", None)
         log.error("unhandled_error", error=type(exc).__name__, message=str(exc))
-        return JSONResponse(
+        resp = JSONResponse(
             status_code=500,
             content={
                 "error": "InternalServerError",
@@ -168,13 +210,30 @@ def create_app() -> FastAPI:
                 "request_id": request_id,
             },
         )
+        # This handler runs in ServerErrorMiddleware (outside the header middleware),
+        # so set the headers here too — otherwise 500s ship bare.
+        _apply_security_headers(resp)
+        return resp
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, object]:
         return {"status": "ok", "demo_mode": settings.DEMO_MODE}
 
     @app.get("/metrics", tags=["health"])
-    async def prometheus_metrics() -> Response:
+    async def prometheus_metrics(request: Request) -> Response:
+        # Metrics leak request patterns. A loopback check is only trustworthy in
+        # demo (no proxy in front); in production a reverse proxy makes every
+        # client look like 127.0.0.1, so there require the scrape token instead.
+        import hmac
+
+        client = request.client.host if request.client else ""
+        token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+        token_ok = bool(settings.METRICS_TOKEN) and hmac.compare_digest(
+            token, settings.METRICS_TOKEN
+        )
+        loopback_ok = settings.DEMO_MODE and client in ("127.0.0.1", "::1")
+        if not (token_ok or loopback_ok):
+            return Response(status_code=403)
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     app.include_router(api_router)

@@ -10,6 +10,7 @@ from fastapi import APIRouter
 
 from app.billing import usage_service
 from app.billing.tiers import PURCHASABLE, TIERS, get_tier
+from app.config import settings
 from app.core.exceptions import NexusBIException
 from app.dependencies import CurrentUser, DbDep
 from app.schemas.billing import PlanInfo, UpgradeRequest, UsageResponse
@@ -38,9 +39,14 @@ async def usage(user: CurrentUser) -> UsageResponse:
 
 @router.post("/upgrade", response_model=UsageResponse)
 async def upgrade(payload: UpgradeRequest, user: CurrentUser, db: DbDep) -> UsageResponse:
-    if payload.tier not in TIERS:
-        raise NexusBIException("Naməlum plan.")
-    # Mock checkout: flip the tier. (Stripe Checkout session would go here.)
+    # Only publicly-purchasable plans — never the internal "unlimited" tier, so a
+    # user can't self-escalate to an unlimited quota.
+    if payload.tier not in PURCHASABLE:
+        raise NexusBIException("Naməlum və ya əlçatmaz plan.")
+    # The tier flip is a mock checkout. Outside demo it MUST be gated behind a real
+    # payment provider, so refuse rather than grant a paid plan for free.
+    if not settings.DEMO_MODE:
+        raise NexusBIException("Plan yüksəltmək üçün ödəniş tələb olunur.", detail="payment_required")
     user.subscription_tier = get_tier(payload.tier).key
     await db.flush()
     return UsageResponse(**usage_service.get_usage(user))
