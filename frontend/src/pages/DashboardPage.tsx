@@ -1,13 +1,17 @@
-import { LayoutGrid, Plus, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { LayoutGrid, MessageCircle, Plus, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import type { Layouts } from 'react-grid-layout'
 import { AddWidgetModal } from '../components/dashboard/AddWidgetModal'
+import { CollabPanel } from '../components/dashboard/CollabPanel'
+import { CollabSurface } from '../components/dashboard/CollabSurface'
 import { DashboardGrid } from '../components/dashboard/DashboardGrid'
 import { GenerateDashboardModal } from '../components/dashboard/GenerateDashboardModal'
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
 import { ShareDashboardModal } from '../components/dashboard/ShareDashboardModal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { getComments } from '../api/dashboard'
+import { useCollabStore } from '../store/collabStore'
 import { useDashboardStore } from '../store/dashboardStore'
 
 export function DashboardPage() {
@@ -20,11 +24,24 @@ export function DashboardPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const { participants, connect, disconnect } = useCollabStore()
 
   useEffect(() => {
     loadList().catch(() => undefined)
   }, [loadList])
+
+  // Join the live collaboration room for whichever dashboard is open.
+  const currentId = current?.id
+  useEffect(() => {
+    if (!currentId) return
+    const token = localStorage.getItem('nexusbi_token') ?? undefined
+    getComments(currentId)
+      .then((history) => connect(currentId, { token }, history))
+      .catch(() => connect(currentId, { token }, []))
+    return () => disconnect()
+  }, [currentId, connect, disconnect])
 
   // Persist layout changes, debounced so dragging doesn't spam the API.
   const onLayoutChange = (layouts: Layouts) => {
@@ -59,6 +76,19 @@ export function DashboardPage() {
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
             >
               <Plus size={16} /> Widget
+            </button>
+          )}
+          {current && (
+            <button
+              onClick={() => setChatOpen((v) => !v)}
+              className="relative flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+            >
+              <MessageCircle size={16} /> Komanda
+              {participants.length > 1 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg">
+                  {participants.length}
+                </span>
+              )}
             </button>
           )}
           {current && (
@@ -112,18 +142,22 @@ export function DashboardPage() {
 
       {current ? (
         current.widgets.length ? (
-          <DashboardGrid
-            dashboard={current}
-            onRemoveWidget={(wid) => removeWidget(current.id, wid).catch(() => undefined)}
-            onRefreshWidget={(wid) => refreshWidget(current.id, wid).catch(() => undefined)}
-            onLayoutChange={onLayoutChange}
-          />
+          <CollabSurface>
+            <DashboardGrid
+              dashboard={current}
+              onRemoveWidget={(wid) => removeWidget(current.id, wid).catch(() => undefined)}
+              onRefreshWidget={(wid) => refreshWidget(current.id, wid).catch(() => undefined)}
+              onLayoutChange={onLayoutChange}
+            />
+          </CollabSurface>
         ) : (
           <EmptyDashboard onAdd={() => setAddOpen(true)} />
         )
       ) : (
         <EmptyState />
       )}
+
+      <CollabPanel open={chatOpen} onClose={() => setChatOpen(false)} />
 
       <SaveDashboardModal
         open={createOpen}

@@ -1,5 +1,6 @@
 import { client } from './client'
 import type { Dashboard, DashboardSummary, Widget } from '../types'
+import type { Comment } from '../store/collabStore'
 
 export async function listDashboards(): Promise<DashboardSummary[]> {
   const { data } = await client.get<DashboardSummary[]>('/dashboard/')
@@ -83,5 +84,15 @@ export async function disableShare(dashboardId: string): Promise<void> {
 
 export async function getPublicDashboard(token: string): Promise<Dashboard> {
   const { data } = await client.get<Dashboard>(`/public/dashboard/${token}`)
+  return data
+}
+
+export async function getComments(dashboardId: string): Promise<Comment[]> {
+  const { data } = await client.get<Comment[]>(`/dashboard/${dashboardId}/comments`)
+  return data
+}
+
+export async function getPublicComments(token: string): Promise<Comment[]> {
+  const { data } = await client.get<Comment[]>(`/public/dashboard/${token}/comments`)
   return data
 }

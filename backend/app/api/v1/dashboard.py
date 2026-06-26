@@ -13,6 +13,8 @@ from app.schemas.dashboard import (
     WidgetCreate,
     WidgetResponse,
 )
+from app.schemas.comment import CommentResponse
+from app.services import comment_service
 from app.services import dashboard_service as svc
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -56,6 +58,13 @@ async def _dashboard_response(db: DbDep, user_id: str, dash) -> DashboardRespons
 async def get_one(dashboard_id: str, user: CurrentUser, db: DbDep) -> DashboardResponse:
     dash = await svc.get_dashboard(db, user.id, dashboard_id)
     return await _dashboard_response(db, user.id, dash)
+
+
+@router.get("/{dashboard_id}/comments", response_model=list[CommentResponse])
+async def list_comments(dashboard_id: str, user: CurrentUser, db: DbDep) -> list[CommentResponse]:
+    await svc.get_dashboard(db, user.id, dashboard_id)  # ownership check
+    items = await comment_service.list_for_dashboard(db, dashboard_id)
+    return [CommentResponse.model_validate(c) for c in items]
 
 
 @router.put("/{dashboard_id}", response_model=DashboardResponse)

@@ -4,7 +4,9 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.dependencies import DbDep
+from app.schemas.comment import CommentResponse
 from app.schemas.dashboard import DashboardResponse
+from app.services import comment_service
 from app.services import dashboard_service as svc
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -21,3 +23,11 @@ async def shared_dashboard(token: str, db: DbDep) -> DashboardResponse:
         layout=dash.layout,
         widgets=await svc.widgets_to_response(db, list(dash.widgets), dash.user_id),
     )
+
+
+@router.get("/dashboard/{token}/comments", response_model=list[CommentResponse])
+async def shared_comments(token: str, db: DbDep) -> list[CommentResponse]:
+    """Comment history for a shared dashboard (guest access via the share token)."""
+    dash = await svc.get_by_token(db, token)
+    items = await comment_service.list_for_dashboard(db, dash.id)
+    return [CommentResponse.model_validate(c) for c in items]

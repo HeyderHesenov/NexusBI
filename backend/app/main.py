@@ -178,6 +178,9 @@ def create_app() -> FastAPI:
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     app.include_router(api_router)
+
+    from app.api.v1 import ws
+    app.include_router(ws.router, prefix="/ws")
     return app
 
 
