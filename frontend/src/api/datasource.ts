@@ -1,5 +1,5 @@
 import { client } from './client'
-import type { DataSource, DataSourceCreate, DataSourceSchema } from '../types'
+import type { DataSource, DataSourceCreate, DataSourceSchema, PowerBIDataset } from '../types'
 
 export async function list(): Promise<DataSource[]> {
   const { data } = await client.get<DataSource[]>('/datasource/')
@@ -30,5 +30,18 @@ export async function upload(file: File, name: string): Promise<DataSource> {
   form.append('file', file)
   if (name) form.append('name', name)
   const { data } = await client.post<DataSource>('/datasource/upload', form)
+  return data
+}
+
+export async function listPowerBIDatasets(): Promise<PowerBIDataset[]> {
+  const { data } = await client.get<PowerBIDataset[]>('/datasource/powerbi/datasets')
+  return data
+}
+
+export async function connectPowerBI(name: string, datasetId: string): Promise<DataSource> {
+  const { data } = await client.post<DataSource>('/datasource/connect-powerbi', {
+    name,
+    dataset_id: datasetId,
+  })
   return data
 }

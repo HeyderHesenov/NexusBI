@@ -22,6 +22,7 @@ export interface ChartConfig {
 
 export interface QueryResult {
   sql: string
+  query_language?: 'sql' | 'dax'
   data: Record<string, unknown>[]
   columns: ColumnInfo[]
   chart_config: ChartConfig
@@ -29,6 +30,12 @@ export interface QueryResult {
   execution_time_ms: number
   query_log_id: string | null
   from_cache?: boolean
+}
+
+export interface PowerBIDataset {
+  id: string
+  name: string
+  workspace?: string
 }
 
 export interface QueryHistoryItem {

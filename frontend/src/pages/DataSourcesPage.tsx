@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Database, Plug, Plus, Table2, Trash2, UploadCloud } from 'lucide-react'
+import { BarChart3, Database, Plug, Plus, Table2, Trash2, UploadCloud } from 'lucide-react'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { useQueryStore } from '../store/queryStore'
 import * as dsApi from '../api/datasource'
 import type { DataSourceSchema } from '../types'
 import { ConnectSourceModal } from '../components/datasource/ConnectSourceModal'
+import { ConnectPowerBIModal } from '../components/datasource/ConnectPowerBIModal'
 import { UploadSourceModal } from '../components/datasource/UploadSourceModal'
 
 export function DataSourcesPage() {
@@ -12,6 +13,7 @@ export function DataSourcesPage() {
   const { datasourceId, setDatasource } = useQueryStore()
   const [connectOpen, setConnectOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [powerbiOpen, setPowerbiOpen] = useState(false)
   const [openSchema, setOpenSchema] = useState<string | null>(null)
   const [schema, setSchema] = useState<DataSourceSchema | null>(null)
 
@@ -53,6 +55,12 @@ export function DataSourcesPage() {
             <UploadCloud size={15} /> CSV/Excel
           </button>
           <button
+            onClick={() => setPowerbiOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+          >
+            <BarChart3 size={15} /> Power BI
+          </button>
+          <button
             onClick={() => setConnectOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
           >
@@ -76,7 +84,11 @@ export function DataSourcesPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface-2">
-                    <Database size={16} className="text-accent" />
+                    {s.db_type === 'powerbi' ? (
+                      <BarChart3 size={16} className="text-[#F2C811]" />
+                    ) : (
+                      <Database size={16} className="text-accent" />
+                    )}
                   </span>
                   <div>
                     <p className="font-medium text-ink">{s.name}</p>
@@ -146,6 +158,7 @@ export function DataSourcesPage() {
       )}
 
       <ConnectSourceModal open={connectOpen} onClose={() => setConnectOpen(false)} />
+      <ConnectPowerBIModal open={powerbiOpen} onClose={() => setPowerbiOpen(false)} />
       <UploadSourceModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   )

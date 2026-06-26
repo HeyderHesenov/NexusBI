@@ -5,7 +5,7 @@ import pytest
 
 from app.core.exceptions import InvalidSQLError
 from app.db import demo_data
-from app.services.powerbi import dax
+from app.services.powerbi import dax, provider
 from app.services.powerbi.provider import MockPowerBIProvider
 
 
@@ -73,6 +73,20 @@ def test_trailing_order_by():
 def test_unsupported_dax_raises(bad):
     with pytest.raises(InvalidSQLError):
         dax.dax_to_sql(bad)
+
+
+def test_get_provider_mock_by_default(monkeypatch):
+    monkeypatch.setattr(provider.settings, "POWERBI_CLIENT_ID", "")
+    assert isinstance(provider.get_provider(), MockPowerBIProvider)
+
+
+def test_get_provider_real_when_configured(monkeypatch):
+    monkeypatch.setattr(provider.settings, "POWERBI_TENANT_ID", "t")
+    monkeypatch.setattr(provider.settings, "POWERBI_CLIENT_ID", "c")
+    monkeypatch.setattr(provider.settings, "POWERBI_CLIENT_SECRET", "s")
+    from app.services.powerbi.real_provider import RealPowerBIProvider
+
+    assert isinstance(provider.get_provider(), RealPowerBIProvider)
 
 
 async def test_mock_provider_execute():

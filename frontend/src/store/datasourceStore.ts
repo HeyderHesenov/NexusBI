@@ -12,6 +12,7 @@ interface DatasourceState {
   loadSchema: (id: string) => Promise<DataSourceSchema>
   create: (payload: DataSourceCreate) => Promise<DataSource>
   uploadFile: (file: File, name: string) => Promise<DataSource>
+  connectPowerBI: (name: string, datasetId: string) => Promise<DataSource>
   test: (id: string) => Promise<boolean>
   remove: (id: string) => Promise<void>
 }
@@ -47,6 +48,13 @@ export const useDatasourceStore = create<DatasourceState>((set, get) => ({
     set({ sources: [...get().sources, ds] })
     useQueryStore.getState().setDatasource(ds.id)
     toast.success('Fayl yükləndi.')
+    return ds
+  },
+  connectPowerBI: async (name, datasetId) => {
+    const ds = await dsApi.connectPowerBI(name, datasetId)
+    set({ sources: [...get().sources, ds] })
+    useQueryStore.getState().setDatasource(ds.id)
+    toast.success('Power BI qoşuldu.')
     return ds
   },
   test: async (id) => {

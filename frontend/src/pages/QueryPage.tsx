@@ -225,7 +225,7 @@ function TurnCard({
         />
       </div>
 
-      <SQLPreview sql={result.sql} />
+      <SQLPreview sql={result.sql} language={result.query_language} />
 
       <div className="flex flex-wrap gap-2">
         <button
