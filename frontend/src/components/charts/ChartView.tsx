@@ -134,7 +134,7 @@ export function ChartView({
   // zoom thins them out. Pie/scatter/table/kpi stay as-is.
   const zoomable = type === 'bar' || type === 'line' || type === 'area'
 
-  const renderChart = (height: number | string) => {
+  const renderChart = (height: number | string, fullscreen = false) => {
     const chart = (data: Record<string, unknown>[]) => (
       <ChartRenderer
         data={data}
@@ -145,7 +145,13 @@ export function ChartView({
         anomalyLabels={anomalyLabels}
       />
     )
-    return zoomable ? <ChartZoom data={filtered}>{chart}</ChartZoom> : chart(filtered)
+    return zoomable ? (
+      <ChartZoom data={filtered} wheelAlways={fullscreen}>
+        {chart}
+      </ChartZoom>
+    ) : (
+      chart(filtered)
+    )
   }
 
   return (
@@ -255,7 +261,7 @@ export function ChartView({
             onRemove={(i) => setFilters((cur) => cur.filter((_, idx) => idx !== i))}
             onClear={() => setFilters([])}
           />
-          <div className="min-h-0 flex-1">{renderChart('100%')}</div>
+          <div className="min-h-0 flex-1">{renderChart('100%', true)}</div>
         </div>
       </ChartFullscreenModal>
     </div>

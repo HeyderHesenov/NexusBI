@@ -10,12 +10,15 @@ const DRAG_THRESHOLD = 4 // px before a press becomes a pan (so clicks still dri
 interface Props {
   data: Record<string, unknown>[]
   children: (slice: Record<string, unknown>[]) => ReactNode
+  /** Let a plain (no-modifier) wheel zoom — used in fullscreen where there is
+   *  no page to scroll. Inline keeps the Ctrl/⌘ gate so the feed still scrolls. */
+  wheelAlways?: boolean
 }
 
-/** Wraps a categorical chart with pinch / Ctrl+wheel zoom and drag-to-pan.
- *  Showing fewer points also thins out the x-axis labels, removing clutter.
- *  Plain (no-modifier) wheel is left alone so page scrolling still works. */
-export function ChartZoom({ data, children }: Props) {
+/** Wraps a categorical chart with wheel zoom and drag-to-pan. Scroll down zooms
+ *  in (fewer points, wider bars), scroll up zooms out. Showing fewer points also
+ *  thins out the x-axis labels, removing clutter. */
+export function ChartZoom({ data, children, wheelAlways = false }: Props) {
   const { window: win, zoomBy, pan, reset, zoomed } = useChartZoom(data.length)
   const ref = useRef<HTMLDivElement>(null)
   // Drag bookkeeping; `acc` carries the sub-index remainder between moves.
@@ -31,22 +34,23 @@ export function ChartZoom({ data, children }: Props) {
   const zoomRef = useRef(zoomBy)
   zoomRef.current = zoomBy
 
-  // Native listener so we can preventDefault (React's onWheel is passive). Only
-  // pinch (ctrlKey on trackpads) or Ctrl/Cmd+wheel zooms — plain wheel scrolls.
+  // Native listener so we can preventDefault (React's onWheel is passive).
+  // Inline: only pinch / Ctrl+⌘ wheel zooms (plain wheel scrolls the page).
+  // Fullscreen (wheelAlways): plain wheel zooms — down = in, up = out.
   useEffect(() => {
     const el = ref.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return
+      if (!wheelAlways && !(e.ctrlKey || e.metaKey)) return
       if (Math.abs(e.deltaY) < 0.5) return
       e.preventDefault()
       const rect = el.getBoundingClientRect()
       const ratio = rect.width ? (e.clientX - rect.left) / rect.width : 0.5
-      zoomRef.current(e.deltaY > 0 ? 1.18 : 0.85, ratio)
+      zoomRef.current(e.deltaY > 0 ? 0.85 : 1.18, ratio)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [wheelAlways])
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!zoomed) return // when fully zoomed-out, leave clicks to drill-down
@@ -102,7 +106,7 @@ export function ChartZoom({ data, children }: Props) {
         <button
           type="button"
           onClick={() => zoomBy(0.6)}
-          title="Yaxınlaşdır (və ya Ctrl + scroll / pinch)"
+          title={wheelAlways ? 'Yaxınlaşdır (və ya scroll)' : 'Yaxınlaşdır (və ya Ctrl + scroll / pinch)'}
           aria-label="Yaxınlaşdır"
           className={`pointer-events-auto ${BTN}`}
         >
