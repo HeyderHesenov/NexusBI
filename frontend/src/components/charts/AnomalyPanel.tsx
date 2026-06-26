@@ -11,7 +11,7 @@ export function AnomalyPanel({ result }: { result: AnomalyResult }) {
   if (!result.anomalies.length) {
     return (
       <div className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm text-ink-soft">
-        Anomaliya tapılmadı. {result.summary}
+        {result.summary || 'Anomaliya tapılmadı.'}
       </div>
     )
   }
