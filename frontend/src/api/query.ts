@@ -25,3 +25,7 @@ export async function getQuery(id: string): Promise<QueryResult> {
   const { data } = await client.get<QueryResult>(`/query/${id}`)
   return data
 }
+
+export async function deleteQuery(id: string): Promise<void> {
+  await client.delete(`/query/${id}`)
+}

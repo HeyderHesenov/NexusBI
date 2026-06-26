@@ -7,6 +7,7 @@ import { AnomalyPanel } from './AnomalyPanel'
 import { ExplainPanel } from './ExplainPanel'
 import { ScenarioPanel } from './ScenarioPanel'
 import { ChartRenderer } from './ChartRenderer'
+import { ChartZoom } from './ChartZoom'
 import { ChartFullscreenModal } from './ChartFullscreenModal'
 import { CHART_BTN, ChartToolbar } from './ChartToolbar'
 import { FilterPills, type Filter } from './FilterPills'
@@ -114,16 +115,23 @@ export function ChartView({ data, config, exportName = 'nexusbi', queryLogId, ti
 
   const activeConfig: ChartConfig = { ...config, chart_type: type }
 
-  const renderChart = (height: number | string) => (
-    <ChartRenderer
-      data={filtered}
-      config={activeConfig}
-      height={height}
-      showLegend={showLegend}
-      onPointClick={addFilter}
-      anomalyLabels={anomalyLabels}
-    />
-  )
+  // Many-point bar/line/area charts get cluttered x-axis labels; wheel/drag
+  // zoom thins them out. Pie/scatter/table/kpi stay as-is.
+  const zoomable = type === 'bar' || type === 'line' || type === 'area'
+
+  const renderChart = (height: number | string) => {
+    const chart = (data: Record<string, unknown>[]) => (
+      <ChartRenderer
+        data={data}
+        config={activeConfig}
+        height={height}
+        showLegend={showLegend}
+        onPointClick={addFilter}
+        anomalyLabels={anomalyLabels}
+      />
+    )
+    return zoomable ? <ChartZoom data={filtered}>{chart}</ChartZoom> : chart(filtered)
+  }
 
   return (
     <div className="space-y-3">
