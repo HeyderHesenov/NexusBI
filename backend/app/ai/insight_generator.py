@@ -6,6 +6,9 @@ from typing import Any
 
 from app.ai.client import chat_text
 from app.ai.prompt_templates import INSIGHT_GENERATOR_PROMPT, INSIGHT_GENERATOR_USER_PROMPT
+from app.core.logging import get_logger
+
+_log = get_logger("nexusbi.ai")
 
 
 async def generate_insight(
@@ -25,5 +28,6 @@ async def generate_insight(
             data=json.dumps(data[:50], ensure_ascii=False, default=str),
         )
         return await chat_text(INSIGHT_GENERATOR_PROMPT, user)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 — insight is best-effort, never fatal
+        _log.warning("insight_generation_failed", error=type(exc).__name__, detail=str(exc)[:200])
         return ""

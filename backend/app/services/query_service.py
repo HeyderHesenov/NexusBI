@@ -14,7 +14,8 @@ from app.ai.insight_generator import generate_insight
 from app.ai.text2sql import Text2SQLEngine
 from app.ai.types import ChartConfig, Text2SQLResult
 from app.config import settings
-from app.core.exceptions import NexusBIException
+from app.core.exceptions import AIGenerationError, NexusBIException
+from app.core.logging import get_logger
 from app.models.query_log import QueryLog
 from app.schemas.query import ColumnInfo, QueryResult
 from app.services import datasource_service as ds_service
@@ -28,6 +29,7 @@ def _cache_key(datasource_id: str | None, nl_query: str, extra_context: str = ""
     return f"qcache:{datasource_id or 'demo'}:{h}"
 
 _engine = Text2SQLEngine()
+_log = get_logger("nexusbi.query")
 
 _SNAPSHOT_MAX_ROWS = 1000
 _SNAPSHOT_MAX_BYTES = 256 * 1024  # cap the persisted JSON snapshot at ~256 KB
@@ -111,10 +113,19 @@ async def process_nl_query(
         resolved_ds_id = datasource_id
 
     # Chart selection and insight generation are independent — run concurrently.
+    # return_exceptions keeps one failing path from sinking the whole query;
+    # both already degrade internally, this is defense in depth.
     chart_config, insight = await asyncio.gather(
         select_chart_type(columns, rows, nl_query),
         generate_insight(rows, nl_query),
+        return_exceptions=True,
     )
+    if isinstance(chart_config, BaseException):
+        _log.warning("chart_select_errored", error=str(chart_config)[:200])
+        chart_config = ChartConfig(chart_type="table")
+    if isinstance(insight, BaseException):
+        _log.warning("insight_errored", error=str(insight)[:200])
+        insight = ""
     elapsed_ms = int((time.perf_counter() - started) * 1000)
 
     # Snapshot once; reuse for both the cache payload and the persisted log.
@@ -218,9 +229,16 @@ async def _demo_pipeline(
     nl_query: str,
     extra_context: str = "",
 ) -> tuple[Text2SQLResult, list[str], list[dict[str, Any]]]:
+    from app.ai import rule_based_sql
     from app.db import demo_data
 
     schema_text = demo_data.format_demo_schema()
-    sql_result = await _engine.generate_sql(nl_query, schema_text, "sqlite", extra_context)
+    try:
+        sql_result = await _engine.generate_sql(nl_query, schema_text, "sqlite", extra_context)
+    except AIGenerationError as exc:
+        # No working AI (missing/invalid key, rate limit) — keep the demo usable
+        # with a deterministic, schema-aware SQL fallback.
+        _log.warning("demo_ai_fallback", error=exc.message, detail=exc.detail)
+        sql_result = rule_based_sql.generate_sql_fallback(nl_query)
     columns, rows = demo_data.execute_demo_sql(sql_result.sql)
     return sql_result, columns, rows

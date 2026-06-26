@@ -27,6 +27,10 @@ class Settings(BaseSettings):
 
     # ─── Database ───
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///./nexusbi.db")
+    # App-DB connection pool (ignored for SQLite, which doesn't use a sized pool).
+    APP_DB_POOL_SIZE: int = Field(default=10)
+    APP_DB_POOL_MAX_OVERFLOW: int = Field(default=20)
+    APP_DB_POOL_RECYCLE_SECONDS: int = Field(default=1800)
 
     # ─── Redis ───
     REDIS_URL: str = Field(default="redis://localhost:6379/0")

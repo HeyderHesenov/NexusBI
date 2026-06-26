@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -16,6 +16,10 @@ def _uuid() -> str:
 
 class SavedQuery(Base, TimestampMixin):
     __tablename__ = "saved_queries"
+    # The scheduler filters by schedule and orders by last_run_at every tick.
+    __table_args__ = (
+        Index("ix_saved_queries_schedule_last_run", "schedule", "last_run_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     user_id: Mapped[str] = mapped_column(

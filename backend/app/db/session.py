@@ -11,12 +11,18 @@ from sqlalchemy.ext.asyncio import (
 
 from app.config import settings
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=False,
-    pool_pre_ping=True,
-    future=True,
-)
+# SQLite uses a non-sized pool, so the pool_size/overflow knobs only apply to
+# server databases (Postgres/MySQL). Configure them to avoid connection
+# exhaustion under concurrent load in production.
+_engine_kwargs: dict = {"echo": False, "pool_pre_ping": True, "future": True}
+if not settings.DATABASE_URL.startswith("sqlite"):
+    _engine_kwargs.update(
+        pool_size=settings.APP_DB_POOL_SIZE,
+        max_overflow=settings.APP_DB_POOL_MAX_OVERFLOW,
+        pool_recycle=settings.APP_DB_POOL_RECYCLE_SECONDS,
+    )
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,

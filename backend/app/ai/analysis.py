@@ -45,8 +45,10 @@ async def detect_anomalies(
     )
     try:
         raw = await chat_json(ANOMALY_DETECTOR_PROMPT, user)
+    except AIGenerationError:
+        raise
     except Exception as exc:  # noqa: BLE001
-        raise AIGenerationError("Anomaliya təhlili alınmadı.") from exc
+        raise AIGenerationError("Anomaliya təhlili alınmadı.", detail=str(exc)[:200]) from exc
     return {
         "anomalies": raw.get("anomalies", []),
         "summary": raw.get("summary", ""),
@@ -69,8 +71,10 @@ async def forecast(
     )
     try:
         raw = await chat_json(FORECAST_PROMPT.format(periods=periods), user)
+    except AIGenerationError:
+        raise
     except Exception as exc:  # noqa: BLE001
-        raise AIGenerationError("Proqnoz alınmadı.") from exc
+        raise AIGenerationError("Proqnoz alınmadı.", detail=str(exc)[:200]) from exc
     return {
         "forecast": raw.get("forecast", []),
         "narrative": raw.get("narrative", ""),
@@ -92,6 +96,8 @@ async def explain(
     )
     try:
         raw = await chat_json(EXPLAIN_PROMPT, user)
+    except AIGenerationError:
+        raise
     except Exception as exc:  # noqa: BLE001
-        raise AIGenerationError("İzah alınmadı.") from exc
+        raise AIGenerationError("İzah alınmadı.", detail=str(exc)[:200]) from exc
     return {"drivers": raw.get("drivers", []), "summary": raw.get("summary", "")}

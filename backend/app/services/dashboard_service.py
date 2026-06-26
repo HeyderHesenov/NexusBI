@@ -1,6 +1,7 @@
 """Dashboard and widget CRUD business logic."""
 from __future__ import annotations
 
+import asyncio
 import secrets
 from typing import Any
 
@@ -9,12 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import SchemaNotFoundError
+from app.core.logging import get_logger
+from app.db.session import AsyncSessionLocal
 from app.models.datasource import DataSource
 from app.models.dashboard import Dashboard, Widget
 from app.models.query_log import QueryLog
 from app.schemas.dashboard import WidgetChart, WidgetResponse
 from app.services import query_service
 from app.services.cache_service import CacheService
+
+_log = get_logger("nexusbi.dashboard")
 
 
 async def enable_share(db: AsyncSession, user_id: str, dashboard_id: str) -> str:
@@ -217,12 +222,47 @@ async def refresh_widget(
     return await _refresh(db, cache, user_id, widget)
 
 
+async def _run_widget_query(
+    cache: CacheService, user_id: str, query_log_id: str
+) -> str | None:
+    """Re-run one widget's query in an ISOLATED session; return new query_log_id.
+
+    Each widget gets its own session so the queries can run concurrently — an
+    AsyncSession is not safe for concurrent use on a shared instance.
+    """
+    async with AsyncSessionLocal() as wdb:
+        log_row = await wdb.execute(
+            select(QueryLog).where(
+                QueryLog.id == query_log_id, QueryLog.user_id == user_id
+            )
+        )
+        log = log_row.scalar_one_or_none()
+        if log is None:
+            return None
+        result = await query_service.process_nl_query(
+            log.natural_language, log.datasource_id, user_id, wdb, cache, bypass_cache=True
+        )
+        await wdb.commit()
+        return result.query_log_id
+
+
 async def refresh_all_widgets(
     db: AsyncSession, cache: CacheService, user_id: str, dashboard_id: str
 ) -> Dashboard:
     dash = await get_dashboard(db, user_id, dashboard_id)
-    for widget in list(dash.widgets):
-        await _refresh(db, cache, user_id, widget)
+    widgets = [w for w in dash.widgets if w.query_log_id]
+    # Run every widget's query concurrently (each in its own session), then
+    # repoint widgets on the shared session. One widget's failure is isolated.
+    results = await asyncio.gather(
+        *[_run_widget_query(cache, user_id, w.query_log_id) for w in widgets],
+        return_exceptions=True,
+    )
+    for widget, res in zip(widgets, results):
+        if isinstance(res, Exception):
+            _log.warning("widget_refresh_failed", widget_id=widget.id, error=str(res))
+        elif res:
+            widget.query_log_id = res
+    await db.flush()
     return await get_dashboard(db, user_id, dashboard_id)
 
 

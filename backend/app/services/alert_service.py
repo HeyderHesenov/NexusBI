@@ -60,9 +60,13 @@ async def delete(db: AsyncSession, user_id: str, alert_id: str) -> None:
 
 
 def evaluate(alert: Alert, rows: list[dict[str, Any]]) -> bool:
-    """True if any row's column value satisfies the alert condition."""
+    """True if any row's column value satisfies the alert condition.
+
+    Linear scan over rows; result sets are already snapshot-bounded
+    (<=1000 rows) upstream, so this stays cheap. Short-circuits on first match.
+    """
     fn = _OPS.get(alert.operator)
-    if fn is None:
+    if fn is None or not rows:
         return False
     for row in rows:
         raw = row.get(alert.column)

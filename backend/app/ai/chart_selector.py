@@ -7,8 +7,10 @@ from typing import Any
 from app.ai.client import chat_json
 from app.ai.prompt_templates import CHART_SELECTOR_PROMPT, CHART_SELECTOR_USER_PROMPT
 from app.ai.types import ChartConfig
+from app.core.logging import get_logger
 
 _NUMERIC = (int, float)
+_log = get_logger("nexusbi.ai")
 
 
 def _rule_based(columns: list[str], data: list[dict[str, Any]]) -> ChartConfig:
@@ -47,5 +49,6 @@ async def select_chart_type(
         )
         raw = await chat_json(CHART_SELECTOR_PROMPT, user)
         return ChartConfig(**raw)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 — degrade to deterministic selection
+        _log.warning("chart_selection_failed", error=type(exc).__name__, detail=str(exc)[:200])
         return _rule_based(columns, data)
