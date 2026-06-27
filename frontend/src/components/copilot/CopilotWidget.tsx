@@ -1,9 +1,10 @@
 import { ArrowRight, Send, Sparkles, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { CopilotAction } from '../../api/copilot'
 import { useCopilotStore } from '../../store/copilotStore'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { TypewriterText } from '../charts/TypewriterText'
 
 const SUGGESTIONS = [
   'Q4 gəlirini analiz edən dashboard qur',
@@ -20,6 +21,11 @@ export function CopilotWidget() {
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [thread, sending, open])
+
+  const scrollToEnd = useCallback(
+    () => endRef.current?.scrollIntoView({ behavior: 'auto' }),
+    [],
+  )
 
   const submit = (value?: string) => {
     const t = (value ?? text).trim()
@@ -87,7 +93,15 @@ export function CopilotWidget() {
                       : 'border border-line bg-surface-2 text-ink'
                   }`}
                 >
-                  {m.content}
+                  {m.role === 'assistant' && i === thread.length - 1 ? (
+                    <TypewriterText
+                      text={m.content}
+                      className="whitespace-pre-wrap"
+                      onType={scrollToEnd}
+                    />
+                  ) : (
+                    m.content
+                  )}
                 </div>
                 {m.actions && m.actions.length > 0 && (
                   <div className="mt-2 flex flex-col items-start gap-1.5">

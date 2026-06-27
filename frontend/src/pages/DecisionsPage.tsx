@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Lightbulb, Target, Trash2 } from 'lucide-react'
 import { useDecisionStore } from '../store/decisionStore'
+import { TypewriterText } from '../components/charts/TypewriterText'
 import type { Decision, DecisionStatus } from '../types'
 
 const STATUS: { value: DecisionStatus; label: string }[] = [
@@ -89,9 +90,10 @@ function DecisionCard({
       </div>
 
       {d.insight && (
-        <p className="mt-2 flex items-start gap-1.5 text-sm text-ink-soft">
-          <Lightbulb size={14} className="mt-0.5 shrink-0 text-accent" /> {d.insight}
-        </p>
+        <div className="mt-2 flex items-start gap-1.5 text-sm text-ink-soft">
+          <Lightbulb size={14} className="mt-0.5 shrink-0 text-accent" />
+          <TypewriterText text={d.insight} />
+        </div>
       )}
       {d.action && <p className="mt-1 text-sm text-ink"><span className="text-ink-faint">Addım:</span> {d.action}</p>}
 
