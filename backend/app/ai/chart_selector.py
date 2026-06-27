@@ -12,6 +12,10 @@ from app.core.logging import get_logger
 _NUMERIC = (int, float)
 _log = get_logger("nexusbi.ai")
 
+# A pie with more than this many slices is unreadable; fall back to a bar chart
+# (which supports scrolling/zoom + drill-down) instead.
+_MAX_PIE_SLICES = 8
+
 
 def _rule_based(columns: list[str], data: list[dict[str, Any]]) -> ChartConfig:
     """Deterministic fallback when the LLM is unavailable."""
@@ -27,7 +31,7 @@ def _rule_based(columns: list[str], data: list[dict[str, Any]]) -> ChartConfig:
 
     if len(columns) == 2 and numeric and categorical:
         cat = categorical[0]
-        if len(data) <= 6:
+        if len(data) <= _MAX_PIE_SLICES:
             return ChartConfig(chart_type="pie", x_axis=cat, y_axis=numeric[0])
         is_time = any(k in cat.lower() for k in ("date", "month", "year", "day", "time"))
         ctype = "line" if is_time else "bar"
@@ -48,7 +52,15 @@ async def select_chart_type(
             row_count=len(data),
         )
         raw = await chat_json(CHART_SELECTOR_PROMPT, user)
-        return ChartConfig(**raw)
+        return _guard_pie(ChartConfig(**raw), data)
     except Exception as exc:  # noqa: BLE001 — degrade to deterministic selection
         _log.warning("chart_selection_failed", error=type(exc).__name__, detail=str(exc)[:200])
         return _rule_based(columns, data)
+
+
+def _guard_pie(config: ChartConfig, data: list[dict[str, Any]]) -> ChartConfig:
+    """Demote a pie with too many slices to a bar — pies are unreadable past ~8."""
+    if config.chart_type == "pie" and len(data) > _MAX_PIE_SLICES:
+        _log.info("pie_demoted_to_bar", slices=len(data))
+        config.chart_type = "bar"
+    return config
