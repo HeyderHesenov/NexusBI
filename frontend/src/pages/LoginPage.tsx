@@ -41,7 +41,7 @@ export function LoginPage() {
     try {
       if (mode === 'login') await login(email, password)
       else await register(email, password, fullName)
-      saveHint(email)
+      saveHint(email, password)
       navigate('/')
     } catch (err: unknown) {
       const fallback =
@@ -62,6 +62,7 @@ export function LoginPage() {
   const fillFromHint = useCallback(() => {
     if (!hint) return
     setEmail(hint.email)
+    setPassword(hint.password)
     setShowHint(false)
   }, [hint])
 
@@ -205,7 +206,9 @@ export function LoginPage() {
                         </span>
                         <span className="mt-0.5 flex items-center gap-1 text-ink-faint">
                           <Lock size={11} strokeWidth={2} />
-                          <span className="text-xs">Parolu daxil et</span>
+                          <span className="font-mono text-xs tracking-[0.25em]">
+                            ••••••••
+                          </span>
                         </span>
                       </span>
                     </button>
