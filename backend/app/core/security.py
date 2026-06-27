@@ -41,6 +41,14 @@ def decode_access_token(token: str) -> dict[str, Any]:
         raise AuthError("Token etibarsızdır və ya vaxtı bitib.") from exc
 
 
+def create_ws_ticket(user_id: str, dashboard_id: str, ttl_seconds: int = 60) -> str:
+    """Short-lived, single-dashboard token for the collab WebSocket so the
+    long-lived access token never appears in a WS URL (logs / browser history)."""
+    expire = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+    payload = {"sub": user_id, "ws": dashboard_id, "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
 # ─── Fernet encryption for connection strings ───
 def _fernet() -> Fernet:
     key = settings.FERNET_KEY

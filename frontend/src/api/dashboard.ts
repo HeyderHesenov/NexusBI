@@ -31,6 +31,11 @@ export async function getDashboard(id: string): Promise<Dashboard> {
   return data
 }
 
+export async function getWsTicket(id: string): Promise<string> {
+  const { data } = await client.get<{ ticket: string }>(`/dashboard/${id}/ws-ticket`)
+  return data.ticket
+}
+
 export async function updateDashboard(
   id: string,
   payload: Partial<Pick<Dashboard, 'name' | 'description' | 'layout'>>,

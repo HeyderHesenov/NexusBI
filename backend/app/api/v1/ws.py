@@ -24,12 +24,13 @@ _guest_seq = 0
 
 
 async def _resolve_access(
-    dashboard_id: str, token: str | None, share: str | None
+    dashboard_id: str, token: str | None, share: str | None, ticket: str | None
 ) -> tuple[str | None, str | None] | None:
     """Return (user_id, display_name) if access is granted, else None.
 
-    Owner authenticates with a JWT (must own the dashboard); a share-link guest
-    authenticates with the dashboard's share_token (user_id=None, name=None).
+    Owner authenticates with a short-lived ws ticket (preferred) or a JWT — both
+    must own the dashboard; a share-link guest authenticates with the dashboard's
+    share_token (user_id=None, name=None).
     """
     async with AsyncSessionLocal() as db:
         dash = (
@@ -37,18 +38,23 @@ async def _resolve_access(
         ).scalar_one_or_none()
         if dash is None:
             return None
-        # Try JWT first (owner). If it doesn't grant access, fall through to the
-        # share token so a logged-in visitor can still join via a share link.
-        if token:
+        # Try owner auth first (ticket, then legacy JWT). If neither grants access,
+        # fall through to the share token so a logged-in visitor can still join.
+        for cred, scoped in ((ticket, True), (token, False)):
+            if not cred:
+                continue
             try:
-                payload = decode_access_token(token)
-                user = (
-                    await db.execute(select(User).where(User.id == payload.get("sub")))
-                ).scalar_one_or_none()
-                if user and user.id == dash.user_id:
-                    return user.id, (user.full_name or user.email)
-            except Exception:  # noqa: BLE001 — bad token just isn't owner auth
-                pass
+                payload = decode_access_token(cred)
+            except Exception:  # noqa: BLE001 — bad cred just isn't owner auth
+                continue
+            # A ticket is bound to one dashboard; reject it for any other.
+            if scoped and payload.get("ws") != dashboard_id:
+                continue
+            user = (
+                await db.execute(select(User).where(User.id == payload.get("sub")))
+            ).scalar_one_or_none()
+            if user and user.id == dash.user_id:
+                return user.id, (user.full_name or user.email)
         if share and dash.share_token and share == dash.share_token:
             return None, None  # guest via share link
         return None
@@ -64,7 +70,10 @@ async def dashboard_ws(ws: WebSocket, dashboard_id: str) -> None:
         await ws.close(code=4429)
         return
     access = await _resolve_access(
-        dashboard_id, ws.query_params.get("token"), ws.query_params.get("share")
+        dashboard_id,
+        ws.query_params.get("token"),
+        ws.query_params.get("share"),
+        ws.query_params.get("ticket"),
     )
     if access is None:
         await ws.close(code=4401)
@@ -107,6 +116,11 @@ async def dashboard_ws(ws: WebSocket, dashboard_id: str) -> None:
             elif kind == "chat":
                 text = (msg.get("text") or "").strip()
                 if not text:
+                    continue
+                # Throttle persisted chat so a share-link guest can't flood the
+                # dashboard_comments table (per-IP, bounded in-memory limiter).
+                if not check_ip("ws_chat", ip, limit=20, window_seconds=10):
+                    await ws.send_json({"type": "throttled"})
                     continue
                 async with AsyncSessionLocal() as db:
                     comment = await comment_service.create(

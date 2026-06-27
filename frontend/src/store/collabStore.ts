@@ -27,7 +27,7 @@ export interface RemoteCursor {
   y: number
 }
 
-type Auth = { token?: string; share?: string }
+type Auth = { ticket?: string; token?: string; share?: string }
 
 interface CollabState {
   connected: boolean
@@ -43,9 +43,12 @@ interface CollabState {
 function wsUrl(dashboardId: string, auth: Auth): string {
   const api = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
   const base = api.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '')
-  const q = auth.token
-    ? `token=${encodeURIComponent(auth.token)}`
-    : `share=${encodeURIComponent(auth.share ?? '')}`
+  // Prefer the short-lived ticket so the long-lived JWT never lands in the URL.
+  const q = auth.ticket
+    ? `ticket=${encodeURIComponent(auth.ticket)}`
+    : auth.token
+      ? `token=${encodeURIComponent(auth.token)}`
+      : `share=${encodeURIComponent(auth.share ?? '')}`
   return `${base}/ws/dashboard/${dashboardId}?${q}`
 }
 

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.comment import DashboardComment
+from app.models.dashboard import Widget
 
 
 async def list_for_dashboard(
@@ -27,6 +28,16 @@ async def create(
     content: str,
     widget_id: str | None = None,
 ) -> DashboardComment:
+    # Only attach widget_id if it belongs to this dashboard — a share-link guest
+    # must not be able to reference another dashboard's widget.
+    if widget_id:
+        owned = await db.execute(
+            select(Widget.id).where(
+                Widget.id == widget_id, Widget.dashboard_id == dashboard_id
+            )
+        )
+        if owned.scalar_one_or_none() is None:
+            widget_id = None
     comment = DashboardComment(
         dashboard_id=dashboard_id,
         author_id=author_id,

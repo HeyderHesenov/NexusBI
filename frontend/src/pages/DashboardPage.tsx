@@ -12,7 +12,7 @@ import { GenerateDashboardModal } from '../components/dashboard/GenerateDashboar
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
 import { ShareDashboardModal } from '../components/dashboard/ShareDashboardModal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { buildStory, getComments } from '../api/dashboard'
+import { buildStory, getComments, getWsTicket } from '../api/dashboard'
 import { useCollabStore } from '../store/collabStore'
 import { useDashboardStore } from '../store/dashboardStore'
 
@@ -41,11 +41,20 @@ export function DashboardPage() {
   const currentId = current?.id
   useEffect(() => {
     if (!currentId) return
+    let cancelled = false
+    // Mint a short-lived ws ticket so the long-lived JWT never lands in the URL.
+    // Keep the token as a fallback so collab still works if the ticket call fails.
     const token = localStorage.getItem('nexusbi_token') ?? undefined
-    getComments(currentId)
-      .then((history) => connect(currentId, { token }, history))
-      .catch(() => connect(currentId, { token }, []))
-    return () => disconnect()
+    Promise.all([
+      getWsTicket(currentId).catch(() => undefined),
+      getComments(currentId).catch(() => [] as Awaited<ReturnType<typeof getComments>>),
+    ]).then(([ticket, history]) => {
+      if (!cancelled) connect(currentId, { ticket, token }, history)
+    })
+    return () => {
+      cancelled = true
+      disconnect()
+    }
   }, [currentId, connect, disconnect])
 
   const openStory = async () => {

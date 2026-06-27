@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Response, status
 
+from app.core.security import create_ws_ticket
 from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.schemas.dashboard import (
     DashboardCreate,
@@ -62,6 +63,14 @@ async def _dashboard_response(db: DbDep, user_id: str, dash) -> DashboardRespons
 async def get_one(dashboard_id: str, user: CurrentUser, db: DbDep) -> DashboardResponse:
     dash = await svc.get_dashboard(db, user.id, dashboard_id)
     return await _dashboard_response(db, user.id, dash)
+
+
+@router.get("/{dashboard_id}/ws-ticket")
+async def ws_ticket(dashboard_id: str, user: CurrentUser, db: DbDep) -> dict[str, str]:
+    """Mint a short-lived collab-WS ticket so the long-lived access token never
+    travels in a WebSocket URL (logs / browser history)."""
+    await svc.get_dashboard(db, user.id, dashboard_id)  # ownership check
+    return {"ticket": create_ws_ticket(user.id, dashboard_id)}
 
 
 @router.get("/{dashboard_id}/comments", response_model=list[CommentResponse])

@@ -1,11 +1,10 @@
-// Remembers the last successful email/password so the login form can offer it
-// as a one-click suggestion. Stored in localStorage (plaintext) — local convenience only.
+// Remembers the last successful email so the login form can offer it as a
+// one-click suggestion. Only the email is stored — never the password.
 
 const KEY = 'nexusbi_login_hint'
 
 export interface LoginHint {
   email: string
-  password: string
 }
 
 export function readHint(): LoginHint | null {
@@ -13,8 +12,8 @@ export function readHint(): LoginHint | null {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<LoginHint>
-    if (typeof parsed?.email === 'string' && typeof parsed?.password === 'string') {
-      return { email: parsed.email, password: parsed.password }
+    if (typeof parsed?.email === 'string') {
+      return { email: parsed.email }
     }
     return null
   } catch {
@@ -22,9 +21,9 @@ export function readHint(): LoginHint | null {
   }
 }
 
-export function saveHint(email: string, password: string) {
+export function saveHint(email: string) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ email, password }))
+    localStorage.setItem(KEY, JSON.stringify({ email }))
   } catch {
     /* ignore */
   }
