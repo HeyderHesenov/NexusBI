@@ -74,6 +74,11 @@ Sen data visualization expertisən. SQL nəticəsinin strukturuna bax:
 
 Optimal chart tipini seç: bar | line | pie | scatter | table | kpi_card
 
+QAYDALAR:
+- pie YALNIZ tam-hissə (part-to-whole) nisbəti ÜÇÜN və kateqoriya sayı ≤8 olduqda.
+- Reytinq / çox kateqoriya (məs. id, müştəri, məhsul üzrə cəm) → bar (pie YOX, oxunmur).
+- Zaman seriyası (date/month/year) → line. Tək dəyər → kpi_card.
+
 OUTPUT FORMAT (JSON):
 {{
   "chart_type": "bar",

@@ -131,8 +131,9 @@ export function ChartView({
   const activeConfig: ChartConfig = { ...config, chart_type: type }
 
   // Many-point bar/line/area charts get cluttered x-axis labels; wheel/drag
-  // zoom thins them out. Pie/scatter/table/kpi stay as-is.
-  const zoomable = type === 'bar' || type === 'line' || type === 'area'
+  // zoom thins them out. Pie also benefits: zooming windows the slices so you
+  // can inspect the long tail past the Top-N fold. Scatter/table/kpi stay as-is.
+  const zoomable = type === 'bar' || type === 'line' || type === 'area' || type === 'pie'
 
   const renderChart = (height: number | string, fullscreen = false) => {
     const chart = (data: Record<string, unknown>[]) => (
