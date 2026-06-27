@@ -12,6 +12,7 @@ import { ChartFullscreenModal } from './ChartFullscreenModal'
 import { CHART_BTN, ChartToolbar } from './ChartToolbar'
 import { FilterPills, type Filter } from './FilterPills'
 import { ForecastChartWidget } from './ForecastChartWidget'
+import { TypewriterText } from './TypewriterText'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -246,7 +247,10 @@ export function ChartView({
           </div>
           <ForecastChartWidget result={forecast} />
           {forecast.narrative && (
-            <p className="text-sm leading-relaxed text-ink-soft">{forecast.narrative}</p>
+            <TypewriterText
+              text={forecast.narrative}
+              className="text-sm leading-relaxed text-ink-soft"
+            />
           )}
         </div>
       )}
