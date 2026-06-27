@@ -148,7 +148,7 @@ def create_app() -> FastAPI:
         allow_origins=settings.cors_origins_list,
         # Bearer-token auth (no cookies) — credentials not needed; scope methods/headers.
         allow_credentials=False,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
 
