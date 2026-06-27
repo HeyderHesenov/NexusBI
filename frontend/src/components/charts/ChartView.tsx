@@ -131,10 +131,11 @@ export function ChartView({
 
   const activeConfig: ChartConfig = { ...config, chart_type: type }
 
-  // Many-point bar/line/area charts get cluttered x-axis labels; wheel/drag
-  // zoom thins them out. Pie also benefits: zooming windows the slices so you
-  // can inspect the long tail past the Top-N fold. Scatter/table/kpi stay as-is.
-  const zoomable = type === 'bar' || type === 'line' || type === 'area' || type === 'pie'
+  // Many-point line/area charts get cluttered x-axis labels; wheel/drag zoom
+  // thins them out. Pie also benefits: zooming windows the slices so you can
+  // inspect the long tail past the Top-N fold. Bars instead scroll (a standard
+  // right-side scrollbar reveals every column). Scatter/table/kpi stay as-is.
+  const zoomable = type === 'line' || type === 'area' || type === 'pie'
 
   const renderChart = (height: number | string) => {
     const chart = (data: Record<string, unknown>[]) => (
@@ -145,16 +146,10 @@ export function ChartView({
         showLegend={showLegend}
         onPointClick={addFilter}
         anomalyLabels={anomalyLabels}
+        scrollableBars={type === 'bar'}
       />
     )
-    // Bars are horizontal (categories run top→bottom) → pan along the y axis.
-    return zoomable ? (
-      <ChartZoom data={filtered} axis={type === 'bar' ? 'y' : 'x'}>
-        {chart}
-      </ChartZoom>
-    ) : (
-      chart(filtered)
-    )
+    return zoomable ? <ChartZoom data={filtered}>{chart}</ChartZoom> : chart(filtered)
   }
 
   return (

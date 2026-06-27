@@ -17,6 +17,8 @@ interface Props {
   onPointClick?: (field: string, value: unknown) => void
   /** Labels (x-axis values) flagged as anomalies — highlighted on bar charts. */
   anomalyLabels?: Set<string>
+  /** Render bar charts in a right-scrollbar viewport (explorable view only). */
+  scrollableBars?: boolean
 }
 
 export function ChartRenderer({
@@ -26,6 +28,7 @@ export function ChartRenderer({
   showLegend = false,
   onPointClick,
   anomalyLabels,
+  scrollableBars = false,
 }: Props) {
   if (!data.length) {
     return <p className="text-ink-soft">Nəticə tapılmadı.</p>
@@ -39,6 +42,7 @@ export function ChartRenderer({
           height={height}
           onPointClick={onPointClick}
           anomalyLabels={anomalyLabels}
+          scrollable={scrollableBars}
         />
       )
     case 'line':
