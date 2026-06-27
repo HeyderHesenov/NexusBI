@@ -12,6 +12,7 @@ import {
 import { useMemo } from 'react'
 import type { ChartConfig } from '../../types'
 import { TruncatedTick } from './axis'
+import { ScrollZoom } from './ScrollZoom'
 import { useChartTheme } from './theme'
 
 const ANOMALY_FILL = '#EF4444'
@@ -81,15 +82,11 @@ export function BarChartWidget({
       }
     : {}
 
-  // Scrollable: give the chart its natural height (one row per bar) so a
-  // standard right-side scrollbar appears once the bars overflow the viewport.
-  // `minHeight: 100%` makes a few bars still fill the box (no empty gap); many
-  // bars push past it and scroll. Works for both the inline (px) and fullscreen
-  // ('100%') heights.
-  const intrinsicH = barData.length * ROW_PX + 48
-
-  const inner = (
-    <ResponsiveContainer width="100%" height={scrollable ? '100%' : height}>
+  // `zoom` only applies in scrollable mode (magnify via ScrollZoom): it scales
+  // each bar's height and thickness so you can enlarge columns while the
+  // scrollbar still reaches all of them. Non-scrollable callers render at zoom 1.
+  const renderChart = (chartHeight: number | string, zoom: number) => (
+    <ResponsiveContainer width="100%" height={chartHeight}>
       <BarChart data={barData} layout="vertical" margin={{ top: 8, right: 52, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} horizontal={false} />
         <XAxis type="number" stroke={AXIS} fontSize={12} tickLine={false} tickFormatter={fmt} />
@@ -109,7 +106,13 @@ export function BarChartWidget({
           labelStyle={tooltipLabel}
           itemStyle={tooltipItem}
         />
-        <Bar dataKey={y} fill={ACCENT} radius={[0, 6, 6, 0]} maxBarSize={28} {...clickProps}>
+        <Bar
+          dataKey={y}
+          fill={ACCENT}
+          radius={[0, 6, 6, 0]}
+          maxBarSize={Math.round(28 * zoom)}
+          {...clickProps}
+        >
           {anomalyLabels?.size
             ? barData.map((row, i) => (
                 <Cell key={i} fill={anomalyLabels.has(String(row[x])) ? ANOMALY_FILL : ACCENT} />
@@ -121,10 +124,19 @@ export function BarChartWidget({
     </ResponsiveContainer>
   )
 
-  if (!scrollable) return inner
+  if (!scrollable) return renderChart(height, 1)
+
+  // Scrollable: the chart takes its natural height (one row per bar, scaled by
+  // zoom) inside a fixed-height viewport so a standard right-side scrollbar
+  // appears once the bars overflow. `minHeight: 100%` keeps a few bars filling
+  // the box (no empty gap). ScrollZoom owns scroll + magnify + drag-pan.
   return (
-    <div style={{ height }} className="overflow-y-auto pr-1">
-      <div style={{ minHeight: '100%', height: intrinsicH }}>{inner}</div>
-    </div>
+    <ScrollZoom height={height}>
+      {(zoom) => (
+        <div style={{ minHeight: '100%', height: barData.length * ROW_PX * zoom + 48 }}>
+          {renderChart('100%', zoom)}
+        </div>
+      )}
+    </ScrollZoom>
   )
 }
