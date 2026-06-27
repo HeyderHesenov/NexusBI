@@ -109,6 +109,12 @@
     animation-delay: 0.72s;
   }
 
+  /* Live-update flash — one-shot accent ring that fades out. Remounted (keyed
+     by pulse count) to re-trigger; only box-shadow/opacity animate. */
+  .animate-flash {
+    animation: live-flash 0.85s ease-out both;
+  }
+
   /* Login suggestion popover — soft ease-out entrance (transform/opacity only). */
   .hint-pop {
     transform-origin: top center;
@@ -158,6 +164,17 @@
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes live-flash {
+  0% {
+    opacity: 1;
+    box-shadow: inset 0 0 0 2px rgb(var(--accent) / 0.9), 0 0 18px rgb(var(--accent) / 0.45);
+  }
+  100% {
+    opacity: 0;
+    box-shadow: inset 0 0 0 2px rgb(var(--accent) / 0), 0 0 0 rgb(var(--accent) / 0);
   }
 }
 

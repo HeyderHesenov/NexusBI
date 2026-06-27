@@ -1,12 +1,19 @@
 import { create } from 'zustand'
 import toast from 'react-hot-toast'
-import type { Dashboard, DashboardSummary } from '../types'
+import type { Dashboard, DashboardSummary, WidgetChart } from '../types'
 import * as dashApi from '../api/dashboard'
+
+interface LiveWidgetUpdate {
+  widget_id: string
+  chart: WidgetChart
+}
 
 interface DashboardState {
   list: DashboardSummary[]
   current: Dashboard | null
   refreshing: boolean
+  /** Per-widget counter, bumped on every live data push — drives the flash. */
+  pulses: Record<string, number>
   loadList: () => Promise<void>
   open: (id: string) => Promise<void>
   create: (name: string) => Promise<Dashboard>
@@ -17,12 +24,15 @@ interface DashboardState {
   refreshWidget: (dashboardId: string, widgetId: string) => Promise<void>
   refreshAll: (dashboardId: string) => Promise<void>
   saveLayout: (dashboardId: string, layout: Record<string, unknown>) => Promise<void>
+  toggleLive: (dashboardId: string, enabled: boolean, intervalSeconds?: number) => Promise<void>
+  applyLiveUpdate: (dashboardId: string, updates: LiveWidgetUpdate[]) => void
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
   list: [],
   current: null,
   refreshing: false,
+  pulses: {},
   loadList: async () => {
     set({ list: await dashApi.listDashboards() })
   },
@@ -90,5 +100,37 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   },
   saveLayout: async (dashboardId, layout) => {
     await dashApi.updateDashboard(dashboardId, { layout })
+  },
+  toggleLive: async (dashboardId, enabled, intervalSeconds) => {
+    const dash = await dashApi.setLive(dashboardId, enabled, intervalSeconds)
+    const cur = get().current
+    if (cur?.id === dashboardId) {
+      set({
+        current: {
+          ...cur,
+          live_enabled: dash.live_enabled,
+          live_interval_seconds: dash.live_interval_seconds,
+        },
+      })
+    }
+    toast.success(enabled ? 'Canlı rejim aktiv.' : 'Canlı rejim söndürüldü.')
+  },
+  applyLiveUpdate: (dashboardId, updates) => {
+    const cur = get().current
+    if (cur?.id !== dashboardId || updates.length === 0) return
+    const byId = new Map(updates.map((u) => [u.widget_id, u.chart]))
+    set((s) => {
+      const pulses = { ...s.pulses }
+      for (const u of updates) pulses[u.widget_id] = (pulses[u.widget_id] ?? 0) + 1
+      return {
+        pulses,
+        current: cur && {
+          ...cur,
+          widgets: cur.widgets.map((w) =>
+            byId.has(w.id) ? { ...w, chart: byId.get(w.id)! } : w,
+          ),
+        },
+      }
+    })
   },
 }))

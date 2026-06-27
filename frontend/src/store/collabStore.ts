@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { useDashboardStore } from './dashboardStore'
+import type { WidgetChart } from '../types'
 
 export interface Participant {
   conn_id: string
@@ -125,6 +127,14 @@ export const useCollabStore = create<CollabState>((set) => ({
             break
           case 'chat':
             set((s) => ({ messages: [...s.messages, msg.comment as Comment] }))
+            break
+          case 'live_update':
+            // Server pushed fresh widget data (live mode) — hand off to the
+            // dashboard store, which swaps charts in place and pulses them.
+            useDashboardStore.getState().applyLiveUpdate(
+              dashboardId,
+              msg.widgets as { widget_id: string; chart: WidgetChart }[],
+            )
             break
         }
       }

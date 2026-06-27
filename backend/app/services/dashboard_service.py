@@ -333,6 +333,41 @@ async def refresh_all_widgets(
     return await get_dashboard(db, user_id, dashboard_id)
 
 
+async def refresh_widget_data(
+    db: AsyncSession, widget: Widget, user_id: str
+) -> WidgetChart | None:
+    """Re-run a widget's stored SQL in place (no AI) and return the fresh chart.
+
+    Reuses the existing QueryLog (same id, same chart_type/insight) and only
+    swaps its ``result_data``. This is the cheap path live dashboards tick on —
+    no chart re-selection, no insight regeneration, no new log rows.
+    """
+    if not widget.query_log_id:
+        return None
+    log = (
+        await db.execute(
+            select(QueryLog).where(
+                QueryLog.id == widget.query_log_id, QueryLog.user_id == user_id
+            )
+        )
+    ).scalar_one_or_none()
+    if log is None:
+        return None
+    columns, rows = await query_service.reexecute_logged_query(log, db, user_id)
+    log.result_data = {"columns": columns, "rows": query_service._snapshot_rows(rows)}
+    await db.flush()
+
+    ds_names: dict[str, str] = {}
+    if log.datasource_id:
+        row = await db.execute(
+            select(DataSource.name).where(DataSource.id == log.datasource_id)
+        )
+        name = row.scalar_one_or_none()
+        if name:
+            ds_names[log.datasource_id] = name
+    return _widget_chart(log, ds_names)
+
+
 async def delete_widget(
     db: AsyncSession, user_id: str, dashboard_id: str, widget_id: str
 ) -> None:

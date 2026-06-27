@@ -39,6 +39,10 @@ class ConnectionHub:
     def presence(self, room: str) -> list[dict[str, Any]]:
         return [asdict(c.participant) for c in self._rooms.get(room, set())]
 
+    def active_rooms(self) -> set[str]:
+        """Room ids with at least one live connection (snapshot)."""
+        return {room for room, conns in self._rooms.items() if conns}
+
     async def connect(self, room: str, conn: Connection) -> None:
         async with self._lock:
             self._rooms.setdefault(room, set()).add(conn)

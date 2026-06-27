@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import JSON, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -27,6 +27,10 @@ class Dashboard(Base, TimestampMixin):
     share_token: Mapped[str | None] = mapped_column(
         String(64), unique=True, index=True, nullable=True
     )
+    # Live mode: when on, the server re-runs widget queries on an interval and
+    # pushes fresh data to connected clients over the collab WebSocket.
+    live_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    live_interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
 
     user: Mapped["User"] = relationship(back_populates="dashboards")  # noqa: F821
     widgets: Mapped[list["Widget"]] = relationship(

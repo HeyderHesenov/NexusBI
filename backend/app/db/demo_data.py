@@ -26,6 +26,26 @@ _REGIONS = ["North", "South", "East", "West", "Central"]
 _COUNTRIES = ["Azerbaijan", "Turkey", "Georgia", "Germany", "USA"]
 _MONTHS = [f"2024-{m:02d}" for m in range(1, 13)]
 
+# Live-feed multipliers per category (1.0 = baseline). The "live dashboard"
+# simulator (services.demo_feed) random-walks these so that re-running the same
+# query returns visibly different revenue each tick — making live mode tangible
+# on the otherwise-static demo dataset. No effect until something nudges them.
+_LIVE_FACTORS: dict[str, float] = {cat: 1.0 for cat in _CATEGORIES}
+
+
+def current_live_factors() -> dict[str, float]:
+    """A copy of the current per-category live multipliers."""
+    return dict(_LIVE_FACTORS)
+
+
+def set_live_factors(factors: dict[str, float]) -> None:
+    """Replace the live multipliers used by the next demo query (in place)."""
+    _LIVE_FACTORS.update(factors)
+
+
+def _live_factor(category: str) -> float:
+    return _LIVE_FACTORS.get(category, 1.0)
+
 
 def _product_name(i: int) -> str:
     return f"Product {chr(65 + (i % 26))}{i}"
@@ -59,7 +79,7 @@ def _seed(conn: sqlite3.Connection) -> None:
     for i in range(300):
         p = products[i % len(products)]
         qty = 1 + (i % 9)
-        revenue = round(p[3] * qty * (1 + (i % 5) * 0.1), 2)
+        revenue = round(p[3] * qty * (1 + (i % 5) * 0.1) * _live_factor(p[2]), 2)
         sales.append(
             (
                 sid,

@@ -82,6 +82,18 @@ export async function disableShare(dashboardId: string): Promise<void> {
   await client.delete(`/dashboard/${dashboardId}/share`)
 }
 
+export async function setLive(
+  dashboardId: string,
+  enabled: boolean,
+  intervalSeconds?: number,
+): Promise<Dashboard> {
+  const { data } = await client.patch<Dashboard>(`/dashboard/${dashboardId}/live`, {
+    enabled,
+    interval_seconds: intervalSeconds,
+  })
+  return data
+}
+
 export async function getPublicDashboard(token: string): Promise<Dashboard> {
   const { data } = await client.get<Dashboard>(`/public/dashboard/${token}`)
   return data

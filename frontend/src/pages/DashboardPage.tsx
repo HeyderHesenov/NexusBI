@@ -1,4 +1,4 @@
-import { LayoutGrid, MessageCircle, Plus, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { LayoutGrid, MessageCircle, Plus, Radio, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import type { Layouts } from 'react-grid-layout'
@@ -17,8 +17,9 @@ import { useDashboardStore } from '../store/dashboardStore'
 export function DashboardPage() {
   const {
     list, current, refreshing, loadList, open, create, generate, remove,
-    addWidget, removeWidget, refreshWidget, refreshAll, saveLayout,
+    addWidget, removeWidget, refreshWidget, refreshAll, saveLayout, toggleLive,
   } = useDashboardStore()
+  const live = current?.live_enabled ?? false
   const [createOpen, setCreateOpen] = useState(false)
   const [generateOpen, setGenerateOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -58,9 +59,33 @@ export function DashboardPage() {
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Kolleksiyalar</p>
-          <h2 className="mt-1 font-display text-3xl font-bold text-ink">Dashboard-lar</h2>
+          <div className="mt-1 flex items-center gap-3">
+            <h2 className="font-display text-3xl font-bold text-ink">Dashboard-lar</h2>
+            {live && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-accent">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+                </span>
+                Canlı
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
+          {current && current.widgets.length > 0 && (
+            <button
+              onClick={() => toggleLive(current.id, !live).catch(() => undefined)}
+              className={`flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                live
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-ink-soft hover:border-accent hover:text-ink'
+              }`}
+            >
+              <Radio size={16} className={live ? 'animate-pulse' : ''} />
+              {live ? 'Canlı' : 'Canlı rejim'}
+            </button>
+          )}
           {current && current.widgets.length > 0 && (
             <button
               onClick={() => refreshAll(current.id)}

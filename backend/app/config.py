@@ -72,6 +72,14 @@ class Settings(BaseSettings):
     SCHEDULER_ENABLED: bool = Field(default=True)
     SCHEDULER_INTERVAL_SECONDS: int = Field(default=60)  # how often due jobs are checked
 
+    # ─── Live dashboards (real-time auto-refresh + WS push) ───
+    LIVE_REFRESH_ENABLED: bool = Field(default=True)
+    LIVE_REFRESH_TICK_SECONDS: int = Field(default=4)  # loop wake cadence
+    LIVE_DEMO_FEED: bool = Field(default=True)  # nudge demo data so numbers visibly move
+
+    # ─── Agentic copilot ───
+    COPILOT_MAX_STEPS: int = Field(default=6)  # hard cap on tool-calling loop iterations
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

@@ -7,6 +7,7 @@ from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.schemas.dashboard import (
     DashboardCreate,
     DashboardGenerate,
+    DashboardLiveUpdate,
     DashboardResponse,
     DashboardSummary,
     DashboardUpdate,
@@ -50,6 +51,8 @@ async def _dashboard_response(db: DbDep, user_id: str, dash) -> DashboardRespons
         name=dash.name,
         description=dash.description,
         layout=dash.layout,
+        live_enabled=dash.live_enabled,
+        live_interval_seconds=dash.live_interval_seconds,
         widgets=await svc.widgets_to_response(db, list(dash.widgets), user_id),
     )
 
@@ -74,6 +77,18 @@ async def update(
     dash = await svc.update_dashboard(
         db, user.id, dashboard_id, payload.model_dump(exclude_unset=True)
     )
+    return await _dashboard_response(db, user.id, dash)
+
+
+@router.patch("/{dashboard_id}/live", response_model=DashboardResponse)
+async def set_live(
+    dashboard_id: str, payload: DashboardLiveUpdate, user: CurrentUser, db: DbDep
+) -> DashboardResponse:
+    """Toggle live mode (server pushes fresh widget data over the collab socket)."""
+    fields: dict = {"live_enabled": payload.enabled}
+    if payload.interval_seconds is not None:
+        fields["live_interval_seconds"] = payload.interval_seconds
+    dash = await svc.update_dashboard(db, user.id, dashboard_id, fields)
     return await _dashboard_response(db, user.id, dash)
 
 

@@ -2,6 +2,7 @@ import { Database, GripVertical, RefreshCw, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Responsive, WidthProvider, type Layout, type Layouts } from 'react-grid-layout'
 import type { Dashboard } from '../../types'
+import { useDashboardStore } from '../../store/dashboardStore'
 import { ChartRenderer } from '../charts/ChartRenderer'
 import { FilterPills, type Filter } from '../charts/FilterPills'
 
@@ -29,6 +30,7 @@ function buildLayouts(dashboard: Dashboard): Layouts {
 
 export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLayoutChange }: Props) {
   const layouts = useMemo(() => buildLayouts(dashboard), [dashboard.layout, dashboard.widgets])
+  const pulses = useDashboardStore((s) => s.pulses)
   const [busy, setBusy] = useState<string | null>(null)
   // Cross-filter: click a chart element → filter every widget that has that field.
   const [crossFilter, setCrossFilter] = useState<Filter | null>(null)
@@ -69,7 +71,13 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
       onLayoutChange={(_current, all) => onLayoutChange(all)}
     >
       {dashboard.widgets.map((w) => (
-        <div key={w.id} className="flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+        <div key={w.id} className="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+          {(pulses[w.id] ?? 0) > 0 && (
+            <span
+              key={pulses[w.id]}
+              className="animate-flash pointer-events-none absolute inset-0 z-10 rounded-2xl"
+            />
+          )}
           <div className="drag-handle flex cursor-move items-center justify-between border-b border-line px-4 py-2.5">
             <div className="flex min-w-0 items-center gap-2">
               <GripVertical size={14} className="shrink-0 text-ink-faint" />

@@ -162,6 +162,27 @@ async def process_nl_query(
     )
 
 
+async def reexecute_logged_query(
+    log: QueryLog, db: AsyncSession, user_id: str
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """Re-run a query log's stored SQL and return fresh (columns, rows) — NO AI.
+
+    Used by live dashboards to refresh data cheaply on a short interval: the
+    chart type and insight are reused, only the underlying numbers change.
+    Power BI (DAX) sources are not supported here.
+    """
+    if not log.generated_sql:
+        raise ValueError("query log has no SQL to re-run")
+    if log.datasource_id is None:
+        from app.db import demo_data
+
+        return demo_data.execute_demo_sql(log.generated_sql)
+    ds = await ds_service.get_datasource(db, user_id, log.datasource_id)
+    if ds.db_type == DBType.powerbi:
+        raise ValueError("live refresh unsupported for Power BI")
+    return await ds_service.execute_select(ds, log.generated_sql)
+
+
 async def _finalize(
     db: AsyncSession,
     user_id: str,

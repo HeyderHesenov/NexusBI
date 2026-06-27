@@ -59,11 +59,19 @@ class DashboardUpdate(BaseModel):
     layout: dict[str, Any] | None = None
 
 
+class DashboardLiveUpdate(BaseModel):
+    enabled: bool
+    # Clamp the cadence so a client can't ask the server to hammer the source.
+    interval_seconds: int | None = Field(default=None, ge=3, le=3600)
+
+
 class DashboardResponse(BaseModel):
     id: str
     name: str
     description: str
     layout: dict[str, Any] | None = None
+    live_enabled: bool = False
+    live_interval_seconds: int = 8
     widgets: list[WidgetResponse] = []
 
     model_config = {"from_attributes": True}

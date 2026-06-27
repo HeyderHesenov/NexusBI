@@ -111,15 +111,19 @@ async def lifespan(app: FastAPI):
             await _seed_demo_account()
         except Exception as exc:  # noqa: BLE001 — never block startup on seeding
             log.warning("demo_seed_failed", error=str(exc))
-    scheduler_task = None
+    background_tasks: list[asyncio.Task] = []
     if settings.SCHEDULER_ENABLED:
         from app.services.scheduler import run_loop
 
-        scheduler_task = asyncio.create_task(run_loop(app.state.cache))
+        background_tasks.append(asyncio.create_task(run_loop(app.state.cache)))
+    if settings.LIVE_REFRESH_ENABLED:
+        from app.realtime.live_refresh import run_loop as live_run_loop
+
+        background_tasks.append(asyncio.create_task(live_run_loop()))
     log.info("startup", demo_mode=settings.DEMO_MODE, cache=app.state.cache.available)
     yield
-    if scheduler_task:
-        scheduler_task.cancel()
+    for task in background_tasks:
+        task.cancel()
     from app.db import engine_pool
 
     await engine_pool.dispose_all()

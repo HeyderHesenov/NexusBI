@@ -187,6 +187,8 @@ export interface Dashboard {
   name: string
   description: string
   layout: Record<string, unknown> | null
+  live_enabled?: boolean
+  live_interval_seconds?: number
   widgets: Widget[]
 }
 
