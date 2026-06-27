@@ -17,8 +17,6 @@ interface ChartTheme {
   AXIS: string
   GRID: string
   ACCENT: string
-  // Non-leader bars: a muted neutral so the tallest (ACCENT) bar stands out.
-  BAR_MUTED: string
   tooltipStyle: Record<string, unknown>
   tooltipItem: Record<string, unknown>
   tooltipLabel: Record<string, unknown>
@@ -30,7 +28,6 @@ const THEMES: Record<Mode, ChartTheme> = {
     AXIS: '#8C877E',
     GRID: '#E5E3DC',
     ACCENT: '#0E9F6E',
-    BAR_MUTED: '#C7C2B8',
     tooltipStyle: {
       background: '#FFFFFF',
       border: '1px solid #E5E3DC',
@@ -47,7 +44,6 @@ const THEMES: Record<Mode, ChartTheme> = {
     AXIS: '#7C766E',
     GRID: '#3A3733',
     ACCENT: '#10B981',
-    BAR_MUTED: '#4A453F',
     tooltipStyle: {
       background: '#1F1E1D',
       border: '1px solid #3A3733',
