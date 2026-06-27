@@ -135,7 +135,7 @@ export function ChartView({
   // can inspect the long tail past the Top-N fold. Scatter/table/kpi stay as-is.
   const zoomable = type === 'bar' || type === 'line' || type === 'area' || type === 'pie'
 
-  const renderChart = (height: number | string, fullscreen = false) => {
+  const renderChart = (height: number | string) => {
     const chart = (data: Record<string, unknown>[]) => (
       <ChartRenderer
         data={data}
@@ -146,8 +146,9 @@ export function ChartView({
         anomalyLabels={anomalyLabels}
       />
     )
+    // Bars are horizontal (categories run top→bottom) → pan along the y axis.
     return zoomable ? (
-      <ChartZoom data={filtered} wheelAlways={fullscreen}>
+      <ChartZoom data={filtered} axis={type === 'bar' ? 'y' : 'x'}>
         {chart}
       </ChartZoom>
     ) : (
@@ -262,7 +263,7 @@ export function ChartView({
             onRemove={(i) => setFilters((cur) => cur.filter((_, idx) => idx !== i))}
             onClear={() => setFilters([])}
           />
-          <div className="min-h-0 flex-1">{renderChart('100%', true)}</div>
+          <div className="min-h-0 flex-1">{renderChart('100%')}</div>
         </div>
       </ChartFullscreenModal>
     </div>
