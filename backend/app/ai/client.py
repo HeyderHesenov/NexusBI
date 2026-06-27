@@ -75,6 +75,33 @@ async def chat_text(
     return (resp.choices[0].message.content or "").strip()
 
 
+async def chat_tools(
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+    *,
+    temperature: float = 0.0,
+) -> Any:
+    """Call the model with tool definitions; return the raw response message.
+
+    The caller drives the tool-calling loop: inspect ``.tool_calls``, execute
+    them, append results to ``messages``, and call again until the model replies
+    with plain ``.content``. ``messages`` must already include the system prompt.
+    """
+    started = time.perf_counter()
+    try:
+        resp = await get_client().chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            temperature=temperature,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+        )
+    except (APIError, OpenAIError) as exc:
+        raise _map_openai_error(exc) from exc
+    _record_call(resp, started, "tools")
+    return resp.choices[0].message
+
+
 def _map_openai_error(exc: Exception) -> AIGenerationError:
     """Convert a raw OpenAI SDK error into a domain error with a safe detail.
 

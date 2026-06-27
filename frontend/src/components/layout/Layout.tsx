@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { CopilotWidget } from '../copilot/CopilotWidget'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 
@@ -14,6 +15,7 @@ export function Layout() {
           </div>
         </main>
       </div>
+      <CopilotWidget />
     </div>
   )
 }
