@@ -1,7 +1,9 @@
-import { LayoutGrid, MessageCircle, Plus, Radio, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { LayoutGrid, MessageCircle, Plus, Presentation, Radio, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import type { Layouts } from 'react-grid-layout'
+import type { DataStory } from '../types'
+import { StoryMode } from '../components/story/StoryMode'
 import { AddWidgetModal } from '../components/dashboard/AddWidgetModal'
 import { CollabPanel } from '../components/dashboard/CollabPanel'
 import { CollabSurface } from '../components/dashboard/CollabSurface'
@@ -10,7 +12,7 @@ import { GenerateDashboardModal } from '../components/dashboard/GenerateDashboar
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
 import { ShareDashboardModal } from '../components/dashboard/ShareDashboardModal'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { getComments } from '../api/dashboard'
+import { buildStory, getComments } from '../api/dashboard'
 import { useCollabStore } from '../store/collabStore'
 import { useDashboardStore } from '../store/dashboardStore'
 
@@ -26,6 +28,8 @@ export function DashboardPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
+  const [story, setStory] = useState<DataStory | null>(null)
+  const [storyLoading, setStoryLoading] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const { participants, connect, disconnect } = useCollabStore()
 
@@ -43,6 +47,18 @@ export function DashboardPage() {
       .catch(() => connect(currentId, { token }, []))
     return () => disconnect()
   }, [currentId, connect, disconnect])
+
+  const openStory = async () => {
+    if (!current) return
+    setStoryLoading(true)
+    try {
+      setStory(await buildStory(current.id))
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setStoryLoading(false)
+    }
+  }
 
   // Persist layout changes, debounced so dragging doesn't spam the API.
   const onLayoutChange = (layouts: Layouts) => {
@@ -84,6 +100,16 @@ export function DashboardPage() {
             >
               <Radio size={16} className={live ? 'animate-pulse' : ''} />
               {live ? 'Canlı' : 'Canlı rejim'}
+            </button>
+          )}
+          {current && current.widgets.length > 0 && (
+            <button
+              onClick={openStory}
+              disabled={storyLoading}
+              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-50"
+            >
+              <Presentation size={16} className={storyLoading ? 'animate-pulse' : ''} />
+              {storyLoading ? 'Hazırlanır…' : 'Hekayə'}
             </button>
           )}
           {current && current.widgets.length > 0 && (
@@ -180,6 +206,10 @@ export function DashboardPage() {
         )
       ) : (
         <EmptyState />
+      )}
+
+      {story && current && (
+        <StoryMode story={story} widgets={current.widgets} onClose={() => setStory(null)} />
       )}
 
       <CollabPanel open={chatOpen} onClose={() => setChatOpen(false)} />

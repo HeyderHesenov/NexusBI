@@ -83,3 +83,15 @@ class DashboardSummary(BaseModel):
     description: str
 
     model_config = {"from_attributes": True}
+
+
+class StorySlide(BaseModel):
+    type: str  # "intro" | "chart" | "closing"
+    title: str
+    narrative: str = ""
+    widget_id: str | None = None
+
+
+class DataStory(BaseModel):
+    title: str
+    slides: list[StorySlide] = []

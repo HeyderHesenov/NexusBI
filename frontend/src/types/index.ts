@@ -198,6 +198,18 @@ export interface DashboardSummary {
   description: string
 }
 
+export interface StorySlide {
+  type: 'intro' | 'chart' | 'closing'
+  title: string
+  narrative: string
+  widget_id: string | null
+}
+
+export interface DataStory {
+  title: string
+  slides: StorySlide[]
+}
+
 export interface AuthUser {
   id: string
   email: string

@@ -11,6 +11,7 @@ from app.schemas.dashboard import (
     DashboardResponse,
     DashboardSummary,
     DashboardUpdate,
+    DataStory,
     WidgetCreate,
     WidgetResponse,
 )
@@ -78,6 +79,15 @@ async def update(
         db, user.id, dashboard_id, payload.model_dump(exclude_unset=True)
     )
     return await _dashboard_response(db, user.id, dash)
+
+
+@router.post("/{dashboard_id}/story", response_model=DataStory)
+async def build_story(
+    dashboard_id: str, user: RateLimitedUser, db: DbDep
+) -> DataStory:
+    """Generate a narrated, slide-by-slide data story for the dashboard."""
+    story = await svc.build_story(db, user.id, dashboard_id)
+    return DataStory.model_validate(story)
 
 
 @router.patch("/{dashboard_id}/live", response_model=DashboardResponse)

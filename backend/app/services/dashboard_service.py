@@ -210,6 +210,27 @@ async def widgets_to_response(
     ]
 
 
+async def build_story(db: AsyncSession, user_id: str, dashboard_id: str) -> dict[str, Any]:
+    """Generate a narrated data story for a dashboard (AI, with fallback)."""
+    from app.ai import data_story
+
+    dash = await get_dashboard(db, user_id, dashboard_id)
+    widgets = await widgets_to_response(db, list(dash.widgets), user_id)
+    payload = [
+        {
+            "widget_id": w.id,
+            "title": w.title,
+            "natural_language": w.chart.natural_language if w.chart else "",
+            "chart_type": w.chart.chart_type if w.chart else "table",
+            "insight": w.chart.insight if w.chart else "",
+            "columns": w.chart.columns if w.chart else [],
+            "rows": w.chart.data if w.chart else [],
+        }
+        for w in widgets
+    ]
+    return await data_story.build_story(dash.name, payload)
+
+
 async def update_dashboard(
     db: AsyncSession, user_id: str, dashboard_id: str, fields: dict[str, Any]
 ) -> Dashboard:

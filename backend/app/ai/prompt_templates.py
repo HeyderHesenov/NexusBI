@@ -216,3 +216,35 @@ SORĞU: {nl_query}
 ƏVVƏLKİ NƏTİCƏ (boş ola bilər): {prev}
 CARİ NƏTİCƏ: {curr}
 """.strip()
+
+
+DATA_STORY_PROMPT = """
+Sən təcrübəli BI hekayəçisi (data storyteller) kimi çıxış edirsən. Sənə bir
+dashboard-un adı və onun widget-ləri (başlıq, qrafik tipi, qısa insight, nümunə
+sətirlər) verilir. Vəzifən: bu paneldən rəvan, icraçı (executive) bir DATA
+HEKAYƏSİ qur — sanki rəhbərliyə təqdimat edirsən.
+
+Qaytar:
+- "title": hekayə üçün cəlbedici qısa başlıq.
+- "overview": 2–3 cümləlik giriş — panel nəyi göstərir, niyə vacibdir.
+- "slides": hər widget üçün BİR obyekt {{"index": <widget nömrəsi>, "narrative":
+  "2–3 cümlə"}}. Narrative həmin qrafikin söylədiyini izah etsin — rəqəmlərə
+  istinad et, nəticə çıxar, quru təkrar etmə.
+- "takeaways": 2–4 qısa əsas nəticə (bullet kimi, hər biri 1 cümlə).
+
+Şişirtmə, uydurma rəqəm vermə. İstifadəçinin dilində (paneldəki mətnlərin
+dilində) yaz. Yalnız JSON qaytar.
+
+OUTPUT FORMAT (JSON):
+{{
+  "title": "...",
+  "overview": "...",
+  "slides": [{{"index": 0, "narrative": "..."}}],
+  "takeaways": ["...", "..."]
+}}
+""".strip()
+
+DATA_STORY_USER_PROMPT = """
+DASHBOARD: {name}
+WIDGET-LƏR (JSON): {widgets}
+""".strip()

@@ -1,5 +1,5 @@
 import { client } from './client'
-import type { Dashboard, DashboardSummary, Widget } from '../types'
+import type { Dashboard, DashboardSummary, DataStory, Widget } from '../types'
 import type { Comment } from '../store/collabStore'
 
 export async function listDashboards(): Promise<DashboardSummary[]> {
@@ -70,6 +70,11 @@ export async function refreshWidget(
 
 export async function refreshAll(dashboardId: string): Promise<Dashboard> {
   const { data } = await client.post<Dashboard>(`/dashboard/${dashboardId}/refresh-all`)
+  return data
+}
+
+export async function buildStory(dashboardId: string): Promise<DataStory> {
+  const { data } = await client.post<DataStory>(`/dashboard/${dashboardId}/story`)
   return data
 }
 
