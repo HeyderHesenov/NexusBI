@@ -11,7 +11,7 @@ import {
 } from 'recharts'
 import type { ChartConfig } from '../../types'
 import { AngledTick, TruncatedTick } from './axis'
-import { useChartTheme } from './theme'
+import { lerpColor, useChartTheme } from './theme'
 
 const ANOMALY_FILL = '#EF4444'
 
@@ -27,7 +27,8 @@ interface Props {
 }
 
 export function BarChartWidget({ data, config, height = 320, onPointClick, anomalyLabels }: Props) {
-  const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
+  const { ACCENT, AXIS, GRID, BAR_LOW, BAR_HIGH, tooltipItem, tooltipLabel, tooltipStyle } =
+    useChartTheme()
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
 
@@ -39,12 +40,21 @@ export function BarChartWidget({ data, config, height = 320, onPointClick, anoma
   const horizontal = maxLen > 12 && count <= 14
   const showValues = count <= 6
 
-  const hasAnomalies = !!anomalyLabels?.size
-  const cells =
-    hasAnomalies &&
-    data.map((row, i) => (
-      <Cell key={i} fill={anomalyLabels?.has(String(row[x])) ? ANOMALY_FILL : ACCENT} />
-    ))
+  // Shade each bar by its value (taller = deeper emerald) so colour reinforces
+  // the ranking instead of every bar reading identically. Anomalies stay red.
+  const values = data.map((d) => Number(d[y]) || 0)
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const shade = (v: number) => {
+    const t = max === min ? 1 : (v - min) / (max - min)
+    return lerpColor(BAR_LOW, BAR_HIGH, 0.18 + t * 0.82) // floor so small bars stay visible
+  }
+  const cells = data.map((row, i) => (
+    <Cell
+      key={i}
+      fill={anomalyLabels?.has(String(row[x])) ? ANOMALY_FILL : shade(values[i])}
+    />
+  ))
 
   const tooltip = (
     <Tooltip

@@ -17,9 +17,26 @@ interface ChartTheme {
   AXIS: string
   GRID: string
   ACCENT: string
+  // Bar value-ramp endpoints: small values → BAR_LOW, large → BAR_HIGH.
+  BAR_LOW: string
+  BAR_HIGH: string
   tooltipStyle: Record<string, unknown>
   tooltipItem: Record<string, unknown>
   tooltipLabel: Record<string, unknown>
+}
+
+/** Linearly interpolate between two hex colors (#rrggbb). t is clamped to [0,1]. */
+export function lerpColor(a: string, b: string, t: number): string {
+  const k = Math.max(0, Math.min(1, t))
+  const pa = parseInt(a.slice(1), 16)
+  const pb = parseInt(b.slice(1), 16)
+  const mix = (sh: number) => {
+    const ca = (pa >> sh) & 0xff
+    const cb = (pb >> sh) & 0xff
+    return Math.round(ca + (cb - ca) * k)
+  }
+  const to2 = (n: number) => n.toString(16).padStart(2, '0')
+  return `#${to2(mix(16))}${to2(mix(8))}${to2(mix(0))}`
 }
 
 const THEMES: Record<Mode, ChartTheme> = {
@@ -28,6 +45,8 @@ const THEMES: Record<Mode, ChartTheme> = {
     AXIS: '#8C877E',
     GRID: '#E5E3DC',
     ACCENT: '#0E9F6E',
+    BAR_LOW: '#A7DFC6',
+    BAR_HIGH: '#0B7E58',
     tooltipStyle: {
       background: '#FFFFFF',
       border: '1px solid #E5E3DC',
@@ -44,6 +63,8 @@ const THEMES: Record<Mode, ChartTheme> = {
     AXIS: '#7C766E',
     GRID: '#3A3733',
     ACCENT: '#10B981',
+    BAR_LOW: '#1F6B4F',
+    BAR_HIGH: '#34D399',
     tooltipStyle: {
       background: '#1F1E1D',
       border: '1px solid #3A3733',
