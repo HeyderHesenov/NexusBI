@@ -77,6 +77,10 @@ async def test_branding_rejects_unsafe_values(client: AsyncClient, auth: dict):
         "/api/v1/brand", json={"logo_url": "javascript:alert(1)"}, headers=auth
     )
     assert bad_logo.status_code == 422
+    bad_name = await client.put(
+        "/api/v1/brand", json={"app_name": "<img src=x onerror=alert(1)>"}, headers=auth
+    )
+    assert bad_name.status_code == 422
 
 
 async def test_stripe_checkout_gated(client: AsyncClient, auth: dict):
