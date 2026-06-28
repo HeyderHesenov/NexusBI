@@ -14,17 +14,23 @@ from app.models.user import User
 _MENTION_RE = re.compile(r"@([\w.+-]+@[\w.-]+|\w[\w.\-]{1,})")
 
 
+_MAX_MENTIONS = 5
+
+
 async def _notify_mentions(
     db: AsyncSession, content: str, author_id: str | None, author_name: str
 ) -> None:
-    """Notify any @mentioned users (matched by email or full name).
+    """Create an IN-APP notification for @mentioned users (by email or full name).
 
-    Only authenticated authors may mention — share-link guests (author_id None)
-    must not be able to notify/fan-out to arbitrary users (spam/phishing vector).
+    Hardened (pentest): only authenticated authors may mention (guests blocked);
+    capped to a few mentions per comment; and we deliberately DO NOT fan out to the
+    mentioned user's outbound channels (Slack/Teams/email) — that would let one
+    user push attacker-controlled text into another tenant's real inboxes. Outbound
+    delivery stays reserved for the owner's own events (digests/alerts).
     """
     if author_id is None:
         return
-    tokens = {t.lower() for t in _MENTION_RE.findall(content)}
+    tokens = list({t.lower() for t in _MENTION_RE.findall(content)})[:_MAX_MENTIONS]
     if not tokens:
         return
     res = await db.execute(
@@ -32,16 +38,18 @@ async def _notify_mentions(
             or_(func.lower(User.email).in_(tokens), func.lower(User.full_name).in_(tokens))
         )
     )
-    from app.services import integration_service
-
     for user in res.scalars().all():
         if user.id == author_id:
             continue  # don't notify yourself
-        title = "Səni qeyd etdilər"
-        body = f"{author_name}: {content[:200]}"
-        db.add(Notification(user_id=user.id, alert_id=None, title=title, body=body))
-        await db.flush()
-        await integration_service.dispatch(db, user.id, title, body)
+        db.add(
+            Notification(
+                user_id=user.id,
+                alert_id=None,
+                title="Səni qeyd etdilər",
+                body=f"{author_name}: {content[:200]}",
+            )
+        )
+    await db.flush()
 
 
 async def list_for_dashboard(

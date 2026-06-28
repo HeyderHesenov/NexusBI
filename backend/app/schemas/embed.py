@@ -16,7 +16,9 @@ class EmbedResponse(BaseModel):
 
 
 class BrandConfigUpdate(BaseModel):
-    app_name: str | None = Field(default=None, max_length=120)
+    # No angle brackets — app_name is served verbatim to unauthenticated embed
+    # hosts; block tag injection at the source (defense in depth vs stored XSS).
+    app_name: str | None = Field(default=None, max_length=120, pattern=r"^[^<>]*$")
     # Strict #RRGGBB — the value is served unauthenticated to third-party embeds.
     primary_color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
     logo_url: str | None = Field(default=None, max_length=2000)
