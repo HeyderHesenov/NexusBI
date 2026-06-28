@@ -1,10 +1,18 @@
-import { AlertTriangle, Download, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Download, GitBranch, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import type { AnomalyResult, ChartConfig, ChartType, ExplainResult, ForecastResult } from '../../types'
+import type {
+  AnomalyResult,
+  ChartConfig,
+  ChartType,
+  ExplainResult,
+  ForecastResult,
+  RootCauseResult,
+} from '../../types'
 import { downloadCsv } from '../../lib/csv'
 import * as analysisApi from '../../api/analysis'
 import { AnomalyPanel } from './AnomalyPanel'
 import { ExplainPanel } from './ExplainPanel'
+import { RootCausePanel } from './RootCausePanel'
 import { ScenarioPanel } from './ScenarioPanel'
 import { ChartRenderer } from './ChartRenderer'
 import { ChartZoom } from './ChartZoom'
@@ -49,6 +57,8 @@ export function ChartView({
   const [forecasting, setForecasting] = useState(false)
   const [explanation, setExplanation] = useState<ExplainResult | null>(null)
   const [explaining, setExplaining] = useState(false)
+  const [rootCause, setRootCause] = useState<RootCauseResult | null>(null)
+  const [rooting, setRooting] = useState(false)
   const [scenario, setScenario] = useState(false)
   const [internalFs, setInternalFs] = useState(false)
   // Controlled if the parent passes fullscreen/onFullscreenChange, else internal.
@@ -62,6 +72,7 @@ export function ChartView({
     setAnomalies(null)
     setForecast(null)
     setExplanation(null)
+    setRootCause(null)
     setScenario(false)
   }, [config.chart_type, data])
 
@@ -105,6 +116,18 @@ export function ChartView({
       /* interceptor toast */
     } finally {
       setDetecting(false)
+    }
+  }
+
+  const runRootCause = async () => {
+    if (!queryLogId) return
+    setRooting(true)
+    try {
+      setRootCause(await analysisApi.rootCause(queryLogId))
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setRooting(false)
     }
   }
 
@@ -197,6 +220,15 @@ export function ChartView({
               >
                 <Sparkles size={14} /> {explaining ? 'İzah…' : 'Bunu izah et'}
               </button>
+              <button
+                onClick={runRootCause}
+                disabled={rooting}
+                className={`${CHART_BTN} border ${
+                  rootCause ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
+                }`}
+              >
+                <GitBranch size={14} /> {rooting ? 'Parçalanır…' : 'Niyə?'}
+              </button>
             </>
           )}
           {valueCol && (
@@ -231,6 +263,8 @@ export function ChartView({
       {anomalies && <AnomalyPanel result={anomalies} />}
 
       {explanation && <ExplainPanel result={explanation} />}
+
+      {rootCause && <RootCausePanel result={rootCause} />}
 
       {scenario && <ScenarioPanel data={filtered} valueCol={valueCol} />}
 

@@ -281,3 +281,18 @@ export interface ExplainResult {
   drivers: ExplainDriver[]
   summary: string
 }
+
+export interface RootCauseNode {
+  label: string
+  value: number | null
+  contribution_pct: number | null
+  direction: string
+  children: RootCauseNode[]
+}
+
+export interface RootCauseResult {
+  metric: string
+  total: number | null
+  summary: string
+  drivers: RootCauseNode[]
+}

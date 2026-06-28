@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Query, Response, status
 from sqlalchemy import func, select
 
-from app.ai import analysis
+from app.ai import analysis, root_cause
 from app.core.exceptions import SchemaNotFoundError
 from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.models.query_log import QueryLog
@@ -13,6 +13,7 @@ from app.schemas.analysis import (
     ExplainResponse,
     ForecastRequest,
     ForecastResponse,
+    RootCauseResponse,
 )
 from app.schemas.query import (
     QueryHistoryItem,
@@ -136,6 +137,16 @@ async def explain(query_id: str, user: RateLimitedUser, db: DbDep) -> ExplainRes
         data.get("columns", []), data.get("rows", []), log.natural_language
     )
     return ExplainResponse(**result)
+
+
+@router.post("/{query_id}/root-cause", response_model=RootCauseResponse)
+async def root_cause_tree(query_id: str, user: RateLimitedUser, db: DbDep) -> RootCauseResponse:
+    log = await _get_log(db, user.id, query_id)
+    data = log.result_data or {"columns": [], "rows": []}
+    result = await root_cause.decompose(
+        data.get("columns", []), data.get("rows", []), log.natural_language
+    )
+    return RootCauseResponse(**result)
 
 
 async def _get_log(db: DbDep, user_id: str, query_id: str) -> QueryLog:
