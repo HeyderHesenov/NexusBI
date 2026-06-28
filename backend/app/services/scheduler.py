@@ -11,7 +11,7 @@ import asyncio
 from app.config import settings
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
-from app.services import saved_query_service
+from app.services import digest_service, saved_query_service
 from app.services.cache_service import CacheService
 
 log = get_logger("nexusbi.scheduler")
@@ -28,11 +28,20 @@ async def _tick(cache: CacheService) -> bool:
             await db.commit()
             if ran:
                 log.info("scheduler_ran", count=ran)
-            return True
         except Exception as exc:  # noqa: BLE001 — never let one tick kill the loop
             await db.rollback()
             log.error("scheduler_tick_failed", error=str(exc))
             return False
+        # Proactive AI brief runs in its OWN transaction so a digest failure can't
+        # roll back the saved-query work already committed above.
+        try:
+            await digest_service.run_digests_due(db)
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001
+            await db.rollback()
+            log.error("scheduler_digest_failed", error=str(exc))
+            return False
+        return True
 
 
 async def run_loop(cache: CacheService) -> None:
