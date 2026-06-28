@@ -7,6 +7,7 @@ from app.models.datasource import DataSource, DBType
 from app.models.decision import Decision
 from app.models.metric import Metric
 from app.models.query_log import QueryLog
+from app.models.requirement import RequirementDoc
 from app.models.saved_query import SavedQuery
 from app.models.user import User
 
@@ -24,4 +25,5 @@ __all__ = [
     "Notification",
     "DashboardComment",
     "Decision",
+    "RequirementDoc",
 ]

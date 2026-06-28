@@ -15,11 +15,28 @@ from app.db.session import AsyncSessionLocal
 from app.models.datasource import DataSource
 from app.models.dashboard import Dashboard, Widget
 from app.models.query_log import QueryLog
-from app.schemas.dashboard import WidgetChart, WidgetResponse
+from app.schemas.dashboard import DashboardResponse, WidgetChart, WidgetResponse
 from app.services import query_service
 from app.services.cache_service import CacheService
 
 _log = get_logger("nexusbi.dashboard")
+
+
+async def to_response(db: AsyncSession, user_id: str, dash: Dashboard) -> DashboardResponse:
+    """Serialize a dashboard (with widgets) to its API response shape.
+
+    Single source of truth so every endpoint that returns a dashboard stays in
+    sync (create/get/generate/requirements-build/live).
+    """
+    return DashboardResponse(
+        id=dash.id,
+        name=dash.name,
+        description=dash.description,
+        layout=dash.layout,
+        live_enabled=dash.live_enabled,
+        live_interval_seconds=dash.live_interval_seconds,
+        widgets=await widgets_to_response(db, list(dash.widgets), user_id),
+    )
 
 
 async def enable_share(db: AsyncSession, user_id: str, dashboard_id: str) -> str:
@@ -76,24 +93,21 @@ async def _run_planned_query(
     return question, result.query_log_id
 
 
-async def generate_dashboard(
+async def assemble_dashboard(
     db: AsyncSession,
     cache: CacheService,
     user_id: str,
-    goal: str,
+    name: str,
+    description: str,
+    questions: list[str],
     datasource_id: str | None,
 ) -> Dashboard:
-    """Plan questions for ``goal``, run them concurrently, and assemble a dashboard.
+    """Run ``questions`` concurrently (each in its own session) and lay them out.
 
-    Each question runs in its own session (AsyncSession isn't concurrency-safe);
-    widgets are laid out in a 2-column grid. Raises if nothing usable came back.
+    Shared by the AI auto-dashboard (questions from the planner) and the
+    requirements→dashboard flow (questions from extracted KPIs). Widgets are
+    placed in a 2-column grid. Raises if nothing usable came back.
     """
-    from app.ai import dashboard_planner
-
-    questions = await dashboard_planner.plan_dashboard(goal)
-    if not questions:
-        raise SchemaNotFoundError("Dashboard planı yaradıla bilmədi.")
-
     results = await asyncio.gather(
         *[_run_planned_query(cache, user_id, datasource_id, q) for q in questions],
         return_exceptions=True,
@@ -102,7 +116,7 @@ async def generate_dashboard(
     if not widgets:
         raise SchemaNotFoundError("Sual nəticələri alınmadı.")
 
-    dash = await create_dashboard(db, user_id, goal[:255], f"AI tərəfindən yaradıldı: {goal}"[:2000])
+    dash = await create_dashboard(db, user_id, name[:255], description[:2000])
     # 2-column grid, 12 cols, each widget 6 wide × 8 tall.
     for i, (title, query_log_id) in enumerate(widgets):
         await add_widget(
@@ -123,6 +137,24 @@ async def generate_dashboard(
     # cached collection so the reload below sees the freshly inserted widgets.
     db.expire(dash, ["widgets"])
     return await get_dashboard(db, user_id, dash.id)
+
+
+async def generate_dashboard(
+    db: AsyncSession,
+    cache: CacheService,
+    user_id: str,
+    goal: str,
+    datasource_id: str | None,
+) -> Dashboard:
+    """Plan questions for ``goal`` (AI), then assemble a dashboard from them."""
+    from app.ai import dashboard_planner
+
+    questions = await dashboard_planner.plan_dashboard(goal)
+    if not questions:
+        raise SchemaNotFoundError("Dashboard planı yaradıla bilmədi.")
+    return await assemble_dashboard(
+        db, cache, user_id, goal, f"AI tərəfindən yaradıldı: {goal}", questions, datasource_id
+    )
 
 
 async def list_dashboards(db: AsyncSession, user_id: str) -> list[Dashboard]:

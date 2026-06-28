@@ -42,6 +42,9 @@ const PublicDashboardPage = lazy(() =>
 const DecisionsPage = lazy(() =>
   import('./pages/DecisionsPage').then((m) => ({ default: m.DecisionsPage })),
 )
+const RequirementsPage = lazy(() =>
+  import('./pages/RequirementsPage').then((m) => ({ default: m.RequirementsPage })),
+)
 
 function ProtectedRoute() {
   const token = useAuthStore((s) => s.token)
@@ -90,6 +93,7 @@ export default function App() {
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/decisions" element={<DecisionsPage />} />
               <Route path="/metrics" element={<MetricsPage />} />
+              <Route path="/requirements" element={<RequirementsPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/dashboards" element={<DashboardPage />} />
               <Route path="/history" element={<HistoryPage />} />

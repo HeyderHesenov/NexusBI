@@ -1,4 +1,4 @@
-import { BookMarked, CreditCard, Database, History, LayoutDashboard, MessageSquare, Tag, Target } from 'lucide-react'
+import { BookMarked, CreditCard, Database, FileText, History, LayoutDashboard, MessageSquare, Tag, Target } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { NexusMark } from '../brand/NexusMark'
 import { useDatasourceStore } from '../../store/datasourceStore'
@@ -8,6 +8,7 @@ const items = [
   { to: '/', label: 'Soruş', icon: MessageSquare },
   { to: '/sources', label: 'Mənbələr', icon: Database },
   { to: '/metrics', label: 'Metriklər', icon: Tag },
+  { to: '/requirements', label: 'Tələblər', icon: FileText },
   { to: '/dashboards', label: 'Dashboard-lar', icon: LayoutDashboard },
   { to: '/reports', label: 'Hesabatlar', icon: BookMarked },
   { to: '/decisions', label: 'Qərarlar', icon: Target },
