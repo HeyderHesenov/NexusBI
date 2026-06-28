@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Database, Plug, Plus, Table2, Trash2, UploadCloud } from 'lucide-react'
+import { BarChart3, Database, Gauge, Plug, Plus, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { useQueryStore } from '../store/queryStore'
 import * as dsApi from '../api/datasource'
@@ -7,6 +7,8 @@ import type { DataSourceSchema } from '../types'
 import { ConnectSourceModal } from '../components/datasource/ConnectSourceModal'
 import { ConnectPowerBIModal } from '../components/datasource/ConnectPowerBIModal'
 import { UploadSourceModal } from '../components/datasource/UploadSourceModal'
+import { DataPrepModal } from '../components/datasource/DataPrepModal'
+import { ProfilePanel } from '../components/datasource/ProfilePanel'
 
 export function DataSourcesPage() {
   const { sources, load, test, remove } = useDatasourceStore()
@@ -14,8 +16,10 @@ export function DataSourcesPage() {
   const [connectOpen, setConnectOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [powerbiOpen, setPowerbiOpen] = useState(false)
+  const [prepOpen, setPrepOpen] = useState(false)
   const [openSchema, setOpenSchema] = useState<string | null>(null)
   const [schema, setSchema] = useState<DataSourceSchema | null>(null)
+  const [openProfile, setOpenProfile] = useState<string | null>(null)
 
   useEffect(() => {
     load().catch(() => undefined)
@@ -47,7 +51,13 @@ export function DataSourcesPage() {
             Öz SQL bazanı qoş və ya CSV/Excel yüklə, sonra təbii dillə sorğula.
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            onClick={() => setPrepOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+          >
+            <Wand2 size={15} /> Data hazırla
+          </button>
           <button
             onClick={() => setUploadOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
@@ -115,6 +125,19 @@ export function DataSourcesPage() {
                   >
                     <Table2 size={15} />
                   </button>
+                  {s.db_type !== 'powerbi' && (
+                    <button
+                      onClick={() => setOpenProfile(openProfile === s.id ? null : s.id)}
+                      title="Profil"
+                      className={`rounded-lg border p-1.5 transition ${
+                        openProfile === s.id
+                          ? 'border-accent text-accent'
+                          : 'border-line text-ink-soft hover:text-ink'
+                      }`}
+                    >
+                      <Gauge size={15} />
+                    </button>
+                  )}
                   <button
                     onClick={() => test(s.id)}
                     title="Bağlantını yoxla"
@@ -152,6 +175,12 @@ export function DataSourcesPage() {
                   )}
                 </div>
               )}
+
+              {openProfile === s.id && (
+                <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3">
+                  <ProfilePanel datasourceId={s.id} />
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -160,6 +189,12 @@ export function DataSourcesPage() {
       <ConnectSourceModal open={connectOpen} onClose={() => setConnectOpen(false)} />
       <ConnectPowerBIModal open={powerbiOpen} onClose={() => setPowerbiOpen(false)} />
       <UploadSourceModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <DataPrepModal
+        open={prepOpen}
+        onClose={() => setPrepOpen(false)}
+        sources={sources}
+        onSaved={() => load().catch(() => undefined)}
+      />
     </div>
   )
 }

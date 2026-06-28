@@ -113,11 +113,24 @@ async def get_schema_cached(
 MAX_RESULT_ROWS = 10000
 
 
+def _dedupe_columns(columns: list[str]) -> list[str]:
+    """Make column names unique (id, id_2, id_3…) so JOIN/SELECT * results don't
+    silently collapse duplicate names when rows are built as dicts."""
+    seen: dict[str, int] = {}
+    out: list[str] = []
+    for col in columns:
+        n = seen.get(col, 0)
+        seen[col] = n + 1
+        out.append(col if n == 0 else f"{col}_{n + 1}")
+    return out
+
+
 async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict[str, Any]]]:
     """Run a validated SELECT and return (columns, rows).
 
     Re-validates at the executor (defense in depth — never trust the caller) and
-    hard-caps fetched rows so a huge result can't exhaust memory.
+    hard-caps fetched rows so a huge result can't exhaust memory. Duplicate column
+    names (common in joins) are made unique so no column is silently dropped.
     """
     sql = validate_select_only(sql)
     conn_str = decrypt_secret(ds.connection_string_encrypted)
@@ -127,8 +140,9 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
     try:
         async with engine.connect() as conn:
             result = await conn.execute(text(sql))
-            columns = list(result.keys())
-            rows = [dict(r) for r in result.mappings().fetchmany(MAX_RESULT_ROWS)]
+            columns = _dedupe_columns(list(result.keys()))
+            raw = result.fetchmany(MAX_RESULT_ROWS)
+            rows = [dict(zip(columns, r)) for r in raw]
         log.info(
             "sql_execution",
             datasource_id=ds.id,

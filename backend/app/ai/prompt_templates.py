@@ -253,6 +253,31 @@ TƏLƏB SƏNƏDİ:
 """.strip()
 
 
+DATA_PREP_PROMPT = """
+Sən data mühəndisisən. İstifadəçi təbii dildə data hazırlıq (transform) istəyir.
+Verilmiş sxem əsasında TƏK bir SELECT sorğusu yaz:
+- Yalnız SELECT (heç vaxt INSERT/UPDATE/DELETE/DDL).
+- Lazım olduqda cədvəlləri JOIN et, qrupla, aqreqasiya et, süz.
+- Yalnız sxemdə mövcud cədvəl/sütunlardan istifadə et.
+- SQLite sintaksisi.
+İstifadəçi hansı dildə yazıbsa, addımları (steps) o dildə izah et.
+
+OUTPUT FORMAT (JSON):
+{{
+  "sql": "SELECT ...",
+  "steps": ["orders və customers customer_id üzrə birləşdirildi", "aya görə qruplandı"],
+  "warnings": []
+}}
+""".strip()
+
+DATA_PREP_USER_PROMPT = """
+SXEM:
+{schema}
+
+TAPŞIRIQ: {instruction}
+""".strip()
+
+
 DASHBOARD_PLANNER_USER_PROMPT = """
 MƏQSƏD: {goal}
 MÖVCUD DATA HAQQINDA: {schema_hint}
