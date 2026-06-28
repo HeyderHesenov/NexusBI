@@ -48,15 +48,7 @@ async def list_all(user: CurrentUser, db: DbDep) -> list[DashboardSummary]:
 
 
 async def _dashboard_response(db: DbDep, user_id: str, dash) -> DashboardResponse:
-    return DashboardResponse(
-        id=dash.id,
-        name=dash.name,
-        description=dash.description,
-        layout=dash.layout,
-        live_enabled=dash.live_enabled,
-        live_interval_seconds=dash.live_interval_seconds,
-        widgets=await svc.widgets_to_response(db, list(dash.widgets), user_id),
-    )
+    return await svc.to_response(db, user_id, dash)
 
 
 @router.get("/{dashboard_id}", response_model=DashboardResponse)

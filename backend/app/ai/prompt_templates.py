@@ -227,6 +227,32 @@ OUTPUT FORMAT (JSON):
 }}
 """.strip()
 
+REQUIREMENTS_PROMPT = """
+Sən senior IT biznes analitiksən. Verilmiş tələb sənədindən (BRD / user story /
+biznes tələbləri) ÖLÇÜLƏ BİLƏN KPI-ları çıxar.
+- 4–8 KPI seç. Hər biri tək bir SQL aqreqasiyası ilə cavablana bilən olmalı.
+- Hər KPI üçün:
+  - name: qısa ad (məs. "Aylıq gəlir")
+  - question: təbii dildə analitik sual (dashboard onu icra edəcək)
+  - rationale: niyə vacibdir (bir cümlə)
+  - requirement_ref: mətndən qısa istinad/sitat (hansı tələbdən gəlir)
+İstifadəçi hansı dildə yazıbsa, o dildə cavab ver.
+
+OUTPUT FORMAT (JSON):
+{{
+  "kpis": [
+    {{"name": "Aylıq gəlir", "question": "Aylıq gəlir trendi necədir?",
+      "rationale": "Gəlir artımını izləmək üçün", "requirement_ref": "gəlir artımı izlənməli"}}
+  ]
+}}
+""".strip()
+
+REQUIREMENTS_USER_PROMPT = """
+TƏLƏB SƏNƏDİ:
+{text}
+""".strip()
+
+
 DASHBOARD_PLANNER_USER_PROMPT = """
 MƏQSƏD: {goal}
 MÖVCUD DATA HAQQINDA: {schema_hint}

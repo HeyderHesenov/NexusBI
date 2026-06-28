@@ -5,7 +5,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     alert, auth, billing, copilot, dashboard, datasource, decision, metric, public, query,
-    saved_query,
+    requirement, saved_query,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -19,4 +19,5 @@ api_router.include_router(metric.router)
 api_router.include_router(alert.router)
 api_router.include_router(decision.router)
 api_router.include_router(copilot.router)
+api_router.include_router(requirement.router)
 api_router.include_router(public.router)

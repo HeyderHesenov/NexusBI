@@ -21,6 +21,11 @@ if not settings.DATABASE_URL.startswith("sqlite"):
         max_overflow=settings.APP_DB_POOL_MAX_OVERFLOW,
         pool_recycle=settings.APP_DB_POOL_RECYCLE_SECONDS,
     )
+else:
+    # SQLite (demo/dev): wait on the lock instead of erroring immediately when the
+    # concurrent fan-out paths (auto-dashboard, requirements build, live refresh)
+    # write from several sessions at once.
+    _engine_kwargs["connect_args"] = {"timeout": 30}
 
 engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 

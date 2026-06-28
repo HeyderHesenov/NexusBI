@@ -296,3 +296,18 @@ export interface RootCauseResult {
   summary: string
   drivers: RootCauseNode[]
 }
+
+export interface KpiItem {
+  name: string
+  question: string
+  rationale: string
+  requirement_ref: string
+}
+
+export interface RequirementDoc {
+  id: string
+  name: string
+  kpis: KpiItem[]
+  dashboard_id: string | null
+  created_at: string
+}
