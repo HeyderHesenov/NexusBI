@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query, Response, status
 from sqlalchemy import func, select
 
 from app.ai import analysis, root_cause
-from app.core.exceptions import SchemaNotFoundError
+from app.core.exceptions import AIGenerationError, NexusBIException, SchemaNotFoundError
 from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.models.query_log import QueryLog
 from app.schemas.analysis import (
@@ -22,7 +22,13 @@ from app.schemas.query import (
     QueryRequest,
     QueryResult,
 )
-from app.services import lineage_service, metric_service, query_service
+from app.schemas.scenario import (
+    GoalSeekRequest,
+    GoalSeekResponse,
+    MonteCarloRequest,
+    MonteCarloResponse,
+)
+from app.services import lineage_service, metric_service, query_service, scenario_service
 
 router = APIRouter(prefix="/query", tags=["query"])
 
@@ -148,6 +154,42 @@ async def root_cause_tree(query_id: str, user: RateLimitedUser, db: DbDep) -> Ro
         data.get("columns", []), data.get("rows", []), log.natural_language
     )
     return RootCauseResponse(**result)
+
+
+def _series(log: QueryLog) -> list[float]:
+    data = log.result_data or {"columns": [], "rows": []}
+    try:
+        _label, value_col = analysis.pick_series(data.get("columns", []), data.get("rows", []))
+    except AIGenerationError as exc:
+        # No numeric column is a client-data precondition, not an upstream failure.
+        raise NexusBIException(exc.message) from exc
+    return [
+        float(r[value_col])
+        for r in data.get("rows", [])
+        if isinstance(r.get(value_col), (int, float)) and not isinstance(r.get(value_col), bool)
+    ]
+
+
+@router.post("/{query_id}/goal-seek", response_model=GoalSeekResponse)
+async def goal_seek(
+    query_id: str, payload: GoalSeekRequest, user: CurrentUser, db: DbDep
+) -> GoalSeekResponse:
+    """How much change reaches the target from the latest value (no AI)."""
+    log = await _get_log(db, user.id, query_id)
+    return GoalSeekResponse(**scenario_service.goal_seek(_series(log), payload.target))
+
+
+@router.post("/{query_id}/monte-carlo", response_model=MonteCarloResponse)
+async def monte_carlo(
+    query_id: str, payload: MonteCarloRequest, user: CurrentUser, db: DbDep
+) -> MonteCarloResponse:
+    """Monte Carlo projection (P10/P50/P90) from historical returns (no AI)."""
+    log = await _get_log(db, user.id, query_id)
+    try:
+        result = scenario_service.monte_carlo(_series(log), payload.periods, payload.runs)
+    except ValueError as exc:
+        raise NexusBIException(str(exc)) from exc
+    return MonteCarloResponse(**result)
 
 
 @router.get("/{query_id}/lineage", response_model=LineageResponse)

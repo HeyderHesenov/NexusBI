@@ -294,7 +294,7 @@ export function ChartView({
 
       {lineage && <LineagePanel lineage={lineage} />}
 
-      {scenario && <ScenarioPanel data={filtered} valueCol={valueCol} />}
+      {scenario && <ScenarioPanel data={filtered} valueCol={valueCol} queryLogId={queryLogId} />}
 
       {forecast && (
         <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">

@@ -5,6 +5,7 @@ from app.models.comment import DashboardComment
 from app.models.dashboard import Dashboard, Widget
 from app.models.datasource import DataSource, DBType
 from app.models.decision import Decision
+from app.models.kpi_target import KPITarget
 from app.models.metric import Metric
 from app.models.query_log import QueryLog
 from app.models.requirement import RequirementDoc
@@ -27,6 +28,7 @@ __all__ = [
     "DashboardComment",
     "Decision",
     "RequirementDoc",
+    "KPITarget",
     "Workspace",
     "WorkspaceMember",
     "RLSRule",
