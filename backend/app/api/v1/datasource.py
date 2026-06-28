@@ -13,8 +13,9 @@ from app.schemas.datasource import (
     PowerBIConnectRequest,
     PowerBIDataset,
 )
+from app.schemas.dataprep import ProfileResponse
 from app.services import datasource_service as svc
-from app.services import upload_service
+from app.services import profiling_service, upload_service
 
 router = APIRouter(prefix="/datasource", tags=["datasource"])
 
@@ -88,6 +89,15 @@ async def schema(
 async def test(datasource_id: str, user: CurrentUser, db: DbDep) -> dict[str, bool]:
     ds = await svc.get_datasource(db, user.id, datasource_id)
     return {"ok": await svc.test_connection(ds)}
+
+
+@router.get("/{datasource_id}/profile", response_model=ProfileResponse)
+async def profile(
+    datasource_id: str, table: str, user: CurrentUser, db: DbDep, cache: CacheDep
+) -> ProfileResponse:
+    """Per-column data profile (null %, distinct, min/max) for one table."""
+    result = await profiling_service.profile(db, user.id, datasource_id, table, cache)
+    return ProfileResponse(**result)
 
 
 @router.delete("/{datasource_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -311,3 +311,27 @@ export interface RequirementDoc {
   dashboard_id: string | null
   created_at: string
 }
+
+export interface DataPrepPreview {
+  sql: string
+  steps: string[]
+  warnings: string[]
+  columns: string[]
+  rows: Record<string, unknown>[]
+}
+
+export interface ColumnProfile {
+  column: string
+  dtype: string
+  null_pct: number
+  distinct: number
+  min: number | null
+  max: number | null
+  sample_size: number
+}
+
+export interface DataProfile {
+  table: string
+  row_sample: number
+  columns: ColumnProfile[]
+}
