@@ -182,6 +182,38 @@ DATA: {data}
 """.strip()
 
 
+ROOT_CAUSE_PROMPT = """
+Sen senior biznes analitiksən. Verilmiş metrikanı İYERARXİK kök-səbəb ağacına
+parçala (decomposition tree):
+- Ən böyük töhfə verən seqmentləri tap (driver-lər), dəyərə görə azalan sırala.
+- Mümkünsə, bir driver-i alt-driver-lərə (children) böl — maksimum 2 səviyyə.
+- Hər node üçün: label, value (ədəd), contribution_pct (ümumiyə görə pay, 0–100),
+  direction ("up" müsbət/artım, "down" mənfi/azalma).
+- Pay faizləri eyni səviyyədə təxminən cəmlənməlidir.
+Qısa, idarəçi üçün aydın. Sorğu hansı dildədirsə, o dildə cavab ver.
+
+OUTPUT FORMAT (JSON):
+{{
+  "metric": "total_revenue",
+  "total": 125000,
+  "summary": "Gəlirin 62%-i Qərb regionundandır; içində Laptop aparıcıdır.",
+  "drivers": [
+    {{"label": "Qərb", "value": 78000, "contribution_pct": 62.0, "direction": "up",
+      "children": [
+        {{"label": "Laptop", "value": 50000, "contribution_pct": 64.0, "direction": "up"}}
+      ]}}
+  ]
+}}
+""".strip()
+
+ROOT_CAUSE_USER_PROMPT = """
+SORĞU: {nl_query}
+ETİKET SÜTUNU: {label_col}
+DƏYƏR SÜTUNU: {value_col}
+DATA: {data}
+""".strip()
+
+
 DASHBOARD_PLANNER_PROMPT = """
 Sən BI dashboard memarı kimi çıxış edirsən. İstifadəçi bir məqsəd verir; sən
 həmin məqsədi əhatə edən 4–6 müxtəlif, təbii dildə analitik sual qaytarırsan.

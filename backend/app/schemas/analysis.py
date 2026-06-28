@@ -49,3 +49,18 @@ class ExplainDriver(BaseModel):
 class ExplainResponse(BaseModel):
     drivers: list[ExplainDriver] = Field(default_factory=list)
     summary: str = ""
+
+
+class RootCauseNode(BaseModel):
+    label: str
+    value: float | None = None
+    contribution_pct: float | None = None
+    direction: str = "up"  # "up" | "down"
+    children: list["RootCauseNode"] = Field(default_factory=list)
+
+
+class RootCauseResponse(BaseModel):
+    metric: str = ""
+    total: float | None = None
+    summary: str = ""
+    drivers: list[RootCauseNode] = Field(default_factory=list)
