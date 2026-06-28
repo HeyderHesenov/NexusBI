@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, File, Form, Response, UploadFile, status
 
+from app.core.exceptions import SchemaNotFoundError
 from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.schemas.datasource import (
     DataSourceCreate,
@@ -15,8 +16,9 @@ from app.schemas.datasource import (
     PowerBIDataset,
 )
 from app.schemas.dataprep import ProfileResponse
-from app.services import datasource_service as svc
-from app.services import profiling_service, upload_service
+from app.schemas.workspace import RLSRuleCreate, RLSRuleResponse
+from app.services import audit_service, datasource_service as svc
+from app.services import profiling_service, rls_service, upload_service
 
 router = APIRouter(prefix="/datasource", tags=["datasource"])
 
@@ -26,6 +28,7 @@ async def create(payload: DataSourceCreate, user: CurrentUser, db: DbDep) -> Dat
     ds = await svc.add_datasource(
         db, user.id, payload.name, payload.db_type, payload.connection_string
     )
+    await audit_service.log(db, user.id, "datasource.create", entity="datasource", entity_id=ds.id)
     return DataSourceResponse.model_validate(ds)
 
 
@@ -122,4 +125,48 @@ async def delete(datasource_id: str, user: CurrentUser, db: DbDep) -> Response:
     await engine_pool.evict(decrypt_secret(ds.connection_string_encrypted))
     await db.delete(ds)
     await db.flush()
+    await audit_service.log(db, user.id, "datasource.delete", entity="datasource", entity_id=datasource_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ─── Row-level security rules (datasource owner manages) ───
+
+@router.get("/{datasource_id}/rls", response_model=list[RLSRuleResponse])
+async def list_rls(datasource_id: str, user: CurrentUser, db: DbDep) -> list[RLSRuleResponse]:
+    rules = await rls_service.list_for_datasource(db, user.id, datasource_id)
+    return [RLSRuleResponse.model_validate(r) for r in rules]
+
+
+@router.post("/{datasource_id}/rls", response_model=RLSRuleResponse, status_code=status.HTTP_201_CREATED)
+async def add_rls(
+    datasource_id: str, payload: RLSRuleCreate, user: CurrentUser, db: DbDep
+) -> RLSRuleResponse:
+    from sqlalchemy import select
+
+    from app.models.user import User
+
+    member = (
+        await db.execute(select(User).where(User.email == payload.member_email.strip().lower()))
+    ).scalar_one_or_none()
+    if member is None:
+        raise SchemaNotFoundError("Bu e-poçtla istifadəçi tapılmadı.")
+    rule = await rls_service.create_rule(
+        db, user.id, datasource_id, member.id, payload.column, payload.allowed_value
+    )
+    await audit_service.log(
+        db, user.id, "rls.create", entity="datasource", entity_id=datasource_id,
+        meta={"member": member.id, "column": payload.column},
+    )
+    return RLSRuleResponse.model_validate(rule)
+
+
+@router.delete("/{datasource_id}/rls/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_rls(
+    datasource_id: str, rule_id: str, user: CurrentUser, db: DbDep
+) -> Response:
+    await rls_service.delete_rule(db, user.id, rule_id)
+    await audit_service.log(
+        db, user.id, "rls.delete", entity="datasource", entity_id=datasource_id,
+        meta={"rule": rule_id},
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

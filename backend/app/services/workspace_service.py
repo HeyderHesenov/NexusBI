@@ -1,0 +1,133 @@
+"""Team workspaces + role-based membership (RBAC)."""
+from __future__ import annotations
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import ForbiddenError, SchemaNotFoundError
+from app.models.user import User
+from app.models.workspace import ROLES, Workspace, WorkspaceMember
+
+
+def _rank(role: str) -> int:
+    return ROLES.index(role) if role in ROLES else -1
+
+
+async def create(db: AsyncSession, owner_id: str, name: str) -> Workspace:
+    ws = Workspace(owner_id=owner_id, name=name)
+    db.add(ws)
+    await db.flush()
+    # The creator is an owner-role member.
+    db.add(WorkspaceMember(workspace_id=ws.id, user_id=owner_id, role="owner"))
+    await db.flush()
+    await db.refresh(ws)
+    return ws
+
+
+async def list_mine(db: AsyncSession, user_id: str) -> list[Workspace]:
+    res = await db.execute(
+        select(Workspace)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+        .where(WorkspaceMember.user_id == user_id)
+        .order_by(Workspace.created_at.desc())
+    )
+    return list(res.scalars().unique().all())
+
+
+async def get_role(db: AsyncSession, workspace_id: str, user_id: str) -> str | None:
+    res = await db.execute(
+        select(WorkspaceMember.role).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user_id,
+        )
+    )
+    return res.scalar_one_or_none()
+
+
+async def require_role(
+    db: AsyncSession, workspace_id: str, user_id: str, min_role: str
+) -> str:
+    """Ensure the user is a member with at least ``min_role``; else 403/404."""
+    role = await get_role(db, workspace_id, user_id)
+    if role is None:
+        raise SchemaNotFoundError("İş sahəsi tapılmadı.")
+    if _rank(role) < _rank(min_role):
+        raise ForbiddenError("Bu əməliyyat üçün icazən yoxdur.")
+    return role
+
+
+async def add_member(
+    db: AsyncSession, workspace_id: str, actor_id: str, email: str, role: str
+) -> WorkspaceMember:
+    await require_role(db, workspace_id, actor_id, "owner")
+    if role not in ROLES:
+        role = "viewer"
+    user = (
+        await db.execute(select(User).where(User.email == email.strip().lower()))
+    ).scalar_one_or_none()
+    if user is None:
+        raise SchemaNotFoundError("Bu e-poçtla istifadəçi tapılmadı.")
+    # The workspace owner can't be demoted below owner (avoids self-lockout).
+    ws = (
+        await db.execute(select(Workspace).where(Workspace.id == workspace_id))
+    ).scalar_one_or_none()
+    if ws and user.id == ws.owner_id:
+        role = "owner"
+    existing = await get_role(db, workspace_id, user.id)
+    if existing is not None:
+        # Update role instead of duplicating membership.
+        member = (
+            await db.execute(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == workspace_id,
+                    WorkspaceMember.user_id == user.id,
+                )
+            )
+        ).scalar_one()
+        member.role = role
+        await db.flush()
+        return member
+    member = WorkspaceMember(workspace_id=workspace_id, user_id=user.id, role=role)
+    db.add(member)
+    await db.flush()
+    await db.refresh(member)
+    return member
+
+
+async def list_members(
+    db: AsyncSession, workspace_id: str, user_id: str
+) -> list[dict]:
+    await require_role(db, workspace_id, user_id, "viewer")
+    res = await db.execute(
+        select(WorkspaceMember, User.email)
+        .join(User, User.id == WorkspaceMember.user_id)
+        .where(WorkspaceMember.workspace_id == workspace_id)
+        .order_by(WorkspaceMember.created_at)
+    )
+    return [
+        {"id": m.id, "user_id": m.user_id, "email": email, "role": m.role}
+        for m, email in res.all()
+    ]
+
+
+async def remove_member(
+    db: AsyncSession, workspace_id: str, actor_id: str, member_id: str
+) -> None:
+    await require_role(db, workspace_id, actor_id, "owner")
+    member = (
+        await db.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.id == member_id,
+                WorkspaceMember.workspace_id == workspace_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if member is None:
+        raise SchemaNotFoundError("Üzv tapılmadı.")
+    ws = (
+        await db.execute(select(Workspace).where(Workspace.id == workspace_id))
+    ).scalar_one_or_none()
+    if ws and member.user_id == ws.owner_id:
+        raise ForbiddenError("İş sahəsinin sahibini çıxarmaq olmaz.")
+    await db.delete(member)
+    await db.flush()
