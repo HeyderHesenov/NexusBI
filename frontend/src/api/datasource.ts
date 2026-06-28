@@ -21,6 +21,13 @@ export async function test(id: string): Promise<boolean> {
   return data.ok
 }
 
+export async function setSla(id: string, hours: number | null): Promise<DataSource> {
+  const { data } = await client.patch<DataSource>(`/datasource/${id}/sla`, {
+    freshness_sla_hours: hours,
+  })
+  return data
+}
+
 export async function remove(id: string): Promise<void> {
   await client.delete(`/datasource/${id}`)
 }

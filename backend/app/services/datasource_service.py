@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select, text
@@ -39,11 +40,28 @@ async def add_datasource(
         name=name,
         db_type=dtype,
         connection_string_encrypted=encrypt_secret(connection_string),
+        last_refreshed_at=datetime.now(timezone.utc),
     )
     db.add(ds)
     await db.flush()
     await db.refresh(ds)
     return ds
+
+
+async def set_sla(
+    db: AsyncSession, user_id: str, datasource_id: str, hours: int | None
+) -> DataSource:
+    ds = await get_datasource(db, user_id, datasource_id)
+    ds.freshness_sla_hours = hours
+    await db.flush()
+    await db.refresh(ds)
+    return ds
+
+
+async def stamp_refreshed(db: AsyncSession, ds: DataSource) -> None:
+    """Mark the source as freshly reached (resets the freshness clock)."""
+    ds.last_refreshed_at = datetime.now(timezone.utc)
+    await db.flush()
 
 
 async def list_datasources(db: AsyncSession, user_id: str) -> list[DataSource]:

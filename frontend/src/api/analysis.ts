@@ -1,5 +1,5 @@
 import { client } from './client'
-import type { AnomalyResult, ExplainResult, ForecastResult, RootCauseResult } from '../types'
+import type { AnomalyResult, ExplainResult, ForecastResult, Lineage, RootCauseResult } from '../types'
 
 export async function detectAnomalies(queryId: string): Promise<AnomalyResult> {
   const { data } = await client.post<AnomalyResult>(`/query/${queryId}/anomalies`)
@@ -18,5 +18,10 @@ export async function forecast(queryId: string, periods = 6): Promise<ForecastRe
 
 export async function rootCause(queryId: string): Promise<RootCauseResult> {
   const { data } = await client.post<RootCauseResult>(`/query/${queryId}/root-cause`)
+  return data
+}
+
+export async function lineage(queryId: string): Promise<Lineage> {
+  const { data } = await client.get<Lineage>(`/query/${queryId}/lineage`)
   return data
 }

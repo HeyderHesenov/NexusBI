@@ -14,6 +14,7 @@ interface DatasourceState {
   uploadFile: (file: File, name: string) => Promise<DataSource>
   connectPowerBI: (name: string, datasetId: string) => Promise<DataSource>
   test: (id: string) => Promise<boolean>
+  setSla: (id: string, hours: number | null) => Promise<void>
   remove: (id: string) => Promise<void>
 }
 
@@ -65,6 +66,11 @@ export const useDatasourceStore = create<DatasourceState>((set, get) => ({
     } catch {
       return false // interceptor already toasted
     }
+  },
+  setSla: async (id, hours) => {
+    const updated = await dsApi.setSla(id, hours)
+    set({ sources: get().sources.map((s) => (s.id === id ? updated : s)) })
+    toast.success('Təzəlik SLA yeniləndi.')
   },
   remove: async (id) => {
     await dsApi.remove(id)

@@ -64,3 +64,9 @@ class RootCauseResponse(BaseModel):
     total: float | None = None
     summary: str = ""
     drivers: list[RootCauseNode] = Field(default_factory=list)
+
+
+class LineageResponse(BaseModel):
+    tables: list[str] = Field(default_factory=list)
+    columns: list[str] = Field(default_factory=list)
+    metrics: list[str] = Field(default_factory=list)

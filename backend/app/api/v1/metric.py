@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Query, Response, status
 
 from app.dependencies import CurrentUser, DbDep
-from app.schemas.metric import MetricCreate, MetricResponse
+from app.schemas.metric import MetricCreate, MetricResponse, MetricVerifyRequest
 from app.services import metric_service as svc
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
@@ -22,6 +22,16 @@ async def list_all(
 ) -> list[MetricResponse]:
     items = await svc.list_for(db, user.id, datasource_id)
     return [MetricResponse.model_validate(m) for m in items]
+
+
+@router.patch("/{metric_id}/verify", response_model=MetricResponse)
+async def verify(
+    metric_id: str, payload: MetricVerifyRequest, user: CurrentUser, db: DbDep
+) -> MetricResponse:
+    """Certify (or un-certify) a metric — marks the trusted source of truth."""
+    by = user.full_name or user.email
+    metric = await svc.set_verified(db, user.id, metric_id, payload.verified, by)
+    return MetricResponse.model_validate(metric)
 
 
 @router.delete("/{metric_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, GitBranch, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Download, GitBranch, GitFork, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type {
   AnomalyResult,
@@ -6,6 +6,7 @@ import type {
   ChartType,
   ExplainResult,
   ForecastResult,
+  Lineage,
   RootCauseResult,
 } from '../../types'
 import { downloadCsv } from '../../lib/csv'
@@ -13,6 +14,7 @@ import * as analysisApi from '../../api/analysis'
 import { AnomalyPanel } from './AnomalyPanel'
 import { ExplainPanel } from './ExplainPanel'
 import { RootCausePanel } from './RootCausePanel'
+import { LineagePanel } from './LineagePanel'
 import { ScenarioPanel } from './ScenarioPanel'
 import { ChartRenderer } from './ChartRenderer'
 import { ChartZoom } from './ChartZoom'
@@ -59,6 +61,8 @@ export function ChartView({
   const [explaining, setExplaining] = useState(false)
   const [rootCause, setRootCause] = useState<RootCauseResult | null>(null)
   const [rooting, setRooting] = useState(false)
+  const [lineage, setLineage] = useState<Lineage | null>(null)
+  const [tracing, setTracing] = useState(false)
   const [scenario, setScenario] = useState(false)
   const [internalFs, setInternalFs] = useState(false)
   // Controlled if the parent passes fullscreen/onFullscreenChange, else internal.
@@ -73,6 +77,7 @@ export function ChartView({
     setForecast(null)
     setExplanation(null)
     setRootCause(null)
+    setLineage(null)
     setScenario(false)
   }, [config.chart_type, data])
 
@@ -128,6 +133,18 @@ export function ChartView({
       /* interceptor toast */
     } finally {
       setRooting(false)
+    }
+  }
+
+  const runLineage = async () => {
+    if (!queryLogId) return
+    setTracing(true)
+    try {
+      setLineage(await analysisApi.lineage(queryLogId))
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setTracing(false)
     }
   }
 
@@ -229,6 +246,15 @@ export function ChartView({
               >
                 <GitBranch size={14} /> {rooting ? 'Parçalanır…' : 'Niyə?'}
               </button>
+              <button
+                onClick={runLineage}
+                disabled={tracing}
+                className={`${CHART_BTN} border ${
+                  lineage ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
+                }`}
+              >
+                <GitFork size={14} /> {tracing ? 'İzlənir…' : 'Mənşə'}
+              </button>
             </>
           )}
           {valueCol && (
@@ -265,6 +291,8 @@ export function ChartView({
       {explanation && <ExplainPanel result={explanation} />}
 
       {rootCause && <RootCausePanel result={rootCause} />}
+
+      {lineage && <LineagePanel lineage={lineage} />}
 
       {scenario && <ScenarioPanel data={filtered} valueCol={valueCol} />}
 

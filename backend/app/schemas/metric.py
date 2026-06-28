@@ -14,6 +14,10 @@ class MetricCreate(BaseModel):
     datasource_id: str | None = None
 
 
+class MetricVerifyRequest(BaseModel):
+    verified: bool = True
+
+
 class MetricResponse(BaseModel):
     id: str
     name: str
@@ -21,6 +25,9 @@ class MetricResponse(BaseModel):
     description: str
     synonyms: str
     datasource_id: str | None
+    verified: bool = False
+    verified_by: str | None = None
+    verified_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

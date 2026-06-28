@@ -10,6 +10,7 @@ from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.schemas.datasource import (
     DataSourceCreate,
     DataSourceResponse,
+    DataSourceSLAUpdate,
     PowerBIConnectRequest,
     PowerBIDataset,
 )
@@ -88,7 +89,19 @@ async def schema(
 @router.post("/{datasource_id}/test")
 async def test(datasource_id: str, user: CurrentUser, db: DbDep) -> dict[str, bool]:
     ds = await svc.get_datasource(db, user.id, datasource_id)
-    return {"ok": await svc.test_connection(ds)}
+    ok = await svc.test_connection(ds)
+    if ok:
+        await svc.stamp_refreshed(db, ds)  # successful reach resets the freshness clock
+    return {"ok": ok}
+
+
+@router.patch("/{datasource_id}/sla", response_model=DataSourceResponse)
+async def set_sla(
+    datasource_id: str, payload: DataSourceSLAUpdate, user: CurrentUser, db: DbDep
+) -> DataSourceResponse:
+    """Set the freshness SLA (hours) used to flag a source as stale."""
+    ds = await svc.set_sla(db, user.id, datasource_id, payload.freshness_sla_hours)
+    return DataSourceResponse.model_validate(ds)
 
 
 @router.get("/{datasource_id}/profile", response_model=ProfileResponse)

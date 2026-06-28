@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import JSON, Enum, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -32,5 +33,10 @@ class DataSource(Base, TimestampMixin):
     db_type: Mapped[DBType] = mapped_column(Enum(DBType), nullable=False)
     connection_string_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     schema_cache: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    # Freshness SLA (trust layer): how recent the data is expected to be, plus the
+    # last time we successfully reached the source.
+    freshness_sla_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="datasources")  # noqa: F821

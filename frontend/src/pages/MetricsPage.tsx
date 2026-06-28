@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Tag, Trash2 } from 'lucide-react'
+import { BadgeCheck, Plus, ShieldCheck, Tag, Trash2 } from 'lucide-react'
 import { useMetricStore } from '../store/metricStore'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { ModalShell } from '../components/ui/ModalShell'
@@ -9,7 +9,7 @@ const field =
   'w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none'
 
 export function MetricsPage() {
-  const { items, load, add, remove } = useMetricStore()
+  const { items, load, add, setVerified, remove } = useMetricStore()
   const { sources, load: loadSources } = useDatasourceStore()
   const [open, setOpen] = useState(false)
 
@@ -53,8 +53,16 @@ export function MetricsPage() {
             <li key={m.id} className="rounded-2xl border border-line bg-surface p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-ink">{m.name}</span>
+                    {m.verified && (
+                      <span
+                        title={`Təsdiqləyən: ${m.verified_by ?? '—'}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent"
+                      >
+                        <BadgeCheck size={11} /> Təsdiqli
+                      </span>
+                    )}
                     {m.expression && (
                       <code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-ink-soft">
                         {m.expression}
@@ -69,13 +77,26 @@ export function MetricsPage() {
                     {sourceName(m.datasource_id)}
                   </p>
                 </div>
-                <button
-                  onClick={() => remove(m.id)}
-                  title="Sil"
-                  className="shrink-0 rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
-                >
-                  <Trash2 size={15} />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => setVerified(m.id, !m.verified)}
+                    title={m.verified ? 'Təsdiqi geri al' : 'Təsdiqlə'}
+                    className={`rounded-lg border p-1.5 transition ${
+                      m.verified
+                        ? 'border-accent text-accent'
+                        : 'border-line text-ink-soft hover:border-accent hover:text-accent'
+                    }`}
+                  >
+                    <ShieldCheck size={15} />
+                  </button>
+                  <button
+                    onClick={() => remove(m.id)}
+                    title="Sil"
+                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </div>
             </li>
           ))}

@@ -8,6 +8,7 @@ interface MetricState {
   loading: boolean
   load: () => Promise<void>
   add: (payload: MetricCreate) => Promise<void>
+  setVerified: (id: string, verified: boolean) => Promise<void>
   remove: (id: string) => Promise<void>
 }
 
@@ -26,6 +27,11 @@ export const useMetricStore = create<MetricState>((set, get) => ({
     const m = await api.create(payload)
     set({ items: [m, ...get().items] })
     toast.success('Metrik əlavə olundu.')
+  },
+  setVerified: async (id, verified) => {
+    const updated = await api.setVerified(id, verified)
+    set({ items: get().items.map((m) => (m.id === id ? updated : m)) })
+    toast.success(verified ? 'Metrik təsdiqləndi.' : 'Təsdiq geri alındı.')
   },
   remove: async (id) => {
     await api.remove(id)

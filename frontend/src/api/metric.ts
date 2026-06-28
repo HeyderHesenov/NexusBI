@@ -13,6 +13,11 @@ export async function create(payload: MetricCreate): Promise<Metric> {
   return data
 }
 
+export async function setVerified(id: string, verified: boolean): Promise<Metric> {
+  const { data } = await client.patch<Metric>(`/metrics/${id}/verify`, { verified })
+  return data
+}
+
 export async function remove(id: string): Promise<void> {
   await client.delete(`/metrics/${id}`)
 }

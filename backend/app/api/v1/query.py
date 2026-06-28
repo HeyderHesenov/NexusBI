@@ -13,6 +13,7 @@ from app.schemas.analysis import (
     ExplainResponse,
     ForecastRequest,
     ForecastResponse,
+    LineageResponse,
     RootCauseResponse,
 )
 from app.schemas.query import (
@@ -21,7 +22,7 @@ from app.schemas.query import (
     QueryRequest,
     QueryResult,
 )
-from app.services import query_service
+from app.services import lineage_service, metric_service, query_service
 
 router = APIRouter(prefix="/query", tags=["query"])
 
@@ -147,6 +148,14 @@ async def root_cause_tree(query_id: str, user: RateLimitedUser, db: DbDep) -> Ro
         data.get("columns", []), data.get("rows", []), log.natural_language
     )
     return RootCauseResponse(**result)
+
+
+@router.get("/{query_id}/lineage", response_model=LineageResponse)
+async def lineage(query_id: str, user: CurrentUser, db: DbDep) -> LineageResponse:
+    """Deterministic lineage: source tables/columns + metrics behind this result."""
+    log = await _get_log(db, user.id, query_id)
+    metrics = await metric_service.list_for(db, user.id, log.datasource_id)
+    return LineageResponse(**lineage_service.lineage_for_query(log, metrics))
 
 
 async def _get_log(db: DbDep, user_id: str, query_id: str) -> QueryLog:

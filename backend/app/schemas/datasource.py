@@ -24,10 +24,16 @@ class PowerBIDataset(BaseModel):
     workspace: str = ""
 
 
+class DataSourceSLAUpdate(BaseModel):
+    freshness_sla_hours: int | None = Field(default=None, ge=1, le=8760)
+
+
 class DataSourceResponse(BaseModel):
     id: str
     name: str
     db_type: str
+    freshness_sla_hours: int | None = None
+    last_refreshed_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

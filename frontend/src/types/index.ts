@@ -58,6 +58,8 @@ export interface DataSource {
   id: string
   name: string
   db_type: string
+  freshness_sla_hours?: number | null
+  last_refreshed_at?: string | null
   created_at: string
 }
 
@@ -77,7 +79,16 @@ export interface Metric {
   description: string
   synonyms: string
   datasource_id: string | null
+  verified: boolean
+  verified_by: string | null
+  verified_at: string | null
   created_at: string
+}
+
+export interface Lineage {
+  tables: string[]
+  columns: string[]
+  metrics: string[]
 }
 
 export interface MetricCreate {

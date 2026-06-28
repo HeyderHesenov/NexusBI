@@ -10,8 +10,24 @@ import { UploadSourceModal } from '../components/datasource/UploadSourceModal'
 import { DataPrepModal } from '../components/datasource/DataPrepModal'
 import { ProfilePanel } from '../components/datasource/ProfilePanel'
 
+/** Parse a server timestamp as UTC even when it lacks a tz suffix (SQLite stores
+ *  naive datetimes; without this the browser would read them as local time). */
+function parseUtc(ts: string): number {
+  const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(ts)
+  return new Date(hasTz ? ts : `${ts}Z`).getTime()
+}
+
+/** Freshness status from last refresh + SLA: ok / stale / unknown. */
+function freshness(s: { last_refreshed_at?: string | null; freshness_sla_hours?: number | null }) {
+  if (!s.last_refreshed_at) return { tone: 'text-ink-faint', dot: 'bg-ink-faint', label: 'Naməlum' }
+  const ageH = (Date.now() - parseUtc(s.last_refreshed_at)) / 3_600_000
+  if (s.freshness_sla_hours && ageH > s.freshness_sla_hours)
+    return { tone: 'text-[#D87C6B]', dot: 'bg-[#D87C6B]', label: 'Köhnəlib' }
+  return { tone: 'text-accent', dot: 'bg-accent', label: 'Təzə' }
+}
+
 export function DataSourcesPage() {
-  const { sources, load, test, remove } = useDatasourceStore()
+  const { sources, load, test, remove, setSla } = useDatasourceStore()
   const { datasourceId, setDatasource } = useQueryStore()
   const [connectOpen, setConnectOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -154,6 +170,37 @@ export function DataSourcesPage() {
                   </button>
                 </div>
               </div>
+
+              {s.db_type !== 'powerbi' && (
+                <div className="mt-2.5 flex flex-wrap items-center gap-3 border-t border-line pt-2.5 text-xs">
+                  {(() => {
+                    const f = freshness(s)
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 ${f.tone}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${f.dot}`} /> {f.label}
+                      </span>
+                    )
+                  })()}
+                  <label className="inline-flex items-center gap-1.5 text-ink-faint">
+                    Təzəlik SLA (saat):
+                    <input
+                      key={s.freshness_sla_hours ?? 'none'}
+                      type="number"
+                      min={1}
+                      defaultValue={s.freshness_sla_hours ?? ''}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim()
+                        const next = v ? Number(v) : null
+                        if (next !== (s.freshness_sla_hours ?? null)) {
+                          setSla(s.id, next).catch(() => undefined)
+                        }
+                      }}
+                      placeholder="—"
+                      className="w-16 rounded-md border border-line bg-surface-2 px-1.5 py-0.5 text-ink focus:border-accent focus:outline-none"
+                    />
+                  </label>
+                </div>
+              )}
 
               {openSchema === s.id && (
                 <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3">
