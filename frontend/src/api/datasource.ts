@@ -28,6 +28,38 @@ export async function setSla(id: string, hours: number | null): Promise<DataSour
   return data
 }
 
+export interface RLSRule {
+  id: string
+  datasource_id: string
+  member_id: string
+  column: string
+  allowed_value: string
+  created_at: string
+}
+
+export async function listRls(id: string): Promise<RLSRule[]> {
+  const { data } = await client.get<RLSRule[]>(`/datasource/${id}/rls`)
+  return data
+}
+
+export async function addRls(
+  id: string,
+  memberEmail: string,
+  column: string,
+  allowedValue: string,
+): Promise<RLSRule> {
+  const { data } = await client.post<RLSRule>(`/datasource/${id}/rls`, {
+    member_email: memberEmail,
+    column,
+    allowed_value: allowedValue,
+  })
+  return data
+}
+
+export async function removeRls(id: string, ruleId: string): Promise<void> {
+  await client.delete(`/datasource/${id}/rls/${ruleId}`)
+}
+
 export async function remove(id: string): Promise<void> {
   await client.delete(`/datasource/${id}`)
 }

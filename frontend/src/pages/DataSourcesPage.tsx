@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Database, Gauge, Plug, Plus, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
+import { BarChart3, Database, Gauge, Plug, Plus, ShieldHalf, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { useQueryStore } from '../store/queryStore'
 import * as dsApi from '../api/datasource'
@@ -9,6 +9,7 @@ import { ConnectPowerBIModal } from '../components/datasource/ConnectPowerBIModa
 import { UploadSourceModal } from '../components/datasource/UploadSourceModal'
 import { DataPrepModal } from '../components/datasource/DataPrepModal'
 import { ProfilePanel } from '../components/datasource/ProfilePanel'
+import { RlsModal } from '../components/datasource/RlsModal'
 
 /** Parse a server timestamp as UTC even when it lacks a tz suffix (SQLite stores
  *  naive datetimes; without this the browser would read them as local time). */
@@ -36,6 +37,7 @@ export function DataSourcesPage() {
   const [openSchema, setOpenSchema] = useState<string | null>(null)
   const [schema, setSchema] = useState<DataSourceSchema | null>(null)
   const [openProfile, setOpenProfile] = useState<string | null>(null)
+  const [rlsFor, setRlsFor] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     load().catch(() => undefined)
@@ -154,6 +156,15 @@ export function DataSourcesPage() {
                       <Gauge size={15} />
                     </button>
                   )}
+                  {s.db_type !== 'powerbi' && (
+                    <button
+                      onClick={() => setRlsFor({ id: s.id, name: s.name })}
+                      title="RLS qaydaları"
+                      className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-accent hover:text-accent"
+                    >
+                      <ShieldHalf size={15} />
+                    </button>
+                  )}
                   <button
                     onClick={() => test(s.id)}
                     title="Bağlantını yoxla"
@@ -241,6 +252,12 @@ export function DataSourcesPage() {
         onClose={() => setPrepOpen(false)}
         sources={sources}
         onSaved={() => load().catch(() => undefined)}
+      />
+      <RlsModal
+        open={rlsFor !== null}
+        onClose={() => setRlsFor(null)}
+        datasourceId={rlsFor?.id ?? null}
+        datasourceName={rlsFor?.name ?? ''}
       />
     </div>
   )

@@ -25,8 +25,12 @@ from app.services import metric_service
 from app.services.cache_service import CacheService
 
 
-def _cache_key(datasource_id: str | None, nl_query: str, extra_context: str = "") -> str:
-    raw = f"{nl_query.strip().lower()}|{extra_context}"
+def _cache_key(
+    datasource_id: str | None, nl_query: str, user_id: str, extra_context: str = ""
+) -> str:
+    # User-scoped: two users can have different metrics AND different row-level
+    # security rules, so a shared cache key could leak RLS-filtered rows.
+    raw = f"{user_id}|{nl_query.strip().lower()}|{extra_context}"
     h = hashlib.sha1(raw.encode()).hexdigest()
     return f"qcache:{datasource_id or 'demo'}:{h}"
 
@@ -89,7 +93,7 @@ async def process_nl_query(
             )
             extra_context = f"{extra_context}\n\n{block}" if extra_context else block
 
-    key = _cache_key(datasource_id, nl_query, extra_context)
+    key = _cache_key(datasource_id, nl_query, user_id, extra_context)
 
     cached = None if bypass_cache else await cache.get(key)
     if cached:
@@ -180,7 +184,14 @@ async def reexecute_logged_query(
     ds = await ds_service.get_datasource(db, user_id, log.datasource_id)
     if ds.db_type == DBType.powerbi:
         raise ValueError("live refresh unsupported for Power BI")
-    return await ds_service.execute_select(ds, log.generated_sql)
+    columns, rows = await ds_service.execute_select(ds, log.generated_sql)
+    # Apply RLS on this read path too (live refresh re-runs raw SQL).
+    from app.services import rls_service
+
+    rules = await rls_service.rules_for_user(db, ds.id, user_id)
+    if rules:
+        rows = rls_service.apply(rows, rules)
+    return columns, rows
 
 
 async def _finalize(
@@ -254,6 +265,13 @@ async def _live_pipeline(
         # Surface the generated SQL so the user can see what failed.
         exc.sql = sql_result.sql
         raise
+    # Row-level security: drop rows this user isn't permitted to see (no-op when
+    # no rules constrain them).
+    from app.services import rls_service
+
+    rules = await rls_service.rules_for_user(db, ds.id, user_id)
+    if rules:
+        rows = rls_service.apply(rows, rules)
     return sql_result.sql, columns, rows, "sql"
 
 

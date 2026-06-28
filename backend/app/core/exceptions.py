@@ -36,5 +36,9 @@ class AuthError(NexusBIException):
     status_code = 401
 
 
+class ForbiddenError(NexusBIException):
+    status_code = 403
+
+
 class RateLimitError(NexusBIException):
     status_code = 429

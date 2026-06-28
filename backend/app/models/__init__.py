@@ -10,6 +10,7 @@ from app.models.query_log import QueryLog
 from app.models.requirement import RequirementDoc
 from app.models.saved_query import SavedQuery
 from app.models.user import User
+from app.models.workspace import AuditLog, RLSRule, Workspace, WorkspaceMember
 
 __all__ = [
     "Base",
@@ -26,4 +27,8 @@ __all__ = [
     "DashboardComment",
     "Decision",
     "RequirementDoc",
+    "Workspace",
+    "WorkspaceMember",
+    "RLSRule",
+    "AuditLog",
 ]
