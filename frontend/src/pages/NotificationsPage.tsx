@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BellOff, CheckCheck, Sparkles, Sunrise } from 'lucide-react'
 import { useNotificationStore } from '../store/notificationStore'
+import { IntegrationsPanel } from '../components/IntegrationsPanel'
 
 function fmt(ts: string): string {
   return new Date(ts).toLocaleString('az-AZ', { dateStyle: 'short', timeStyle: 'short' })
@@ -97,6 +98,8 @@ export function NotificationsPage() {
           })}
         </ul>
       )}
+
+      <IntegrationsPanel />
     </div>
   )
 }

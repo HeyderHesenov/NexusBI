@@ -85,6 +85,16 @@ class Settings(BaseSettings):
     # ─── Agentic copilot ───
     COPILOT_MAX_STEPS: int = Field(default=8)  # hard cap on tool-calling loop iterations
 
+    # ─── Workflow integrations (Slack / Teams / email) — mock-first ───
+    # When False, channel deliveries are mocked (logged) so demo never makes
+    # outbound calls. Set True in production with real webhook URLs / SMTP.
+    INTEGRATIONS_LIVE: bool = Field(default=False)
+    SMTP_HOST: str = Field(default="")
+    SMTP_PORT: int = Field(default=587)
+    SMTP_USERNAME: str = Field(default="")
+    SMTP_PASSWORD: str = Field(default="")
+    SMTP_FROM: str = Field(default="nexusbi@example.com")
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
