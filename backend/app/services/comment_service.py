@@ -1,11 +1,47 @@
 """Dashboard comment (team chat) persistence."""
 from __future__ import annotations
 
-from sqlalchemy import select
+import re
+
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.alert import Notification
 from app.models.comment import DashboardComment
 from app.models.dashboard import Widget
+from app.models.user import User
+
+_MENTION_RE = re.compile(r"@([\w.+-]+@[\w.-]+|\w[\w.\-]{1,})")
+
+
+async def _notify_mentions(
+    db: AsyncSession, content: str, author_id: str | None, author_name: str
+) -> None:
+    """Notify any @mentioned users (matched by email or full name).
+
+    Only authenticated authors may mention — share-link guests (author_id None)
+    must not be able to notify/fan-out to arbitrary users (spam/phishing vector).
+    """
+    if author_id is None:
+        return
+    tokens = {t.lower() for t in _MENTION_RE.findall(content)}
+    if not tokens:
+        return
+    res = await db.execute(
+        select(User).where(
+            or_(func.lower(User.email).in_(tokens), func.lower(User.full_name).in_(tokens))
+        )
+    )
+    from app.services import integration_service
+
+    for user in res.scalars().all():
+        if user.id == author_id:
+            continue  # don't notify yourself
+        title = "Səni qeyd etdilər"
+        body = f"{author_name}: {content[:200]}"
+        db.add(Notification(user_id=user.id, alert_id=None, title=title, body=body))
+        await db.flush()
+        await integration_service.dispatch(db, user.id, title, body)
 
 
 async def list_for_dashboard(
@@ -48,4 +84,5 @@ async def create(
     db.add(comment)
     await db.flush()
     await db.refresh(comment)
+    await _notify_mentions(db, content, author_id, comment.author_name)
     return comment

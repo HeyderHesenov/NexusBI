@@ -91,6 +91,10 @@ async def build_digest(
     notif = Notification(user_id=user_id, alert_id=None, title=_TITLE, body=body)
     db.add(notif)
     await db.flush()
+    # Fan out to the user's workflow channels (Slack/Teams/email) — mock-first.
+    from app.services import integration_service
+
+    await integration_service.dispatch(db, user_id, _TITLE, body)
     return notif
 
 
