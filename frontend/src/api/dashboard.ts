@@ -92,6 +92,17 @@ export async function disableShare(dashboardId: string): Promise<void> {
   await client.delete(`/dashboard/${dashboardId}/share`)
 }
 
+export async function setEmbed(
+  dashboardId: string,
+  enabled: boolean,
+): Promise<{ embed_enabled: boolean; token: string | null }> {
+  const { data } = await client.patch<{ embed_enabled: boolean; token: string | null }>(
+    `/dashboard/${dashboardId}/embed`,
+    { enabled },
+  )
+  return data
+}
+
 export async function setLive(
   dashboardId: string,
   enabled: boolean,

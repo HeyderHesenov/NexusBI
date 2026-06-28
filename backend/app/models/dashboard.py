@@ -31,6 +31,8 @@ class Dashboard(Base, TimestampMixin):
     # pushes fresh data to connected clients over the collab WebSocket.
     live_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     live_interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    # Embedded analytics: signed read-only embed in external apps.
+    embed_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     user: Mapped["User"] = relationship(back_populates="dashboards")  # noqa: F821
     widgets: Mapped[list["Widget"]] = relationship(

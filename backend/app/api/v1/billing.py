@@ -50,3 +50,42 @@ async def upgrade(payload: UpgradeRequest, user: CurrentUser, db: DbDep) -> Usag
     user.subscription_tier = get_tier(payload.tier).key
     await db.flush()
     return UsageResponse(**usage_service.get_usage(user))
+
+
+@router.post("/checkout")
+async def checkout(payload: UpgradeRequest, user: CurrentUser) -> dict[str, str]:
+    """Start a real Stripe Checkout (config-gated).
+
+    Returns a checkout_url when STRIPE_SECRET_KEY is set and the `stripe` SDK is
+    installed; otherwise refuses (the mock /upgrade path is used in demo).
+    """
+    if payload.tier not in PURCHASABLE:
+        raise NexusBIException("Naməlum və ya əlçatmaz plan.")
+    if not settings.STRIPE_SECRET_KEY:
+        raise NexusBIException("Stripe konfiqurasiya olunmayıb.", detail="stripe_not_configured")
+    try:
+        import stripe  # optional dependency — only needed for live billing
+    except ImportError as exc:
+        raise NexusBIException("Stripe SDK quraşdırılmayıb.", detail="stripe_missing") from exc
+
+    tier = get_tier(payload.tier)
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    session = stripe.checkout.Session.create(
+        mode="subscription",
+        success_url=settings.STRIPE_SUCCESS_URL,
+        cancel_url=settings.STRIPE_CANCEL_URL,
+        client_reference_id=user.id,
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "unit_amount": int(tier.price_usd * 100),
+                    "recurring": {"interval": "month"},
+                    "product_data": {"name": f"NexusBI {tier.name}"},
+                },
+                "quantity": 1,
+            }
+        ],
+        metadata={"tier": tier.key},
+    )
+    return {"checkout_url": session.url}

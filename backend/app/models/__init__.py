@@ -1,6 +1,7 @@
 """SQLAlchemy models. Importing registers them on the Base metadata."""
 from app.db.base import Base
 from app.models.alert import Alert, Notification
+from app.models.brand import BrandConfig
 from app.models.comment import DashboardComment
 from app.models.dashboard import Dashboard, Widget
 from app.models.datasource import DataSource, DBType
@@ -31,6 +32,7 @@ __all__ = [
     "RequirementDoc",
     "KPITarget",
     "IntegrationChannel",
+    "BrandConfig",
     "Workspace",
     "WorkspaceMember",
     "RLSRule",

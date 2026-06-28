@@ -85,6 +85,11 @@ class Settings(BaseSettings):
     # ─── Agentic copilot ───
     COPILOT_MAX_STEPS: int = Field(default=8)  # hard cap on tool-calling loop iterations
 
+    # ─── Stripe billing (config-gated; empty = mock upgrade only) ───
+    STRIPE_SECRET_KEY: str = Field(default="")
+    STRIPE_SUCCESS_URL: str = Field(default="http://localhost:5173/pricing?paid=1")
+    STRIPE_CANCEL_URL: str = Field(default="http://localhost:5173/pricing")
+
     # ─── Workflow integrations (Slack / Teams / email) — mock-first ───
     # When False, channel deliveries are mocked (logged) so demo never makes
     # outbound calls. Set True in production with real webhook URLs / SMTP.

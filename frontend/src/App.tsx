@@ -51,6 +51,12 @@ const WorkspacePage = lazy(() =>
 const TargetsPage = lazy(() =>
   import('./pages/TargetsPage').then((m) => ({ default: m.TargetsPage })),
 )
+const BrandingPage = lazy(() =>
+  import('./pages/BrandingPage').then((m) => ({ default: m.BrandingPage })),
+)
+const EmbedDashboardPage = lazy(() =>
+  import('./pages/EmbedDashboardPage').then((m) => ({ default: m.EmbedDashboardPage })),
+)
 
 function ProtectedRoute() {
   const token = useAuthStore((s) => s.token)
@@ -92,6 +98,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/public/:token" element={<PublicDashboardPage />} />
+          <Route path="/embed/:token" element={<EmbedDashboardPage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<QueryPage />} />
@@ -102,6 +109,7 @@ export default function App() {
               <Route path="/requirements" element={<RequirementsPage />} />
               <Route path="/workspaces" element={<WorkspacePage />} />
               <Route path="/targets" element={<TargetsPage />} />
+              <Route path="/branding" element={<BrandingPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/dashboards" element={<DashboardPage />} />
               <Route path="/history" element={<HistoryPage />} />

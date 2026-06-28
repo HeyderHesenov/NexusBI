@@ -49,6 +49,22 @@ def create_ws_ticket(user_id: str, dashboard_id: str, ttl_seconds: int = 60) -> 
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
+def create_embed_token(dashboard_id: str, ttl_days: int = 30) -> str:
+    """Signed, read-only embed token for a single dashboard (no user identity)."""
+    expire = datetime.now(timezone.utc) + timedelta(days=ttl_days)
+    payload = {"emb": dashboard_id, "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_embed_token(token: str) -> str:
+    """Return the dashboard_id from a valid embed token, or raise AuthError."""
+    payload = decode_access_token(token)
+    dashboard_id = payload.get("emb")
+    if not dashboard_id:
+        raise AuthError("Embed token etibarsızdır.")
+    return dashboard_id
+
+
 # ─── Fernet encryption for connection strings ───
 def _fernet() -> Fernet:
     key = settings.FERNET_KEY

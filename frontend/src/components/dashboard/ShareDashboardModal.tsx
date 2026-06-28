@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { Copy, Link2 } from 'lucide-react'
+import { Code2, Copy, Link2 } from 'lucide-react'
 import { ModalShell } from '../ui/ModalShell'
 import * as dashApi from '../../api/dashboard'
 
@@ -12,12 +12,36 @@ interface Props {
 
 export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
   const [token, setToken] = useState<string | null>(null)
+  const [embedToken, setEmbedToken] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const url = token ? `${window.location.origin}/public/${token}` : ''
   const embed = token
     ? `<iframe src="${url}" width="100%" height="600" frameborder="0"></iframe>`
     : ''
+  const embedUrl = embedToken ? `${window.location.origin}/embed/${embedToken}` : ''
+  const embedIframe = embedToken
+    ? `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0"></iframe>`
+    : ''
+  const sdkSnippet = embedToken
+    ? `<div data-nexusbi-embed="${embedToken}"></div>\n<script src="${window.location.origin}/embed.js"></script>`
+    : ''
+
+  const toggleEmbed = async () => {
+    setBusy(true)
+    try {
+      if (embedToken) {
+        await dashApi.setEmbed(dashboardId, false)
+        setEmbedToken(null)
+        toast.success('Embed söndürüldü.')
+      } else {
+        const res = await dashApi.setEmbed(dashboardId, true)
+        setEmbedToken(res.token)
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const enable = async () => {
     setBusy(true)
@@ -82,6 +106,34 @@ export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
             </p>
           </>
         )}
+
+        <div className="border-t border-line pt-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Code2 size={15} className="text-accent" />
+            <span className="eyebrow text-ink-soft">White-label embed (imzalı token)</span>
+          </div>
+          {!embedToken ? (
+            <button
+              onClick={toggleEmbed}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3 py-2 text-sm font-semibold text-accent transition hover:border-accent disabled:opacity-60"
+            >
+              <Code2 size={15} /> Embed aktiv et
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <Field label="iframe" value={embedIframe} onCopy={() => copy(embedIframe)} mono />
+              <Field label="SDK (embed.js)" value={sdkSnippet} onCopy={() => copy(sdkSnippet)} mono />
+              <button
+                onClick={toggleEmbed}
+                disabled={busy}
+                className="text-sm text-[#D87C6B] transition hover:opacity-80"
+              >
+                Embed-i söndür
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </ModalShell>
   )

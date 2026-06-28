@@ -4,8 +4,8 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    alert, auth, billing, copilot, dashboard, dataprep, datasource, decision, integration,
-    metric, public, query, requirement, saved_query, scenario, workspace,
+    alert, auth, billing, branding, copilot, dashboard, dataprep, datasource, decision,
+    integration, metric, public, query, requirement, saved_query, scenario, workspace,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -15,6 +15,7 @@ api_router.include_router(dataprep.router)
 api_router.include_router(query.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(billing.router)
+api_router.include_router(branding.router)
 api_router.include_router(saved_query.router)
 api_router.include_router(metric.router)
 api_router.include_router(alert.router)

@@ -17,7 +17,8 @@ from app.schemas.dashboard import (
     WidgetResponse,
 )
 from app.schemas.comment import CommentResponse
-from app.services import comment_service
+from app.schemas.embed import EmbedResponse, EmbedToggle
+from app.services import comment_service, embed_service
 from app.services import dashboard_service as svc
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -119,6 +120,15 @@ async def enable_share(dashboard_id: str, user: CurrentUser, db: DbDep) -> dict[
 async def disable_share(dashboard_id: str, user: CurrentUser, db: DbDep) -> Response:
     await svc.disable_share(db, user.id, dashboard_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/{dashboard_id}/embed", response_model=EmbedResponse)
+async def set_embed(
+    dashboard_id: str, payload: EmbedToggle, user: CurrentUser, db: DbDep
+) -> EmbedResponse:
+    """Enable/disable embedding; returns a signed read-only embed token when on."""
+    dash, token = await embed_service.set_embed(db, user.id, dashboard_id, payload.enabled)
+    return EmbedResponse(embed_enabled=dash.embed_enabled, token=token)
 
 
 @router.post("/{dashboard_id}/widget", response_model=WidgetResponse, status_code=status.HTTP_201_CREATED)

@@ -7,7 +7,8 @@ from app.core.rate_limit import rate_limit
 from app.dependencies import DbDep
 from app.schemas.comment import CommentResponse
 from app.schemas.dashboard import DashboardResponse
-from app.services import comment_service
+from app.schemas.embed import BrandConfigResponse, EmbeddedDashboard
+from app.services import brand_service, comment_service, embed_service
 from app.services import dashboard_service as svc
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -26,6 +27,23 @@ async def shared_dashboard(token: str, db: DbDep) -> DashboardResponse:
         description=dash.description,
         layout=dash.layout,
         widgets=await svc.widgets_to_response(db, list(dash.widgets), dash.user_id),
+    )
+
+
+@router.get("/embed/{token}", response_model=EmbeddedDashboard, dependencies=[_share_limit])
+async def embedded_dashboard(token: str, db: DbDep) -> EmbeddedDashboard:
+    """Serve a read-only embedded dashboard + the owner's white-label brand."""
+    dash = await embed_service.resolve(db, token)  # validates token + embed_enabled
+    brand = await brand_service.get(db, dash.user_id)
+    return EmbeddedDashboard(
+        dashboard=DashboardResponse(
+            id=dash.id,
+            name=dash.name,
+            description=dash.description,
+            layout=dash.layout,
+            widgets=await svc.widgets_to_response(db, list(dash.widgets), dash.user_id),
+        ),
+        brand=BrandConfigResponse(**brand_service.as_dict(brand)),
     )
 
 
