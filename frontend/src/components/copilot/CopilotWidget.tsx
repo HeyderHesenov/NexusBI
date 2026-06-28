@@ -1,4 +1,4 @@
-import { ArrowRight, Send, Sparkles, X } from 'lucide-react'
+import { ArrowRight, Check, ListChecks, Send, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { CopilotAction } from '../../api/copilot'
@@ -13,7 +13,7 @@ const SUGGESTIONS = [
 ]
 
 export function CopilotWidget() {
-  const { open, sending, thread, toggle, setOpen, send } = useCopilotStore()
+  const { open, sending, thread, toggle, setOpen, send, approve, cancel } = useCopilotStore()
   const [text, setText] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -34,16 +34,23 @@ export function CopilotWidget() {
     send(t)
   }
 
+  const navTarget = (a: CopilotAction): string | null => {
+    if (a.dashboard_id) return '/dashboards'
+    if (a.query_log_id) return '/history'
+    if (a.saved_query_id) return '/reports'
+    if (a.metric_id) return '/metrics'
+    return null
+  }
+
   const runAction = async (a: CopilotAction) => {
+    const target = navTarget(a)
+    if (!target) return
     if (a.dashboard_id) {
       await useDashboardStore.getState().loadList().catch(() => undefined)
       await useDashboardStore.getState().open(a.dashboard_id).catch(() => undefined)
-      navigate('/dashboards')
-      setOpen(false)
-    } else if (a.query_log_id) {
-      navigate('/history')
-      setOpen(false)
     }
+    navigate(target)
+    setOpen(false)
   }
 
   return (
@@ -103,6 +110,37 @@ export function CopilotWidget() {
                     m.content
                   )}
                 </div>
+                {m.plan && m.plan.length > 0 && m.pendingMessage && (
+                  <div className="mt-2 rounded-xl border border-line bg-surface-2 p-3 text-left">
+                    <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
+                      <ListChecks size={13} className="text-accent" /> Plan
+                    </div>
+                    <ol className="space-y-1">
+                      {m.plan.map((s, k) => (
+                        <li key={k} className="flex gap-2 text-xs text-ink-soft">
+                          <span className="font-mono text-ink-faint">{k + 1}.</span>
+                          <span>{s.summary || s.tool}</span>
+                        </li>
+                      ))}
+                    </ol>
+                    <div className="mt-2.5 flex gap-2">
+                      <button
+                        onClick={() => approve(i)}
+                        disabled={m.approving || sending}
+                        className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1.5 text-xs font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
+                      >
+                        <Check size={13} /> {m.approving ? 'İcra olunur…' : 'Təsdiqlə'}
+                      </button>
+                      <button
+                        onClick={() => cancel(i)}
+                        disabled={m.approving || sending}
+                        className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink-soft transition hover:text-ink disabled:opacity-50"
+                      >
+                        Ləğv et
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {m.actions && m.actions.length > 0 && (
                   <div className="mt-2 flex flex-col items-start gap-1.5">
                     {m.actions.map((a, j) => (
@@ -112,7 +150,7 @@ export function CopilotWidget() {
                         className="flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-2.5 py-1.5 text-xs font-medium text-accent transition hover:border-accent"
                       >
                         <span>✓ {a.label}</span>
-                        {(a.dashboard_id || a.query_log_id) && <ArrowRight size={12} />}
+                        {navTarget(a) && <ArrowRight size={12} />}
                       </button>
                     ))}
                   </div>

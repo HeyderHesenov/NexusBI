@@ -11,21 +11,39 @@ class CopilotTurn(BaseModel):
     content: str
 
 
+class CopilotPlanStep(BaseModel):
+    tool: str = ""
+    summary: str = ""
+
+    model_config = {"extra": "ignore"}
+
+
 class CopilotRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     history: list[CopilotTurn] = Field(default_factory=list, max_length=20)
+    # "plan" → propose steps without executing; "execute" → run the tool loop.
+    mode: Literal["plan", "execute"] = "execute"
+    # The approved plan (from a prior plan turn), forwarded on execute so the run
+    # follows what the user approved.
+    plan: list[CopilotPlanStep] = Field(default_factory=list, max_length=20)
 
 
 class CopilotAction(BaseModel):
-    type: str  # "query" | "dashboard" | "widget"
+    type: str  # query | dashboard | widget | share | saved_query | metric | digest
     label: str
     dashboard_id: str | None = None
     query_log_id: str | None = None
+    saved_query_id: str | None = None
+    metric_id: str | None = None
+
+    # Tolerate extra id keys future tools may emit.
+    model_config = {"extra": "ignore"}
 
 
 class CopilotResponse(BaseModel):
     reply: str
     actions: list[CopilotAction] = []
+    plan: list[CopilotPlanStep] = []
     steps: int = 0
 
     # Tool results may carry extra keys; ignore rather than reject.
@@ -36,5 +54,6 @@ class CopilotResponse(BaseModel):
         return cls(
             reply=result.get("reply", ""),
             actions=[CopilotAction(**a) for a in result.get("actions", [])],
+            plan=[CopilotPlanStep(**s) for s in result.get("plan", [])],
             steps=result.get("steps", 0),
         )

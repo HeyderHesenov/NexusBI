@@ -124,3 +124,55 @@ async def test_copilot_unowned_dashboard_is_safe(client: AsyncClient, auth: dict
 async def test_copilot_requires_auth(client: AsyncClient):
     resp = await client.post("/api/v1/copilot/chat", json={"message": "salam"})
     assert resp.status_code == 401
+
+
+async def test_copilot_plan_mode(client: AsyncClient, auth: dict, monkeypatch):
+    from app.ai import copilot
+
+    async def fake_chat_json(system, user, **kw):
+        return {
+            "plan": [
+                {"tool": "generate_dashboard", "summary": "Satış paneli qur"},
+                {"tool": "share_dashboard", "summary": "Komandaya paylaş"},
+            ],
+            "reply": "Bu addımları atacam.",
+        }
+
+    monkeypatch.setattr(copilot, "chat_json", fake_chat_json)
+    resp = await client.post(
+        "/api/v1/copilot/chat",
+        json={"message": "Q3 satış paneli qur və paylaş", "mode": "plan"},
+        headers=auth,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert len(body["plan"]) == 2
+    assert body["plan"][0]["tool"] == "generate_dashboard"
+    assert body["actions"] == []  # plan never executes
+
+
+async def test_copilot_creates_saved_query(client: AsyncClient, auth: dict, monkeypatch):
+    _queue_messages(
+        monkeypatch,
+        [
+            _FakeMsg(
+                tool_calls=[
+                    _FakeToolCall(
+                        "c1",
+                        "create_saved_query",
+                        '{"name": "Həftəlik gəlir", "nl_query": "həftəlik gəlir", "schedule": "weekly"}',
+                    )
+                ]
+            ),
+            _FakeMsg(content="Sorğu saxlanıldı."),
+        ],
+    )
+    resp = await client.post(
+        "/api/v1/copilot/chat",
+        json={"message": "həftəlik gəlir sorğusunu saxla"},
+        headers=auth,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["actions"][0]["type"] == "saved_query"
+    assert body["actions"][0]["saved_query_id"]

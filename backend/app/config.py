@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     LIVE_DEMO_FEED: bool = Field(default=True)  # nudge demo data so numbers visibly move
 
     # ─── Agentic copilot ───
-    COPILOT_MAX_STEPS: int = Field(default=6)  # hard cap on tool-calling loop iterations
+    COPILOT_MAX_STEPS: int = Field(default=8)  # hard cap on tool-calling loop iterations
 
     @property
     def cors_origins_list(self) -> list[str]:
