@@ -28,6 +28,9 @@ class User(Base, TimestampMixin):
     ai_calls_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     usage_period_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Proactive AI digest (morning brief): last time a brief was built for this user.
+    last_digest_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     datasources: Mapped[list["DataSource"]] = relationship(  # noqa: F821
         back_populates="user", cascade="all, delete-orphan"
     )

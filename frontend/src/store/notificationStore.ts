@@ -7,8 +7,10 @@ interface NotificationState {
   items: AppNotification[]
   unread: number
   generating: boolean
+  briefing: boolean
   load: () => Promise<void>
   generate: () => Promise<void>
+  generateDigest: () => Promise<void>
   markAllRead: () => Promise<void>
 }
 
@@ -19,10 +21,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   items: [],
   unread: 0,
   generating: false,
+  briefing: false,
   load: async () => {
     const items = await api.listNotifications()
     if (known !== null) {
-      const fresh = items.filter((n) => !n.read && !known!.has(n.id)).length
+      // Briefs (🌅) announce themselves via generateDigest; don't double-toast them here.
+      const fresh = items.filter(
+        (n) => !n.read && !known!.has(n.id) && !n.title.startsWith('🌅'),
+      ).length
       if (fresh > 0) toast(`${fresh} yeni smart insight ✨`, { icon: '🔔' })
     }
     known = new Set(items.map((n) => n.id))
@@ -41,6 +47,20 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       /* interceptor toast */
     } finally {
       set({ generating: false })
+    }
+  },
+  generateDigest: async () => {
+    if (get().briefing) return
+    set({ briefing: true })
+    try {
+      const { created } = await api.buildDigest()
+      await get().load()
+      if (!created) toast('Brif üçün kifayət qədər data yoxdur.', { icon: 'ℹ️' })
+      else toast('Səhər brifi hazırdır 🌅', { icon: '✨' })
+    } catch {
+      /* interceptor toast */
+    } finally {
+      set({ briefing: false })
     }
   },
   markAllRead: async () => {

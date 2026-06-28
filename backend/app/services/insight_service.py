@@ -14,12 +14,41 @@ from app.models.saved_query import SavedQuery
 
 _log = get_logger("nexusbi.insight")
 _TITLE = "Smart Insight"
+SCAN_LIMIT = 40  # how many recent logs to consider when scanning for insights
 
 
-def _rows(log: QueryLog | None) -> list[dict[str, Any]]:
+def rows_of(log: QueryLog | None) -> list[dict[str, Any]]:
+    """Result rows of a query log, normalised to a list (never None)."""
     if log is None or not log.result_data:
         return []
-    return log.result_data.get("rows", [])
+    return log.result_data.get("rows") or []
+
+
+async def scan_recent_distinct(
+    db: AsyncSession, user_id: str, limit: int = SCAN_LIMIT
+) -> list[tuple[str, list[dict[str, Any]]]]:
+    """Recent DISTINCT non-empty queries as (nl_query, rows), newest first.
+
+    Shared by smart-insight generation and the proactive digest so both scan
+    history the same way (dedup by lowercased NL, skip empty result sets).
+    """
+    res = await db.execute(
+        select(QueryLog)
+        .where(QueryLog.user_id == user_id, QueryLog.result_data.is_not(None))
+        .order_by(QueryLog.created_at.desc())
+        .limit(limit)
+    )
+    seen: set[str] = set()
+    out: list[tuple[str, list[dict[str, Any]]]] = []
+    for log in res.scalars().all():
+        nl = (log.natural_language or "").strip()
+        if not nl or nl.lower() in seen:
+            continue
+        seen.add(nl.lower())
+        rows = rows_of(log)
+        if rows:
+            out.append((nl, rows))
+    return out
 
 
 async def _record(db: AsyncSession, user_id: str, name: str, insight: str) -> None:
@@ -49,24 +78,10 @@ async def generate_for_user(db: AsyncSession, user_id: str, limit: int = 5) -> i
     Uses already-stored result data (no query re-runs), one AI digest per query,
     capped at ``limit``. Returns the number of notifications created.
     """
-    rows = await db.execute(
-        select(QueryLog)
-        .where(QueryLog.user_id == user_id, QueryLog.result_data.is_not(None))
-        .order_by(QueryLog.created_at.desc())
-        .limit(40)
-    )
-    seen: set[str] = set()
     created = 0
-    for log in rows.scalars().all():
+    for nl, data in await scan_recent_distinct(db, user_id):
         if created >= limit:
             break
-        nl = (log.natural_language or "").strip()
-        if not nl or nl.lower() in seen:
-            continue
-        seen.add(nl.lower())
-        data = _rows(log)
-        if not data:
-            continue
         insight = await insight_digest.summarize_change(nl, [], data)
         if insight:
             await _record(db, user_id, nl[:60], insight)

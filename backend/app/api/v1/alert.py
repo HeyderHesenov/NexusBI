@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Response, status
 
-from app.dependencies import CurrentUser, DbDep
+from app.dependencies import CurrentUser, DbDep, RateLimitedUser
 from app.schemas.alert import AlertCreate, AlertResponse, NotificationResponse
 from app.services import alert_service as svc
-from app.services import insight_service
+from app.services import digest_service, insight_service
 
 router = APIRouter(tags=["alerts"])
 
@@ -39,6 +39,13 @@ async def generate_insights(user: CurrentUser, db: DbDep) -> dict[str, int]:
     """Scan the user's recent queries and emit notable smart-insight notifications."""
     created = await insight_service.generate_for_user(db, user.id)
     return {"created": created}
+
+
+@router.post("/notifications/digest")
+async def build_digest(user: RateLimitedUser, db: DbDep) -> dict[str, int]:
+    """On-demand proactive brief: roll the user's notable changes into one notification."""
+    notif = await digest_service.build_digest(db, user.id)
+    return {"created": 1 if notif is not None else 0}
 
 
 @router.post("/notifications/read-all", status_code=status.HTTP_204_NO_CONTENT)

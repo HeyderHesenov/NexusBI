@@ -32,3 +32,8 @@ export async function generateInsights(): Promise<{ created: number }> {
   const { data } = await client.post<{ created: number }>('/notifications/generate-insights')
   return data
 }
+
+export async function buildDigest(): Promise<{ created: number }> {
+  const { data } = await client.post<{ created: number }>('/notifications/digest')
+  return data
+}

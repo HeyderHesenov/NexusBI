@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     SCHEDULER_ENABLED: bool = Field(default=True)
     SCHEDULER_INTERVAL_SECONDS: int = Field(default=60)  # how often due jobs are checked
 
+    # ─── Proactive AI digest (morning brief) ───
+    DIGEST_ENABLED: bool = Field(default=True)
+    DIGEST_HOUR_UTC: int = Field(default=6)  # hour (UTC) the daily brief is built
+    DIGEST_MAX_ITEMS: int = Field(default=5)  # max highlights per brief
+
     # ─── Live dashboards (real-time auto-refresh + WS push) ───
     LIVE_REFRESH_ENABLED: bool = Field(default=True)
     LIVE_REFRESH_TICK_SECONDS: int = Field(default=4)  # loop wake cadence
