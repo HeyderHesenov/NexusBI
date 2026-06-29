@@ -24,7 +24,7 @@ export function DecisionsPage() {
   }, [load])
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="w-full">
       <header className="mb-6">
         <p className="eyebrow">Qərarlar</p>
         <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
@@ -36,7 +36,7 @@ export function DecisionsPage() {
       </header>
 
       {items.length === 0 ? (
-        <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+        <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <Target size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">Hələ qərar yoxdur</p>
           <p className="mt-1 text-sm text-ink-soft">
@@ -44,7 +44,7 @@ export function DecisionsPage() {
           </p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid items-start gap-3 lg:grid-cols-2">
           {items.map((d) => (
             <DecisionCard key={d.id} d={d} onPatch={patch} onRemove={remove} />
           ))}

@@ -36,7 +36,7 @@ export function BrandingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="w-full">
       <header className="mb-6">
         <p className="eyebrow">White-label</p>
         <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">Brendinq</h1>
@@ -45,41 +45,56 @@ export function BrandingPage() {
         </p>
       </header>
 
-      <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
-        <div>
-          <p className="eyebrow mb-1">Tətbiq adı</p>
-          <input value={appName} onChange={(e) => setAppName(e.target.value)} className={field} />
-        </div>
-        <div>
-          <p className="eyebrow mb-1">Əsas rəng</p>
-          <div className="flex items-center gap-3">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,30rem)_minmax(0,1fr)]">
+        {/* Form */}
+        <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
+          <div>
+            <p className="eyebrow mb-1">Tətbiq adı</p>
+            <input value={appName} onChange={(e) => setAppName(e.target.value)} className={field} />
+          </div>
+          <div>
+            <p className="eyebrow mb-1">Əsas rəng</p>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="h-10 w-14 cursor-pointer rounded-lg border border-line bg-surface-2"
+              />
+              <input value={color} onChange={(e) => setColor(e.target.value)} className={field} />
+            </div>
+          </div>
+          <div>
+            <p className="eyebrow mb-1">Loqo URL (ixtiyari)</p>
             <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="h-10 w-14 cursor-pointer rounded-lg border border-line bg-surface-2"
+              value={logo}
+              onChange={(e) => setLogo(e.target.value)}
+              placeholder="https://…/logo.svg"
+              className={field}
             />
-            <input value={color} onChange={(e) => setColor(e.target.value)} className={field} />
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2 text-xs text-ink-faint">
+              <Palette size={13} /> Embed (iframe / SDK) görünüşünə tətbiq olunur.
+            </span>
+            <button
+              onClick={save}
+              disabled={busy}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
+            >
+              <Save size={15} /> {busy ? 'Saxlanır…' : 'Yadda saxla'}
+            </button>
           </div>
         </div>
-        <div>
-          <p className="eyebrow mb-1">Loqo URL (ixtiyari)</p>
-          <input
-            value={logo}
-            onChange={(e) => setLogo(e.target.value)}
-            placeholder="https://…/logo.svg"
-            className={field}
-          />
-        </div>
 
-        {/* Preview */}
-        <div className="rounded-xl border border-line bg-surface-2 p-4">
-          <p className="eyebrow mb-2">Önizləmə</p>
-          <div className="flex items-center gap-2.5">
+        {/* Live embed preview */}
+        <div className="overflow-hidden rounded-2xl border border-line bg-surface-2">
+          <div className="flex items-center gap-2.5 border-b border-line px-5 py-4" style={{ borderTopColor: color, borderTopWidth: 3 }}>
             {logo ? (
-              <img src={logo} alt={appName} className="h-6 w-auto" />
+              <img src={logo} alt={appName} className="h-7 w-auto" />
             ) : (
-              <span className="font-display text-base font-bold text-ink">{appName}</span>
+              <span className="font-display text-lg font-bold text-ink">{appName}</span>
             )}
             <span
               className="ml-auto rounded-lg px-3 py-1.5 text-sm font-semibold text-white"
@@ -88,20 +103,24 @@ export function BrandingPage() {
               Nümunə düymə
             </span>
           </div>
+          <div className="space-y-3 p-5">
+            <p className="eyebrow">Önizləmə · embed paneli</p>
+            <div className="h-3 w-2/3 rounded-full bg-line" />
+            <div className="grid grid-cols-3 gap-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="rounded-xl border border-line bg-surface p-3">
+                  <div className="mb-2 h-2 w-12 rounded-full bg-line" />
+                  <div className="h-6 w-16 rounded" style={{ backgroundColor: color, opacity: 0.85 }} />
+                </div>
+              ))}
+            </div>
+            <div className="flex h-32 items-end gap-2 rounded-xl border border-line bg-surface p-3">
+              {[40, 70, 55, 90, 65, 80].map((h, i) => (
+                <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, backgroundColor: color, opacity: 0.85 }} />
+              ))}
+            </div>
+          </div>
         </div>
-
-        <div className="flex justify-end">
-          <button
-            onClick={save}
-            disabled={busy}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
-          >
-            <Save size={15} /> {busy ? 'Saxlanır…' : 'Yadda saxla'}
-          </button>
-        </div>
-      </div>
-      <div className="mt-3 flex items-center gap-2 text-xs text-ink-faint">
-        <Palette size={13} /> Bu parametrlər embed (iframe / SDK) görünüşünə tətbiq olunur.
       </div>
     </div>
   )

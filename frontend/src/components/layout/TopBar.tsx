@@ -1,15 +1,37 @@
 import { useEffect } from 'react'
 import { Bell, LogOut, Moon, Sun } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useThemeStore } from '../../store/themeStore'
 import { useNotificationStore } from '../../store/notificationStore'
 import { UsageMeter } from '../billing/UsageMeter'
 
+// Route → başlıq: header solunu doldurur, naviqasiya kontekstini göstərir.
+const TITLES: Array<[string, string]> = [
+  ['/sources', 'Data mənbələri'],
+  ['/reports', 'Hesabatlar'],
+  ['/decisions', 'Qərarlar'],
+  ['/metrics', 'Metriklər'],
+  ['/requirements', 'Tələbnamələr'],
+  ['/workspaces', 'Workspace-lər'],
+  ['/targets', 'KPI hədəflər'],
+  ['/branding', 'Brendinq'],
+  ['/notifications', 'Bildirişlər'],
+  ['/dashboards', 'Dashboardlar'],
+  ['/history', 'Tarixçə'],
+  ['/pricing', 'Planlar'],
+  ['/', 'Sorğu'],
+]
+
+function titleFor(pathname: string): string {
+  return TITLES.find(([prefix]) => prefix === '/' ? pathname === '/' : pathname.startsWith(prefix))?.[1] ?? 'NexusBI'
+}
+
 export function TopBar() {
   const { user, logout } = useAuthStore()
   const { mode, toggle } = useThemeStore()
   const { unread, load } = useNotificationStore()
+  const { pathname } = useLocation()
   const initial = (user?.full_name || user?.email || '?').charAt(0).toUpperCase()
 
   useEffect(() => {
@@ -20,7 +42,11 @@ export function TopBar() {
   }, [load])
 
   return (
-    <header className="flex items-center justify-end gap-4 border-b border-line bg-bg/70 px-8 py-3.5 backdrop-blur">
+    <header className="flex items-center justify-between gap-4 border-b border-line bg-bg/70 px-8 py-3.5 backdrop-blur">
+      <h2 className="truncate font-display text-base font-semibold tracking-tight text-ink">
+        {titleFor(pathname)}
+      </h2>
+      <div className="flex items-center gap-4">
       <UsageMeter />
       <Link
         to="/notifications"
@@ -57,6 +83,7 @@ export function TopBar() {
       >
         <LogOut size={15} /> Çıxış
       </button>
+      </div>
     </header>
   )
 }

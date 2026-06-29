@@ -58,7 +58,7 @@ export function DataSourcesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="w-full">
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Mənbələr</p>
@@ -98,7 +98,7 @@ export function DataSourcesPage() {
       </header>
 
       {sources.length === 0 ? (
-        <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+        <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <Database size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">Hələ mənbə yoxdur</p>
           <p className="mt-1 text-sm text-ink-soft">
@@ -106,7 +106,7 @@ export function DataSourcesPage() {
           </p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid gap-3 lg:grid-cols-2">
           {sources.map((s) => (
             <li key={s.id} className="rounded-2xl border border-line bg-surface p-4">
               <div className="flex items-center justify-between gap-3">

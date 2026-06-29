@@ -295,7 +295,7 @@ function LoadingState() {
 
 function EmptyState() {
   return (
-    <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+    <div className="plot-grid grid min-h-[50vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
       <p className="font-display text-lg text-ink">Nəticə burada plot olunacaq</p>
       <p className="mt-1 text-sm text-ink-soft">
         Yuxarıdakı nümunələrdən birinə toxun və ya öz sualını yaz.
