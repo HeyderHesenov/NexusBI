@@ -88,6 +88,7 @@ jobs:
           DIGEST_ENABLED: "false"
           CORS_ORIGINS: "http://localhost:4173"
         run: |
+          (cd backend && alembic upgrade head)
           (cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 &)
           for i in $(seq 1 30); do
             curl -sf http://localhost:8000/health && break
