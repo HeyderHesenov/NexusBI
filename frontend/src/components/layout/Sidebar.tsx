@@ -4,19 +4,44 @@ import { NexusMark } from '../brand/NexusMark'
 import { useDatasourceStore } from '../../store/datasourceStore'
 import { useQueryStore } from '../../store/queryStore'
 
-const items = [
-  { to: '/', label: 'Soruş', icon: MessageSquare },
-  { to: '/sources', label: 'Mənbələr', icon: Database },
-  { to: '/metrics', label: 'Metriklər', icon: Tag },
-  { to: '/requirements', label: 'Tələblər', icon: FileText },
-  { to: '/dashboards', label: 'Dashboard-lar', icon: LayoutDashboard },
-  { to: '/reports', label: 'Hesabatlar', icon: BookMarked },
-  { to: '/decisions', label: 'Qərarlar', icon: Target },
-  { to: '/targets', label: 'Hədəflər', icon: Gauge },
-  { to: '/workspaces', label: 'Komanda', icon: Users },
-  { to: '/branding', label: 'Brendinq', icon: Palette },
-  { to: '/history', label: 'Tarixçə', icon: History },
-  { to: '/pricing', label: 'Planlar', icon: CreditCard },
+const groups = [
+  {
+    title: 'Analiz',
+    items: [
+      { to: '/', label: 'Soruş', icon: MessageSquare },
+      { to: '/history', label: 'Tarixçə', icon: History },
+    ],
+  },
+  {
+    title: 'Məlumat',
+    items: [
+      { to: '/sources', label: 'Mənbələr', icon: Database },
+      { to: '/metrics', label: 'Metriklər', icon: Tag },
+      { to: '/requirements', label: 'Tələblər', icon: FileText },
+    ],
+  },
+  {
+    title: 'Vizuallaşdırma',
+    items: [
+      { to: '/dashboards', label: 'Dashboard-lar', icon: LayoutDashboard },
+      { to: '/reports', label: 'Hesabatlar', icon: BookMarked },
+    ],
+  },
+  {
+    title: 'Planlama',
+    items: [
+      { to: '/decisions', label: 'Qərarlar', icon: Target },
+      { to: '/targets', label: 'Hədəflər', icon: Gauge },
+    ],
+  },
+  {
+    title: 'İdarəetmə',
+    items: [
+      { to: '/workspaces', label: 'Komanda', icon: Users },
+      { to: '/branding', label: 'Brendinq', icon: Palette },
+      { to: '/pricing', label: 'Planlar', icon: CreditCard },
+    ],
+  },
 ]
 
 export function Sidebar() {
@@ -39,34 +64,41 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="mt-1 flex flex-col gap-0.5 px-3">
-        {items.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className={({ isActive }) =>
-              `relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                isActive
-                  ? 'bg-accent-soft text-ink'
-                  : 'text-ink-soft hover:bg-surface-2 hover:text-ink'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
-                )}
-                <Icon
-                  size={17}
-                  strokeWidth={2}
-                  className={isActive ? 'text-accent' : ''}
-                />
-                <span className="font-medium">{label}</span>
-              </>
-            )}
-          </NavLink>
+      <nav className="mt-1 flex flex-col px-3">
+        {groups.map((group, gi) => (
+          <div key={group.title} className={gi === 0 ? '' : 'mt-5'}>
+            <span className="eyebrow block px-3 pb-1.5">{group.title}</span>
+            <div className="flex flex-col gap-0.5">
+              {group.items.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === '/'}
+                  className={({ isActive }) =>
+                    `relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                      isActive
+                        ? 'bg-accent-soft text-ink'
+                        : 'text-ink-soft hover:bg-surface-2 hover:text-ink'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
+                      )}
+                      <Icon
+                        size={17}
+                        strokeWidth={2}
+                        className={isActive ? 'text-accent' : ''}
+                      />
+                      <span className="font-medium">{label}</span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 
