@@ -159,10 +159,14 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
     timeout = settings.QUERY_TIMEOUT_SECONDS
     try:
         async with engine.connect() as conn:
-            # DB-side cap (Postgres cancels server-side); asyncio.wait_for bounds
-            # every dialect so a runaway query can't pin a pooled connection.
+            # DB-side cap so the SERVER aborts a runaway query (not just the client
+            # await). Postgres cancels via statement_timeout; MySQL via
+            # max_execution_time (SELECT only). asyncio.wait_for is the outer bound
+            # for dialects without a server cap (SQLite).
             if ds.db_type == DBType.postgresql:
                 await conn.execute(text(f"SET statement_timeout = {timeout * 1000}"))
+            elif ds.db_type == DBType.mysql:
+                await conn.execute(text(f"SET max_execution_time = {timeout * 1000}"))
             result = await asyncio.wait_for(conn.execute(text(sql)), timeout=timeout + 2)
             columns = _dedupe_columns(list(result.keys()))
             raw = result.fetchmany(MAX_RESULT_ROWS)

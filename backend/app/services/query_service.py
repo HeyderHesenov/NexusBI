@@ -213,19 +213,23 @@ async def reexecute_logged_query(
     ds = await ds_service.get_datasource(db, user_id, log.datasource_id)
     if ds.db_type == DBType.powerbi:
         raise ValueError("live refresh unsupported for Power BI")
-    # Row-level security: constrain the stored SQL for this viewer before re-running
-    # (same SQL-level enforcement as the main path — correct for aggregates).
     from app.services import rls_service, rls_sql
 
+    # Re-introspect the schema once: needed for both the table allowlist and RLS.
+    own_cache = cache or await build_cache_service()
+    try:
+        schema = await ds_service.get_schema_cached(ds, own_cache)
+    finally:
+        if cache is None:  # close only the transient client we created here
+            await own_cache.aclose()
+    # Allowlist on the re-run path too — stored SQL must not read tables outside
+    # the current schema (e.g. rows written before the allowlist existed).
+    sql_guard.assert_tables_in_schema(log.generated_sql, list(schema.keys()), ds.db_type.value)
+    # Row-level security: constrain the stored SQL for this viewer (SQL-level,
+    # correct for aggregates) before re-running.
     exec_sql = log.generated_sql
     rules = await rls_service.rules_for_user(db, ds.id, user_id)
     if rules:
-        own_cache = cache or await build_cache_service()
-        try:
-            schema = await ds_service.get_schema_cached(ds, own_cache)
-        finally:
-            if cache is None:  # close only the transient client we created here
-                await own_cache.aclose()
         exec_sql = rls_sql.constrain_sql(exec_sql, rules, schema, ds.db_type.value)
     columns, rows = await ds_service.execute_select(ds, exec_sql)
     return columns, rows

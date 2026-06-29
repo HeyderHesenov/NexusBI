@@ -18,11 +18,22 @@ from app.services.cache_service import CacheService
         "SELECT name FROM information_schema.tables",
         "SELECT relname FROM pg_catalog.pg_class",
         "SELECT * FROM pg_stat_activity",
+        # Quoted-identifier evasions must NOT bypass the denylist.
+        'SELECT * FROM "pg_catalog"."pg_class"',
+        'SELECT * FROM "sqlite_master"',
+        'SELECT * FROM "information_schema".tables',
+        "SELECT * FROM [sqlite_master]",
+        "SELECT * FROM `mysql`.`user`",
     ],
 )
 def test_metadata_tables_blocked(sql):
     with pytest.raises(InvalidSQLError):
         sql_guard.validate_select_only(sql)
+
+
+def test_catalog_name_inside_string_literal_is_allowed():
+    # 'pg_catalog' as DATA (not a table) must not false-positive.
+    assert sql_guard.validate_select_only("SELECT * FROM sales WHERE note = 'pg_catalog'")
 
 
 def test_ordinary_select_passes_guard():
@@ -47,6 +58,21 @@ def test_allowlist_allows_known_and_cte():
 def test_allowlist_unparseable_fails_closed():
     with pytest.raises(InvalidSQLError):
         sql_guard.assert_tables_in_schema("SELEC (((", ["sales"], "sqlite")
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT * FROM secret_schema.sales",  # same bare name, other schema
+        'SELECT * FROM "pg_catalog".sales',
+        "SELECT * FROM otherdb.public.sales",
+    ],
+)
+def test_allowlist_rejects_schema_qualified(sql):
+    # Bare name 'sales' is allowed, but a schema/catalog qualifier escapes the
+    # introspected (default-schema) boundary → must be rejected.
+    with pytest.raises(InvalidSQLError):
+        sql_guard.assert_tables_in_schema(sql, ["sales"], "postgresql")
 
 
 # ─── Generation cache: second identical request skips the AI call ───

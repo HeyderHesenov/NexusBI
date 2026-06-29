@@ -59,6 +59,16 @@ def _scrub(sql: str) -> str:
     return sql
 
 
+def _table_scan_text(sql: str) -> str:
+    """Text for the metadata-table denylist: strip comments, blank only STRING
+    literals (single-quoted data), then drop identifier-quoting chars so a quoted
+    catalog name (``"pg_catalog"."pg_class"``, `` `mysql`.`user` ``, ``[sqlite_master]``)
+    is still visible to the regex — quoting must not be a bypass."""
+    s = _strip_comments(sql)
+    s = re.sub(r"'(?:''|[^'])*'", "''", s)  # blank single-quoted string data only
+    return re.sub(r'[`"\[\]]', "", s)  # remove identifier quoting
+
+
 def validate_select_only(sql: str) -> str:
     """Return the cleaned SQL if it is a single safe SELECT, else raise."""
     cleaned = _strip_comments(sql).strip().rstrip(";").strip()
@@ -78,7 +88,9 @@ def validate_select_only(sql: str) -> str:
         raise InvalidSQLError("Disallowed SQL function detected.")
     if _FORBIDDEN_KEYWORDS.search(scrubbed):
         raise InvalidSQLError("Disallowed SQL keyword detected.")
-    if _FORBIDDEN_TABLES.search(scrubbed):
+    # Scan a quoting-stripped variant so "pg_catalog"/`mysql.user`/[sqlite_master]
+    # can't slip past the catalog denylist.
+    if _FORBIDDEN_TABLES.search(_table_scan_text(cleaned)):
         raise InvalidSQLError("Disallowed system/catalog table reference.")
 
     return cleaned
@@ -106,5 +118,10 @@ def assert_tables_in_schema(
         name = (table.name or "").lower()
         if not name or name in cte_names:
             continue
+        # Introspection only exposes the default schema (bare names). Any explicit
+        # schema/catalog qualifier (secret_schema.sales, "pg_catalog".x) escapes
+        # that boundary → reject, even if the bare name happens to be allowed.
+        if table.db or table.catalog:
+            raise InvalidSQLError(f"Sxema-kvalifikasiyalı cədvələ icazə yoxdur: {table.sql()}")
         if name not in allowed:
             raise InvalidSQLError(f"İcazəsiz cədvələ müraciət: {table.name}")
