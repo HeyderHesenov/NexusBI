@@ -1,5 +1,5 @@
 import { AlertTriangle, Download, GitBranch, GitFork, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import type {
   AnomalyResult,
   ChartConfig,
@@ -11,18 +11,26 @@ import type {
 } from '../../types'
 import { downloadCsv } from '../../lib/csv'
 import * as analysisApi from '../../api/analysis'
-import { AnomalyPanel } from './AnomalyPanel'
-import { ExplainPanel } from './ExplainPanel'
-import { RootCausePanel } from './RootCausePanel'
-import { LineagePanel } from './LineagePanel'
-import { ScenarioPanel } from './ScenarioPanel'
+// AI analysis panels load on demand — none render until the user clicks their
+// button, so they stay out of the query/dashboard initial chunk.
+const AnomalyPanel = lazy(() => import('./AnomalyPanel').then((m) => ({ default: m.AnomalyPanel })))
+const ExplainPanel = lazy(() => import('./ExplainPanel').then((m) => ({ default: m.ExplainPanel })))
+const RootCausePanel = lazy(() =>
+  import('./RootCausePanel').then((m) => ({ default: m.RootCausePanel })),
+)
+const LineagePanel = lazy(() => import('./LineagePanel').then((m) => ({ default: m.LineagePanel })))
+const ScenarioPanel = lazy(() =>
+  import('./ScenarioPanel').then((m) => ({ default: m.ScenarioPanel })),
+)
 import { ErrorBoundary } from '../ui/ErrorBoundary'
 import { ChartRenderer } from './ChartRenderer'
 import { ChartZoom } from './ChartZoom'
 import { ChartFullscreenModal } from './ChartFullscreenModal'
 import { CHART_BTN, ChartToolbar } from './ChartToolbar'
 import { FilterPills, type Filter } from './FilterPills'
-import { ForecastChartWidget } from './ForecastChartWidget'
+const ForecastChartWidget = lazy(() =>
+  import('./ForecastChartWidget').then((m) => ({ default: m.ForecastChartWidget })),
+)
 import { TypewriterText } from './TypewriterText'
 
 interface Props {
@@ -291,6 +299,11 @@ export function ChartView({
 
       {renderChart(320)}
 
+      <Suspense
+        fallback={
+          <div className="h-16 animate-pulse rounded-xl border border-line bg-surface-2" />
+        }
+      >
       {anomalies && <AnomalyPanel result={anomalies} />}
 
       {explanation && <ExplainPanel result={explanation} />}
@@ -316,6 +329,7 @@ export function ChartView({
           )}
         </div>
       )}
+      </Suspense>
 
       <ChartFullscreenModal
         open={fsOpen}
