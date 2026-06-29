@@ -135,7 +135,16 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
   (`ACCESS_TOKEN_EXPIRE_MINUTES`, default 30); refresh lives `REFRESH_TOKEN_EXPIRE_DAYS`. `get_current_user`
   rejects non-`sub` claims, so refresh/ws/embed tokens can't be used as access tokens. Frontend
   `tokenStore` does single-flight 401-refresh.
-- **CI:** `.github/workflows/ci.yml` runs ruff + pytest (backend) and build (frontend) on push/PR.
+- **CI:** `.github/workflows/ci.yml` runs three jobs on push/PR: **backend** (ruff + pytest),
+  **frontend** (Vitest + build), and a **blocking `e2e`** job (`needs: backend, frontend`). The e2e
+  job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
+  background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
+  `npm run test:e2e` all live in ONE step.
+- **Testing:** backend pytest (220) mocks the AI engine at the boundary — patch the **class**
+  `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
+  leaks an own attribute that shadows later class patches). Frontend Vitest (65) covers `lib/*`,
+  hooks, and Zustand store reducers (`src/**/*.test.*`; e2e specs belong to Playwright). E2E:
+  `frontend/e2e/smoke.spec.ts` over login → query → dashboards against the built preview.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters at
   `/metrics`; structured logs via structlog.
 
@@ -178,6 +187,17 @@ Migrations are Alembic, chained under `db/migrations/versions`; current head = *
 - **CSP** is emitted at build time (Vite plugin: `script-src 'self'` + per-chunk hash + Google).
 - **Frontend hardening:** `ErrorBoundary` (route + per-widget), `ModalShell` (focus-trap/
   scroll-lock/aria-modal), and `React.lazy` for chart panels (smaller initial bundle). Vitest set up.
+- **Lazy chart bundle:** `ChartRenderer` (which transitively imports recharts, ~440kB) is loaded
+  through `charts/LazyChartRenderer` — a `lazy(() => import('./ChartRenderer'))` wrapped in its own
+  Suspense/`ChartSkeleton`. All six render sites import the wrapper, so recharts is no longer in the
+  initial `/` chunk; it arrives on first chart paint. `manualChunks.charts` keeps it isolated;
+  `rollup-plugin-visualizer` (env-gated, `npm run analyze`) emits a treemap.
+- **Test depth + blocking E2E:** Vitest grew to 65 (lib / hooks / store reducers, incl. the
+  collab epoch-guard via a fake `WebSocket`); a blocking Playwright `e2e` CI job runs the
+  login→query→dashboards smoke against a demo backend. Two CI-specific fixes underpin it: AI mocks
+  patch the `Text2SQLEngine` **class** (not the `_engine` singleton, whose instance patch leaked),
+  and the e2e job runs `alembic upgrade head` + backend boot + smoke in a single step (background
+  processes don't survive a step boundary).
 
 ## Security model
 

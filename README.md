@@ -89,8 +89,10 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - 💳 **Abunə planları + per-user rate limiting** — Free/Pro/Max/Max+ aylıq AI limiti;
   demo-da mock upgrade, prod-da **config-gated Stripe Checkout**.
 - 🎨 **Claude-ilhamlı UI** — light/dark toggle, emerald accent, Source Serif 4 başlıqlar.
-- ⚡ **Performans** — Redis nəticə keşi (user-scoped), per-datasource connection pooling.
+- ⚡ **Performans** — Redis nəticə keşi (user-scoped), per-datasource connection pooling,
+  **lazy chart bundle** (ağır recharts yalnız qrafik render olunanda yüklənir — ilk açılış yüngül).
 - 📈 **Müşahidə** — Prometheus `/metrics`, struktur loglar.
+- ✅ **Keyfiyyət darvazası** — backend pytest, frontend Vitest, **bloklayıcı Playwright E2E smoke** (CI).
 
 ---
 
@@ -250,9 +252,19 @@ rotation/reuse-detect** · rate-limit & tiers · datasource & CSV upload · anom
 (plan/execute) · trust (verified/lineage/SLA) · workspace RBAC + SQL-səviyyə RLS + audit · scenario
 (goal-seek/Monte Carlo/pacing) · integrations (+ @mention) · embed/white-label/Stripe gate** ·
 saved-query & scheduler · engine pool · metric catalog · chat context · alerts · decisions ·
-təhlükəsizlik (pentest fixes). Frontend: Vitest (ModalShell a11y · ErrorBoundary).
+təhlükəsizlik (pentest fixes).
 
-CI: hər push/PR-da GitHub Actions backend (ruff + pytest) və frontend (build) işlədir.
+**Frontend Vitest (65 test):** lib (CSV formula-injection escape · sample queries · login hint) ·
+hook-lar (chart zoom · history delete · typewriter) · Zustand store reducer-ləri (live-update ·
+query thread · copilot plan-guard · theme · notifications · collab epoch-guard) · ModalShell a11y ·
+ErrorBoundary. `cd frontend && npm run test`.
+
+**E2E (Playwright):** `frontend/e2e/smoke.spec.ts` — login → NL sorğu (demo SQLite + rule-based
+fallback) → dashboards. Lokal: `npm run test:e2e` (preview :4173; `E2E_BASE_URL` ilə dev :5173-ə yönəlt).
+
+CI (`.github/workflows/ci.yml`) — 3 job: **backend** (ruff + pytest), **frontend** (Vitest + build),
+**e2e** (demo backend qaldırılır → Playwright smoke; **bloklayıcı**, `needs: backend+frontend`).
+Bundle analizi: `cd frontend && npm run analyze` → `stats.html`.
 
 ---
 
@@ -261,8 +273,8 @@ CI: hər push/PR-da GitHub Actions backend (ruff + pytest) və frontend (build) 
 **Backend:** FastAPI · SQLAlchemy 2.0 async · Pydantic v2 · Alembic · AI mühərriki (async client) ·
 sqlglot (SQL guard/RLS) · JWT (python-jose) · Fernet · Redis · pandas/openpyxl/numpy ·
 WebSockets (canlı/collab) · prometheus-client · structlog · google-auth · httpx
-**Frontend:** React 18 · TypeScript · Vite · TailwindCSS (CSS-var light/dark) · Recharts ·
-react-grid-layout · Zustand · React Router · react-hot-toast
+**Frontend:** React 18 · TypeScript · Vite · TailwindCSS (CSS-var light/dark) · Recharts (lazy) ·
+react-grid-layout · Zustand · React Router · react-hot-toast · Vitest · Playwright (E2E)
 
 ---
 
