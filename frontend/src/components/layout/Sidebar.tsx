@@ -49,8 +49,8 @@ export function Sidebar() {
   const sources = useDatasourceStore((s) => s.sources)
   const active = sources.find((s) => s.id === datasourceId)
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-surface">
-      <div className="flex items-center gap-2.5 px-6 py-6">
+    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-line bg-surface">
+      <div className="flex shrink-0 items-center gap-2.5 px-6 py-6">
         <span className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface-2">
           <NexusMark size={20} />
         </span>
@@ -64,7 +64,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="mt-1 flex flex-col px-3">
+      <nav className="mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-3">
         {groups.map((group, gi) => (
           <div key={group.title} className={gi === 0 ? '' : 'mt-5'}>
             <span className="eyebrow block px-3 pb-1.5">{group.title}</span>
@@ -102,7 +102,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-auto px-5 py-5">
+      <div className="shrink-0 px-5 py-5">
         <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent shadow-[0_0_6px_rgb(var(--accent))]" />
           <span className="truncate font-mono text-[10px] uppercase tracking-wider text-ink-soft">
