@@ -1,4 +1,4 @@
-"""Text2SQL engine tests (OpenAI mocked)."""
+"""Text2SQL engine tests (AI layer mocked)."""
 from __future__ import annotations
 
 import pytest

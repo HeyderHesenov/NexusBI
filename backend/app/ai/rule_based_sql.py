@@ -1,6 +1,6 @@
 """Deterministic NL->SQL fallback for the demo schema.
 
-Used when the OpenAI Text2SQL engine is unavailable (missing/invalid key, rate
+Used when the AI Text2SQL engine is unavailable (missing/invalid key, rate
 limit, network error) so the demo experience keeps working offline. Mirrors the
 ``chart_selector._rule_based`` pattern: a heuristic that covers the common BI
 questions over the demo tables (``sales`` / ``customers`` / ``products``).

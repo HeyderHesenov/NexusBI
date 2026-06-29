@@ -105,7 +105,7 @@ async def lifespan(app: FastAPI):
         # Demo mode still works via the rule-based SQL fallback, but warn loudly
         # so a misconfigured key is obvious in the logs instead of silent 401s.
         log.warning(
-            "openai_key_missing",
+            "ai_key_missing",
             msg="OPENAI_API_KEY boşdur — demo qayda-əsaslı fallback ilə işləyəcək.",
         )
     app.state.cache = await build_cache_service()

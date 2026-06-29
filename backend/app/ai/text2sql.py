@@ -1,4 +1,4 @@
-"""Natural language -> SQL engine backed by OpenAI."""
+"""Natural language -> SQL engine backed by the AI layer."""
 from __future__ import annotations
 
 import asyncio

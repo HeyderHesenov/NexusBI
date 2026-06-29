@@ -15,12 +15,12 @@ http_request_duration_seconds = Histogram(
 )
 ai_calls_total = Counter(
     "nexusbi_ai_calls_total",
-    "OpenAI chat calls",
+    "AI engine chat calls",
     ["kind"],
 )
 ai_tokens_total = Counter(
     "nexusbi_ai_tokens_total",
-    "OpenAI tokens consumed",
+    "AI engine tokens consumed",
 )
 sql_executions_total = Counter(
     "nexusbi_sql_executions_total",

@@ -1,4 +1,4 @@
-"""Natural language -> DAX engine backed by OpenAI.
+"""Natural language -> DAX engine backed by the AI layer.
 
 Mirrors text2sql.py, but emits the constrained DAX subset the mock provider can
 execute. Each candidate is validated by translating it to SQL (dax_to_sql); on
