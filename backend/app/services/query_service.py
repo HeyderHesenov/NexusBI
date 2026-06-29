@@ -22,7 +22,7 @@ from app.models.query_log import QueryLog
 from app.schemas.query import ColumnInfo, QueryResult
 from app.services import datasource_service as ds_service
 from app.services import metric_service
-from app.services.cache_service import CacheService
+from app.services.cache_service import CacheService, build_cache_service
 
 
 def _cache_key(
@@ -167,7 +167,7 @@ async def process_nl_query(
 
 
 async def reexecute_logged_query(
-    log: QueryLog, db: AsyncSession, user_id: str
+    log: QueryLog, db: AsyncSession, user_id: str, cache: CacheService | None = None
 ) -> tuple[list[str], list[dict[str, Any]]]:
     """Re-run a query log's stored SQL and return fresh (columns, rows) — NO AI.
 
@@ -184,13 +184,21 @@ async def reexecute_logged_query(
     ds = await ds_service.get_datasource(db, user_id, log.datasource_id)
     if ds.db_type == DBType.powerbi:
         raise ValueError("live refresh unsupported for Power BI")
-    columns, rows = await ds_service.execute_select(ds, log.generated_sql)
-    # Apply RLS on this read path too (live refresh re-runs raw SQL).
-    from app.services import rls_service
+    # Row-level security: constrain the stored SQL for this viewer before re-running
+    # (same SQL-level enforcement as the main path — correct for aggregates).
+    from app.services import rls_service, rls_sql
 
+    exec_sql = log.generated_sql
     rules = await rls_service.rules_for_user(db, ds.id, user_id)
     if rules:
-        rows = rls_service.apply(rows, rules)
+        own_cache = cache or await build_cache_service()
+        try:
+            schema = await ds_service.get_schema_cached(ds, own_cache)
+        finally:
+            if cache is None:  # close only the transient client we created here
+                await own_cache.aclose()
+        exec_sql = rls_sql.constrain_sql(exec_sql, rules, schema, ds.db_type.value)
+    columns, rows = await ds_service.execute_select(ds, exec_sql)
     return columns, rows
 
 
@@ -259,19 +267,22 @@ async def _live_pipeline(
     sql_result = await _engine.generate_sql(
         nl_query, schema_text, ds.db_type.value, extra_context
     )
-    try:
-        columns, rows = await ds_service.execute_select(ds, sql_result.sql)
-    except NexusBIException as exc:
-        # Surface the generated SQL so the user can see what failed.
-        exc.sql = sql_result.sql
-        raise
-    # Row-level security: drop rows this user isn't permitted to see (no-op when
-    # no rules constrain them).
-    from app.services import rls_service
+    # Row-level security: rewrite the SQL so each protected table is row-filtered
+    # BEFORE aggregation (post-fetch filtering leaks SUM/GROUP BY totals). The
+    # original (unconstrained) SQL is what we persist/show — RLS is per-viewer and
+    # re-applied on every execution, not baked into the stored query.
+    from app.services import rls_service, rls_sql
 
     rules = await rls_service.rules_for_user(db, ds.id, user_id)
+    exec_sql = sql_result.sql
     if rules:
-        rows = rls_service.apply(rows, rules)
+        exec_sql = rls_sql.constrain_sql(exec_sql, rules, schema, ds.db_type.value)
+    try:
+        columns, rows = await ds_service.execute_select(ds, exec_sql)
+    except NexusBIException as exc:
+        # Surface the AI-generated SQL so the user can see what failed.
+        exc.sql = sql_result.sql
+        raise
     return sql_result.sql, columns, rows, "sql"
 
 

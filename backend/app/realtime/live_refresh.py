@@ -32,28 +32,34 @@ _last_run: dict[str, float] = {}
 
 async def _refresh_dashboard(dash_id: str, user_id: str) -> None:
     """Re-run one dashboard's widgets and broadcast the fresh charts."""
+    from app.services.cache_service import build_cache_service
+
     updates: list[dict] = []
-    async with AsyncSessionLocal() as db:
-        dash = (
-            await db.execute(
-                select(Dashboard)
-                .where(Dashboard.id == dash_id, Dashboard.user_id == user_id)
-                .options(selectinload(Dashboard.widgets))
-            )
-        ).scalar_one_or_none()
-        if dash is None:
-            return
-        for widget in dash.widgets:
-            if not widget.query_log_id:
-                continue
-            try:
-                chart = await dashboard_service.refresh_widget_data(db, widget, user_id)
-            except Exception as exc:  # noqa: BLE001 — one widget failing can't sink the tick
-                log.warning("live_widget_failed", widget_id=widget.id, error=str(exc)[:200])
-                continue
-            if chart is not None:
-                updates.append({"widget_id": widget.id, "chart": chart.model_dump(mode="json")})
-        await db.commit()
+    cache = await build_cache_service()
+    try:
+        async with AsyncSessionLocal() as db:
+            dash = (
+                await db.execute(
+                    select(Dashboard)
+                    .where(Dashboard.id == dash_id, Dashboard.user_id == user_id)
+                    .options(selectinload(Dashboard.widgets))
+                )
+            ).scalar_one_or_none()
+            if dash is None:
+                return
+            for widget in dash.widgets:
+                if not widget.query_log_id:
+                    continue
+                try:
+                    chart = await dashboard_service.refresh_widget_data(db, widget, user_id, cache)
+                except Exception as exc:  # noqa: BLE001 — one widget failing can't sink the tick
+                    log.warning("live_widget_failed", widget_id=widget.id, error=str(exc)[:200])
+                    continue
+                if chart is not None:
+                    updates.append({"widget_id": widget.id, "chart": chart.model_dump(mode="json")})
+            await db.commit()
+    finally:
+        await cache.aclose()
     if updates:
         await hub.broadcast(dash_id, {"type": "live_update", "widgets": updates})
 

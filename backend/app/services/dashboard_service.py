@@ -387,7 +387,7 @@ async def refresh_all_widgets(
 
 
 async def refresh_widget_data(
-    db: AsyncSession, widget: Widget, user_id: str
+    db: AsyncSession, widget: Widget, user_id: str, cache: CacheService | None = None
 ) -> WidgetChart | None:
     """Re-run a widget's stored SQL in place (no AI) and return the fresh chart.
 
@@ -406,7 +406,15 @@ async def refresh_widget_data(
     ).scalar_one_or_none()
     if log is None:
         return None
-    columns, rows = await query_service.reexecute_logged_query(log, db, user_id)
+    # RLS safety: live refresh runs as the dashboard OWNER and broadcasts one
+    # dataset to the whole room. If the source is RLS-restricted, that dataset
+    # would be owner-unfiltered — never push it to potentially-restricted viewers.
+    if log.datasource_id:
+        from app.services import rls_service
+
+        if await rls_service.datasource_has_rules(db, log.datasource_id):
+            return None
+    columns, rows = await query_service.reexecute_logged_query(log, db, user_id, cache)
     log.result_data = {"columns": columns, "rows": query_service._snapshot_rows(rows)}
     await db.flush()
 

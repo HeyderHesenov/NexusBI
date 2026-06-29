@@ -78,8 +78,25 @@ async def rules_for_user(
     return list(res.scalars().all())
 
 
+async def datasource_has_rules(db: AsyncSession, datasource_id: str) -> bool:
+    """True if ANY member is RLS-restricted on this datasource.
+
+    Used by the live-refresh broadcast to avoid pushing one (owner-executed,
+    unfiltered) dataset to a room that may include restricted viewers.
+    """
+    res = await db.execute(
+        select(RLSRule.id).where(RLSRule.datasource_id == datasource_id).limit(1)
+    )
+    return res.first() is not None
+
+
 def apply(rows: list[dict[str, Any]], rules: list[RLSRule]) -> list[dict[str, Any]]:
     """Keep only rows explicitly allowed by every constrained column.
+
+    NOTE: the query pipeline now enforces RLS in the SQL itself (see
+    ``rls_sql.constrain_sql``), which — unlike this post-fetch filter — is correct
+    for server-side aggregates. This helper is retained for detail-row
+    defense-in-depth and unit coverage only; it is not on the live query path.
 
     Fail-CLOSED: if a constrained column is absent from a row (e.g. the query
     aggregated it away or renamed it), the row is dropped — a restricted user
