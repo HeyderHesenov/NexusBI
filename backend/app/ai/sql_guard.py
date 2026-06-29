@@ -10,7 +10,22 @@ from __future__ import annotations
 
 import re
 
+import sqlglot
+from sqlglot import exp
+
 from app.core.exceptions import InvalidSQLError
+
+# sqlglot dialect names keyed by our DBType.value.
+_GLOT_DIALECTS = {"postgresql": "postgres", "mysql": "mysql", "sqlite": "sqlite"}
+
+# DB metadata/catalog tables — reading them exfiltrates schema/credentials/stats.
+# Blocked regardless of the introspected schema (defense in depth at execution).
+_FORBIDDEN_TABLES = re.compile(
+    r"\b(sqlite_master|sqlite_temp_master|sqlite_schema|sqlite_sequence|"
+    r"information_schema|pg_catalog|pg_class|pg_attribute|pg_shadow|pg_user|"
+    r"pg_authid|pg_roles|pg_stat_\w+|mysql\.user|performance_schema)\b",
+    re.IGNORECASE,
+)
 
 # SELECT … INTO is a write (e.g. MySQL INTO OUTFILE/DUMPFILE, MSSQL SELECT INTO).
 _INTO_CLAUSE = re.compile(r"\binto\b", re.IGNORECASE)
@@ -63,5 +78,33 @@ def validate_select_only(sql: str) -> str:
         raise InvalidSQLError("Disallowed SQL function detected.")
     if _FORBIDDEN_KEYWORDS.search(scrubbed):
         raise InvalidSQLError("Disallowed SQL keyword detected.")
+    if _FORBIDDEN_TABLES.search(scrubbed):
+        raise InvalidSQLError("Disallowed system/catalog table reference.")
 
     return cleaned
+
+
+def assert_tables_in_schema(
+    sql: str, allowed_tables: list[str], dialect: str = "sqlite"
+) -> None:
+    """Reject a SELECT that reads any base table outside the introspected schema.
+
+    Positive allowlisting (on top of the metadata denylist above): the only
+    physical tables a generated query may touch are those the user's datasource
+    actually exposes. CTE/derived-relation names are excluded — they're not base
+    tables. Fail-CLOSED on parse failure.
+    """
+    allowed = {t.lower() for t in allowed_tables}
+    try:
+        tree = sqlglot.parse_one(sql, dialect=_GLOT_DIALECTS.get(dialect, "sqlite"))
+    except Exception as exc:  # noqa: BLE001 — any parse failure → block
+        raise InvalidSQLError("SQL təhlil olunmadı (allowlist).") from exc
+    if tree is None:
+        raise InvalidSQLError("Boş SQL.")
+    cte_names = {c.alias.lower() for c in tree.find_all(exp.CTE) if c.alias}
+    for table in tree.find_all(exp.Table):
+        name = (table.name or "").lower()
+        if not name or name in cte_names:
+            continue
+        if name not in allowed:
+            raise InvalidSQLError(f"İcazəsiz cədvələ müraciət: {table.name}")

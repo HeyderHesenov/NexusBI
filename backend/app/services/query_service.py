@@ -11,9 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.chart_selector import select_chart_type
 from app.ai.insight_generator import generate_insight
+from app.ai import sql_guard
 from app.ai.text2dax import Text2DAXEngine
 from app.ai.text2sql import Text2SQLEngine
-from app.ai.types import ChartConfig
+from app.ai.types import ChartConfig, Text2SQLResult
 from app.config import settings
 from app.core.exceptions import AIGenerationError, NexusBIException
 from app.core.logging import get_logger
@@ -37,6 +38,34 @@ def _cache_key(
 _engine = Text2SQLEngine()
 _dax_engine = Text2DAXEngine()
 _log = get_logger("nexusbi.query")
+
+
+def _sqlgen_key(schema_text: str, dialect: str, extra_context: str, nl_query: str) -> str:
+    """Schema-scoped (user-INDEPENDENT) cache key for NL→SQL generation.
+
+    Safe to share across users: RLS is injected AFTER generation, so the cached
+    SQL carries no per-user data. Cuts repeated gpt-4o spend (incl. the 3-attempt
+    retry) for identical questions over the same schema/metric context.
+    """
+    raw = f"{dialect}|{schema_text}|{extra_context}|{nl_query.strip().lower()}"
+    return f"sqlgen:{hashlib.sha1(raw.encode()).hexdigest()}"
+
+
+async def _generate_sql_cached(
+    nl_query: str,
+    schema_text: str,
+    dialect: str,
+    extra_context: str,
+    cache: CacheService,
+) -> Text2SQLResult:
+    key = _sqlgen_key(schema_text, dialect, extra_context, nl_query)
+    cached = await cache.get(key)
+    if cached:
+        return Text2SQLResult(**cached)
+    result = await _engine.generate_sql(nl_query, schema_text, dialect, extra_context)
+    # Only validated SQL reaches here (generate_sql runs validate_select_only).
+    await cache.set(key, result.model_dump(), ttl=settings.SQLGEN_CACHE_TTL_SECONDS)
+    return result
 
 _SNAPSHOT_MAX_ROWS = 1000
 _SNAPSHOT_MAX_BYTES = 256 * 1024  # cap the persisted JSON snapshot at ~256 KB
@@ -264,9 +293,12 @@ async def _live_pipeline(
         return await _powerbi_pipeline(nl_query, ds, cache, extra_context)
     schema = await ds_service.get_schema_cached(ds, cache)
     schema_text = ds_service.schema_as_prompt(schema)
-    sql_result = await _engine.generate_sql(
-        nl_query, schema_text, ds.db_type.value, extra_context
+    sql_result = await _generate_sql_cached(
+        nl_query, schema_text, ds.db_type.value, extra_context, cache
     )
+    # Allowlist: the generated query may only read tables this datasource exposes
+    # (blocks metadata/catalog exfil and any hallucinated cross-DB table).
+    sql_guard.assert_tables_in_schema(sql_result.sql, list(schema.keys()), ds.db_type.value)
     # Row-level security: rewrite the SQL so each protected table is row-filtered
     # BEFORE aggregation (post-fetch filtering leaks SUM/GROUP BY totals). The
     # original (unconstrained) SQL is what we persist/show — RLS is per-viewer and

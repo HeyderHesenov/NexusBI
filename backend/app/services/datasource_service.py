@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.schema_introspector import format_schema_for_prompt, get_schema
 from app.ai.sql_guard import validate_select_only
+from app.config import settings
 from app.core import metrics, net_guard
 from app.core.exceptions import DataSourceConnectionError, SchemaNotFoundError
 from app.db import engine_pool
@@ -155,9 +156,14 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
     await _guard_conn_str(conn_str)
     engine = await engine_pool.get_engine(conn_str)
     started = time.perf_counter()
+    timeout = settings.QUERY_TIMEOUT_SECONDS
     try:
         async with engine.connect() as conn:
-            result = await conn.execute(text(sql))
+            # DB-side cap (Postgres cancels server-side); asyncio.wait_for bounds
+            # every dialect so a runaway query can't pin a pooled connection.
+            if ds.db_type == DBType.postgresql:
+                await conn.execute(text(f"SET statement_timeout = {timeout * 1000}"))
+            result = await asyncio.wait_for(conn.execute(text(sql)), timeout=timeout + 2)
             columns = _dedupe_columns(list(result.keys()))
             raw = result.fetchmany(MAX_RESULT_ROWS)
             rows = [dict(zip(columns, r)) for r in raw]

@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     # ─── Redis ───
     REDIS_URL: str = Field(default="redis://localhost:6379/0")
     CACHE_TTL_SECONDS: int = Field(default=300)  # query result cache TTL
+    SQLGEN_CACHE_TTL_SECONDS: int = Field(default=900)  # NL→SQL generation cache TTL
+    QUERY_TIMEOUT_SECONDS: int = Field(default=15)  # hard cap on a single SELECT
 
     # ─── Datasource connection pooling ───
     DATASOURCE_POOL_SIZE: int = Field(default=5)
