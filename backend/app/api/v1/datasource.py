@@ -139,7 +139,7 @@ async def list_rls(datasource_id: str, user: CurrentUser, db: DbDep) -> list[RLS
 
 @router.post("/{datasource_id}/rls", response_model=RLSRuleResponse, status_code=status.HTTP_201_CREATED)
 async def add_rls(
-    datasource_id: str, payload: RLSRuleCreate, user: CurrentUser, db: DbDep
+    datasource_id: str, payload: RLSRuleCreate, user: CurrentUser, db: DbDep, cache: CacheDep
 ) -> RLSRuleResponse:
     from sqlalchemy import select
 
@@ -153,6 +153,8 @@ async def add_rls(
     rule = await rls_service.create_rule(
         db, user.id, datasource_id, member.id, payload.column, payload.allowed_value
     )
+    # Tightening access must not leave stale, less-restricted rows in cache.
+    await cache.delete_prefix(f"qcache:{datasource_id}:")
     await audit_service.log(
         db, user.id, "rls.create", entity="datasource", entity_id=datasource_id,
         meta={"member": member.id, "column": payload.column},
@@ -162,9 +164,10 @@ async def add_rls(
 
 @router.delete("/{datasource_id}/rls/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_rls(
-    datasource_id: str, rule_id: str, user: CurrentUser, db: DbDep
+    datasource_id: str, rule_id: str, user: CurrentUser, db: DbDep, cache: CacheDep
 ) -> Response:
     await rls_service.delete_rule(db, user.id, rule_id)
+    await cache.delete_prefix(f"qcache:{datasource_id}:")
     await audit_service.log(
         db, user.id, "rls.delete", entity="datasource", entity_id=datasource_id,
         meta={"rule": rule_id},

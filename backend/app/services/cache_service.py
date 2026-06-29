@@ -44,6 +44,28 @@ class CacheService:
         except Exception:
             pass
 
+    async def delete_prefix(self, prefix: str) -> None:
+        """Delete every key starting with ``prefix`` (SCAN-based, non-blocking).
+
+        Used to invalidate cached results when access rules change (e.g. an RLS
+        rule is added — stale, less-restricted rows must not survive to TTL).
+        """
+        if not self._client:
+            return
+        try:
+            async for key in self._client.scan_iter(match=f"{prefix}*", count=200):
+                await self._client.delete(key)
+        except Exception:
+            pass
+
+    async def aclose(self) -> None:
+        """Close the underlying Redis connection (for transient/per-tick clients)."""
+        if self._client:
+            try:
+                await self._client.aclose()
+            except Exception:
+                pass
+
 
 async def build_cache_service() -> CacheService:
     """Connect to Redis; return a no-op cache if unreachable."""
