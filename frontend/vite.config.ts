@@ -50,6 +50,8 @@ export default defineConfig({
     globals: true,
     setupFiles: './src/test/setup.ts',
     css: false,
+    // Unit tests live under src/; e2e/*.spec.ts belongs to Playwright, not Vitest.
+    include: ['src/**/*.test.{ts,tsx}'],
   },
   build: {
     rollupOptions: {
