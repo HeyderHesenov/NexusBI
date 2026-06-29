@@ -6,7 +6,9 @@ Biznes sualını adi dildə yaz → NexusBI avtomatik **SQL qurur, icra edir, op
 chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rəhbərlər
 üçün AI-powered BI platforması.
 
-> AI layer **OpenAI gpt-4o** ilə işləyir (Text2SQL · chart seçimi · insight · proqnoz · anomaliya).
+> AI layer **OpenAI gpt-4o** ilə işləyir (Text2SQL · chart seçimi · insight · proqnoz ·
+> anomaliya · kök-səbəb · proaktiv digest · agentik copilot). Üstəlik komanda idarəetməsi
+> (RBAC + row-level security), embedded analytics + white-label, FP&A ssenari planlaması.
 
 ---
 
@@ -22,31 +24,71 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - 💡 **AI insight** — nəticədən qısa biznes təhlili (sorğunun dilində).
 - 🔮 **Proqnoz (forecast)** + 🚨 **anomaliya aşkarlama** — gpt-4o ilə.
 - 🧭 **"Bunu izah et" (kök-səbəb)** — nəticəni ən böyük driver-lərə parçalayır (seqment + töhfə %).
-- 🎚️ **What-if ssenari** — metrikə % düzəliş → faktiki vs proqnoz (client-side).
+- 🌳 **"Niyə?" iyerarxik kök-səbəb ağacı** — metrikanı çoxsəviyyəli driver ağacına böl
+  (interaktiv, töhfə %); AI çatmayanda determinik fallback.
+- 🧬 **Mənşə (lineage)** — nəticənin arxasındakı cədvəl/sütun/metriklər (determinik SQL parse).
+
+### Proaktiv AI
+- 🌅 **Səhər brifi (digest)** — app özü son sorğularını skan edir, ən vacib dəyişiklikləri
+  səbəbi ilə bir bildirişdə toplayır (planlı + on-demand).
+- ✨ **Smart insight bildirişləri** — saxlanan sorğu nəticələrindəki diqqətəlayiq dəyişikliklər.
+- 🤖 **Agentik Copilot (plan → təsdiq → icra)** — köməkçi əvvəl addım planı göstərir, sən
+  təsdiqləyirsən, sonra icra edir (sorğu işlət · dashboard qur/paylaş · metrik/alert/sorğu yarat).
+
+### Ssenari & FP&A
+- 🎯 **KPI hədəf + pacing** — hədəfə çatma sürəti (tempo markeri ilə gauge).
+- 🎯 **Goal-seek** — "hədəfə çatmaq üçün neçə % lazımdır?".
+- 🎲 **Monte Carlo** — tarixi gəlirlərdən P10/P50/P90 qeyri-müəyyənlik diapazonu (determinik seed).
+- 🎚️ **What-if ssenari** — metrikə % düzəliş → faktiki vs proqnoz.
+
+### BA workflow
+- 📝 **Tələbnamədən dashboard** — BRD / user story yapışdır və ya yüklə → AI ölçülə bilən
+  KPI çıxarır → təsdiqlədikdən sonra tam dashboard qurur (tələb→KPI izlənilirlik).
 
 ### Qərarlar & izləmə
 - 🎯 **Qərar jurnalı** — insight → action → outcome; status izləmə (analitikanı təsirə bağlayır).
 - 🔔 **Alert-lər & monitorlar** — saxlanan sorğuya threshold bağla → şərt pozulanda bildiriş mərkəzi.
-- 🔗 **Paylaşma & embed** — tokenli read-only public dashboard linki + iframe.
+- 🔌 **Workflow inteqrasiyaları** — brif/alert-ləri Slack · Teams · email-ə göndər (mock-first,
+  config-gated); dashboard chat-də **@mention** → bildiriş.
 
-### Data mənbələri
+### Data mənbələri & hazırlıq
 - 🔌 **Öz SQL bazanı qoş** — PostgreSQL / SQLite (connection string, şifrəli saxlanılır).
 - 📁 **CSV / Excel yüklə** — fayl avtomatik sorğulana bilən SQLite cədvəlinə çevrilir.
+- 🪄 **NL data-prep + çoxcədvəli join** — "orders ilə customers-i birləşdir, aylıq qrupla"
+  → AI transform planı → önizləmə → yeni törəmə mənbə kimi saxla (SELECT-only guard).
+- 📊 **Data profiling** — sütun üzrə null % · distinct · min/max · tip (nümunə əsaslı).
 - 🔎 **Schema browser + schema-bilən nümunə sorğular**.
+- 🔵 **Power BI inteqrasiyası** — NL→DAX (mock-first; real Azure AD ilə canlı executeQueries).
 - 🧪 **Demo mode** — real DB olmadan seeded SQLite üzərində işləyir.
 
-### Semantik qat & dashboardlar
+### Semantik qat, etibar & dashboardlar
 - 🏷️ **Metrik kataloqu (semantik qat)** — biznes metriklərini bir dəfə təyin et
   (ad, ifadə, sinonimlər); AI sorğularda tutarlı işlədir.
+- ✅ **Etibar qatı** — metrikləri **sertifikatla** (verified badge + sahib), nəticə **lineage**-i,
+  datasource **freshness SLA** (təzə / köhnəlib nişanı). "Tək həqiqət mənbəyi".
 - 🧩 **İnteraktiv dashboard** — widget-ləri sürüklə/ölç (react-grid-layout), auto-save,
   per-widget mənbə nişanı + yenilə, **cross-filter** (bir widget-də klik → bütün panel filtrlənir).
+- 🔴 **Canlı (real-time) dashboard** + 🎬 **AI Data Story** (kinematik təqdimat) + 🤖 **Copilot**.
 - 🔖 **Saxlanan sorğular + cədvəlli (cron) avto-yeniləmə** ("Hesabatlar").
+
+### Komanda & idarəetmə (enterprise)
+- 👥 **Workspace + rollar (RBAC)** — owner / editor / viewer; e-poçtla dəvət.
+- 🔒 **Row-level security (RLS)** — üzv yalnız icazəli sətirləri görür (fail-closed; canlı +
+  refresh yollarında tətbiq olunur).
+- 🧾 **Audit jurnalı** — təhlükəsizlik-əhəmiyyətli əməllərin izi (kim/nə/nə vaxt).
+
+### Embed & white-label
+- 🧩 **Embedded analytics** — imzalı read-only embed token; iframe + yüngül `embed.js` SDK
+  (auto-mount); söndürmə dərhal bütün tokenləri ləğv edir.
+- 🎨 **White-label brendinq** — ad · əsas rəng · loqo (embed görünüşünə tətbiq olunur).
+- 🔗 **Paylaşma** — tokenli read-only public dashboard linki + komanda chat.
 
 ### Hesab & platforma
 - 🔐 **Auth** — email/şifrə (JWT) + **Google Sign-In**.
-- 💳 **Abunə planları + per-user rate limiting** — Free/Pro/Max/Max+ aylıq AI limiti (mock upgrade).
+- 💳 **Abunə planları + per-user rate limiting** — Free/Pro/Max/Max+ aylıq AI limiti;
+  demo-da mock upgrade, prod-da **config-gated Stripe Checkout**.
 - 🎨 **Claude-ilhamlı UI** — light/dark toggle, emerald accent, Source Serif 4 başlıqlar.
-- ⚡ **Performans** — Redis nəticə keşi, per-datasource connection pooling.
+- ⚡ **Performans** — Redis nəticə keşi (user-scoped), per-datasource connection pooling.
 - 📈 **Müşahidə** — Prometheus `/metrics`, struktur loglar.
 
 ---
@@ -54,31 +96,41 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 ## Architecture
 
 ```
-┌───────────────┐     HTTP/JSON      ┌────────────────────────────────────┐
-│ React + TS    │ ─────────────────▶ │            FastAPI (async)          │
-│ Vite·Tailwind │                    │  api/v1: auth query dashboard       │
-│ Recharts·RGL  │ ◀───────────────── │  datasource metrics saved billing   │
-│ Zustand       │   QueryResult      │            │                        │
-└───────────────┘                    │            ▼                        │
-                                     │   services/query_service            │
-                                     │   • rate-limit · result cache        │
-                                     │   • metrics + chat context (prompt)  │
-                                     │   ┌────────┴─────────┐              │
-                                     │   ▼                  ▼              │
-                                     │ ai/text2sql   ai/chart_selector      │
-                                     │ ai/insight·forecast·anomaly (gpt-4o) │
-                                     │   │  SQL guard → engine pool → exec  │
-                                     │   ▼                                  │
-                                     │ scheduler (saved-query refresh)      │
-                                     └───┬──────────┬───────┬───────────────┘
-                                         ▼          ▼       ▼
-                                   PostgreSQL    Redis    Demo / CSV SQLite
-                                   (datasource) (cache)   (file-backed)
+┌───────────────┐     HTTP/JSON      ┌──────────────────────────────────────────┐
+│ React + TS    │ ─────────────────▶ │              FastAPI (async)              │
+│ Vite·Tailwind │                    │ api/v1: auth query dashboard datasource    │
+│ Recharts·RGL  │ ◀───────────────── │ metric saved billing branding requirement  │
+│ Zustand       │   QueryResult      │ dataprep scenario workspace integration    │
+└───────────────┘                    │ copilot decision public(+embed)            │
+                                     │            │                               │
+                                     │            ▼                               │
+                                     │   services/query_service                   │
+                                     │   • rate-limit · user-scoped result cache   │
+                                     │   • metrics + chat context (prompt) · RLS   │
+                                     │   ┌────────┴─────────┐                     │
+                                     │   ▼                  ▼                     │
+                                     │ ai/text2sql   ai/chart_selector             │
+                                     │ ai/insight·forecast·anomaly·root_cause      │
+                                     │ ai/requirements·data_prep·copilot (gpt-4o)  │
+                                     │   │  SQL guard → engine pool → exec → RLS   │
+                                     │   ▼                                         │
+                                     │ services: digest·requirement·data_prep·     │
+                                     │  profiling·lineage·workspace·rls·audit·     │
+                                     │  scenario·embed·brand·integration(s)        │
+                                     │ scheduler (saved-query refresh + digest)    │
+                                     │ realtime hub + live_refresh (WS)            │
+                                     └──┬──────────┬───────┬──────────┬───────────┘
+                                        ▼          ▼       ▼          ▼
+                                  PostgreSQL    Redis   Demo/CSV   Slack/Teams/
+                                  (datasource) (cache)  SQLite     email · Stripe
+                                                                   (mock-first)
 ```
 
-**Axın:** `process_nl_query` → rate-limit yoxla → cache yoxla → (metrik + söhbət
-kontekstini prompt-a inject) → Text2SQL → SQL guard → pooled engine ilə icra →
-chart + insight (paralel) → QueryLog + cache → QueryResult.
+**Axın (`process_nl_query`):** rate-limit → **user-scoped** cache yoxla → (metrik + söhbət
+kontekstini prompt-a inject) → Text2SQL → SQL guard → pooled engine ilə icra → **RLS
+filtri** → chart + insight (paralel) → QueryLog + cache → QueryResult. On-demand AI
+təhlilləri (`root-cause`, `forecast`, `anomaly`, `explain`) və determinik hesablamalar
+(`goal-seek`, `monte-carlo`, `lineage`, `profiling`) ayrıca endpoint-lərdir.
 
 Ətraflı: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -136,14 +188,22 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST | `/api/v1/query/ask` | NL sorğu (+ `previous_query_log_id` follow-up) → QueryResult |
 | GET | `/api/v1/query/history` · `/{id}` | Tarixçə · saxlanmış nəticə |
 | POST | `/api/v1/query/{id}/retry` · `/anomalies` · `/forecast` · `/explain` | Yenidən · anomaliya · proqnoz · kök-səbəb |
-| POST/GET/PUT/DELETE | `/api/v1/dashboard/...` | Dashboard CRUD + widget (+ refresh / refresh-all) |
-| POST/DELETE | `/api/v1/dashboard/{id}/share` | Public paylaşım tokeni (yarat / ləğv et) |
-| GET | `/api/v1/public/dashboard/{token}` | Auth-suz read-only paylaşılan dashboard |
-| POST/GET/DELETE | `/api/v1/metrics/...` | Metrik (semantik qat) CRUD |
-| POST/GET/PUT/DELETE | `/api/v1/saved/...` (+ `/{id}/run`) | Saxlanan sorğular + cədvəl |
-| POST/GET/DELETE | `/api/v1/alerts` · `/notifications` (+ read-all) | Monitorlar · bildirişlər |
+| POST/GET | `/api/v1/query/{id}/root-cause` · `/goal-seek` · `/monte-carlo` · `/lineage` | Kök-səbəb ağacı · goal-seek · Monte Carlo · mənşə |
+| POST/GET/PUT/DELETE | `/api/v1/dashboard/...` | Dashboard CRUD + widget (+ refresh / story / live) |
+| POST/DELETE/PATCH | `/api/v1/dashboard/{id}/share` · `/embed` | Public token · imzalı embed token |
+| GET | `/api/v1/public/dashboard/{token}` · `/public/embed/{token}` | Auth-suz read-only paylaşma · embed (brand-aware) |
+| POST/GET/DELETE/PATCH | `/api/v1/metrics/...` (+ `/{id}/verify`) | Metrik CRUD + sertifikatlama |
+| POST | `/api/v1/requirements/extract` · `/{id}/build` | BRD → KPI çıxar · dashboard qur |
+| POST | `/api/v1/dataprep/preview` · `/materialize` | NL transform önizlə · mənbə kimi saxla |
+| GET/POST/DELETE/PATCH | `/api/v1/datasource/{id}/profile` · `/rls` · `/sla` | Profiling · RLS qaydaları · freshness SLA |
+| POST/GET/PUT/DELETE | `/api/v1/kpi-targets/...` | KPI hədəf + pacing |
+| GET/POST/DELETE | `/api/v1/workspaces/...` (+ `/members`) · `/audit` | Workspace + RBAC üzvlük · audit jurnalı |
+| GET/POST/DELETE | `/api/v1/integrations/...` (+ `/{id}/test`) | Slack/Teams/email kanalları |
+| GET/PUT | `/api/v1/brand` | White-label brendinq |
+| POST | `/api/v1/copilot/chat` (mode=plan/execute) | Agentik copilot (plan → icra) |
+| POST/GET/DELETE | `/api/v1/saved/...` · `/alerts` · `/notifications` (+ `/digest`) | Saxlanan sorğular · monitorlar · brif |
 | POST/GET/PUT/DELETE | `/api/v1/decisions/...` | Qərar jurnalı (insight→action→outcome) |
-| GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` | Planlar · istifadə · (mock) upgrade |
+| GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` · `/checkout` | Planlar · istifadə · mock upgrade · Stripe (gated) |
 | GET | `/health` · `/metrics` | Sağlamlıq · Prometheus metrikləri |
 
 ---
@@ -159,8 +219,14 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | `DATASOURCE_POOL_SIZE` / `_MAX_OVERFLOW` / `_RECYCLE_SECONDS` / `DATASOURCE_MAX_ENGINES` | Connection pool |
 | `UPLOAD_DIR` / `UPLOAD_MAX_BYTES` | CSV/Excel yükləmə qovluğu · limit (10 MB) |
 | `SCHEDULER_ENABLED` / `SCHEDULER_INTERVAL_SECONDS` | Saxlanan sorğu cədvəli |
+| `DIGEST_ENABLED` / `DIGEST_HOUR_UTC` / `DIGEST_MAX_ITEMS` | Proaktiv səhər brifi |
+| `LIVE_REFRESH_ENABLED` / `LIVE_REFRESH_TICK_SECONDS` / `LIVE_DEMO_FEED` | Canlı dashboard |
+| `COPILOT_MAX_STEPS` | Agentik copilot tool-loop limiti |
+| `INTEGRATIONS_LIVE` / `SMTP_HOST·PORT·USERNAME·PASSWORD·FROM` | Slack/Teams/email (boşdursa mock) |
+| `STRIPE_SECRET_KEY` / `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Stripe Checkout (boşdursa gated/mock) |
+| `POWERBI_TENANT_ID·CLIENT_ID·CLIENT_SECRET` | Power BI (boşdursa mock provider) |
 | `SECRET_KEY` / `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT açarı (prod ≥32) · müddət |
-| `FERNET_KEY` | Datasource connection string şifrələmə (prod məcburi) |
+| `FERNET_KEY` | Datasource & inteqrasiya sirlərinin şifrələnməsi (prod məcburi) |
 | `DEMO_MODE` / `CORS_ORIGINS` | Demo SQLite · icazəli origin-lər |
 
 Frontend (`frontend/.env`): `VITE_API_URL`.
@@ -170,11 +236,15 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 46 test
+cd backend && pytest        # 184 test
 ```
-Əhatə: text2sql/SQL-guard · query pipeline & cache · dashboard (+refresh/share) · auth ·
-rate-limit & tiers · datasource & CSV upload · anomaly/forecast/explain · saved-query &
-scheduler · engine pool · metric catalog · chat context · alerts & notifications · decisions.
+Əhatə: text2sql/SQL-guard · query pipeline & user-scoped cache · dashboard (+refresh/share/
+embed) · auth · rate-limit & tiers · datasource & CSV upload · anomaly/forecast/explain ·
+**root-cause · requirements→dashboard · NL data-prep & profiling · agentik copilot
+(plan/execute) · trust (verified/lineage/SLA) · workspace RBAC + RLS + audit · scenario
+(goal-seek/Monte Carlo/pacing) · integrations (+ @mention) · embed/white-label/Stripe gate** ·
+saved-query & scheduler · engine pool · metric catalog · chat context · alerts · decisions ·
+təhlükəsizlik (pentest fixes).
 
 CI: hər push/PR-da GitHub Actions backend (ruff + pytest) və frontend (build) işlədir.
 
@@ -183,7 +253,8 @@ CI: hər push/PR-da GitHub Actions backend (ruff + pytest) və frontend (build) 
 ## Stack
 
 **Backend:** FastAPI · SQLAlchemy 2.0 async · Pydantic v2 · Alembic · OpenAI ·
-JWT (python-jose) · Fernet · Redis · pandas/openpyxl · prometheus-client · structlog · google-auth
+JWT (python-jose) · Fernet · Redis · pandas/openpyxl/numpy · WebSockets (canlı/collab) ·
+prometheus-client · structlog · google-auth · httpx
 **Frontend:** React 18 · TypeScript · Vite · TailwindCSS (CSS-var light/dark) · Recharts ·
 react-grid-layout · Zustand · React Router · react-hot-toast
 
@@ -193,10 +264,20 @@ react-grid-layout · Zustand · React Router · react-hot-toast
 
 - **SELECT-only SQL guard** — literal-aware; write/DDL, `SELECT … INTO` və təhlükəli
   funksiyalar bloklanır; hər iki executor-da (canlı + demo) re-validate, sətir cap (10k).
-- **User-scoped queries & IDOR mühafizəsi** — bütün sorğular `user_id` ilə daralır;
-  widget yad query-log-a bağlana bilməz.
+- **User-scoped queries & IDOR mühafizəsi** — bütün sorğular `user_id`/`owner_id` ilə daralır;
+  widget yad query-log-a bağlana bilməz; **query nəticə keşi user-scoped** (RLS sızması yox).
+- **Row-level security (RLS)** — üzv yalnız icazəli sətirləri görür; **fail-closed**
+  (verifikasiya olunmayan sətir buraxılmır); canlı + dashboard-refresh yollarında tətbiq olunur.
+- **Audit jurnalı** — datasource/RLS/workspace dəyişiklikləri izlənilir.
+- **SSRF guard** — datasource bağlantıları + inteqrasiya webhook-ları `net_guard`-dan keçir
+  (private/loopback/metadata blok), **delivery-time-da da re-check** (DNS-rebind pəncərəsi).
+- **Embed token** — imzalı, read-only, tək-dashboard (`emb` claim); söndürmə dərhal ləğv edir.
+- **@mention təhlükəsizliyi** — yalnız authenticated author; xarici kanallara fan-out YOX
+  (cross-tenant phishing bağlı); comment başına cap.
+- **Embed brand validasiyası** — `app_name` tag-injection-dan, `logo_url` yalnız http(s),
+  `primary_color` strict hex (unauth embed host-a verbatik verildiyi üçün).
 - **Per-user rate limiting** — aylıq AI kvotası (tier-ə görə), 429.
-- Connection string-lər **Fernet** ilə şifrəli; JWT bütün qorunan endpoint-lərdə.
+- Connection string-lər və inteqrasiya sirləri **Fernet** ilə şifrəli; JWT bütün qorunan endpoint-lərdə.
 - Prod-da `SECRET_KEY`/`FERNET_KEY` təyin olunmasa start fail edir; CORS Bearer-only.
 - CSV upload validasiyası (tip/ölçü/ad sanitizasiyası); export-da formula-injection mühafizəsi.
-- `.env` və sirlər repo-ya commit olunmur.
+- gitleaks + CodeQL + secret-scanning workflow-ları; `.env` və sirlər repo-ya commit olunmur.
