@@ -77,8 +77,10 @@ jobs:
       - name: Install Playwright browser
         working-directory: frontend
         run: npx playwright install --with-deps chromium
-      - name: Boot backend (demo mode) + wait for health
-        working-directory: backend
+      # Boot the backend and run the smoke in ONE step: a background process
+      # started in a step is killed when that step ends, so it must stay in the
+      # same shell as the test run.
+      - name: Boot backend (demo) + run E2E smoke
         env:
           DEMO_MODE: "true"
           SCHEDULER_ENABLED: "false"
@@ -86,14 +88,13 @@ jobs:
           DIGEST_ENABLED: "false"
           CORS_ORIGINS: "http://localhost:4173"
         run: |
-          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          (cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 &)
           for i in $(seq 1 30); do
             curl -sf http://localhost:8000/health && break
             sleep 1
           done
-      - name: Run E2E smoke
-        working-directory: frontend
-        run: npm run test:e2e
+          curl -sf http://localhost:8000/health || (echo "backend failed to start" && exit 1)
+          cd frontend && npm run test:e2e
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
