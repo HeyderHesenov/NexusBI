@@ -4,7 +4,7 @@ from __future__ import annotations
 from httpx import AsyncClient
 
 
-# ── Fakes mimicking the OpenAI tool-calling message interface ──
+# ── Fakes mimicking the AI engine tool-calling message interface ──
 class _FakeFn:
     def __init__(self, name: str, arguments: str) -> None:
         self.name = name

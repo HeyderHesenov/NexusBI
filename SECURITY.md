@@ -13,7 +13,7 @@
   runs security-extended static analysis for Python and TypeScript.
 
 ### If a key is exposed
-1. **Rotate immediately** at the provider (OpenAI dashboard → revoke + create new;
+1. **Rotate immediately** at the AI provider dashboard (revoke + create new;
    regenerate `SECRET_KEY`/`FERNET_KEY`). Rotating `SECRET_KEY` invalidates all
    issued JWTs; rotating `FERNET_KEY` requires re-encrypting stored datasource
    connection strings.

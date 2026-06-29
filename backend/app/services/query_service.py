@@ -44,7 +44,7 @@ def _sqlgen_key(schema_text: str, dialect: str, extra_context: str, nl_query: st
     """Schema-scoped (user-INDEPENDENT) cache key for NL→SQL generation.
 
     Safe to share across users: RLS is injected AFTER generation, so the cached
-    SQL carries no per-user data. Cuts repeated gpt-4o spend (incl. the 3-attempt
+    SQL carries no per-user data. Cuts repeated AI-engine spend (incl. the 3-attempt
     retry) for identical questions over the same schema/metric context.
     """
     raw = f"{dialect}|{schema_text}|{extra_context}|{nl_query.strip().lower()}"

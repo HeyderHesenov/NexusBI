@@ -1,12 +1,12 @@
 # NexusBI — Natural Language to Dashboard
 
-[![CI](https://github.com/HeyderHesenov/nexusbi/actions/workflows/ci.yml/badge.svg)](https://github.com/HeyderHesenov/nexusbi/actions/workflows/ci.yml)
+[![CI](https://github.com/HeyderHesenov/NexusBI/actions/workflows/ci.yml/badge.svg)](https://github.com/HeyderHesenov/NexusBI/actions/workflows/ci.yml)
 
 Biznes sualını adi dildə yaz → NexusBI avtomatik **SQL qurur, icra edir, optimal
 chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rəhbərlər
 üçün AI-powered BI platforması.
 
-> AI layer **OpenAI gpt-4o** ilə işləyir (Text2SQL · chart seçimi · insight · proqnoz ·
+> Daxili **AI mühərriki** ilə işləyir (Text2SQL · chart seçimi · insight · proqnoz ·
 > anomaliya · kök-səbəb · proaktiv digest · agentik copilot). Üstəlik komanda idarəetməsi
 > (RBAC + row-level security), embedded analytics + white-label, FP&A ssenari planlaması.
 
@@ -22,7 +22,7 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - 📊 **Avtomatik chart + əl ilə keçid** — bar · line · area · pie · scatter · cədvəl;
   CSV export, drill-down filtr (qrafik elementinə klik).
 - 💡 **AI insight** — nəticədən qısa biznes təhlili (sorğunun dilində).
-- 🔮 **Proqnoz (forecast)** + 🚨 **anomaliya aşkarlama** — gpt-4o ilə.
+- 🔮 **Proqnoz (forecast)** + 🚨 **anomaliya aşkarlama** — AI mühərriki ilə.
 - 🧭 **"Bunu izah et" (kök-səbəb)** — nəticəni ən böyük driver-lərə parçalayır (seqment + töhfə %).
 - 🌳 **"Niyə?" iyerarxik kök-səbəb ağacı** — metrikanı çoxsəviyyəli driver ağacına böl
   (interaktiv, töhfə %); AI çatmayanda determinik fallback.
@@ -84,7 +84,8 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - 🔗 **Paylaşma** — tokenli read-only public dashboard linki + komanda chat.
 
 ### Hesab & platforma
-- 🔐 **Auth** — email/şifrə (JWT) + **Google Sign-In**.
+- 🔐 **Auth** — email/şifrə (JWT) + **Google Sign-In**; **refresh-token rotation**
+  (reuse-detection + family-revoke) və `/auth/logout`.
 - 💳 **Abunə planları + per-user rate limiting** — Free/Pro/Max/Max+ aylıq AI limiti;
   demo-da mock upgrade, prod-da **config-gated Stripe Checkout**.
 - 🎨 **Claude-ilhamlı UI** — light/dark toggle, emerald accent, Source Serif 4 başlıqlar.
@@ -111,7 +112,7 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
                                      │   ▼                  ▼                     │
                                      │ ai/text2sql   ai/chart_selector             │
                                      │ ai/insight·forecast·anomaly·root_cause      │
-                                     │ ai/requirements·data_prep·copilot (gpt-4o)  │
+                                     │ ai/requirements·data_prep·copilot (AI eng.) │
                                      │   │  SQL guard → engine pool → exec → RLS   │
                                      │   ▼                                         │
                                      │ services: digest·requirement·data_prep·     │
@@ -141,7 +142,7 @@ təhlilləri (`root-cause`, `forecast`, `anomaly`, `explain`) və determinik hes
 ```bash
 # 1. Konfiqurasiya
 cp .env.example .env
-#   OPENAI_API_KEY — məcburi
+#   OPENAI_API_KEY + OPENAI_MODEL — AI mühərriki üçün (real AI; demo offline fallback işlədir)
 #   SECRET_KEY:  python -c "import secrets; print(secrets.token_urlsafe(48))"
 #   FERNET_KEY:  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
@@ -181,7 +182,8 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 
 | Metod | Yol | Təsvir |
 |-------|-----|--------|
-| POST | `/api/v1/auth/register` · `/login` · `/google` | Auth → JWT |
+| POST | `/api/v1/auth/register` · `/login` · `/google` | Auth → access + refresh token cütü |
+| POST | `/api/v1/auth/refresh` · `/logout` | Token rotation (reuse-detect) · refresh ləğvi |
 | GET | `/api/v1/auth/me` · `/providers` | Cari user · Google config |
 | POST/GET/DELETE | `/api/v1/datasource/...` | Connect/list/schema/test/sil |
 | POST | `/api/v1/datasource/upload` | CSV/Excel → SQLite datasource |
@@ -212,11 +214,13 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 
 | Dəyişən | Təsvir |
 |---------|--------|
-| `OPENAI_API_KEY` / `OPENAI_MODEL` | OpenAI açarı (məcburi) · model (default `gpt-4o`) |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | AI mühərriki açarı + mühərrik identifikatoru (.env-dən, məcburi) |
 | `GOOGLE_CLIENT_ID` | Google OAuth Web client ID (boşdursa düymə deaktiv) |
 | `DATABASE_URL` | Async DSN (postgresql+asyncpg / sqlite+aiosqlite) |
 | `REDIS_URL` / `CACHE_TTL_SECONDS` | Redis (opsional) · nəticə keşi TTL (default 300) |
-| `DATASOURCE_POOL_SIZE` / `_MAX_OVERFLOW` / `_RECYCLE_SECONDS` / `DATASOURCE_MAX_ENGINES` | Connection pool |
+| `DATASOURCE_POOL_SIZE` / `_MAX_OVERFLOW` / `_RECYCLE_SECONDS` / `DATASOURCE_MAX_ENGINES` | Datasource connection pool |
+| `APP_DB_POOL_SIZE` / `_MAX_OVERFLOW` / `_RECYCLE_SECONDS` | Tətbiq DB-si üçün pool (non-sqlite) |
+| `QUERY_TIMEOUT_SECONDS` / `SQLGEN_CACHE_TTL_SECONDS` | SQL icra timeout-u · NL→SQL generasiya keşi |
 | `UPLOAD_DIR` / `UPLOAD_MAX_BYTES` | CSV/Excel yükləmə qovluğu · limit (10 MB) |
 | `SCHEDULER_ENABLED` / `SCHEDULER_INTERVAL_SECONDS` | Saxlanan sorğu cədvəli |
 | `DIGEST_ENABLED` / `DIGEST_HOUR_UTC` / `DIGEST_MAX_ITEMS` | Proaktiv səhər brifi |
@@ -224,8 +228,9 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | `COPILOT_MAX_STEPS` | Agentik copilot tool-loop limiti |
 | `INTEGRATIONS_LIVE` / `SMTP_HOST·PORT·USERNAME·PASSWORD·FROM` | Slack/Teams/email (boşdursa mock) |
 | `STRIPE_SECRET_KEY` / `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Stripe Checkout (boşdursa gated/mock) |
-| `POWERBI_TENANT_ID·CLIENT_ID·CLIENT_SECRET` | Power BI (boşdursa mock provider) |
-| `SECRET_KEY` / `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT açarı (prod ≥32) · müddət |
+| `POWERBI_TENANT_ID·CLIENT_ID·CLIENT_SECRET` / `POWERBI_API_BASE` / `POWERBI_MAX_ROWS` | Power BI (boşdursa mock provider) · REST baza · sətir cap |
+| `SECRET_KEY` / `ACCESS_TOKEN_EXPIRE_MINUTES` / `REFRESH_TOKEN_EXPIRE_DAYS` | JWT açarı (prod ≥32) · access müddət (default 30 dəq) · refresh müddət |
+| `METRICS_TOKEN` | `/metrics` üçün bearer (prod; demo-da loopback) |
 | `FERNET_KEY` | Datasource & inteqrasiya sirlərinin şifrələnməsi (prod məcburi) |
 | `DEMO_MODE` / `CORS_ORIGINS` | Demo SQLite · icazəli origin-lər |
 
@@ -236,15 +241,16 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 184 test
+cd backend && pytest        # 220 test
 ```
-Əhatə: text2sql/SQL-guard · query pipeline & user-scoped cache · dashboard (+refresh/share/
-embed) · auth · rate-limit & tiers · datasource & CSV upload · anomaly/forecast/explain ·
+Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
+query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
+rotation/reuse-detect** · rate-limit & tiers · datasource & CSV upload · anomaly/forecast/explain ·
 **root-cause · requirements→dashboard · NL data-prep & profiling · agentik copilot
-(plan/execute) · trust (verified/lineage/SLA) · workspace RBAC + RLS + audit · scenario
+(plan/execute) · trust (verified/lineage/SLA) · workspace RBAC + SQL-səviyyə RLS + audit · scenario
 (goal-seek/Monte Carlo/pacing) · integrations (+ @mention) · embed/white-label/Stripe gate** ·
 saved-query & scheduler · engine pool · metric catalog · chat context · alerts · decisions ·
-təhlükəsizlik (pentest fixes).
+təhlükəsizlik (pentest fixes). Frontend: Vitest (ModalShell a11y · ErrorBoundary).
 
 CI: hər push/PR-da GitHub Actions backend (ruff + pytest) və frontend (build) işlədir.
 
@@ -252,9 +258,9 @@ CI: hər push/PR-da GitHub Actions backend (ruff + pytest) və frontend (build) 
 
 ## Stack
 
-**Backend:** FastAPI · SQLAlchemy 2.0 async · Pydantic v2 · Alembic · OpenAI ·
-JWT (python-jose) · Fernet · Redis · pandas/openpyxl/numpy · WebSockets (canlı/collab) ·
-prometheus-client · structlog · google-auth · httpx
+**Backend:** FastAPI · SQLAlchemy 2.0 async · Pydantic v2 · Alembic · AI mühərriki (async client) ·
+sqlglot (SQL guard/RLS) · JWT (python-jose) · Fernet · Redis · pandas/openpyxl/numpy ·
+WebSockets (canlı/collab) · prometheus-client · structlog · google-auth · httpx
 **Frontend:** React 18 · TypeScript · Vite · TailwindCSS (CSS-var light/dark) · Recharts ·
 react-grid-layout · Zustand · React Router · react-hot-toast
 
@@ -266,8 +272,18 @@ react-grid-layout · Zustand · React Router · react-hot-toast
   funksiyalar bloklanır; hər iki executor-da (canlı + demo) re-validate, sətir cap (10k).
 - **User-scoped queries & IDOR mühafizəsi** — bütün sorğular `user_id`/`owner_id` ilə daralır;
   widget yad query-log-a bağlana bilməz; **query nəticə keşi user-scoped** (RLS sızması yox).
-- **Row-level security (RLS)** — üzv yalnız icazəli sətirləri görür; **fail-closed**
-  (verifikasiya olunmayan sətir buraxılmır); canlı + dashboard-refresh yollarında tətbiq olunur.
+- **Row-level security (RLS)** — üzv yalnız icazəli sətirləri görür; **fail-closed**.
+  Filtr **SQL səviyyəsində** (`rls_sql.constrain_sql`, sqlglot) aqreqatdan əvvəl inject olunur
+  (SUM/GROUP BY sızması bağlı); post-fetch Python filtri fallback. Canlı + dashboard-refresh
+  yollarında da tətbiq olunur.
+- **Text2SQL sərtləşməsi** — metadata-cədvəl denylist (tırnaq-bypass-a davamlı), schema
+  allowlist (schema-qualifier rədd), Postgres/MySQL statement timeout; generation keşi user-müstəqil.
+- **Refresh-token rotation** — hər yeniləmədə rotasiya + reuse-detection (oğurlanan token
+  ailəni ləğv edir); access TTL qısa (30 dəq); `/auth/logout` refresh-i ləğv edir.
+- **CSP & security header-lər** — build-time `Content-Security-Policy` (script-src 'self' + hash),
+  header-lər xəta cavablarında da; `/docs` prod-da bağlı.
+- **Frontend dayanıqlılıq** — route + per-widget `ErrorBoundary` (bir panel bütün app-ı
+  ağ-ekran etmir), modal a11y (focus-trap/scroll-lock/aria), chart panelləri lazy-load.
 - **Audit jurnalı** — datasource/RLS/workspace dəyişiklikləri izlənilir.
 - **SSRF guard** — datasource bağlantıları + inteqrasiya webhook-ları `net_guard`-dan keçir
   (private/loopback/metadata blok), **delivery-time-da da re-check** (DNS-rebind pəncərəsi).

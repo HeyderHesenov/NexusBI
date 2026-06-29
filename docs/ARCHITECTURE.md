@@ -27,7 +27,7 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 |-------|------|----------------|
 | API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, metric, saved_query, billing, branding, decision, integration, copilot, requirement, scenario, workspace, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
-| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, **digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service**, powerbi/* |
+| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/* |
 | AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), **root_cause, requirements, data_prep**, dashboard_planner, data_story, copilot, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, client |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit |
@@ -44,8 +44,9 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
      previous turn (chat follow-up) — injected into the Text2SQL prompt.
    - **Cache** check (Redis, key = `qcache:{ds}:{sha1(nl|context)}`). Hit → return
      without AI/DB (still records a QueryLog).
-   - **Pipeline**: schema (cached) → `text2sql` (gpt-4o, 3 retries, JSON) →
-     `sql_guard.validate_select_only` → execute via a **pooled engine**
+   - **Pipeline**: schema (cached) → `text2sql` (AI engine, 3 retries, JSON) →
+     `sql_guard.validate_select_only` (+ metadata denylist / schema allowlist / timeout) →
+     **RLS injected into SQL** (`rls_sql.constrain_sql`) → execute via a **pooled engine**
      (`db/engine_pool`) → `chart_selector` + `insight_generator` run concurrently.
    - Snapshot rows once → cache + persist `QueryLog` → return `QueryResult`.
 3. Errors raise `NexusBIException` (mapped to JSON with `sql` surfaced for query failures).
@@ -99,10 +100,13 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 - **Workspaces / RBAC:** `workspaces` + `workspace_members` (role viewer<editor<owner);
   `workspace_service.require_role` gates membership ops; the workspace owner can't be self-demoted.
 - **Row-level security (RLS):** `rls_rules` (per-member allowed value on a datasource column).
-  `rls_service.apply` filters rows **fail-closed** (a row missing the constrained column is
-  dropped); enforced in `query_service._live_pipeline` AND `reexecute_logged_query` (dashboard
-  refresh). NOTE: data sources are still personal — full team-sharing of a source (resource
-  `workspace_id`) is the documented next step; the RLS mechanism is in place on all read paths.
+  Primary enforcement is **SQL-level** — `rls_sql.constrain_sql` (sqlglot) AND-s a
+  `CAST(tbl.col AS TEXT) IN (...)` predicate into each protected table's SELECT scope **before**
+  aggregation, so SUM/GROUP BY can't leak filtered rows; case-insensitive table match, CTE-shadow
+  aware, **fail-closed** if a protected table can't be constrained. Post-fetch `rls_service.apply`
+  remains a fallback. Enforced in `query_service._live_pipeline` AND `reexecute_logged_query`
+  (dashboard refresh); the live-broadcast path re-applies it too. NOTE: data sources are still
+  personal — full team-sharing of a source (resource `workspace_id`) is the documented next step.
 - **Audit log:** `audit_service.log` appends to `audit_logs` on security-relevant actions
   (datasource create/delete, RLS create/delete, workspace member changes); `GET /audit` lists.
 - **Scenario planning:** `scenario_service` (numpy, no AI, deterministic) — `goal_seek`,
@@ -125,6 +129,12 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 - **Billing / tiers:** `billing/tiers` is the single source of truth for quotas;
   `usage_service` enforces a monthly window. `POST /upgrade` is a demo mock; `POST /checkout`
   is a config-gated real Stripe Checkout (no `STRIPE_SECRET_KEY` → refused).
+- **Auth / refresh tokens:** register/login issue an **access + refresh pair** (`auth_token_service.issue_pair`).
+  `POST /auth/refresh` rotates the refresh token (`rotate`, `SELECT ... FOR UPDATE`) and **detects reuse**
+  — a replayed token revokes the whole family. `POST /auth/logout` revokes it. Access TTL is short
+  (`ACCESS_TOKEN_EXPIRE_MINUTES`, default 30); refresh lives `REFRESH_TOKEN_EXPIRE_DAYS`. `get_current_user`
+  rejects non-`sub` claims, so refresh/ws/embed tokens can't be used as access tokens. Frontend
+  `tokenStore` does single-flight 401-refresh.
 - **CI:** `.github/workflows/ci.yml` runs ruff + pytest (backend) and build (frontend) on push/PR.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters at
   `/metrics`; structured logs via structlog.
@@ -134,14 +144,15 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 `users` (1)─<(N)) `datasources`, `query_logs`, `dashboards`, `saved_queries`, `metrics`,
 `alerts`, `notifications`, `decisions`, **`requirement_docs`, `kpi_targets`,
 `integration_channels`, `workspaces`, `workspace_members`, `rls_rules`, `audit_logs`,
-`brand_configs` (1:1)**; `dashboards` (1)─<(N) `widgets` and `dashboard_comments`;
+`brand_configs` (1:1), `refresh_tokens`**; `dashboards` (1)─<(N) `widgets` and `dashboard_comments`;
 `alerts` → `saved_queries`; `widgets.query_log_id` → `query_logs`; `rls_rules` →
 `datasources` (+ owner/member → `users`); `workspace_members` → `workspaces`;
 `query_logs.datasource_id` / `metrics.datasource_id` / `saved_queries.datasource_id` → `datasources`.
 
-New columns added this round: `users.last_digest_at`; `metrics.verified`/`verified_by`/
+Latest schema change: the **`refresh_tokens`** table (rotation + reuse-detection), migration
+`e7f8a9b0c1d2`. Earlier this cycle: `users.last_digest_at`; `metrics.verified`/`verified_by`/
 `verified_at`; `datasources.freshness_sla_hours`/`last_refreshed_at`; `dashboards.embed_enabled`.
-Migrations are Alembic, chained under `db/migrations/versions`; current head = **`d6e7f8a9b0c1`**.
+Migrations are Alembic, chained under `db/migrations/versions`; current head = **`e7f8a9b0c1d2`**.
 
 ## Notable architecture deltas (this round)
 
@@ -157,7 +168,16 @@ Migrations are Alembic, chained under `db/migrations/versions`; current head = *
 - SQLite engine gets a busy timeout; the requirements-build path commits its read transaction
   before the concurrent widget fan-out (avoids a SQLite writer deadlock) — gated to sqlite.
 - A new JWT claim type `emb` (embed) joins `sub` (access) and `ws` (collab ticket); each decoder
-  requires its own claim, so token kinds can't be cross-used.
+  requires its own claim, so token kinds can't be cross-used. A `rt` (refresh) claim was added
+  the same way — `get_current_user` and the WS resolver reject every non-`sub` claim.
+- **RLS moved into the SQL** (`rls_sql.constrain_sql`, sqlglot): the old post-fetch Python filter
+  leaked aggregates (SUM/GROUP BY), so the predicate is now injected before aggregation; post-fetch
+  is the fallback. Cache key invalidation and the live-broadcast path were updated to respect it.
+- **Refresh-token rotation** (`auth_token_service`, `refresh_tokens` table): rotate-on-use +
+  reuse-detection family-revoke; access TTL cut 60→30 min.
+- **CSP** is emitted at build time (Vite plugin: `script-src 'self'` + per-chunk hash + Google).
+- **Frontend hardening:** `ErrorBoundary` (route + per-widget), `ModalShell` (focus-trap/
+  scroll-lock/aria-modal), and `React.lazy` for chart panels (smaller initial bundle). Vitest set up.
 
 ## Security model
 
@@ -165,7 +185,14 @@ Migrations are Alembic, chained under `db/migrations/versions`; current head = *
   every SQL sink incl. NL data-prep and profiling (table name validated against live schema).
 - All queries scoped by `user_id`/`owner_id` (IDOR protection); widgets can't attach foreign
   logs; the query result cache key is user-scoped (no RLS leak via shared cache).
-- **RLS** is fail-closed and applied on both read paths (live + dashboard refresh).
+- **RLS** is fail-closed, enforced **in the generated SQL** (before aggregation) on both read
+  paths (live + dashboard refresh), with a post-fetch fallback.
+- **Auth tokens**: short-lived access + rotating refresh with reuse-detection (family-revoke);
+  each token kind carries a distinct claim and can't be substituted for another.
+- **Text2SQL hardening**: metadata-table denylist (quote-bypass resistant), schema allowlist
+  (rejects schema-qualifier escapes), statement timeout on Postgres/MySQL.
+- **CSP / headers**: build-time Content-Security-Policy; security headers on error responses too;
+  `/docs` disabled in prod; `/metrics` gated (loopback in demo, bearer in prod).
 - **SSRF**: `net_guard` on datasource connections and integration webhooks, re-checked at
   delivery time (DNS-rebind window); webhooks never follow redirects, only 2xx = success.
 - **Embed**: signed read-only `emb` token; disabling embed instantly revokes; white-label
@@ -177,7 +204,7 @@ Migrations are Alembic, chained under `db/migrations/versions`; current head = *
 
 ## Conventions / decisions
 
-- Async end-to-end (SQLAlchemy async, httpx, OpenAI async client).
+- Async end-to-end (SQLAlchemy async, httpx, AI-engine async client).
 - Services hold logic; routers stay thin. New domain → model + schema + service +
   router, registered in `api/v1/router.py` and `models/__init__.py`, with an Alembic
   migration.

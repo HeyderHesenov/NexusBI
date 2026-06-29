@@ -1,4 +1,4 @@
-"""Shared async OpenAI client and JSON chat helper."""
+"""Shared async AI-engine client and JSON chat helper."""
 from __future__ import annotations
 
 import json
@@ -17,10 +17,10 @@ _client: AsyncOpenAI | None = None
 
 
 def get_client() -> AsyncOpenAI:
-    """Lazily build a singleton AsyncOpenAI client."""
+    """Lazily build a singleton async AI-engine client."""
     global _client
     if _client is None:
-        # Bound each request so a hung OpenAI call can't stall the pipeline.
+        # Bound each request so a hung AI call can't stall the pipeline.
         # max_retries lets the SDK ride out transient 429/5xx with backoff;
         # auth errors (401) are not retried by the SDK, so they still fail fast.
         _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=30.0, max_retries=2)
@@ -103,7 +103,7 @@ async def chat_tools(
 
 
 def _map_openai_error(exc: Exception) -> AIGenerationError:
-    """Convert a raw OpenAI SDK error into a domain error with a safe detail.
+    """Convert a raw AI-SDK error into a domain error with a safe detail.
 
     Keeps the upstream message short so the client gets an actionable 502 instead
     of a generic 500, without leaking keys or full payloads.
@@ -111,12 +111,12 @@ def _map_openai_error(exc: Exception) -> AIGenerationError:
     detail = str(exc)
     if len(detail) > 200:
         detail = detail[:200] + "…"
-    log.warning("openai_error", error=type(exc).__name__, detail=detail)
+    log.warning("ai_error", error=type(exc).__name__, detail=detail)
     return AIGenerationError("AI xidməti əlçatmazdır.", detail=detail)
 
 
 def _record_call(resp: Any, started: float, kind: str) -> None:
-    """Log + count an OpenAI call and its token usage."""
+    """Log + count an AI call and its token usage."""
     tokens = getattr(resp.usage, "total_tokens", None)
     log.info(
         "ai_call",

@@ -31,7 +31,7 @@ SYSTEM_PROMPT = (
     "dilində qısa, aydın cavab ver. İş bitəndə nə etdiyini bir-iki cümlə ilə yekunla."
 )
 
-# OpenAI tool (function) schemas exposed to the model.
+# Tool (function) schemas exposed to the AI engine.
 TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",

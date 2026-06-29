@@ -1,6 +1,6 @@
 """Deterministic NL->DAX fallback for the Power BI sample model.
 
-Used when the OpenAI NL->DAX engine is unavailable (missing/invalid key, rate
+Used when the AI NL->DAX engine is unavailable (missing/invalid key, rate
 limit). Mirrors rule_based_sql.py but emits the constrained DAX subset that
 ``powerbi.dax.dax_to_sql`` can execute, so the Power BI demo also works offline.
 Reuses the keyword vocabulary from rule_based_sql to stay consistent.

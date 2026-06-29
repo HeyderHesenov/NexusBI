@@ -75,7 +75,9 @@ export function CopilotWidget() {
             {thread.length === 0 && (
               <div className="mt-2">
                 <p className="text-sm text-ink-soft">
-                  Salam! Sənin adından sorğu işlədə və dashboard qura bilərəm. Bir şey soruş:
+                  Salam! Mən NexusBI-ın ağıllı köməkçisiyəm. Sualını adi dildə yaz —
+                  sorğunu işlədim, doğru qrafiki seçim, dashboard qurum, insight,
+                  proqnoz və anomaliya çıxarım. Bir şey soruş:
                 </p>
                 <div className="mt-3 flex flex-col gap-2">
                   {SUGGESTIONS.map((s) => (

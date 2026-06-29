@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     )
 
     # ─── AI provider ───
+    # Engine identity is configured via .env only — no model name is committed.
     OPENAI_API_KEY: str = Field(default="")
-    OPENAI_MODEL: str = Field(default="gpt-4o")
+    OPENAI_MODEL: str = Field(default="")
 
     # ─── OAuth ───
     GOOGLE_CLIENT_ID: str = Field(default="")
