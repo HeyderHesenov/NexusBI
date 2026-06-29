@@ -29,6 +29,9 @@ def _apply_security_headers(response) -> None:
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+    # API responses are never embedded; restrict framing at the CSP layer too
+    # (complements X-Frame-Options without restricting the Swagger /docs assets).
+    response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
     if not settings.DEMO_MODE:
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
 

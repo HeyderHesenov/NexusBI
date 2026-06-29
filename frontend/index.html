@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- CSP is injected at BUILD time by the cspPlugin in vite.config.ts (not in
+         dev, where Vite needs inline react-refresh scripts). If the inline
+         theme-init <script> below changes, update its sha256 in that plugin. -->
     <link rel="preconnect" href="https://accounts.google.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
