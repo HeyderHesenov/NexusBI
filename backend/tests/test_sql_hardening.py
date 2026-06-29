@@ -92,11 +92,14 @@ class _MemCache(CacheService):
 async def test_generation_cache_hits(monkeypatch):
     calls = {"n": 0}
 
-    async def fake_generate(nl, schema, dialect, extra):
+    async def fake_generate(self, nl, schema, dialect, extra):
         calls["n"] += 1
         return Text2SQLResult(sql="SELECT 1")
 
-    monkeypatch.setattr(query_service._engine, "generate_sql", fake_generate)
+    # Patch the class (not the singleton instance): an instance-level patch of an
+    # inherited method leaks an own attribute on the shared _engine that shadows
+    # later class-level patches in other tests.
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", fake_generate)
     cache = _MemCache()
     r1 = await query_service._generate_sql_cached("q", "schema", "sqlite", "", cache)
     r2 = await query_service._generate_sql_cached("q", "schema", "sqlite", "", cache)
@@ -108,11 +111,11 @@ async def test_generation_cache_hits(monkeypatch):
 async def test_generation_cache_key_varies_by_question(monkeypatch):
     calls = {"n": 0}
 
-    async def fake_generate(nl, schema, dialect, extra):
+    async def fake_generate(self, nl, schema, dialect, extra):
         calls["n"] += 1
         return Text2SQLResult(sql="SELECT 1")
 
-    monkeypatch.setattr(query_service._engine, "generate_sql", fake_generate)
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", fake_generate)
     cache = _MemCache()
     await query_service._generate_sql_cached("q1", "schema", "sqlite", "", cache)
     await query_service._generate_sql_cached("q2", "schema", "sqlite", "", cache)
