@@ -47,6 +47,9 @@ async def _resolve_access(
                 payload = decode_access_token(cred)
             except Exception:  # noqa: BLE001 — bad cred just isn't owner auth
                 continue
+            # A refresh token is not a valid owner credential here.
+            if payload.get("rt"):
+                continue
             # A ticket is bound to one dashboard; reject it for any other.
             if scoped and payload.get("ws") != dashboard_id:
                 continue

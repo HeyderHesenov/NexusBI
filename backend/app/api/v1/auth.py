@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import secrets
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -12,17 +12,19 @@ from app.config import settings
 from app.core.exceptions import AuthError, NexusBIException
 from app.core.rate_limit import rate_limit
 from app.core.google import google_enabled, verify_google_token
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import hash_password, verify_password
 from app.dependencies import CurrentUser, DbDep
 from app.models.user import User
 from app.schemas.auth import (
     GoogleAuthRequest,
     LoginRequest,
     ProvidersResponse,
+    RefreshRequest,
     RegisterRequest,
     TokenResponse,
     UserResponse,
 )
+from app.services import auth_token_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -50,7 +52,7 @@ async def register(payload: RegisterRequest, db: DbDep) -> TokenResponse:
         # Lost the race against a concurrent registration with the same email.
         await db.rollback()
         raise NexusBIException("Bu email artıq qeydiyyatdadır.") from None
-    return TokenResponse(access_token=create_access_token(user.id))
+    return TokenResponse(**await auth_token_service.issue_pair(db, user.id))
 
 
 @router.post(
@@ -63,7 +65,26 @@ async def login(payload: LoginRequest, db: DbDep) -> TokenResponse:
     user = result.scalar_one_or_none()
     if user is None or not verify_password(payload.password, user.hashed_password):
         raise AuthError("Email və ya şifrə yanlışdır.")
-    return TokenResponse(access_token=create_access_token(user.id))
+    return TokenResponse(**await auth_token_service.issue_pair(db, user.id))
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("refresh", limit=30, window_seconds=60))],
+)
+async def refresh(payload: RefreshRequest, db: DbDep) -> TokenResponse:
+    return TokenResponse(**await auth_token_service.rotate(db, payload.refresh_token))
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit("logout", limit=20, window_seconds=60))],
+)
+async def logout(payload: RefreshRequest, db: DbDep) -> Response:
+    await auth_token_service.revoke(db, payload.refresh_token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/providers", response_model=ProvidersResponse)
@@ -102,7 +123,7 @@ async def google_login(payload: GoogleAuthRequest, db: DbDep) -> TokenResponse:
             user = await _find()
             if user is None:
                 raise
-    return TokenResponse(access_token=create_access_token(user.id))
+    return TokenResponse(**await auth_token_service.issue_pair(db, user.id))
 
 
 @router.get("/me", response_model=UserResponse)

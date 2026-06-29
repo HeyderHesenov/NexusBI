@@ -32,6 +32,12 @@ async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)], db: DbDep
 ) -> User:
     payload = decode_access_token(token)
+    # Only genuine ACCESS tokens authenticate API calls. Refresh ("rt"),
+    # WS-ticket ("ws"), and embed ("emb") tokens carry "sub" but must never be
+    # replayed as a bearer access token — a 30-day refresh token would otherwise
+    # bypass the short access TTL and all server-side revocation.
+    if payload.get("rt") or payload.get("ws") or payload.get("emb"):
+        raise AuthError("Bu token API girişi üçün etibarlı deyil.")
     user_id = payload.get("sub")
     if not user_id:
         raise AuthError("Token subyekti yoxdur.")

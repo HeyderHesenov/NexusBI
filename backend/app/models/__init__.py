@@ -10,6 +10,7 @@ from app.models.integration import IntegrationChannel
 from app.models.kpi_target import KPITarget
 from app.models.metric import Metric
 from app.models.query_log import QueryLog
+from app.models.refresh_token import RefreshToken
 from app.models.requirement import RequirementDoc
 from app.models.saved_query import SavedQuery
 from app.models.user import User
@@ -21,6 +22,7 @@ __all__ = [
     "DataSource",
     "DBType",
     "QueryLog",
+    "RefreshToken",
     "Dashboard",
     "Widget",
     "SavedQuery",

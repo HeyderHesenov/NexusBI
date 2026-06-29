@@ -41,6 +41,24 @@ def decode_access_token(token: str) -> dict[str, Any]:
         raise AuthError("Token etibarsızdır və ya vaxtı bitib.") from exc
 
 
+def create_refresh_token(user_id: str, jti: str, family_id: str) -> tuple[str, datetime]:
+    """Mint a long-lived refresh token (claim type "rt"). Returns (token, expiry)."""
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
+    payload = {"sub": user_id, "rt": jti, "fam": family_id, "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM), expire
+
+
+def decode_refresh_token(token: str) -> dict[str, Any]:
+    """Decode a refresh token, ensuring it actually carries the "rt" claim
+    (so an access token can't be replayed at the refresh endpoint)."""
+    payload = decode_access_token(token)
+    if not payload.get("rt"):
+        raise AuthError("Refresh token etibarsızdır.")
+    return payload
+
+
 def create_ws_ticket(user_id: str, dashboard_id: str, ttl_seconds: int = 60) -> str:
     """Short-lived, single-dashboard token for the collab WebSocket so the
     long-lived access token never appears in a WS URL (logs / browser history)."""
