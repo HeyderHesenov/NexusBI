@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { ChartRenderer } from '../components/charts/ChartRenderer'
+import { ChartRenderer } from '../components/charts/LazyChartRenderer'
 import * as branding from '../api/branding'
 import type { EmbeddedDashboardView } from '../api/branding'
 

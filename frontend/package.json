@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "analyze": "ANALYZE=true vite build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests"
   },
@@ -32,6 +33,7 @@
     "autoprefixer": "^10.4.20",
     "jsdom": "^29.1.1",
     "postcss": "^8.4.49",
+    "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite": "^6.4.3",

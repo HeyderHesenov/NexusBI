@@ -7,7 +7,7 @@ import { PieChartWidget } from './PieChartWidget'
 import { ScatterChartWidget } from './ScatterChartWidget'
 import { TableWidget } from './TableWidget'
 
-interface Props {
+export interface ChartRendererProps {
   data: Record<string, unknown>[]
   config: ChartConfig
   /** Chart height — number (px) or '100%' to fill a sized parent. */
@@ -29,7 +29,7 @@ export function ChartRenderer({
   onPointClick,
   anomalyLabels,
   scrollableBars = false,
-}: Props) {
+}: ChartRendererProps) {
   if (!data.length) {
     return <p className="text-ink-soft">Nəticə tapılmadı.</p>
   }

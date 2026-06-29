@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Pause, Play, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import type { DataStory, Widget } from '../../types'
-import { ChartRenderer } from '../charts/ChartRenderer'
+import { ChartRenderer } from '../charts/LazyChartRenderer'
 import { TypewriterText } from '../charts/TypewriterText'
 
 interface Props {
