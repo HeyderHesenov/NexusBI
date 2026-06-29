@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { Responsive, WidthProvider, type Layout, type Layouts } from 'react-grid-layout'
 import type { Dashboard } from '../../types'
 import { useDashboardStore } from '../../store/dashboardStore'
-import { ChartRenderer } from '../charts/ChartRenderer'
+import { ChartRenderer } from '../charts/LazyChartRenderer'
 import { FilterPills, type Filter } from '../charts/FilterPills'
 import { ErrorBoundary } from '../ui/ErrorBoundary'
 

@@ -1,7 +1,7 @@
 import { MessageCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { ChartRenderer } from '../components/charts/ChartRenderer'
+import { ChartRenderer } from '../components/charts/LazyChartRenderer'
 import { CollabPanel } from '../components/dashboard/CollabPanel'
 import { CollabSurface } from '../components/dashboard/CollabSurface'
 import { NexusMark } from '../components/brand/NexusMark'

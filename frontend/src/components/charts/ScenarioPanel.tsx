@@ -10,7 +10,7 @@ import {
   YAxis,
 } from 'recharts'
 import { Crosshair, SlidersHorizontal, Sparkles } from 'lucide-react'
-import { ChartRenderer } from './ChartRenderer'
+import { ChartRenderer } from './LazyChartRenderer'
 import { useChartTheme } from './theme'
 import * as scenarioApi from '../../api/scenario'
 import type { GoalSeekResult, MonteCarloResult } from '../../api/scenario'

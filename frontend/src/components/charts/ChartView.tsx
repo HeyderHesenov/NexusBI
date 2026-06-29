@@ -23,7 +23,7 @@ const ScenarioPanel = lazy(() =>
   import('./ScenarioPanel').then((m) => ({ default: m.ScenarioPanel })),
 )
 import { ErrorBoundary } from '../ui/ErrorBoundary'
-import { ChartRenderer } from './ChartRenderer'
+import { ChartRenderer } from './LazyChartRenderer'
 import { ChartZoom } from './ChartZoom'
 import { ChartFullscreenModal } from './ChartFullscreenModal'
 import { CHART_BTN, ChartToolbar } from './ChartToolbar'

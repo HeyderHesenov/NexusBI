@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, type Plugin, type PluginOption } from 'vite'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 // Strict CSP for the production HTML only. The key win is script-src: same-origin
 // bundles + the hashed inline theme-init script + Google Identity Services, so no
@@ -35,8 +36,14 @@ function cspPlugin(): Plugin {
   }
 }
 
+// `npm run analyze` (ANALYZE=true) emits a treemap of the built bundle to
+// stats.html so heavy deps (recharts, etc.) are visible at a glance.
+const analyzePlugins: PluginOption[] = process.env.ANALYZE
+  ? [visualizer({ filename: 'stats.html', gzipSize: true, brotliSize: true })]
+  : []
+
 export default defineConfig({
-  plugins: [react(), cspPlugin()],
+  plugins: [react(), cspPlugin(), ...analyzePlugins],
   server: { port: 5173 },
   test: {
     environment: 'jsdom',
