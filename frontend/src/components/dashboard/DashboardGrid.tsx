@@ -5,6 +5,7 @@ import type { Dashboard } from '../../types'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { ChartRenderer } from '../charts/ChartRenderer'
 import { FilterPills, type Filter } from '../charts/FilterPills'
+import { ErrorBoundary } from '../ui/ErrorBoundary'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -111,14 +112,16 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
           </div>
           <div className="min-h-0 flex-1 p-3">
             {w.chart && w.chart.data.length ? (
-              <ChartRenderer
-                data={widgetData(w.chart.columns, w.chart.data)}
-                config={w.chart.chart_config}
-                height="100%"
-                onPointClick={(field, value) =>
-                  setCrossFilter({ field, value: String(value) })
-                }
-              />
+              <ErrorBoundary variant="widget" label="Qrafik" resetKeys={[w.chart]}>
+                <ChartRenderer
+                  data={widgetData(w.chart.columns, w.chart.data)}
+                  config={w.chart.chart_config}
+                  height="100%"
+                  onPointClick={(field, value) =>
+                    setCrossFilter({ field, value: String(value) })
+                  }
+                />
+              </ErrorBoundary>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-ink-faint">
                 Bu sorğunun nəticəsi yoxdur.

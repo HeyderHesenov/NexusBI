@@ -16,6 +16,7 @@ import { ExplainPanel } from './ExplainPanel'
 import { RootCausePanel } from './RootCausePanel'
 import { LineagePanel } from './LineagePanel'
 import { ScenarioPanel } from './ScenarioPanel'
+import { ErrorBoundary } from '../ui/ErrorBoundary'
 import { ChartRenderer } from './ChartRenderer'
 import { ChartZoom } from './ChartZoom'
 import { ChartFullscreenModal } from './ChartFullscreenModal'
@@ -189,7 +190,11 @@ export function ChartView({
         scrollableBars={type === 'bar'}
       />
     )
-    return zoomable ? <ChartZoom data={filtered}>{chart}</ChartZoom> : chart(filtered)
+    return (
+      <ErrorBoundary variant="widget" label="Qrafik" resetKeys={[filtered, type]}>
+        {zoomable ? <ChartZoom data={filtered}>{chart}</ChartZoom> : chart(filtered)}
+      </ErrorBoundary>
+    )
   }
 
   return (

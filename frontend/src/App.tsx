@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { Layout } from './components/layout/Layout'
 import { LoginPage } from './pages/LoginPage'
 import { useAuthStore } from './store/authStore'
@@ -94,6 +95,7 @@ export default function App() {
           success: { iconTheme: { primary: t.accent, secondary: t.bg } },
         }}
       />
+      <ErrorBoundary>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -118,6 +120,7 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </>
   )
 }
