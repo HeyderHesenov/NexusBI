@@ -282,7 +282,7 @@ export function DashboardPage() {
 
 function EmptyState() {
   return (
-    <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+    <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
       <LayoutGrid size={28} className="mx-auto text-ink-faint" />
       <p className="mt-3 font-display text-lg text-ink">Dashboard seç və ya yarat</p>
       <p className="mt-1 text-sm text-ink-soft">Sorğularını bir yerə yığıb canlı panel düzəlt.</p>
@@ -292,7 +292,7 @@ function EmptyState() {
 
 function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+    <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
       <p className="font-display text-lg text-ink">Bu panel boşdur</p>
       <p className="mt-1 text-sm text-ink-soft">Tarixçədən sorğu seçib widget əlavə et.</p>
       <button

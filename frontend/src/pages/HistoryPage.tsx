@@ -33,7 +33,7 @@ export function HistoryPage() {
           <tbody>
             {history.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-10 text-center text-ink-soft">
+                <td colSpan={5} className="px-5 py-24 text-center text-ink-soft">
                   Hələ sorğu yoxdur.
                 </td>
               </tr>

@@ -33,7 +33,7 @@ export function WorkspacePage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="w-full">
       <header className="mb-6">
         <p className="eyebrow">Komanda</p>
         <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">İş sahələri</h1>
@@ -63,7 +63,7 @@ export function WorkspacePage() {
       </div>
 
       {workspaces.length === 0 ? (
-        <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-12 text-center">
+        <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-12 text-center">
           <Users size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">Hələ iş sahəsi yoxdur</p>
         </div>

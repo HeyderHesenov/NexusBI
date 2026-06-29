@@ -53,7 +53,7 @@ export function TargetsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="w-full">
       <header className="mb-6">
         <p className="eyebrow">Ssenari · FP&A</p>
         <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">KPI hədəfləri</h1>
@@ -105,12 +105,12 @@ export function TargetsPage() {
       </div>
 
       {items.length === 0 ? (
-        <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-12 text-center">
+        <div className="plot-grid grid min-h-[50vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-12 text-center">
           <Gauge size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">Hələ hədəf yoxdur</p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid items-start gap-3 lg:grid-cols-2">
           {items.map((t) => (
             <li key={t.id} className="rounded-2xl border border-line bg-surface p-4">
               <div className="flex items-start justify-between gap-3">

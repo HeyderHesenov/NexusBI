@@ -65,7 +65,7 @@ export function RequirementsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto w-full max-w-5xl">
       <header className="mb-6">
         <p className="eyebrow">Tələblər → Dashboard</p>
         <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">Tələbnamə</h1>

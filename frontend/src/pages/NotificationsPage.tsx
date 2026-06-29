@@ -18,7 +18,7 @@ export function NotificationsPage() {
   }, [load])
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="w-full">
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Bildirişlər</p>
@@ -53,7 +53,7 @@ export function NotificationsPage() {
       </header>
 
       {items.length === 0 ? (
-        <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+        <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <BellOff size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">Bildiriş yoxdur</p>
           <p className="mt-1 text-sm text-ink-soft">
@@ -61,7 +61,7 @@ export function NotificationsPage() {
           </p>
         </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className="grid items-start gap-2 lg:grid-cols-2">
           {items.map((n) => {
             const brief = isBrief(n.title)
             return (

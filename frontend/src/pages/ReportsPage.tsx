@@ -27,7 +27,7 @@ export function ReportsPage() {
   }, [load])
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="w-full">
       <header className="mb-6">
         <p className="eyebrow">Hesabatlar</p>
         <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
@@ -39,7 +39,7 @@ export function ReportsPage() {
       </header>
 
       {items.length === 0 ? (
-        <div className="plot-grid rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+        <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <BookMarked size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">Hələ saxlanan sorğu yoxdur</p>
           <p className="mt-1 text-sm text-ink-soft">
@@ -47,7 +47,7 @@ export function ReportsPage() {
           </p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid gap-3 lg:grid-cols-2">
           {items.map((s) => (
             <li key={s.id} className="rounded-2xl border border-line bg-surface p-4">
               <div className="flex items-start justify-between gap-3">

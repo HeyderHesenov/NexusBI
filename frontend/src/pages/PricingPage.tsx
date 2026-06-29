@@ -17,7 +17,7 @@ export function PricingPage() {
   const unlimited = (usage?.limit ?? 0) < 0
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="w-full">
       <div className="mb-8 text-center">
         <p className="eyebrow mb-2 text-accent">Planlar</p>
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink">

@@ -12,7 +12,7 @@ export function Layout() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
         <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-6xl px-8 py-9">
+          <div className="mx-auto flex min-h-full max-w-[1500px] flex-col px-8 py-9">
             {/* A render error in one page must not white-screen the whole app;
                 navigating to another route clears it. */}
             <ErrorBoundary resetKeys={[pathname]} label="Səhifə">
