@@ -205,6 +205,7 @@ async def measure(
 
 
 async def _notify_impact(db: AsyncSession, d: Decision) -> None:
+    from app.core.notification_types import NotificationCategory
     from app.models.alert import Notification
     from app.services import integration_service
 
@@ -219,7 +220,10 @@ async def _notify_impact(db: AsyncSession, d: Decision) -> None:
             f"Metrik gözlənilən istiqamətin əksinə getdi — "
             f"baseline {d.baseline_value:g} → real {d.realized_value:g}."
         )
-    db.add(Notification(user_id=d.user_id, title=title, body=body))
+    db.add(Notification(
+        user_id=d.user_id, title=title, body=body,
+        category=NotificationCategory.DECISION,
+    ))
     await db.flush()
     await integration_service.dispatch(db, d.user_id, title, body)
 

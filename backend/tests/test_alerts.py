@@ -66,6 +66,9 @@ async def test_alert_fires_notification(client: AsyncClient, auth: dict):
     notifs = await client.get("/api/v1/notifications", headers=auth)
     assert len(notifs.json()) >= 1
     assert notifs.json()[0]["read"] is False
+    # A breached threshold alert is categorized as a KPI alert (not inferred from title).
+    fired = next(n for n in notifs.json() if n["title"].startswith("Alert:"))
+    assert fired["category"] == "kpi_alert"
 
     # Mark all read.
     assert (await client.post("/api/v1/notifications/read-all", headers=auth)).status_code == 204

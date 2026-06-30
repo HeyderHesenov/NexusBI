@@ -67,6 +67,7 @@ async def test_digest_endpoint_ai(client, auth, monkeypatch):
     notifs = (await client.get("/api/v1/notifications", headers=auth)).json()
     brief = next((n for n in notifs if n["title"].startswith("🌅")), None)
     assert brief is not None
+    assert brief["category"] == "digest"
     assert "Gəlir 12% artıb." in brief["body"]
 
 

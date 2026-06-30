@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import SchemaNotFoundError
+from app.core.notification_types import NotificationCategory
 from app.models.alert import Alert, Notification
 from app.models.saved_query import SavedQuery
 from app.schemas.query import QueryResult
@@ -97,7 +98,10 @@ async def check_saved_query(db: AsyncSession, sq: SavedQuery, result: QueryResul
                 f"“{sq.name}” sorğusunda {alert.column} {alert.operator} "
                 f"{alert.threshold} şərti pozuldu."
             )
-            db.add(Notification(user_id=alert.user_id, alert_id=alert.id, title=title, body=body))
+            db.add(Notification(
+                user_id=alert.user_id, alert_id=alert.id, title=title, body=body,
+                category=NotificationCategory.KPI_ALERT,
+            ))
             await db.flush()
             # Push to the user's workflow channels too (mock-first).
             await integration_service.dispatch(db, alert.user_id, title, body)

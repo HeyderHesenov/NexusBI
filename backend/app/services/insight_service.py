@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai import insight_digest
 from app.core.logging import get_logger
+from app.core.notification_types import NotificationCategory
 from app.models.alert import Notification
 from app.models.query_log import QueryLog
 from app.models.saved_query import SavedQuery
@@ -58,6 +59,7 @@ async def _record(db: AsyncSession, user_id: str, name: str, insight: str) -> No
             alert_id=None,
             title=f"{_TITLE}: {name}"[:255],
             body=insight,
+            category=NotificationCategory.INSIGHT,
         )
     )
     await db.flush()

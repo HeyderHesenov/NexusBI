@@ -126,6 +126,7 @@ async def maybe_alert(db: AsyncSession, user_id: str, run: EvalRun) -> bool:
         return False
     from sqlalchemy import select
 
+    from app.core.notification_types import NotificationCategory
     from app.models.alert import Notification
     from app.services import integration_service
 
@@ -135,7 +136,7 @@ async def maybe_alert(db: AsyncSession, user_id: str, run: EvalRun) -> bool:
         select(Notification.id).where(
             Notification.user_id == user_id,
             Notification.read.is_(False),
-            Notification.title.like("⚠️ AI%"),
+            Notification.category == NotificationCategory.AI_QUALITY,
         ).limit(1)
     )
     if existing.scalar_one_or_none() is not None:
@@ -149,7 +150,10 @@ async def maybe_alert(db: AsyncSession, user_id: str, run: EvalRun) -> bool:
         floor = round(settings.EVAL_ALERT_THRESHOLD * 100)
         title = "⚠️ AI keyfiyyəti düşdü"
         body = f"{run.mode} eval dəqiqliyi {pct}% — həddən ({floor}%) aşağı."
-    db.add(Notification(user_id=user_id, title=title, body=body))
+    db.add(Notification(
+        user_id=user_id, title=title, body=body,
+        category=NotificationCategory.AI_QUALITY,
+    ))
     await db.flush()
     await integration_service.dispatch(db, user_id, title, body)
     return True

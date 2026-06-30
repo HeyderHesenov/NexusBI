@@ -121,11 +121,20 @@ export interface AlertCreate {
   threshold: number
 }
 
+export type NotificationCategory =
+  | 'digest'
+  | 'kpi_alert'
+  | 'ai_quality'
+  | 'insight'
+  | 'decision'
+  | 'mention'
+
 export interface AppNotification {
   id: string
   title: string
   body: string
   read: boolean
+  category: NotificationCategory
   alert_id: string | null
   created_at: string
 }
