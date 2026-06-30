@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Query, Response, status
 from sqlalchemy import func, select
 
-from app.ai import analysis, root_cause
+from app.ai import analysis, root_cause, stats_guard
 from app.core.exceptions import AIGenerationError, NexusBIException, SchemaNotFoundError
 from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.models.query_log import QueryLog
@@ -15,6 +15,7 @@ from app.schemas.analysis import (
     ForecastResponse,
     LineageResponse,
     RootCauseResponse,
+    SignificanceResponse,
 )
 from app.schemas.query import (
     QueryHistoryItem,
@@ -198,6 +199,15 @@ async def lineage(query_id: str, user: CurrentUser, db: DbDep) -> LineageRespons
     log = await _get_log(db, user.id, query_id)
     metrics = await metric_service.list_for(db, user.id, log.datasource_id)
     return LineageResponse(**lineage_service.lineage_for_query(log, metrics))
+
+
+@router.post("/{query_id}/significance", response_model=SignificanceResponse)
+async def significance(query_id: str, user: CurrentUser, db: DbDep) -> SignificanceResponse:
+    """Statistical guard: trust checks on this result (sample size, real differences,
+    spurious correlations). Pure math — no AI quota."""
+    log = await _get_log(db, user.id, query_id)
+    data = log.result_data or {"columns": [], "rows": []}
+    return SignificanceResponse(**stats_guard.build_report(data.get("columns", []), data.get("rows", [])))
 
 
 async def _get_log(db: DbDep, user_id: str, query_id: str) -> QueryLog:

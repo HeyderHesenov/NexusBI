@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, GitBranch, GitFork, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import type {
   AnomalyResult,
@@ -8,6 +8,7 @@ import type {
   ForecastResult,
   Lineage,
   RootCauseResult,
+  SignificanceResult,
 } from '../../types'
 import { downloadCsv } from '../../lib/csv'
 import * as analysisApi from '../../api/analysis'
@@ -19,6 +20,9 @@ const RootCausePanel = lazy(() =>
   import('./RootCausePanel').then((m) => ({ default: m.RootCausePanel })),
 )
 const LineagePanel = lazy(() => import('./LineagePanel').then((m) => ({ default: m.LineagePanel })))
+const StatsGuardPanel = lazy(() =>
+  import('./StatsGuardPanel').then((m) => ({ default: m.StatsGuardPanel })),
+)
 const ScenarioPanel = lazy(() =>
   import('./ScenarioPanel').then((m) => ({ default: m.ScenarioPanel })),
 )
@@ -72,6 +76,8 @@ export function ChartView({
   const [rooting, setRooting] = useState(false)
   const [lineage, setLineage] = useState<Lineage | null>(null)
   const [tracing, setTracing] = useState(false)
+  const [significance, setSignificance] = useState<SignificanceResult | null>(null)
+  const [checking, setChecking] = useState(false)
   const [scenario, setScenario] = useState(false)
   const [internalFs, setInternalFs] = useState(false)
   // Controlled if the parent passes fullscreen/onFullscreenChange, else internal.
@@ -87,6 +93,7 @@ export function ChartView({
     setExplanation(null)
     setRootCause(null)
     setLineage(null)
+    setSignificance(null)
     setScenario(false)
   }, [config.chart_type, data])
 
@@ -142,6 +149,18 @@ export function ChartView({
       /* interceptor toast */
     } finally {
       setRooting(false)
+    }
+  }
+
+  const runSignificance = async () => {
+    if (!queryLogId) return
+    setChecking(true)
+    try {
+      setSignificance(await analysisApi.significance(queryLogId))
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setChecking(false)
     }
   }
 
@@ -268,6 +287,15 @@ export function ChartView({
               >
                 <GitFork size={14} /> {tracing ? 'İzlənir…' : 'Mənşə'}
               </button>
+              <button
+                onClick={runSignificance}
+                disabled={checking}
+                className={`${CHART_BTN} border ${
+                  significance ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
+                }`}
+              >
+                <ShieldCheck size={14} /> {checking ? 'Yoxlanır…' : 'Statistik yoxlama'}
+              </button>
             </>
           )}
           {valueCol && (
@@ -311,6 +339,8 @@ export function ChartView({
       {rootCause && <RootCausePanel result={rootCause} />}
 
       {lineage && <LineagePanel lineage={lineage} />}
+
+      {significance && <StatsGuardPanel result={significance} />}
 
       {scenario && <ScenarioPanel data={filtered} valueCol={valueCol} queryLogId={queryLogId} />}
 

@@ -70,3 +70,15 @@ class LineageResponse(BaseModel):
     tables: list[str] = Field(default_factory=list)
     columns: list[str] = Field(default_factory=list)
     metrics: list[str] = Field(default_factory=list)
+
+
+class SignificanceCheck(BaseModel):
+    name: str
+    passed: bool
+    severity: str = "ok"  # "ok" | "warn"
+    detail: str = ""
+
+
+class SignificanceResponse(BaseModel):
+    checks: list[SignificanceCheck] = Field(default_factory=list)
+    summary: str = ""
