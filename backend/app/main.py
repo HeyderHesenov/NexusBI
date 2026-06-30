@@ -97,6 +97,18 @@ async def _seed_demo_account() -> None:
         await db.commit()
 
 
+async def _seed_rag_examples() -> None:
+    """Seed global demo Q→SQL exemplars into the RAG store (DEMO_MODE only, idempotent)."""
+    if not settings.RAG_ENABLED:
+        return
+    from app.ai import retrieval
+    from app.db.session import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        await retrieval.seed_demo_examples(db)
+        await db.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _assert_production_secrets()
@@ -112,6 +124,7 @@ async def lifespan(app: FastAPI):
     if settings.DEMO_MODE:
         try:
             await _seed_demo_account()
+            await _seed_rag_examples()
         except Exception as exc:  # noqa: BLE001 — never block startup on seeding
             log.warning("demo_seed_failed", error=str(exc))
     background_tasks: list[asyncio.Task] = []

@@ -123,6 +123,32 @@ def _format(rows: list[QueryEmbedding]) -> str:
     return "\n\n".join(parts)
 
 
+# Canonical demo examples seeded globally (user_id=None) so demo queries are
+# RAG-grounded from the first run. Idempotent (index_text dedups). These teach
+# good aliasing/grouping; the eval bypasses RAG, so seeding can't inflate it.
+_DEMO_SEED: list[tuple[str, str]] = [
+    ("Regionlar üzrə satış payı",
+     "SELECT region, SUM(revenue) AS total_revenue FROM sales GROUP BY region"),
+    ("Aylıq gəlir trendi",
+     "SELECT substr(sale_date, 1, 7) AS month, SUM(revenue) AS total_revenue "
+     "FROM sales GROUP BY substr(sale_date, 1, 7) ORDER BY month"),
+    ("Ən çox satan məhsullar",
+     "SELECT product_name, SUM(revenue) AS total_revenue FROM sales "
+     "GROUP BY product_name ORDER BY total_revenue DESC LIMIT 10"),
+    ("Ölkə üzrə müştəri sayı",
+     "SELECT country, COUNT(*) AS customer_count FROM customers GROUP BY country"),
+]
+
+
+async def seed_demo_examples(db: AsyncSession) -> int:
+    """Seed global demo Q→SQL exemplars into the vector store (idempotent)."""
+    seeded = 0
+    for nl, sql in _DEMO_SEED:
+        await index_text(db, user_id=None, datasource_id=None, kind="query", text=nl, sql=sql)
+        seeded += 1
+    return seeded
+
+
 async def reindex(db: AsyncSession, user_id: str) -> int:
     """(Re)embed the user's recent successful queries + verified metrics. Returns count.
 

@@ -30,6 +30,24 @@ async def test_retrieve_is_user_scoped():
         assert "SELECT" not in other
 
 
+async def test_seed_demo_examples_idempotent():
+    async with AsyncSessionLocal() as db:
+        from sqlalchemy import func, select
+
+        from app.models.query_embedding import QueryEmbedding
+
+        first = await retrieval.seed_demo_examples(db)
+        await retrieval.seed_demo_examples(db)  # second run must not duplicate
+        await db.commit()
+        cnt = (
+            await db.execute(
+                select(func.count()).select_from(QueryEmbedding).where(QueryEmbedding.user_id.is_(None))
+            )
+        ).scalar()
+        assert first > 0
+        assert cnt == first  # idempotent — dedup held
+
+
 async def test_index_text_dedups():
     async with AsyncSessionLocal() as db:
         from sqlalchemy import func, select
