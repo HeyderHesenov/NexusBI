@@ -245,7 +245,7 @@ export function ChartView({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <ChartToolbar value={type} onChange={setType} />
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
           {type === 'pie' && (
             <button
               onClick={() => setShowLegend((v) => !v)}
@@ -284,7 +284,7 @@ export function ChartView({
                   explanation ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
                 }`}
               >
-                <Sparkles size={14} /> {explaining ? 'İzah…' : 'Bunu izah et'}
+                <Sparkles size={14} /> {explaining ? 'İzah…' : 'İzah et'}
               </button>
               <button
                 onClick={runRootCause}

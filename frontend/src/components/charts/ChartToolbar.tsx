@@ -19,7 +19,7 @@ const OPTIONS: { type: ChartType; label: string; Icon: typeof BarChart3 }[] = [
 
 /** Shared base for small chart control buttons (toolbar + ChartView actions). */
 export const CHART_BTN =
-  'flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors duration-200'
+  'flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors duration-200'
 
 interface Props {
   value: ChartType
