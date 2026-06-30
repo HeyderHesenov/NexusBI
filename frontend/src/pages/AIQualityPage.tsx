@@ -41,6 +41,15 @@ export function AIQualityPage() {
   // Oldest → newest for the trend line.
   const trend = [...runs].reverse().map((r) => r.exec_accuracy)
 
+  const TIERS = ['easy', 'medium', 'hard'] as const
+  const TIER_LABEL: Record<string, string> = { easy: 'Asan', medium: 'Orta', hard: 'Çətin' }
+  const tierStats = latest
+    ? TIERS.map((t) => {
+        const cases = latest.details.filter((d) => d.tier === t)
+        return { t, pass: cases.filter((d) => d.passed).length, total: cases.length }
+      }).filter((s) => s.total > 0)
+    : []
+
   return (
     <div className="w-full">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -49,6 +58,10 @@ export function AIQualityPage() {
           <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">AI Keyfiyyət</h1>
           <p className="mt-1 text-sm text-ink-soft">
             Text2SQL dəqiqliyi, gecikmə, token istifadəsi və RAG əsaslandırması — app öz AI-ını ölçür.
+          </p>
+          <p className="mt-1 text-xs text-ink-faint">
+            ⚠ Demo schema üzərində səviyyələnmiş golden dəsti (bare engine) — reqressiya siqnalı,
+            mütləq real-dünya Text2SQL dəqiqliyi deyil.
           </p>
         </div>
         <div className="flex gap-2">
@@ -96,6 +109,20 @@ export function AIQualityPage() {
         />
       </div>
 
+      {tierStats.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {tierStats.map((s) => (
+            <div key={s.t} className="rounded-xl border border-line bg-surface px-3 py-2">
+              <span className="eyebrow">{TIER_LABEL[s.t]}</span>
+              <span className="ml-2 font-mono text-ink">
+                {Math.round((s.pass / s.total) * 100)}%
+              </span>
+              <span className="ml-1 text-xs text-ink-faint">({s.pass}/{s.total})</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <div className="rounded-2xl border border-line bg-surface p-4">
           <p className="eyebrow mb-2">Dəqiqlik trendi</p>
@@ -135,6 +162,17 @@ export function AIQualityPage() {
               <li key={i} className="flex items-center gap-2">
                 <span className={d.passed ? 'text-emerald-400' : 'text-red-400'}>
                   {d.passed ? '✓' : '✗'}
+                </span>
+                <span
+                  className={`shrink-0 rounded px-1 text-[10px] uppercase ${
+                    d.tier === 'hard'
+                      ? 'bg-red-500/10 text-red-400'
+                      : d.tier === 'medium'
+                        ? 'bg-amber-500/10 text-amber-400'
+                        : 'bg-surface-2 text-ink-faint'
+                  }`}
+                >
+                  {TIER_LABEL[d.tier]}
                 </span>
                 <span className="truncate text-ink-soft">{d.nl}</span>
                 {d.passed && d.strict_passed && <span className="text-ink-faint">⚑</span>}

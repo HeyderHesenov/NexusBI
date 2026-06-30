@@ -40,6 +40,21 @@ def test_all_golds_execute():
             demo_data.execute_demo_sql(sql)  # raises if a gold is malformed
 
 
+def test_golden_covers_all_tiers():
+    """The set must span easy/medium/hard so accuracy can be reported per difficulty."""
+    tiers = {c.tier for c in GOLDEN_SET}
+    assert tiers == {"easy", "medium", "hard"}
+    for t in ("easy", "medium", "hard"):
+        assert sum(1 for c in GOLDEN_SET if c.tier == t) >= 3
+
+
+async def test_run_eval_details_carry_tier():
+    async with AsyncSessionLocal() as db:
+        run = await runner.run_eval(db, generate=_perfect_gen())
+        await db.commit()
+    assert {d["tier"] for d in run.details} == {"easy", "medium", "hard"}
+
+
 async def test_multi_gold_accepts_alternative_form():
     """A correct-but-alternative gold form (here: top-1 row instead of MAX()) passes."""
     case = next(c for c in GOLDEN_SET if c.nl_query.startswith("ən yüksək tək satış"))

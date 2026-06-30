@@ -74,13 +74,15 @@ async def evaluate_case(case: GoldenCase, generate: GenerateFn, schema_text: str
     except Exception as exc:  # noqa: BLE001 — a failure to generate/run is a miss
         _log.info("eval_case_failed", nl=case.nl_query, error=str(exc)[:160])
         latency_ms = int((time.perf_counter() - started) * 1000)
-        return {"nl": case.nl_query, "passed": False, "strict_passed": False, "latency_ms": latency_ms}
+        return {"nl": case.nl_query, "passed": False, "strict_passed": False,
+                "latency_ms": latency_ms, "tier": case.tier}
     cand_d = _denotation(cand_rows)
     passed = any(cand_d == _denotation(rows) for rows in exp_rows_by_gold)
     # strict (column-name-aware) is measured only against the primary gold.
     strict = passed and _strict_key(cand_rows) == _strict_key(exp_rows_by_gold[0])
     latency_ms = int((time.perf_counter() - started) * 1000)
-    return {"nl": case.nl_query, "passed": passed, "strict_passed": strict, "latency_ms": latency_ms}
+    return {"nl": case.nl_query, "passed": passed, "strict_passed": strict,
+            "latency_ms": latency_ms, "tier": case.tier}
 
 
 async def run_eval(db: AsyncSession, *, generate: GenerateFn | None = None) -> EvalRun:
