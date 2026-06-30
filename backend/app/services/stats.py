@@ -58,6 +58,28 @@ def welch_ttest(a: list[float], b: list[float], alpha: float = 0.05) -> TestResu
     return TestResult(float(t), float(p), bool(p < alpha), significance_label(float(p)), d)
 
 
+def welch_ttest_from_stats(
+    mean1: float, sd1: float, n1: int, mean2: float, sd2: float, n2: int, alpha: float = 0.05
+) -> dict:
+    """Welch t-test from summary stats (mean/sd/n per group) — for A/B on a continuous
+    metric where only aggregates are stored. Returns diff, 95% CI, verdict."""
+    if n1 < 2 or n2 < 2:
+        return {"t": 0.0, "p_value": 1.0, "significant": False, "diff": mean2 - mean1,
+                "ci_low": 0.0, "ci_high": 0.0, "detail": "Hər qrupda ən az 2 müşahidə lazımdır."}
+    se = (sd1**2 / n1 + sd2**2 / n2) ** 0.5
+    if se == 0:
+        return {"t": 0.0, "p_value": 1.0, "significant": False, "diff": mean2 - mean1,
+                "ci_low": mean2 - mean1, "ci_high": mean2 - mean1, "detail": "Varians sıfırdır."}
+    t, p = _sp.ttest_ind_from_stats(mean1, sd1, n1, mean2, sd2, n2, equal_var=False)
+    # Welch–Satterthwaite df for the CI.
+    df = se**4 / ((sd1**2 / n1) ** 2 / (n1 - 1) + (sd2**2 / n2) ** 2 / (n2 - 1))
+    crit = float(_sp.t.ppf(0.975, df))
+    diff = mean2 - mean1
+    return {"t": float(t), "p_value": float(p), "significant": bool(p < alpha), "diff": float(diff),
+            "ci_low": float(diff - crit * se), "ci_high": float(diff + crit * se),
+            "detail": significance_label(float(p))}
+
+
 def two_proportion_ztest(
     c1: int, n1: int, c2: int, n2: int, alpha: float = 0.05
 ) -> dict:

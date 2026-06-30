@@ -1,4 +1,4 @@
-import { BookMarked, CreditCard, Database, FileText, Gauge, History, LayoutDashboard, MessageSquare, Palette, Tag, Target, Users } from 'lucide-react'
+import { BookMarked, CreditCard, Database, FileText, FlaskConical, Gauge, History, LayoutDashboard, MessageSquare, Palette, Tag, Target, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { NexusMark } from '../brand/NexusMark'
 import { useDatasourceStore } from '../../store/datasourceStore'
@@ -32,6 +32,7 @@ const groups = [
     items: [
       { to: '/decisions', label: 'Qərarlar', icon: Target },
       { to: '/targets', label: 'Hədəflər', icon: Gauge },
+      { to: '/experiments', label: 'A/B testlər', icon: FlaskConical },
     ],
   },
   {
