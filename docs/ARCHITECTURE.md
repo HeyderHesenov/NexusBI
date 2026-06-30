@@ -29,7 +29,7 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 | API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, metric, saved_query, billing, branding, decision, integration, copilot, requirement, scenario, workspace, **ai_quality (eval/observability/reindex)**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
 | Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/* |
-| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding), eval/* (golden set + execution-match runner)**, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, **client (chat + embed + rolling AI trace)** |
+| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding), eval/* (tiered golden set, value-based execution-match, bare/grounded/history runner + regression)**, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, **client (chat + embed + rolling AI trace)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit |
 | Realtime | `realtime/*` | hub (collab WS pub/sub), live_refresh (canlı dashboard loop) |
@@ -142,12 +142,26 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
   bounded, **user-scoped** candidate set (own queries + global verified metrics; mismatched embedding
   dims skipped) and returns a few-shot block for the Text2SQL prompt; `index_text`/`reindex` (one
   batched embed call) populate it. RLS-safe: a user never retrieves another user's examples.
-- **AI eval & observability:** `ai/eval` scores a golden set by **execution-match** (`runner.run_eval`
-  compares result rows, type-tolerant; measures the bare engine for a deterministic CI signal) and
-  persists `eval_runs`. `client` keeps a bounded in-process **AI trace** (token/latency per call) →
-  `observability()`. Surfaced on the **AI Quality** page + Prometheus (`text2sql_eval_accuracy`,
-  `ai_latency_seconds`, `rag_retrievals_total`). `/ai/eval/run` + `/ai/retrieval/reindex` are
-  RateLimited (real AI work); `/ai/eval/runs` + `/ai/observability` are reads.
+- **AI eval & observability (operator/dev tool — the "AI Quality" page, removed from the analyst's
+  sidebar; reachable only at `/ai-quality`):** `ai/eval` scores a difficulty-tiered golden set
+  (easy/medium/hard: joins, HAVING, subqueries, ranking, percentage) by **value-based execution-match**
+  (`runner._denotation` — compares result VALUES, column-name-agnostic, so an equivalent query with a
+  different alias still passes; multi-gold `alt_sqls` for questions with >1 correct form). Three modes
+  on `eval_runs.mode`: **bare** (engine only), **grounded** (engine + metric context + RAG — the
+  bare→grounded delta quantifies RAG's value), and **history** (`ai/eval/regression` re-checks the
+  user's OWN saved-query/dashboard questions for **AI drift**: regenerate the NL, then run the new vs
+  the stored SQL on ONE seeded snapshot via `demo_data.execute_demo_snapshot` so the live-demo feed
+  can't fake drift; a stored SQL that no longer runs is skipped, not counted). `runner.maybe_alert`
+  raises a Notification (+ workflow dispatch, dedup'd against unread) when accuracy drops below
+  `EVAL_ALERT_THRESHOLD`. **CI gate:** `test_rule_based_eval_floor` runs the deterministic keyless
+  rule-based engine and asserts ≥ `EVAL_RULE_BASED_FLOOR`, plus `test_golden_set_health` (no empty-set
+  gold). `client` keeps a bounded in-process **AI trace** → `observability()`. Prometheus
+  (`text2sql_eval_accuracy`, `ai_latency_seconds`, `rag_retrievals_total`). Grounded eval / history
+  regression open one session **per case** (concurrent `gather`; an AsyncSession isn't concurrency-safe)
+  and offload demo seeding to `asyncio.to_thread`. `/ai/eval/run` (`?grounded`) +
+  `/ai/eval/history-regression` + `/ai/retrieval/reindex` are RateLimited; `/ai/eval/runs` +
+  `/ai/observability` are reads. The eval measures a TOY demo schema — labelled honestly in the UI as a
+  regression signal, not a real-world accuracy claim.
 - **Sharing / embed:** `dashboards.share_token` (public read-only snapshot, no auth) AND
   `dashboards.embed_enabled` + a signed embed token (`security.create_embed_token`, `emb` claim);
   `embed_service.resolve` re-checks `embed_enabled` so disabling instantly revokes all tokens.
@@ -168,7 +182,7 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
   job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
   background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
   `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (230) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (246) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `OPENAI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
@@ -193,12 +207,14 @@ global, no FK)**; `dashboards` (1)─<(N) `widgets` and `dashboard_comments`;
 → `datasources`. (`decisions` also link `datasource_id` + `last_query_log_id`/`query_log_id`.)
 
 Latest schema changes: **`f8a9b0c1d2e3`** — Decision Intelligence Loop (`decisions` metric-binding
-columns: `metric_query`/`metric_column`/`datasource_id`/`predicted_*`/`baseline_*`/`realized_*`/
-`measure_cadence`/`impact_status`, + the `decision_measurements` table); **`a9b0c1d2e3f4`** — AI
-engineering (`query_embeddings` RAG vector store + `eval_runs`). Earlier this cycle: `refresh_tokens`
+columns + the `decision_measurements` table); **`a9b0c1d2e3f4`** — AI engineering (`query_embeddings`
+RAG vector store + `eval_runs`); **`b0c1d2e3f4a5`** — `eval_runs.details` (per-case breakdown);
+**`c1d2e3f4a5b6`** — `eval_runs.mode` (bare/grounded/history). Earlier this cycle: `refresh_tokens`
 (`e7f8a9b0c1d2`); `users.last_digest_at`; `metrics.verified*`; `datasources.freshness_sla_hours`/
 `last_refreshed_at`; `dashboards.embed_enabled`. Migrations are Alembic, chained under
-`db/migrations/versions`; current head = **`a9b0c1d2e3f4`**.
+`db/migrations/versions`; current head = **`c1d2e3f4a5b6`**. NOTE: the **demo** schema is seeded
+in-memory (`db/demo_data._seed`, no migration) — `sales.customer_id` was added there to enable realistic
+customer↔sales joins; `format_demo_schema` sends real column types + sample values to the prompt.
 
 ## Notable architecture deltas (this round)
 
@@ -245,8 +261,12 @@ engineering (`query_embeddings` RAG vector store + `eval_runs`). Earlier this cy
   hit. `client.embed` degrades to a deterministic hash embedding when keyless.
 - **Hermetic tests:** `conftest` now sets `OPENAI_API_KEY=""`, so the whole suite runs offline
   (embeddings → hash, Text2SQL → rule-based) — identical to CI, no network/cost, deterministic.
-- **AI quality is measured, not assumed:** a golden-set execution-match eval (`ai/eval`) plus a
-  bounded in-process AI call trace (`client.observability`) feed the AI Quality page + Prometheus.
+- **AI quality is measured, not assumed:** a tiered, value-based golden-set eval (`ai/eval`), a
+  bare→grounded RAG-delta, a **history regression** over the user's own trusted queries (AI drift,
+  data-isolated via a single demo snapshot), a deterministic **CI floor** on the rule-based engine,
+  and a low-accuracy **alert** — feed the AI Quality page + Prometheus. It's an operator/dev tool, so
+  the page was pulled from the analyst's sidebar (route-only at `/ai-quality`) and the toy-demo scope
+  is labelled honestly in-UI.
 
 ## Security model
 
