@@ -6,6 +6,11 @@ export async function runEval(grounded = false): Promise<EvalRun> {
   return data
 }
 
+export async function historyRegression(): Promise<EvalRun> {
+  const { data } = await client.post<EvalRun>('/ai/eval/history-regression')
+  return data
+}
+
 export async function listRuns(): Promise<EvalRun[]> {
   const { data } = await client.get<EvalRun[]>('/ai/eval/runs')
   return data

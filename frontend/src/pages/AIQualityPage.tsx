@@ -31,7 +31,7 @@ function StatCard({ icon, label, value, hint }: { icon: React.ReactNode; label: 
 }
 
 export function AIQualityPage() {
-  const { runs, obs, busy, load, runEval, reindex } = useAIQualityStore()
+  const { runs, obs, busy, load, runEval, runHistory, reindex } = useAIQualityStore()
 
   useEffect(() => {
     load().catch(() => undefined)
@@ -49,7 +49,10 @@ export function AIQualityPage() {
       : null
 
   const TIERS = ['easy', 'medium', 'hard'] as const
-  const TIER_LABEL: Record<string, string> = { easy: 'Asan', medium: 'Orta', hard: 'Çətin' }
+  const TIER_LABEL: Record<string, string> = {
+    easy: 'Asan', medium: 'Orta', hard: 'Çətin', history: 'Tarixçə',
+  }
+  const latestHistory = runs.find((r) => r.mode === 'history')
   const tierStats = latest
     ? TIERS.map((t) => {
         const cases = latest.details.filter((d) => d.tier === t)
@@ -78,6 +81,13 @@ export function AIQualityPage() {
             className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-50"
           >
             <RefreshCw size={15} /> Yenidən indekslə
+          </button>
+          <button
+            onClick={runHistory}
+            disabled={busy}
+            className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-50"
+          >
+            <Activity size={15} /> Tarixçə reqressiyası
           </button>
           <button
             onClick={() => runEval(true)}
@@ -123,7 +133,7 @@ export function AIQualityPage() {
         />
       </div>
 
-      {(latestBare || latestGrounded) && (
+      {(latestBare || latestGrounded || latestHistory) && (
         <div className="mt-3 flex flex-wrap items-stretch gap-2">
           <div className="rounded-xl border border-line bg-surface px-3 py-2">
             <span className="eyebrow">Bare engine</span>
@@ -143,6 +153,15 @@ export function AIQualityPage() {
               <span className={`ml-2 font-mono ${ragDelta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {ragDelta > 0 ? '+' : ''}{ragDelta}%
               </span>
+            </div>
+          )}
+          {latestHistory && (
+            <div className="rounded-xl border border-line bg-surface px-3 py-2" title="Sənin saxlanmış/dashboard sorğularında AI drift">
+              <span className="eyebrow">Tarixçə stabilliyi</span>
+              <span className="ml-2 font-mono text-ink">
+                {Math.round(latestHistory.exec_accuracy * 100)}%
+              </span>
+              <span className="ml-1 text-xs text-ink-faint">({latestHistory.passed}/{latestHistory.total})</span>
             </div>
           )}
         </div>
@@ -182,10 +201,14 @@ export function AIQualityPage() {
                   <span className="flex items-center gap-2">
                     <span
                       className={`rounded px-1 text-[10px] uppercase ${
-                        r.mode === 'grounded' ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-ink-faint'
+                        r.mode === 'grounded'
+                          ? 'bg-accent-soft text-accent'
+                          : r.mode === 'history'
+                            ? 'bg-amber-500/10 text-amber-400'
+                            : 'bg-surface-2 text-ink-faint'
                       }`}
                     >
-                      {r.mode === 'grounded' ? 'RAG' : 'bare'}
+                      {r.mode === 'grounded' ? 'RAG' : r.mode === 'history' ? 'tarixçə' : 'bare'}
                     </span>
                     <span className="font-mono text-ink-soft">{new Date(r.created_at).toLocaleString('az')}</span>
                   </span>

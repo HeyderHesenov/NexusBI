@@ -56,6 +56,13 @@ async def _default_generate(nl: str, schema: str, dialect: str, ctx: str) -> Tex
     return await _engine.generate_sql(nl, schema, dialect, ctx)
 
 
+async def rule_based_generate(nl: str, schema: str, dialect: str, ctx: str) -> Text2SQLResult:
+    """Deterministic, keyless generator — powers the CI regression gate (no LLM)."""
+    from app.ai import rule_based_sql
+
+    return rule_based_sql.generate_sql_fallback(nl)
+
+
 def _grounded_generate(user_id: str) -> GenerateFn:
     """A generator that grounds the engine with the SHIPPED pipeline's context —
     the user's metric catalog + RAG-retrieved similar prior queries. The only
@@ -109,6 +116,43 @@ async def evaluate_case(case: GoldenCase, generate: GenerateFn, schema_text: str
     latency_ms = int((time.perf_counter() - started) * 1000)
     return {"nl": case.nl_query, "passed": passed, "strict_passed": strict,
             "latency_ms": latency_ms, "tier": case.tier}
+
+
+async def maybe_alert(db: AsyncSession, user_id: str, run: EvalRun) -> bool:
+    """Raise an in-app notification when a run's accuracy falls below the alert
+    threshold — turns the quality system from "viewable" into "tells you". Reuses
+    the existing Notification + workflow dispatch (mock-first)."""
+    if run.exec_accuracy >= settings.EVAL_ALERT_THRESHOLD:
+        return False
+    from sqlalchemy import select
+
+    from app.models.alert import Notification
+    from app.services import integration_service
+
+    # Dedup: don't spam a fresh alert (or re-dispatch webhooks) while an earlier
+    # AI-quality alert for this user is still unread.
+    existing = await db.execute(
+        select(Notification.id).where(
+            Notification.user_id == user_id,
+            Notification.read.is_(False),
+            Notification.title.like("⚠️ AI%"),
+        ).limit(1)
+    )
+    if existing.scalar_one_or_none() is not None:
+        return False
+
+    pct = round(run.exec_accuracy * 100)
+    if run.mode == "history":
+        title = "⚠️ AI drift aşkarlandı"
+        body = f"{run.total - run.passed}/{run.total} etibarlı sorğu fərqli nəticə verir (stabillik {pct}%)."
+    else:
+        floor = round(settings.EVAL_ALERT_THRESHOLD * 100)
+        title = "⚠️ AI keyfiyyəti düşdü"
+        body = f"{run.mode} eval dəqiqliyi {pct}% — həddən ({floor}%) aşağı."
+    db.add(Notification(user_id=user_id, title=title, body=body))
+    await db.flush()
+    await integration_service.dispatch(db, user_id, title, body)
+    return True
 
 
 async def run_eval(

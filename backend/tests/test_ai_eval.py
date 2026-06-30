@@ -87,6 +87,119 @@ async def test_bare_mode_default():
     assert run.mode == "bare"
 
 
+# ─── A: CI regression gate (deterministic, keyless) ───
+
+async def test_rule_based_eval_floor():
+    """The deterministic rule-based engine must stay at/above the CI floor."""
+    from app.config import settings
+
+    async with AsyncSessionLocal() as db:
+        run = await runner.run_eval(db, generate=runner.rule_based_generate)
+        await db.commit()
+    assert run.exec_accuracy >= settings.EVAL_RULE_BASED_FLOOR, (
+        f"rule-based accuracy {run.exec_accuracy} fell below floor {settings.EVAL_RULE_BASED_FLOOR}"
+    )
+
+
+def test_golden_set_health():
+    """No degenerate empty-set gold (rewards returning nothing); tiers covered."""
+    from app.db import demo_data
+
+    for case in GOLDEN_SET:
+        _c, rows = demo_data.execute_demo_sql(case.expected_sql)
+        assert len(rows) >= 1, f"primary gold returns no rows: {case.nl_query}"
+    assert {c.tier for c in GOLDEN_SET} == {"easy", "medium", "hard"}
+
+
+# ─── B: history regression (real user questions) ───
+
+async def _seed_trusted_query(db, user_id: str, nl: str, sql: str) -> str:
+    from app.models.query_log import QueryLog
+    from app.models.saved_query import SavedQuery
+
+    log = QueryLog(user_id=user_id, datasource_id=None, natural_language=nl, generated_sql=sql,
+                   chart_type="bar", result_data={"columns": [], "rows": []})
+    db.add(log)
+    await db.flush()
+    db.add(SavedQuery(user_id=user_id, name=nl, nl_query=nl, datasource_id=None,
+                      schedule="off", last_query_log_id=log.id))
+    await db.flush()
+    return log.id
+
+
+async def test_history_regression_no_drift(monkeypatch):
+    from app.ai.eval import regression
+    from app.services import query_service
+
+    sql = "SELECT SUM(revenue) AS total_revenue FROM sales"
+
+    async def same_sql(self, nl, schema, dtype="sqlite", extra_context=""):
+        return Text2SQLResult(sql=sql, explanation="", confidence=1.0, warnings=[])
+
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", same_sql)
+
+    async with AsyncSessionLocal() as db:
+        await _seed_trusted_query(db, "hist1", "ümumi gəlir", sql)
+        await db.commit()
+        run = await regression.run_history_regression(db, "hist1")
+        await db.commit()
+    assert run.mode == "history"
+    assert run.total == 1
+    assert run.passed == 1  # engine reproduces the same SQL → no drift
+
+
+async def test_history_regression_detects_drift(monkeypatch):
+    from app.ai.eval import regression
+    from app.services import query_service
+
+    async def different_sql(self, nl, schema, dtype="sqlite", extra_context=""):
+        return Text2SQLResult(sql="SELECT COUNT(*) AS count FROM sales",
+                              explanation="", confidence=1.0, warnings=[])
+
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", different_sql)
+
+    async with AsyncSessionLocal() as db:
+        await _seed_trusted_query(db, "hist2", "ümumi gəlir",
+                                  "SELECT SUM(revenue) AS total_revenue FROM sales")
+        await db.commit()
+        run = await regression.run_history_regression(db, "hist2")
+        await db.commit()
+    assert run.total == 1
+    assert run.passed == 0  # engine now returns a different result → drift
+
+
+async def test_history_regression_empty_history():
+    from app.ai.eval import regression
+
+    async with AsyncSessionLocal() as db:
+        run = await regression.run_history_regression(db, "nobody")
+        await db.commit()
+    assert run.total == 0  # graceful: no trusted queries
+
+
+# ─── C: alert on accuracy drop ───
+
+async def test_eval_alert_fires_below_threshold():
+    from sqlalchemy import func, select
+
+    from app.models.alert import Notification
+    from app.models.eval_run import EvalRun
+
+    async with AsyncSessionLocal() as db:
+        low = EvalRun(model="m", mode="bare", total=10, passed=3, exec_accuracy=0.3, details=[])
+        fired = await runner.maybe_alert(db, "alertu", low)
+        high = EvalRun(model="m", mode="bare", total=10, passed=10, exec_accuracy=1.0, details=[])
+        not_fired = await runner.maybe_alert(db, "alertu", high)
+        await db.commit()
+        n = (
+            await db.execute(
+                select(func.count()).select_from(Notification).where(Notification.user_id == "alertu")
+            )
+        ).scalar()
+    assert fired is True and not_fired is False
+    assert n == 1
+
+
 async def test_multi_gold_accepts_alternative_form():
     """A correct-but-alternative gold form (here: top-1 row instead of MAX()) passes."""
     case = next(c for c in GOLDEN_SET if c.nl_query.startswith("ən yüksək tək satış"))

@@ -176,3 +176,31 @@ def execute_demo_sql(sql: str) -> tuple[list[str], list[dict[str, Any]]]:
         raise InvalidSQLError("Demo SQL icra olunmadı.", detail=str(exc)) from exc
     finally:
         conn.close()
+
+
+def execute_demo_snapshot(sqls: list[str]) -> list[list[dict[str, Any]] | None]:
+    """Run several SELECTs against ONE freshly-seeded snapshot.
+
+    All queries see identical data — essential for drift comparison: the live-demo
+    feed mutates revenue between separate ``execute_demo_sql`` calls, which would
+    make two runs of the SAME query disagree. A query that errors yields ``None``
+    (so callers can tell a baseline failure apart from a real result).
+    """
+    conn = sqlite3.connect(":memory:")
+    try:
+        try:
+            conn.enable_load_extension(False)
+        except AttributeError:
+            pass
+        _seed(conn)
+        conn.row_factory = sqlite3.Row
+        out: list[list[dict[str, Any]] | None] = []
+        for sql in sqls:
+            try:
+                cur = conn.execute(validate_select_only(sql))
+                out.append([dict(r) for r in cur.fetchall()])
+            except sqlite3.Error:
+                out.append(None)
+        return out
+    finally:
+        conn.close()

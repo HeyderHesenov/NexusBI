@@ -9,6 +9,7 @@ interface AIQualityState {
   busy: boolean
   load: () => Promise<void>
   runEval: (grounded?: boolean) => Promise<void>
+  runHistory: () => Promise<void>
   reindex: () => Promise<void>
 }
 
@@ -28,6 +29,20 @@ export const useAIQualityStore = create<AIQualityState>((set, get) => ({
       set({ runs: [run, ...get().runs] })
       const tag = grounded ? 'Grounded' : 'Bare'
       toast.success(`${tag}: ${run.passed}/${run.total} (${Math.round(run.exec_accuracy * 100)}%)`)
+    } catch {
+      /* interceptor toast */
+    } finally {
+      set({ busy: false })
+    }
+  },
+  runHistory: async () => {
+    if (get().busy) return
+    set({ busy: true })
+    try {
+      const run = await api.historyRegression()
+      set({ runs: [run, ...get().runs] })
+      if (run.total === 0) toast('Etibarlı (saxlanmış/dashboard) sorğu tapılmadı.')
+      else toast.success(`Tarixçə: ${run.passed}/${run.total} stabil (${Math.round(run.exec_accuracy * 100)}%)`)
     } catch {
       /* interceptor toast */
     } finally {
