@@ -8,6 +8,7 @@ from app.models.datasource import DataSource, DBType
 from app.models.decision import Decision, DecisionMeasurement
 from app.models.eval_run import EvalRun
 from app.models.experiment import Experiment
+from app.models.insight import Insight
 from app.models.integration import IntegrationChannel
 from app.models.query_embedding import QueryEmbedding
 from app.models.kpi_target import KPITarget
@@ -38,6 +39,7 @@ __all__ = [
     "QueryEmbedding",
     "EvalRun",
     "Experiment",
+    "Insight",
     "RequirementDoc",
     "KPITarget",
     "IntegrationChannel",
