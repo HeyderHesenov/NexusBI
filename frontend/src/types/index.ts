@@ -131,6 +131,9 @@ export interface AppNotification {
 }
 
 export type DecisionStatus = 'open' | 'in_progress' | 'done'
+export type DecisionDirection = 'increase' | 'decrease'
+export type DecisionCadence = 'off' | 'daily' | 'weekly'
+export type ImpactStatus = 'pending' | 'on_track' | 'achieved' | 'missed' | 'regressed'
 
 export interface Decision {
   id: string
@@ -141,6 +144,18 @@ export interface Decision {
   outcome: string
   query_log_id: string | null
   created_at: string
+  // Decision Intelligence Loop.
+  metric_query: string | null
+  metric_column: string | null
+  datasource_id: string | null
+  predicted_value: number | null
+  predicted_direction: DecisionDirection | null
+  baseline_value: number | null
+  baseline_at: string | null
+  realized_value: number | null
+  realized_at: string | null
+  measure_cadence: DecisionCadence
+  impact_status: ImpactStatus
 }
 
 export interface DecisionCreate {
@@ -148,6 +163,41 @@ export interface DecisionCreate {
   insight: string
   action: string
   query_log_id: string | null
+  metric_query?: string | null
+  metric_column?: string | null
+  datasource_id?: string | null
+  predicted_value?: number | null
+  predicted_direction?: DecisionDirection | null
+  measure_cadence?: DecisionCadence | null
+}
+
+export interface DecisionROI {
+  decision_id: string
+  baseline_value: number | null
+  predicted_value: number | null
+  realized_value: number | null
+  predicted_direction: DecisionDirection | null
+  delta_abs: number | null
+  delta_pct: number | null
+  progress_pct: number | null
+  impact_status: ImpactStatus
+  baseline_at: string | null
+  realized_at: string | null
+}
+
+export interface DecisionMeasurement {
+  id: string
+  value: number
+  measured_at: string
+  query_log_id: string | null
+}
+
+export interface AccuracySummary {
+  total_measured: number
+  direction_hit_rate: number | null
+  achieved: number
+  accuracy_pct: number | null
+  avg_magnitude_error_pct: number | null
 }
 
 export type Schedule = 'off' | 'hourly' | 'daily' | 'weekly'

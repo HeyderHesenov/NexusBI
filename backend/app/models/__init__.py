@@ -5,7 +5,7 @@ from app.models.brand import BrandConfig
 from app.models.comment import DashboardComment
 from app.models.dashboard import Dashboard, Widget
 from app.models.datasource import DataSource, DBType
-from app.models.decision import Decision
+from app.models.decision import Decision, DecisionMeasurement
 from app.models.integration import IntegrationChannel
 from app.models.kpi_target import KPITarget
 from app.models.metric import Metric
@@ -31,6 +31,7 @@ __all__ = [
     "Notification",
     "DashboardComment",
     "Decision",
+    "DecisionMeasurement",
     "RequirementDoc",
     "KPITarget",
     "IntegrationChannel",

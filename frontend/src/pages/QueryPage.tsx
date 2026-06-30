@@ -22,7 +22,7 @@ export function QueryPage() {
   const del = useHistoryDelete()
   const [saveLogId, setSaveLogId] = useState<string | null>(null)
   const [saveQ, setSaveQ] = useState<string | null>(null)
-  const [decideFor, setDecideFor] = useState<{ insight: string; logId: string | null } | null>(null)
+  const [decideFor, setDecideFor] = useState<{ insight: string; logId: string | null; question: string } | null>(null)
 
   useEffect(() => {
     loadHistory().catch(() => undefined)
@@ -104,7 +104,11 @@ export function QueryPage() {
               onSaveDashboard={() => turn.result.query_log_id && setSaveLogId(turn.result.query_log_id)}
               onSaveQuery={() => setSaveQ(turn.q)}
               onMakeDecision={() =>
-                setDecideFor({ insight: turn.result.insight || turn.q, logId: turn.result.query_log_id })
+                setDecideFor({
+                  insight: turn.result.insight || turn.q,
+                  logId: turn.result.query_log_id,
+                  question: turn.q,
+                })
               }
             />
           ))}
@@ -181,6 +185,8 @@ export function QueryPage() {
           onClose={() => setDecideFor(null)}
           insight={decideFor.insight}
           queryLogId={decideFor.logId}
+          question={decideFor.question}
+          datasourceId={datasourceId}
         />
       )}
 

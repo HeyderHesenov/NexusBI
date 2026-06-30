@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Lightbulb, Target, Trash2 } from 'lucide-react'
+import { Activity, Lightbulb, Target, TrendingDown, TrendingUp, Trash2 } from 'lucide-react'
 import { useDecisionStore } from '../store/decisionStore'
 import { TypewriterText } from '../components/charts/TypewriterText'
-import type { Decision, DecisionStatus } from '../types'
+import * as decisionApi from '../api/decision'
+import type { Decision, DecisionMeasurement, DecisionStatus, ImpactStatus } from '../types'
 
 const STATUS: { value: DecisionStatus; label: string }[] = [
   { value: 'open', label: 'Açıq' },
@@ -16,23 +17,50 @@ const STATUS_STYLE: Record<DecisionStatus, string> = {
   done: 'border-accent/40 bg-accent-soft text-accent',
 }
 
+const IMPACT: Record<ImpactStatus, { label: string; cls: string }> = {
+  pending: { label: 'Gözləyir', cls: 'border-line text-ink-faint' },
+  on_track: { label: 'İrəliləyir', cls: 'border-accent/40 bg-accent-soft text-accent' },
+  achieved: { label: 'Nail olundu', cls: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' },
+  missed: { label: 'Çatmadı', cls: 'border-amber-500/40 bg-amber-500/10 text-amber-300' },
+  regressed: { label: 'Geriləyir', cls: 'border-red-500/40 bg-red-500/10 text-red-400' },
+}
+
+const fmt = (n: number | null) =>
+  n == null ? '—' : Intl.NumberFormat('az', { notation: 'compact', maximumFractionDigits: 2 }).format(n)
+
 export function DecisionsPage() {
-  const { items, load, patch, remove } = useDecisionStore()
+  const { items, accuracy, load, loadAccuracy, patch, measure, remove } = useDecisionStore()
 
   useEffect(() => {
     load().catch(() => undefined)
-  }, [load])
+    loadAccuracy().catch(() => undefined)
+  }, [load, loadAccuracy])
 
   return (
     <div className="w-full">
-      <header className="mb-6">
-        <p className="eyebrow">Qərarlar</p>
-        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
-          Insight → Action → Outcome
-        </h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          İnsight-dan qərara, qərardan nəticəyə — analitikanı ölçülən təsirə bağla.
-        </p>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">Qərarlar</p>
+          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
+            Insight → Action → Outcome
+          </h1>
+          <p className="mt-1 text-sm text-ink-soft">
+            İnsight-dan qərara, qərardan ölçülən təsirə — qapanan döngü.
+          </p>
+        </div>
+        {accuracy && accuracy.total_measured > 0 && (
+          <div className="rounded-2xl border border-line bg-surface px-4 py-3 text-right">
+            <p className="eyebrow flex items-center justify-end gap-1.5">
+              <Activity size={12} /> Qərar dəqiqliyi
+            </p>
+            <p className="mt-1 font-display text-2xl font-bold text-ink">
+              {accuracy.accuracy_pct == null ? '—' : `${accuracy.accuracy_pct}%`}
+            </p>
+            <p className="text-xs text-ink-faint">
+              {accuracy.achieved}/{accuracy.total_measured} hədəfə çatdı
+            </p>
+          </div>
+        )}
       </header>
 
       {items.length === 0 ? (
@@ -46,7 +74,7 @@ export function DecisionsPage() {
       ) : (
         <ul className="grid items-start gap-3 lg:grid-cols-2">
           {items.map((d) => (
-            <DecisionCard key={d.id} d={d} onPatch={patch} onRemove={remove} />
+            <DecisionCard key={d.id} d={d} onPatch={patch} onMeasure={measure} onRemove={remove} />
           ))}
         </ul>
       )}
@@ -54,16 +82,68 @@ export function DecisionsPage() {
   )
 }
 
+function Sparkline({ points }: { points: number[] }) {
+  if (points.length < 2) return null
+  const w = 120
+  const h = 28
+  const min = Math.min(...points)
+  const max = Math.max(...points)
+  const span = max - min || 1
+  const path = points
+    .map((v, i) => {
+      const x = (i / (points.length - 1)) * w
+      const y = h - ((v - min) / span) * h
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+  const up = points[points.length - 1] >= points[0]
+  return (
+    <svg width={w} height={h} className="overflow-visible">
+      <path d={path} fill="none" stroke={up ? '#10B981' : '#F87171'} strokeWidth={1.6} strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function DecisionCard({
   d,
   onPatch,
+  onMeasure,
   onRemove,
 }: {
   d: Decision
   onPatch: (id: string, p: { status?: DecisionStatus; outcome?: string }) => Promise<void>
+  onMeasure: (id: string) => Promise<void>
   onRemove: (id: string) => Promise<void>
 }) {
   const [outcome, setOutcome] = useState(d.outcome)
+  const [traj, setTraj] = useState<DecisionMeasurement[]>([])
+  const [busy, setBusy] = useState(false)
+  const tracked = d.baseline_value != null
+
+  // A sparkline needs >=2 points, so only fetch once a realized value exists.
+  // Keyed on realized_at: onMeasure updates it via the store, which refetches once.
+  useEffect(() => {
+    if (!tracked || d.realized_value == null) return
+    decisionApi.trajectory(d.id).then(setTraj).catch(() => undefined)
+  }, [d.id, tracked, d.realized_value, d.realized_at])
+
+  const doMeasure = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await onMeasure(d.id) // store update bumps realized_at → effect refetches the trajectory
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const impact = IMPACT[d.impact_status]
+  const delta =
+    d.baseline_value != null && d.realized_value != null && d.baseline_value !== 0
+      ? ((d.realized_value - d.baseline_value) / Math.abs(d.baseline_value)) * 100
+      : null
 
   return (
     <li className="rounded-2xl border border-line bg-surface p-4">
@@ -88,6 +168,51 @@ function DecisionCard({
           </button>
         </div>
       </div>
+
+      {tracked && (
+        <div className="mt-3 rounded-xl border border-line bg-surface-2/50 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className={`rounded-full border px-2 py-0.5 text-xs ${impact.cls}`}>{impact.label}</span>
+            <button
+              onClick={doMeasure}
+              disabled={busy}
+              className="rounded-lg border border-line px-2.5 py-1 text-xs text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-50"
+            >
+              {busy ? 'Ölçülür…' : 'İndi ölç'}
+            </button>
+          </div>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="eyebrow">Baseline</p>
+                <p className="font-mono text-ink">{fmt(d.baseline_value)}</p>
+              </div>
+              <div>
+                <p className="eyebrow">Proqnoz</p>
+                <p className="font-mono text-ink-soft">{fmt(d.predicted_value)}</p>
+              </div>
+              <div>
+                <p className="eyebrow">Real</p>
+                <p className="flex items-center gap-1 font-mono text-ink">
+                  {fmt(d.realized_value)}
+                  {delta != null && delta !== 0 &&
+                    (delta > 0 ? (
+                      <TrendingUp size={13} className="text-emerald-400" />
+                    ) : (
+                      <TrendingDown size={13} className="text-red-400" />
+                    ))}
+                </p>
+              </div>
+            </div>
+            <Sparkline points={traj.map((t) => t.value)} />
+          </div>
+          {delta != null && (
+            <p className="mt-1 text-xs text-ink-faint">
+              Baseline-dan dəyişmə: {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
+            </p>
+          )}
+        </div>
+      )}
 
       {d.insight && (
         <div className="mt-2 flex items-start gap-1.5 text-sm text-ink-soft">
