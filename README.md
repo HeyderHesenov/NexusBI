@@ -109,6 +109,21 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
     bildiriş; LLM observability (latency/token/RAG hit-rate). Demo məhdudiyyəti UI-da açıq etiketlənir.
 - ✅ **Keyfiyyət darvazası** — backend pytest, frontend Vitest, **bloklayıcı Playwright E2E smoke** (CI).
 
+### Qabaqcıl analitika & statistik etibar (differensiator)
+Determinist statistik təməl (**scipy + numpy**) — saf riyaziyyat, AI yox:
+- 🛡️ **Statistik mühafiz** — sorğu nəticəsinə etibar yoxlamaları (nümunə həcmi, dəyər yayılması,
+  saxta korrelyasiya). `POST /query/{id}/significance` → ChartView "Statistik yoxlama" paneli.
+- 🔗 **Kauzal nəticə** — hədəf metriklə ən güclü əlaqəli sütunlar (Pearson r + p-dəyər + **BH-FDR**
+  çox-müqayisə düzəlişi), dürüst caveat-larla. `POST /query/{id}/causal` → "Səbəb analizi" paneli.
+- 🧪 **A/B testlər** — iki variant (konversiya nisbəti və ya orta) statistik əhəmiyyət + lift +
+  95% CI + qalib verdikti. `/experiments` · **Planlama → A/B testlər**.
+- 🔍 **Insight mühərriki** — son nəticələri avtomatik tarayır (dominantlıq, konsentrasiya, MAD-əsaslı
+  anomaliya), **təsirə görə** sıralayır, dedup edir. `/insights` · **Analiz → Kəşflər**.
+- 🌳 **Metrik ağacı** — KPI dekompozisiyası (Gəlir = Qiymət × Həcm), dəyərlər aşağıdan-yuxarı
+  toplanır + valideynə töhfə %. `/metric-tree` · **Məlumat → Metrik ağacı**.
+- 📋 **Data müqavilələri** — mənbə cədvəllərinə keyfiyyət zəmanəti (boş-deyil, unikal, diapazon,
+  sxem-sabitliyi, təzəlik SLA); pozulmada bildiriş. `/contracts` · **Məlumat → Data müqavilələri**.
+
 ---
 
 ## Architecture
@@ -212,6 +227,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | GET | `/api/v1/query/history` · `/{id}` | Tarixçə · saxlanmış nəticə |
 | POST | `/api/v1/query/{id}/retry` · `/anomalies` · `/forecast` · `/explain` | Yenidən · anomaliya · proqnoz · kök-səbəb |
 | POST/GET | `/api/v1/query/{id}/root-cause` · `/goal-seek` · `/monte-carlo` · `/lineage` | Kök-səbəb ağacı · goal-seek · Monte Carlo · mənşə |
+| POST | `/api/v1/query/{id}/significance` · `/causal` | Statistik mühafiz (etibar yoxlamaları) · kauzal driver analizi (Pearson + BH-FDR) |
 | POST/GET/PUT/DELETE | `/api/v1/dashboard/...` | Dashboard CRUD + widget (+ refresh / story / live) |
 | POST/DELETE/PATCH | `/api/v1/dashboard/{id}/share` · `/embed` | Public token · imzalı embed token |
 | GET | `/api/v1/public/dashboard/{token}` · `/public/embed/{token}` | Auth-suz read-only paylaşma · embed (brand-aware) |
@@ -227,6 +243,10 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST/GET/DELETE | `/api/v1/saved/...` · `/alerts` · `/notifications` (+ `/digest`) | Saxlanan sorğular · monitorlar · brif |
 | POST/GET/PUT/DELETE | `/api/v1/decisions/...` (+ `/{id}/measure` · `/roi` · `/trajectory` · `/accuracy`) | Qərar İntellekti Döngüsü — jurnal + metrik baseline/realized ölçmə · ROI · trayektoriya · dəqiqlik |
 | POST/GET | `/api/v1/ai/eval/run` (`?grounded`) · `/eval/history-regression` · `/eval/runs` · `/observability` · `/retrieval/reindex` | Text2SQL golden-set eval (bare/grounded) · saxlanmış sorğularda AI drift · tarixçə · AI müşahidə · RAG reindex |
+| POST/GET/DELETE | `/api/v1/experiments/...` (+ `/{id}/analyze`) | A/B testlər — konversiya/orta əhəmiyyət + lift + 95% CI |
+| GET/POST | `/api/v1/insights/...` (+ `/generate` · `/{id}/dismiss`) | Insight mühərriki — avtomatik kəşf + təsir reytinqi |
+| GET/POST/PATCH/DELETE | `/api/v1/metric-tree/...` (+ `/evaluate`) | Metrik ağacı — KPI dekompozisiya + roll-up |
+| POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
 | GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` · `/checkout` | Planlar · istifadə · mock upgrade · Stripe (gated) |
 | GET | `/health` · `/metrics` | Sağlamlıq · Prometheus metrikləri |
 
@@ -267,7 +287,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 246 test
+cd backend && pytest        # 293 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -278,14 +298,18 @@ rotation/reuse-detect** · rate-limit & tiers · datasource & CSV upload · anom
 saved-query & scheduler · engine pool · metric catalog · chat context · alerts · decisions ·
 **Qərar Döngüsü (baseline/measure/ROI/accuracy/impact-math/cascade) · RAG retrieval (user-scoped,
 offline embed determinizmi, dedup) · Text2SQL eval (dəyər-əsaslı execution-match, golden health,
-rule-based CI floor, bare/grounded) · tarixçə-reqressiyası (drift) · eval alert** · təhlükəsizlik
-(pentest fixes). Testlər **hermetik** — `conftest` `OPENAI_API_KEY=""` qoyur (embed→hash, demo→
-rule-based; CI ilə eyni, real şəbəkə yox).
+rule-based CI floor, bare/grounded) · tarixçə-reqressiyası (drift) · eval alert** ·
+**qabaqcıl analitika: statistik mühafiz (t-test/z-test/Pearson/BH-FDR/MAD) · kauzal driver ·
+A/B əhəmiyyət · insight mühərriki (kəşf+reytinq) · metrik ağacı (roll-up) · data müqavilələri
+(profiling-əsaslı keyfiyyət)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
+`OPENAI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
 
-**Frontend Vitest (67 test):** lib (CSV formula-injection escape · sample queries · login hint) ·
-hook-lar (chart zoom · history delete · typewriter) · Zustand store reducer-ləri (live-update ·
-query thread · copilot plan-guard · theme · notifications · collab epoch-guard · **decision measure ·
-AI-quality eval**) · ModalShell a11y · ErrorBoundary. `cd frontend && npm run test`.
+**Frontend Vitest (96 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**color/contrast · notification kateqoriyaları**) · hook-lar (chart zoom · history delete · typewriter) ·
+Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
+collab epoch-guard · decision measure · AI-quality eval · **experiment · insight · metric-tree ·
+data-contract**) · **UI primitivləri (ModalShell a11y · ErrorBoundary · Dropdown · StatsGuard/Causal panel)**.
+`cd frontend && npm run test`.
 
 **E2E (Playwright):** `frontend/e2e/smoke.spec.ts` — login → NL sorğu (demo SQLite + rule-based
 fallback) → dashboards. Lokal: `npm run test:e2e` (preview :4173; `E2E_BASE_URL` ilə dev :5173-ə yönəlt).
@@ -299,8 +323,8 @@ Bundle analizi: `cd frontend && npm run analyze` → `stats.html`.
 ## Stack
 
 **Backend:** FastAPI · SQLAlchemy 2.0 async · Pydantic v2 · Alembic · AI mühərriki (async client) ·
-sqlglot (SQL guard/RLS) · JWT (python-jose) · Fernet · Redis · pandas/openpyxl/numpy ·
-WebSockets (canlı/collab) · prometheus-client · structlog · google-auth · httpx
+sqlglot (SQL guard/RLS) · JWT (python-jose) · Fernet · Redis · pandas/openpyxl/numpy/**scipy**
+(statistik analitika) · WebSockets (canlı/collab) · prometheus-client · structlog · google-auth · httpx
 **Frontend:** React 18 · TypeScript · Vite · TailwindCSS (CSS-var light/dark) · Recharts (lazy) ·
 react-grid-layout · Zustand · React Router · react-hot-toast · Vitest · Playwright (E2E)
 
