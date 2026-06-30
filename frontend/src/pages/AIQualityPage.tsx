@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { Activity, Database, Gauge, PlayCircle, RefreshCw, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Activity, Database, Gauge, HelpCircle, PlayCircle, RefreshCw, Sparkles } from 'lucide-react'
 import { useAIQualityStore } from '../store/aiQualityStore'
 
 function Trend({ values }: { values: number[] }) {
@@ -32,6 +32,7 @@ function StatCard({ icon, label, value, hint }: { icon: React.ReactNode; label: 
 
 export function AIQualityPage() {
   const { runs, obs, busy, load, runEval, runHistory, reindex } = useAIQualityStore()
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     load().catch(() => undefined)
@@ -74,7 +75,15 @@ export function AIQualityPage() {
             mütləq real-dünya Text2SQL dəqiqliyi deyil.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowHelp((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm transition ${
+              showHelp ? 'border-accent text-accent' : 'border-line text-ink-soft hover:border-accent hover:text-accent'
+            }`}
+          >
+            <HelpCircle size={15} /> Necə işləyir?
+          </button>
           <button
             onClick={reindex}
             disabled={busy}
@@ -105,6 +114,40 @@ export function AIQualityPage() {
           </button>
         </div>
       </header>
+
+      {showHelp && (
+        <div className="mb-4 rounded-2xl border border-line bg-surface p-5 text-sm leading-relaxed">
+          <p className="eyebrow mb-2">Necə işləyir?</p>
+          <p className="text-ink-soft">
+            Bu səhifə app-ın öz <span className="text-ink">Text2SQL AI-ının düzgün işlədiyini</span> yoxlayır
+            — istifadəçinin sualına yox, AI-nin özünün doğruluğuna. Bu, app-ı saxlayan/inkişaf etdirən
+            üçün alətdir (analitik üçün deyil — o, “Soruş” səhifəsini işlədir).
+          </p>
+
+          <p className="eyebrow mt-4 mb-1">Düymələr</p>
+          <ul className="space-y-1 text-ink-soft">
+            <li><span className="font-semibold text-ink">Eval işlət</span> — 37 etalon sualı AI-dan keçirir, neçəsində nəticə DOĞRU çıxdığını ölçür (bare engine). Model/prompt dəyişəndən sonra bas.</li>
+            <li><span className="font-semibold text-accent">Grounded (RAG)</span> — eyni testi RAG kontekstilə işlədir; <span className="text-ink">RAG təsiri</span> deltası RAG-ın faydasını göstərir.</li>
+            <li><span className="font-semibold text-ink">Tarixçə reqressiyası</span> — SƏNİN saxladığın/dashboard sorğularını yenidən yoxlayır: AI hələ də eyni cavabı verirmi? <span className="text-ink">Stabillik %</span> + drift edən real suallar.</li>
+            <li><span className="font-semibold text-ink">Yenidən indekslə</span> — RAG vektor indeksini sənin sorğularından + verified metriklərdən yenidən qurur.</li>
+          </ul>
+
+          <p className="eyebrow mt-4 mb-1">Rəqəmləri necə oxu</p>
+          <p className="text-ink-soft">
+            <span className="text-ink">Dəqiqlik %</span> = neçə sual düz keçdi · <span className="text-ink">Asan/Orta/Çətin</span> ayrıca
+            (çətində düşmə normaldır) · <span className="text-ink">Bare vs Grounded vs Tarixçə</span> yan-yana ·
+            per-case <span className="text-emerald-400">✓</span>/<span className="text-red-400">✗</span> hansı sualın keçmədiyini göstərir.
+          </p>
+
+          <p className="eyebrow mt-4 mb-1">İş axını</p>
+          <p className="text-ink-soft">
+            Dəyişiklik et → <span className="text-ink">Eval işlət</span> (reqressiya tut, trendlə müqayisə) →
+            vaxtaşırı <span className="text-ink">Tarixçə reqressiyası</span> (real drift tut). Fonda
+            <span className="text-ink"> CI gate</span> (keyfiyyət düşsə build qırmızı) və <span className="text-ink">alert</span>
+            (həddən aşağı düşsə bildiriş) avtomatik qoruyur — AI-nin səssizcə pisləşməsini istifadəçi vurmamış tutursan.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
