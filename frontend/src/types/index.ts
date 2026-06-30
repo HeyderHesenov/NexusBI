@@ -314,6 +314,7 @@ export interface AuthUser {
   full_name: string
   is_active: boolean
   subscription_tier: string
+  white_label: boolean
 }
 
 export interface Plan {
