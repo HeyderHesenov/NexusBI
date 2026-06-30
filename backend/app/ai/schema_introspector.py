@@ -27,12 +27,23 @@ async def get_schema(connection_string: str) -> dict[str, list[dict[str, str]]]:
     return schema
 
 
+def _fmt_col(c: dict[str, Any]) -> str:
+    """`name (TYPE)` plus a few sample values when available — value hints help the
+    model pick correct filter literals (e.g. region = 'North')."""
+    base = f"{c['name']} ({c.get('type', '?')})"
+    samples = c.get("samples") or []
+    if samples:
+        shown = ", ".join(str(s) for s in samples[:3])
+        return f"{base} e.g. {shown}"
+    return base
+
+
 def format_schema_for_prompt(schema: dict[str, Any]) -> str:
     """Render a schema dict into compact text for the prompt."""
     lines: list[str] = []
     for table, columns in schema.items():
         if columns and isinstance(columns[0], dict):
-            cols = ", ".join(f"{c['name']} ({c.get('type', '?')})" for c in columns)
+            cols = ", ".join(_fmt_col(c) for c in columns)
         else:
             cols = ", ".join(str(c) for c in columns)
         lines.append(f"- {table}({cols})")

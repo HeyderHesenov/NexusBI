@@ -110,11 +110,46 @@ def _seed(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# Real column types + representative sample values for the Text2SQL prompt. Giving
+# the model the actual type (so it knows which columns are numeric/aggregatable) and
+# concrete sample values (so it filters with the right literals, e.g. region='North')
+# materially improves generation quality over a bare "TEXT/NUMERIC" hint.
+_DEMO_COLUMN_META: dict[str, list[tuple[str, str, list[str]]]] = {
+    "sales": [
+        ("id", "INTEGER", []),
+        ("product_name", "TEXT", ["Product A0", "Product B1"]),
+        ("category", "TEXT", _CATEGORIES[:3]),
+        ("revenue", "NUMERIC", ["1234.5", "87.0"]),
+        ("quantity", "INTEGER", ["3", "12"]),
+        ("sale_date", "DATE", ["2024-03-15", "2024-11-15"]),  # always day 15
+        ("region", "TEXT", _REGIONS[:3]),
+    ],
+    "customers": [
+        ("id", "INTEGER", []),
+        ("name", "TEXT", ["Customer 7", "Customer 42"]),
+        ("email", "TEXT", ["customer7@example.com"]),
+        ("country", "TEXT", _COUNTRIES[:3]),
+        ("signup_date", "DATE", ["2024-01-01"]),  # always day 01
+        ("total_spent", "NUMERIC", ["4210.0", "880.25"]),
+    ],
+    "products": [
+        ("id", "INTEGER", []),
+        ("name", "TEXT", ["Product A0", "Product B1"]),
+        ("category", "TEXT", _CATEGORIES[:3]),
+        ("price", "NUMERIC", ["15.0", "55.0"]),
+        ("stock_quantity", "INTEGER", ["50", "150"]),
+    ],
+}
+
+
 def format_demo_schema() -> str:
-    """Schema text for the Text2SQL prompt."""
+    """Schema text for the Text2SQL prompt — real types + sample values."""
     schema = {
-        table: [{"name": col, "type": "TEXT/NUMERIC"} for col in cols]
-        for table, cols in DEMO_SCHEMA.items()
+        table: [
+            {"name": col, "type": typ, "samples": samples}
+            for col, typ, samples in cols
+        ]
+        for table, cols in _DEMO_COLUMN_META.items()
     }
     return format_schema_for_prompt(schema)
 

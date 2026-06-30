@@ -13,6 +13,10 @@ QAYDALAR:
 - SQL injection-dan qorun (literal user input embed etmə)
 - LIMIT 10000 həddi tətbiq et
 - Schema-da olmayan cədvəl/sütuna istinad etmə
+- Schema-dakı sütun TİPİNƏ hörmət et: yalnız NUMERIC sütunları aqreqasiya et (SUM/AVG)
+- Filtr literallarını schema-dakı nümunə dəyərlərlə uyğunlaşdır (məs. region = 'North')
+- Aqreqatları AYDIN, təsviri adla adlandır: SUM(revenue) AS total_revenue, COUNT(*) AS count
+- "top/ən çox N" soruşulanda ORDER BY ... DESC LIMIT N tətbiq et
 - Hədəf SQL dialekti: {dialect}
 - Cavabı YALNIZ JSON formatında ver
 
