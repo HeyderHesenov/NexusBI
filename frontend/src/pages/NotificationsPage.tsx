@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BellOff, CheckCheck, Sparkles, Sunrise } from 'lucide-react'
+import { Bell, BellOff, CheckCheck, Sparkles, Sunrise } from 'lucide-react'
 import { useNotificationStore } from '../store/notificationStore'
 import { IntegrationsPanel } from '../components/IntegrationsPanel'
-import { Segmented, type SegmentedOption } from '../components/ui/Segmented'
+import { Dropdown, type DropdownOption } from '../components/ui/Dropdown'
 import { CATEGORY_META, CATEGORY_ORDER } from '../lib/notificationCategories'
 import type { NotificationCategory } from '../types'
 
@@ -30,8 +30,8 @@ export function NotificationsPage() {
     return counts
   }, [items])
 
-  const chips: SegmentedOption<Filter>[] = [
-    { value: 'all', label: 'Hamısı', count: unread },
+  const filterOptions: DropdownOption<Filter>[] = [
+    { value: 'all', label: 'Hamısı', Icon: Bell, count: unread },
     ...CATEGORY_ORDER.map((c) => ({
       value: c,
       label: CATEGORY_META[c].label,
@@ -78,7 +78,13 @@ export function NotificationsPage() {
       </header>
 
       <div className="mb-5">
-        <Segmented ariaLabel="Bildiriş kateqoriyası" options={chips} value={active} onChange={setActive} />
+        <Dropdown
+          ariaLabel="Bildiriş kateqoriyası"
+          options={filterOptions}
+          value={active}
+          onChange={setActive}
+          className="w-60"
+        />
       </div>
 
       {visible.length === 0 ? (

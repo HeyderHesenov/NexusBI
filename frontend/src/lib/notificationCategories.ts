@@ -17,11 +17,12 @@ export const CATEGORY_META: Record<NotificationCategory, CategoryMeta> = {
   mention: { label: 'Qeyd', Icon: AtSign },
 }
 
-// Chip order, left to right.
+// User-facing categories, in menu order. `ai_quality` is intentionally excluded —
+// AI drift/quality alerts are internal/admin-only monitoring, not a user filter.
+// (It stays in CATEGORY_META so any stray notification still renders safely.)
 export const CATEGORY_ORDER: NotificationCategory[] = [
   'digest',
   'kpi_alert',
-  'ai_quality',
   'insight',
   'decision',
   'mention',
