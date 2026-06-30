@@ -1,4 +1,4 @@
-import { BookMarked, BrainCircuit, CreditCard, Database, FileText, Gauge, History, LayoutDashboard, MessageSquare, Palette, Tag, Target, Users } from 'lucide-react'
+import { BookMarked, CreditCard, Database, FileText, Gauge, History, LayoutDashboard, MessageSquare, Palette, Tag, Target, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { NexusMark } from '../brand/NexusMark'
 import { useDatasourceStore } from '../../store/datasourceStore'
@@ -38,7 +38,8 @@ const groups = [
     title: 'İdarəetmə',
     items: [
       { to: '/workspaces', label: 'Komanda', icon: Users },
-      { to: '/ai-quality', label: 'AI Keyfiyyət', icon: BrainCircuit },
+      // AI Keyfiyyət operator/developer alətidir — əsas naviqasiyadan çıxarıldı;
+      // route qalır, yalnız /ai-quality URL-i ilə əlçatandır.
       { to: '/branding', label: 'Brendinq', icon: Palette },
       { to: '/pricing', label: 'Planlar', icon: CreditCard },
     ],
