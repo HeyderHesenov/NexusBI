@@ -18,17 +18,18 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
                             users, datasources,        (query results +    (Postgres/SQLite,
                             query_logs, dashboards,      schema)            CSV/Excel→SQLite)
                             widgets, saved_queries,
-                            metrics
+                            metrics, decisions(+measurements),
+                            query_embeddings, eval_runs
 ```
 
 ## Backend layout (`backend/app`)
 
 | Layer | Path | Responsibility |
 |-------|------|----------------|
-| API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, metric, saved_query, billing, branding, decision, integration, copilot, requirement, scenario, workspace, public, ws |
+| API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, metric, saved_query, billing, branding, decision, integration, copilot, requirement, scenario, workspace, **ai_quality (eval/observability/reindex)**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
 | Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/* |
-| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), **root_cause, requirements, data_prep**, dashboard_planner, data_story, copilot, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, client |
+| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding), eval/* (golden set + execution-match runner)**, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, **client (chat + embed + rolling AI trace)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit |
 | Realtime | `realtime/*` | hub (collab WS pub/sub), live_refresh (canlı dashboard loop) |
@@ -41,14 +42,19 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
    (the `unlimited` demo tier bypasses).
 2. **`query_service.process_nl_query`**:
    - Build **extra_context** = metric catalog (`metric_service.metrics_as_prompt`) +
-     previous turn (chat follow-up) — injected into the Text2SQL prompt.
-   - **Cache** check (Redis, key = `qcache:{ds}:{sha1(nl|context)}`). Hit → return
+     previous turn (chat follow-up) — the **stable** context used for the cache key.
+   - **Cache** check (Redis, key = `qcache:{ds}:{sha1(user|nl|context)}`). Hit → return
      without AI/DB (still records a QueryLog).
+   - **RAG grounding (cache miss only):** `ai/retrieval.retrieve_context` appends the most
+     similar prior queries + verified metrics to a **prompt_context** (user-scoped numpy cosine
+     over `query_embeddings`) — added to the generation prompt **only**, never to the cache key,
+     so a self-indexed example can't bust the repeat-question cache.
    - **Pipeline**: schema (cached) → `text2sql` (AI engine, 3 retries, JSON) →
      `sql_guard.validate_select_only` (+ metadata denylist / schema allowlist / timeout) →
      **RLS injected into SQL** (`rls_sql.constrain_sql`) → execute via a **pooled engine**
      (`db/engine_pool`) → `chart_selector` + `insight_generator` run concurrently.
-   - Snapshot rows once → cache + persist `QueryLog` → return `QueryResult`.
+   - Snapshot rows once → cache + persist `QueryLog` → **index-on-write** (`retrieval.index_text`
+     embeds the fresh NL→SQL pair, best-effort) → return `QueryResult`.
 3. Errors raise `NexusBIException` (mapped to JSON with `sql` surfaced for query failures).
 
 ## Key subsystems
@@ -119,7 +125,29 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
   (no third-party fan-out — anti cross-tenant phishing), capped per comment.
 - **Realtime:** `realtime/hub` is an in-process WS pub/sub (collab cursors + chat); `live_refresh`
   re-runs live dashboards' widget SQL (data-only) on an interval and pushes over the WS.
-- **Decision log:** `decisions` (insight→action→outcome + status) via `decision_service`.
+- **Decision Intelligence Loop:** `decisions` (insight→action→outcome + status) via `decision_service`,
+  extended into a closed loop. A decision can bind to a metric (an NL query + optional column): the
+  **baseline** is captured at create time (read from the spawning query's stored result, else one run),
+  and the **realized** value is re-measured over time by **re-executing the bound query's stored SQL
+  with no AI** (`query_service.reexecute_logged_query`), appending each point to `decision_measurements`.
+  `_compute_impact_status` scores pending/on_track/achieved/missed/regressed vs the predicted
+  value+direction; `accuracy_summary` reports direction-hit-rate **and** target-achievement separately
+  (the calibration signal). The scheduler re-measures due decisions per cadence in an **isolated**
+  per-decision try/except (one failure can't sink the batch; scheduled runs never fall back to paid AI).
+  `extract_scalar` reduces a result set to one metric number. Endpoints: `/{id}/measure` (RateLimited),
+  `/roi`, `/trajectory`, `/accuracy`.
+- **RAG grounding:** a **portable vector store** (`query_embeddings` table, JSON float arrays + numpy
+  cosine — no pgvector/Postgres dependency). `ai/client.embed` uses the real embedding model, or a
+  **deterministic hash embedding** offline/keyless (CI-safe). `ai/retrieval.retrieve_context` scores a
+  bounded, **user-scoped** candidate set (own queries + global verified metrics; mismatched embedding
+  dims skipped) and returns a few-shot block for the Text2SQL prompt; `index_text`/`reindex` (one
+  batched embed call) populate it. RLS-safe: a user never retrieves another user's examples.
+- **AI eval & observability:** `ai/eval` scores a golden set by **execution-match** (`runner.run_eval`
+  compares result rows, type-tolerant; measures the bare engine for a deterministic CI signal) and
+  persists `eval_runs`. `client` keeps a bounded in-process **AI trace** (token/latency per call) →
+  `observability()`. Surfaced on the **AI Quality** page + Prometheus (`text2sql_eval_accuracy`,
+  `ai_latency_seconds`, `rag_retrievals_total`). `/ai/eval/run` + `/ai/retrieval/reindex` are
+  RateLimited (real AI work); `/ai/eval/runs` + `/ai/observability` are reads.
 - **Sharing / embed:** `dashboards.share_token` (public read-only snapshot, no auth) AND
   `dashboards.embed_enabled` + a signed embed token (`security.create_embed_token`, `emb` claim);
   `embed_service.resolve` re-checks `embed_enabled` so disabling instantly revokes all tokens.
@@ -142,26 +170,35 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
   `npm run test:e2e` all live in ONE step.
 - **Testing:** backend pytest (230) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
-  leaks an own attribute that shadows later class patches). Frontend Vitest (65) covers `lib/*`,
-  hooks, and Zustand store reducers (`src/**/*.test.*`; e2e specs belong to Playwright). E2E:
-  `frontend/e2e/smoke.spec.ts` over login → query → dashboards against the built preview.
-- **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters at
-  `/metrics`; structured logs via structlog.
+  leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
+  sets `OPENAI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
+  deterministic, no cost — identical to CI). Frontend Vitest (67) covers `lib/*`, hooks, and Zustand
+  store reducers (`src/**/*.test.*`, incl. decision-measure + AI-quality eval; e2e specs belong to
+  Playwright). E2E: `frontend/e2e/smoke.spec.ts` over login → query → dashboards against the preview.
+- **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus
+  `ai_latency_seconds`, `rag_retrievals_total` (hit/miss), and the `text2sql_eval_accuracy` gauge at
+  `/metrics`; `client` also keeps a bounded in-process AI-call trace for the AI Quality view.
+  Structured logs via structlog.
 
 ## Data model (app DB)
 
 `users` (1)─<(N)) `datasources`, `query_logs`, `dashboards`, `saved_queries`, `metrics`,
 `alerts`, `notifications`, `decisions`, **`requirement_docs`, `kpi_targets`,
 `integration_channels`, `workspaces`, `workspace_members`, `rls_rules`, `audit_logs`,
-`brand_configs` (1:1), `refresh_tokens`**; `dashboards` (1)─<(N) `widgets` and `dashboard_comments`;
-`alerts` → `saved_queries`; `widgets.query_log_id` → `query_logs`; `rls_rules` →
-`datasources` (+ owner/member → `users`); `workspace_members` → `workspaces`;
-`query_logs.datasource_id` / `metrics.datasource_id` / `saved_queries.datasource_id` → `datasources`.
+`brand_configs` (1:1), `refresh_tokens`, **`query_embeddings`, `eval_runs`** (`eval_runs` is
+global, no FK)**; `dashboards` (1)─<(N) `widgets` and `dashboard_comments`;
+`decisions` (1)─<(N) `decision_measurements`; `alerts` → `saved_queries`; `widgets.query_log_id`
+→ `query_logs`; `rls_rules` → `datasources` (+ owner/member → `users`); `workspace_members` →
+`workspaces`; `query_logs.datasource_id` / `metrics.datasource_id` / `saved_queries.datasource_id`
+→ `datasources`. (`decisions` also link `datasource_id` + `last_query_log_id`/`query_log_id`.)
 
-Latest schema change: the **`refresh_tokens`** table (rotation + reuse-detection), migration
-`e7f8a9b0c1d2`. Earlier this cycle: `users.last_digest_at`; `metrics.verified`/`verified_by`/
-`verified_at`; `datasources.freshness_sla_hours`/`last_refreshed_at`; `dashboards.embed_enabled`.
-Migrations are Alembic, chained under `db/migrations/versions`; current head = **`e7f8a9b0c1d2`**.
+Latest schema changes: **`f8a9b0c1d2e3`** — Decision Intelligence Loop (`decisions` metric-binding
+columns: `metric_query`/`metric_column`/`datasource_id`/`predicted_*`/`baseline_*`/`realized_*`/
+`measure_cadence`/`impact_status`, + the `decision_measurements` table); **`a9b0c1d2e3f4`** — AI
+engineering (`query_embeddings` RAG vector store + `eval_runs`). Earlier this cycle: `refresh_tokens`
+(`e7f8a9b0c1d2`); `users.last_digest_at`; `metrics.verified*`; `datasources.freshness_sla_hours`/
+`last_refreshed_at`; `dashboards.embed_enabled`. Migrations are Alembic, chained under
+`db/migrations/versions`; current head = **`a9b0c1d2e3f4`**.
 
 ## Notable architecture deltas (this round)
 
@@ -198,6 +235,18 @@ Migrations are Alembic, chained under `db/migrations/versions`; current head = *
   patch the `Text2SQLEngine` **class** (not the `_engine` singleton, whose instance patch leaked),
   and the e2e job runs `alembic upgrade head` + backend boot + smoke in a single step (background
   processes don't survive a step boundary).
+- **Closed-loop decisions:** a decision binds to a metric and is re-measured via the existing
+  AI-free `reexecute_logged_query` path (the same one live dashboards use), with the scheduler
+  isolating each decision so one failure can't wedge the batch. `accuracy_summary` keeps
+  *direction-hit* and *target-achieved* as distinct signals (the UI labels them separately).
+- **RAG without a new dependency:** the vector store is a JSON column + numpy cosine (portable to
+  SQLite/CI), not pgvector. RAG context is applied to the **generation prompt only** — the result
+  cache key stays on the stable `extra_context`, so index-on-write never busts a repeat-question
+  hit. `client.embed` degrades to a deterministic hash embedding when keyless.
+- **Hermetic tests:** `conftest` now sets `OPENAI_API_KEY=""`, so the whole suite runs offline
+  (embeddings → hash, Text2SQL → rule-based) — identical to CI, no network/cost, deterministic.
+- **AI quality is measured, not assumed:** a golden-set execution-match eval (`ai/eval`) plus a
+  bounded in-process AI call trace (`client.observability`) feed the AI Quality page + Prometheus.
 
 ## Security model
 
@@ -218,6 +267,9 @@ Migrations are Alembic, chained under `db/migrations/versions`; current head = *
 - **Embed**: signed read-only `emb` token; disabling embed instantly revokes; white-label
   brand fields are server-validated (no tag injection / `javascript:` URLs).
 - **@mention** notifies in-app only (no outbound fan-out to other tenants' channels), capped.
+- **RAG retrieval is user-scoped** (RLS-safe): the candidate query filters to the requester's own
+  embeddings plus global verified metrics, so prior queries never leak across users. The eval and
+  reindex endpoints (real AI work) are **RateLimited** to bound spend + table growth.
 - JWT on protected endpoints; Fernet-encrypted secrets (connection strings + integration
   targets); prod fails fast without strong `SECRET_KEY`/`FERNET_KEY`. Secrets never returned
   to clients. A final cross-cutting pentest pass confirmed the new surface; findings fixed.

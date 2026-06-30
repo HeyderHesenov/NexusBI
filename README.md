@@ -46,7 +46,11 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   KPI çıxarır → təsdiqlədikdən sonra tam dashboard qurur (tələb→KPI izlənilirlik).
 
 ### Qərarlar & izləmə
-- 🎯 **Qərar jurnalı** — insight → action → outcome; status izləmə (analitikanı təsirə bağlayır).
+- 🎯 **Qərar İntellekti Döngüsü (closed-loop ROI)** — qərarı **ölçülə bilən metrikə bağla**,
+  qərar anında **baseline** tutulur, real təsir **avtomatik ölçülür** (saxlanmış SQL-i AI-siz
+  reexecute; cadence ilə planlı) və **proqnozla müqayisə** edilir (baseline→proqnoz→real +
+  trayektoriya sparkline). **"Qərar dəqiqliyi"** istifadəçinin proqnozlarını reallıqla tutuşduraraq
+  AI tövsiyələrini kalibrlər. (insight → action → outcome jurnalı + status izləmə üstündə qurulub.)
 - 🔔 **Alert-lər & monitorlar** — saxlanan sorğuya threshold bağla → şərt pozulanda bildiriş mərkəzi.
 - 🔌 **Workflow inteqrasiyaları** — brif/alert-ləri Slack · Teams · email-ə göndər (mock-first,
   config-gated); dashboard chat-də **@mention** → bildiriş.
@@ -93,10 +97,9 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   **lazy chart bundle** (ağır recharts yalnız qrafik render olunanda yüklənir — ilk açılış yüngül).
 - 📈 **Müşahidə** — Prometheus `/metrics`, struktur loglar.
 - 🧠 **AI-Engineering təməli** — **RAG grounding** (keçmiş sorğular + verified metriklər
-  portativ vektor store ilə Text2SQL-ə inject olunur) + **LLM eval/observability** ("AI Keyfiyyət"
-  səhifəsi: Text2SQL golden-set dəqiqliyi, gecikmə, token, RAG hit-rate).
-- 🎯 **Qərar İntellekti Döngüsü** — qərarı metrikə bağla, baseline tut, real təsiri avtomatik
-  ölç, proqnozla müqayisə et; "Qərar dəqiqliyi" ilə AI tövsiyələri kalibrlənir (closed-loop ROI).
+  portativ vektor store ilə Text2SQL prompt-una inject olunur; keyless offline fallback) +
+  **LLM eval/observability** ("AI Keyfiyyət" səhifəsi: Text2SQL golden-set execution-accuracy
+  trendi, gecikmə, token istifadəsi, RAG hit-rate; on-demand eval + reindex).
 - ✅ **Keyfiyyət darvazası** — backend pytest, frontend Vitest, **bloklayıcı Playwright E2E smoke** (CI).
 
 ---
@@ -117,9 +120,10 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
                                      │   • metrics + chat context (prompt) · RLS   │
                                      │   ┌────────┴─────────┐                     │
                                      │   ▼                  ▼                     │
-                                     │ ai/text2sql   ai/chart_selector             │
-                                     │ ai/insight·forecast·anomaly·root_cause      │
-                                     │ ai/requirements·data_prep·copilot (AI eng.) │
+                                     │ ai/text2sql ← ai/retrieval (RAG grounding)  │
+                                     │ ai/chart_selector·insight·forecast·anomaly  │
+                                     │ ai/root_cause·requirements·data_prep·copilot│
+                                     │ ai/eval (golden-set) · client.embed (vector)│
                                      │   │  SQL guard → engine pool → exec → RLS   │
                                      │   ▼                                         │
                                      │ services: digest·requirement·data_prep·     │
@@ -134,11 +138,14 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
                                                                    (mock-first)
 ```
 
-**Axın (`process_nl_query`):** rate-limit → **user-scoped** cache yoxla → (metrik + söhbət
-kontekstini prompt-a inject) → Text2SQL → SQL guard → pooled engine ilə icra → **RLS
-filtri** → chart + insight (paralel) → QueryLog + cache → QueryResult. On-demand AI
-təhlilləri (`root-cause`, `forecast`, `anomaly`, `explain`) və determinik hesablamalar
-(`goal-seek`, `monte-carlo`, `lineage`, `profiling`) ayrıca endpoint-lərdir.
+**Axın (`process_nl_query`):** rate-limit → **user-scoped** cache yoxla (açar **sabit**
+metrik+söhbət kontekstindədir) → miss-də **RAG grounding** (`ai/retrieval` — bənzər keçmiş
+sorğular + verified metriklər yalnız generation prompt-una; result-cache açarına yox) →
+Text2SQL → SQL guard → pooled engine ilə icra → **RLS filtri** → chart + insight (paralel) →
+QueryLog + cache + **index-on-write** (yeni NL→SQL cütü embed olunur) → QueryResult. On-demand
+AI təhlilləri (`root-cause`, `forecast`, `anomaly`, `explain`) və determinik hesablamalar
+(`goal-seek`, `monte-carlo`, `lineage`, `profiling`) ayrıca endpoint-lərdir; **Text2SQL
+keyfiyyəti** golden-set eval + AI observability ilə ölçülür (`/ai/eval`, `/ai/observability`).
 
 Ətraflı: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -211,7 +218,8 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | GET/PUT | `/api/v1/brand` | White-label brendinq |
 | POST | `/api/v1/copilot/chat` (mode=plan/execute) | Agentik copilot (plan → icra) |
 | POST/GET/DELETE | `/api/v1/saved/...` · `/alerts` · `/notifications` (+ `/digest`) | Saxlanan sorğular · monitorlar · brif |
-| POST/GET/PUT/DELETE | `/api/v1/decisions/...` | Qərar jurnalı (insight→action→outcome) |
+| POST/GET/PUT/DELETE | `/api/v1/decisions/...` (+ `/{id}/measure` · `/roi` · `/trajectory` · `/accuracy`) | Qərar İntellekti Döngüsü — jurnal + metrik baseline/realized ölçmə · ROI · trayektoriya · dəqiqlik |
+| POST/GET | `/api/v1/ai/eval/run` · `/eval/runs` · `/observability` · `/retrieval/reindex` | Text2SQL golden-set eval · AI müşahidə · RAG vektor reindex |
 | GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` · `/checkout` | Planlar · istifadə · mock upgrade · Stripe (gated) |
 | GET | `/health` · `/metrics` | Sağlamlıq · Prometheus metrikləri |
 
@@ -222,6 +230,9 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | Dəyişən | Təsvir |
 |---------|--------|
 | `OPENAI_API_KEY` / `OPENAI_MODEL` | AI mühərriki açarı + mühərrik identifikatoru (.env-dən, məcburi) |
+| `EMBEDDING_MODEL` | RAG embedding modeli (açar boşdursa determinik offline hash fallback) |
+| `RAG_ENABLED` / `RAG_TOP_K` / `RAG_MAX_CANDIDATES` / `RAG_HASH_DIM` / `RAG_INDEX_ON_WRITE` | RAG grounding: aktiv · inject olunan nümunə sayı · skan limiti · offline embed ölçüsü · hər NL→SQL-i indeksləmə |
+| `AI_TRACE_ENABLED` / `EVAL_MIN_ACCURACY` | AI çağırış izi (token/latency müşahidə) · golden-set eval dəqiqlik həddi |
 | `GOOGLE_CLIENT_ID` | Google OAuth Web client ID (boşdursa düymə deaktiv) |
 | `DATABASE_URL` | Async DSN (postgresql+asyncpg / sqlite+aiosqlite) |
 | `REDIS_URL` / `CACHE_TTL_SECONDS` | Redis (opsional) · nəticə keşi TTL (default 300) |
@@ -257,12 +268,15 @@ rotation/reuse-detect** · rate-limit & tiers · datasource & CSV upload · anom
 (plan/execute) · trust (verified/lineage/SLA) · workspace RBAC + SQL-səviyyə RLS + audit · scenario
 (goal-seek/Monte Carlo/pacing) · integrations (+ @mention) · embed/white-label/Stripe gate** ·
 saved-query & scheduler · engine pool · metric catalog · chat context · alerts · decisions ·
-təhlükəsizlik (pentest fixes).
+**Qərar Döngüsü (baseline/measure/ROI/accuracy/impact-math/cascade) · RAG retrieval (user-scoped,
+offline embed determinizmi, dedup) · Text2SQL eval (execution-match)** · təhlükəsizlik (pentest
+fixes). Testlər **hermetik** — `conftest` `OPENAI_API_KEY=""` qoyur (embed→hash, demo→rule-based;
+CI ilə eyni, real şəbəkə yox).
 
-**Frontend Vitest (65 test):** lib (CSV formula-injection escape · sample queries · login hint) ·
+**Frontend Vitest (67 test):** lib (CSV formula-injection escape · sample queries · login hint) ·
 hook-lar (chart zoom · history delete · typewriter) · Zustand store reducer-ləri (live-update ·
-query thread · copilot plan-guard · theme · notifications · collab epoch-guard) · ModalShell a11y ·
-ErrorBoundary. `cd frontend && npm run test`.
+query thread · copilot plan-guard · theme · notifications · collab epoch-guard · **decision measure ·
+AI-quality eval**) · ModalShell a11y · ErrorBoundary. `cd frontend && npm run test`.
 
 **E2E (Playwright):** `frontend/e2e/smoke.spec.ts` — login → NL sorğu (demo SQLite + rule-based
 fallback) → dashboards. Lokal: `npm run test:e2e` (preview :4173; `E2E_BASE_URL` ilə dev :5173-ə yönəlt).
