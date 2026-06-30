@@ -419,6 +419,47 @@ export interface Insight {
   created_at: string
 }
 
+export type ContractRule = 'not_null' | 'unique' | 'min' | 'max' | 'range' | 'freshness' | 'schema'
+
+export interface Expectation {
+  column?: string | null
+  rule: ContractRule
+  params?: Record<string, number>
+}
+
+export interface CheckResult {
+  column: string | null
+  rule: string
+  passed: boolean
+  detail: string
+}
+
+export interface DataContract {
+  id: string
+  datasource_id: string
+  table_name: string
+  name: string
+  expectations: Expectation[]
+  schema_hash: string | null
+  last_status: string // pass | fail | unknown
+  last_run_at: string | null
+  created_at: string
+}
+
+export interface ContractRun {
+  id: string
+  status: string
+  results: CheckResult[]
+  created_at: string
+}
+
+export interface DataContractCreate {
+  datasource_id: string
+  table_name: string
+  name: string
+  expectations: Expectation[]
+}
+
 export type TreeOperator = 'add' | 'sub' | 'mul' | 'div'
 
 export interface MetricNode {
