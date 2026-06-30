@@ -396,6 +396,18 @@ export interface RootCauseResult {
   drivers: RootCauseNode[]
 }
 
+export interface SignificanceCheck {
+  name: string
+  passed: boolean
+  severity: string // "ok" | "warn"
+  detail: string
+}
+
+export interface SignificanceResult {
+  checks: SignificanceCheck[]
+  summary: string
+}
+
 export interface KpiItem {
   name: string
   question: string
