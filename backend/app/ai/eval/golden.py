@@ -19,6 +19,14 @@ from dataclasses import dataclass
 class GoldenCase:
     nl_query: str
     expected_sql: str
+    # Additional accepted gold SQLs for questions with more than one CORRECT shape
+    # (e.g. the model may or may not include an `id` column). A case passes if the
+    # candidate value-matches ANY gold — standard multi-reference Text2SQL scoring.
+    alt_sqls: tuple[str, ...] = ()
+
+    @property
+    def expected_sqls(self) -> tuple[str, ...]:
+        return (self.expected_sql, *self.alt_sqls)
 
 
 GOLDEN_SET: list[GoldenCase] = [
@@ -29,7 +37,11 @@ GOLDEN_SET: list[GoldenCase] = [
     GoldenCase("ümumi satılan miqdar", "SELECT SUM(quantity) AS total_quantity FROM sales"),
     GoldenCase("orta məhsul qiyməti", "SELECT AVG(price) AS avg_price FROM products"),
     GoldenCase("orta müştəri xərci", "SELECT AVG(total_spent) AS avg_spent FROM customers"),
-    GoldenCase("ən yüksək tək satış gəliri", "SELECT MAX(revenue) AS max_revenue FROM sales"),
+    GoldenCase(
+        "ən yüksək tək satış gəlirinin məbləği",
+        "SELECT MAX(revenue) AS max_revenue FROM sales",
+        alt_sqls=("SELECT revenue FROM sales ORDER BY revenue DESC LIMIT 1",),
+    ),
     GoldenCase("ən aşağı məhsul qiyməti", "SELECT MIN(price) AS min_price FROM products"),
     # ── Group-by ──
     GoldenCase(
@@ -67,12 +79,16 @@ GOLDEN_SET: list[GoldenCase] = [
         "SELECT SUM(revenue) AS total_revenue FROM sales WHERE region = 'North'",
     ),
     # ── Top-N (desc + asc) ──
+    # Disambiguated NL ("adı və ümumi xərci") + the system-prompt rule "return only
+    # asked columns" steer the model to exactly name+total_spent — so a single gold
+    # suffices and we keep _denotation's one-text+one-number invariant intact (no
+    # id-variant, which would put two numerics in a row).
     GoldenCase(
-        "ən çox xərcləyən 5 müştəri",
+        "ən çox xərcləyən 5 müştərinin adı və ümumi xərci",
         "SELECT name, total_spent FROM customers ORDER BY total_spent DESC LIMIT 5",
     ),
     GoldenCase(
-        "ən az xərcləyən 5 müştəri",
+        "ən az xərcləyən 5 müştərinin adı və ümumi xərci",
         "SELECT name, total_spent FROM customers ORDER BY total_spent ASC LIMIT 5",
     ),
     GoldenCase(

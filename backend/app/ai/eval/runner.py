@@ -68,13 +68,17 @@ async def evaluate_case(case: GoldenCase, generate: GenerateFn, schema_text: str
     try:
         candidate = await generate(case.nl_query, schema_text, "sqlite", "")
         _cc, cand_rows = demo_data.execute_demo_sql(candidate.sql)
-        _ec, exp_rows = demo_data.execute_demo_sql(case.expected_sql)
+        # A question can have several CORRECT gold forms (e.g. with/without an id
+        # column); pass on a value-match against ANY of them.
+        exp_rows_by_gold = [demo_data.execute_demo_sql(sql)[1] for sql in case.expected_sqls]
     except Exception as exc:  # noqa: BLE001 — a failure to generate/run is a miss
         _log.info("eval_case_failed", nl=case.nl_query, error=str(exc)[:160])
         latency_ms = int((time.perf_counter() - started) * 1000)
         return {"nl": case.nl_query, "passed": False, "strict_passed": False, "latency_ms": latency_ms}
-    passed = _denotation(cand_rows) == _denotation(exp_rows)
-    strict = passed and _strict_key(cand_rows) == _strict_key(exp_rows)
+    cand_d = _denotation(cand_rows)
+    passed = any(cand_d == _denotation(rows) for rows in exp_rows_by_gold)
+    # strict (column-name-aware) is measured only against the primary gold.
+    strict = passed and _strict_key(cand_rows) == _strict_key(exp_rows_by_gold[0])
     latency_ms = int((time.perf_counter() - started) * 1000)
     return {"nl": case.nl_query, "passed": passed, "strict_passed": strict, "latency_ms": latency_ms}
 
