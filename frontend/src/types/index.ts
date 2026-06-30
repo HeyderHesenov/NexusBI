@@ -200,6 +200,13 @@ export interface AccuracySummary {
   avg_magnitude_error_pct: number | null
 }
 
+export interface EvalCaseDetail {
+  nl: string
+  passed: boolean
+  strict_passed: boolean
+  latency_ms: number
+}
+
 export interface EvalRun {
   id: string
   model: string
@@ -208,6 +215,7 @@ export interface EvalRun {
   exec_accuracy: number
   avg_latency_ms: number
   notes: string
+  details: EvalCaseDetail[]
   created_at: string
 }
 

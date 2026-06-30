@@ -123,6 +123,26 @@ export function AIQualityPage() {
           )}
         </div>
       </div>
+
+      {latest && latest.details.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-line bg-surface p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="eyebrow">Son eval — sual üzrə nəticə</p>
+            <p className="text-xs text-ink-faint">✓ = nəticə uyğun · ⚑ = sütun adı da eyni</p>
+          </div>
+          <ul className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            {latest.details.map((d, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <span className={d.passed ? 'text-emerald-400' : 'text-red-400'}>
+                  {d.passed ? '✓' : '✗'}
+                </span>
+                <span className="truncate text-ink-soft">{d.nl}</span>
+                {d.passed && d.strict_passed && <span className="text-ink-faint">⚑</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

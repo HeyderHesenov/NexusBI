@@ -6,6 +6,13 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class EvalCaseDetail(BaseModel):
+    nl: str
+    passed: bool
+    strict_passed: bool
+    latency_ms: int = 0
+
+
 class EvalRunResponse(BaseModel):
     id: str
     model: str
@@ -14,6 +21,7 @@ class EvalRunResponse(BaseModel):
     exec_accuracy: float
     avg_latency_ms: float
     notes: str
+    details: list[EvalCaseDetail] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}

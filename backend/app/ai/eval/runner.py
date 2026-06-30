@@ -1,6 +1,7 @@
 """Run the golden set through the Text2SQL engine and score execution accuracy."""
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Awaitable, Callable
 
@@ -29,8 +30,23 @@ def _norm(v: object) -> str:
     return f"s{v}"
 
 
-def _result_key(rows: list[dict]) -> list[tuple]:
-    """Order-insensitive, type-tolerant comparable form of a result set."""
+def _denotation(rows: list[dict]) -> list[tuple]:
+    """Value-based (column-name-agnostic) form — standard Text2SQL execution accuracy.
+
+    Each row becomes a sorted multiset of its VALUES (the column alias the model chose
+    is irrelevant: `SUM(x) AS total` and `AS total_revenue` denote the same answer).
+
+    LIMITATION: sorting values within a row means two SAME-TYPED projected columns can
+    swap and still match (e.g. `MIN(price), MAX(price)` vs `MAX, MIN`). The current
+    golden set is immune — every multi-column case is exactly one text label + one
+    number, which `_norm` prefixes 's'/'n' so they can't collide. Keep golden cases to
+    that shape, or this check would need column-aware matching.
+    """
+    return sorted(tuple(sorted(_norm(v) for v in row.values())) for row in rows)
+
+
+def _strict_key(rows: list[dict]) -> list[tuple]:
+    """Column-name-aware form — kept as a secondary, stricter signal for transparency."""
     return sorted(tuple(sorted((str(k), _norm(v)) for k, v in row.items())) for row in rows)
 
 
@@ -40,35 +56,45 @@ async def _default_generate(nl: str, schema: str, dialect: str, ctx: str) -> Tex
     return await _engine.generate_sql(nl, schema, dialect, ctx)
 
 
-async def evaluate_case(case: GoldenCase, generate: GenerateFn, schema_text: str) -> bool:
-    """True when the engine's SQL returns the same rows as the expected SQL.
+async def evaluate_case(case: GoldenCase, generate: GenerateFn, schema_text: str) -> dict:
+    """Return {nl, passed, strict_passed} for one case.
 
-    Measures the bare Text2SQL engine (no RAG context) on purpose — a deterministic,
-    corpus-independent regression signal suitable for CI. RAG grounding is exercised
-    separately by the live pipeline + retrieval tests.
+    ``passed`` is value-based execution match (the headline metric); ``strict_passed``
+    additionally requires identical column names. Measures the bare Text2SQL engine
+    (no RAG context) on purpose — a deterministic, corpus-independent CI signal; RAG
+    grounding is exercised separately by the live pipeline + retrieval tests.
     """
+    started = time.perf_counter()
     try:
         candidate = await generate(case.nl_query, schema_text, "sqlite", "")
         _cc, cand_rows = demo_data.execute_demo_sql(candidate.sql)
         _ec, exp_rows = demo_data.execute_demo_sql(case.expected_sql)
     except Exception as exc:  # noqa: BLE001 — a failure to generate/run is a miss
         _log.info("eval_case_failed", nl=case.nl_query, error=str(exc)[:160])
-        return False
-    return _result_key(cand_rows) == _result_key(exp_rows)
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        return {"nl": case.nl_query, "passed": False, "strict_passed": False, "latency_ms": latency_ms}
+    passed = _denotation(cand_rows) == _denotation(exp_rows)
+    strict = passed and _strict_key(cand_rows) == _strict_key(exp_rows)
+    latency_ms = int((time.perf_counter() - started) * 1000)
+    return {"nl": case.nl_query, "passed": passed, "strict_passed": strict, "latency_ms": latency_ms}
 
 
 async def run_eval(db: AsyncSession, *, generate: GenerateFn | None = None) -> EvalRun:
     """Score the golden set, persist + gauge the result, return the EvalRun."""
     generate = generate or _default_generate
     schema_text = demo_data.format_demo_schema()
-    started = time.perf_counter()
-    passed = 0
-    for case in GOLDEN_SET:
-        if await evaluate_case(case, generate, schema_text):
-            passed += 1
+    # Cases are independent — run them concurrently so a 20-case set stays snappy
+    # (wall-clock ≈ one generation, not the sum).
+    details = list(
+        await asyncio.gather(*(evaluate_case(c, generate, schema_text) for c in GOLDEN_SET))
+    )
+
     total = len(GOLDEN_SET)
+    passed = sum(1 for d in details if d["passed"])
+    strict = sum(1 for d in details if d["strict_passed"])
     accuracy = passed / total if total else 0.0
-    avg_latency = (time.perf_counter() - started) / total * 1000 if total else 0.0
+    # True mean of per-case latency (gather makes wall-clock meaningless for this).
+    avg_latency = sum(d["latency_ms"] for d in details) / total if total else 0.0
 
     run = EvalRun(
         model=settings.OPENAI_MODEL or "rule_based",
@@ -76,7 +102,10 @@ async def run_eval(db: AsyncSession, *, generate: GenerateFn | None = None) -> E
         passed=passed,
         exec_accuracy=round(accuracy, 4),
         avg_latency_ms=round(avg_latency, 1),
-        notes="below threshold" if accuracy < settings.EVAL_MIN_ACCURACY else "",
+        notes=f"strict {strict}/{total}" + (
+            " · below threshold" if accuracy < settings.EVAL_MIN_ACCURACY else ""
+        ),
+        details=details,
     )
     db.add(run)
     await db.flush()

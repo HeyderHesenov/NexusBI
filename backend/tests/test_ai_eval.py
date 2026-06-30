@@ -1,12 +1,14 @@
-"""Text2SQL eval runner: execution-match scoring + persistence."""
+"""Text2SQL eval runner: value-based execution-match scoring + persistence."""
 from __future__ import annotations
 
+import pytest
 from httpx import AsyncClient
 
 from app.ai.eval import runner
 from app.ai.eval.golden import GOLDEN_SET
 from app.ai.types import Text2SQLResult
 from app.db.session import AsyncSessionLocal
+from app.services import query_service
 
 
 def _perfect_gen():
@@ -25,24 +27,54 @@ async def test_run_eval_perfect_engine():
     assert run.total == len(GOLDEN_SET)
     assert run.passed == run.total
     assert run.exec_accuracy == 1.0
+    assert len(run.details) == run.total
+    assert all(d["passed"] for d in run.details)
+
+
+async def test_value_match_ignores_column_alias():
+    """An equivalent query with a different alias must still pass (value match),
+    while strict (column-name) match flags the alias difference."""
+    async def gen(nl, schema, dialect, ctx):
+        # Right number, different alias than the golden 'total_revenue'.
+        return Text2SQLResult(
+            sql="SELECT SUM(revenue) AS total FROM sales", explanation="", confidence=1.0, warnings=[],
+        )
+
+    schema = ""
+    result = await runner.evaluate_case(
+        next(c for c in GOLDEN_SET if c.nl_query == "ümumi gəlir"), gen, schema
+    )
+    assert result["passed"] is True       # value-based match succeeds
+    assert result["strict_passed"] is False  # column name differs
 
 
 async def test_run_eval_counts_a_miss():
     async def gen(nl, schema, dialect, ctx):
-        # Always return the same (wrong for most) SQL → not a perfect match.
         return Text2SQLResult(sql="SELECT COUNT(*) AS count FROM products",
                               explanation="", confidence=0.5, warnings=[])
 
     async with AsyncSessionLocal() as db:
         run = await runner.run_eval(db, generate=gen)
         await db.commit()
-    assert run.passed < run.total  # at least one golden case is not satisfied
+    assert run.passed < run.total  # one fixed query can't satisfy every golden case
 
 
-async def test_ai_quality_endpoints(client: AsyncClient, auth: dict):
+async def test_ai_quality_endpoints(client: AsyncClient, auth: dict, monkeypatch):
+    # Patch the engine class so the eval endpoint (which uses the real engine) is
+    # fast + hermetic — no network, deterministic.
+    async def fake_sql(self, nl, schema, dtype="sqlite", extra_context=""):
+        return Text2SQLResult(
+            sql="SELECT SUM(revenue) AS total_revenue FROM sales",
+            explanation="", confidence=0.9, warnings=[],
+        )
+
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", fake_sql)
+
     run = await client.post("/api/v1/ai/eval/run", headers=auth)
     assert run.status_code == 200, run.text
-    assert run.json()["total"] == len(GOLDEN_SET)
+    body = run.json()
+    assert body["total"] == len(GOLDEN_SET)
+    assert len(body["details"]) == len(GOLDEN_SET)
 
     runs = await client.get("/api/v1/ai/eval/runs", headers=auth)
     assert runs.status_code == 200
