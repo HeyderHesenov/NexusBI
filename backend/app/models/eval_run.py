@@ -22,6 +22,8 @@ class EvalRun(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     model: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    # "bare" = engine only · "grounded" = engine + metric context + RAG (shipped pipeline)
+    mode: Mapped[str] = mapped_column(String(12), nullable=False, default="bare")
     total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     passed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     exec_accuracy: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

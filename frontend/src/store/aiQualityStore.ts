@@ -8,7 +8,7 @@ interface AIQualityState {
   obs: ObservabilitySummary | null
   busy: boolean
   load: () => Promise<void>
-  runEval: () => Promise<void>
+  runEval: (grounded?: boolean) => Promise<void>
   reindex: () => Promise<void>
 }
 
@@ -20,13 +20,14 @@ export const useAIQualityStore = create<AIQualityState>((set, get) => ({
     const [runs, obs] = await Promise.all([api.listRuns(), api.observability()])
     set({ runs, obs })
   },
-  runEval: async () => {
+  runEval: async (grounded = false) => {
     if (get().busy) return
     set({ busy: true })
     try {
-      const run = await api.runEval()
+      const run = await api.runEval(grounded)
       set({ runs: [run, ...get().runs] })
-      toast.success(`Eval: ${run.passed}/${run.total} keçdi (${Math.round(run.exec_accuracy * 100)}%)`)
+      const tag = grounded ? 'Grounded' : 'Bare'
+      toast.success(`${tag}: ${run.passed}/${run.total} (${Math.round(run.exec_accuracy * 100)}%)`)
     } catch {
       /* interceptor toast */
     } finally {

@@ -55,6 +55,38 @@ async def test_run_eval_details_carry_tier():
     assert {d["tier"] for d in run.details} == {"easy", "medium", "hard"}
 
 
+async def test_run_eval_grounded_mode(monkeypatch):
+    """Grounded mode builds the metric+RAG context and routes it through the engine."""
+    from app.ai import retrieval
+
+    seen = {"rag": False}
+    expected = {c.nl_query: c.expected_sql for c in GOLDEN_SET}
+
+    async def fake_retrieve(db, nl, user_id, ds_id):
+        seen["rag"] = True  # the grounded path must consult RAG retrieval
+        return "BƏNZƏR: ..."
+
+    async def fake_sql(self, nl, schema, dtype="sqlite", extra_context=""):
+        return Text2SQLResult(sql=expected[nl], explanation="", confidence=1.0, warnings=[])
+
+    monkeypatch.setattr(retrieval, "retrieve_context", fake_retrieve)
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", fake_sql)
+
+    async with AsyncSessionLocal() as db:
+        run = await runner.run_eval(db, grounded=True, user_id="u1")  # no explicit generate
+        await db.commit()
+    assert run.mode == "grounded"
+    assert seen["rag"] is True  # grounded path actually invoked RAG retrieval
+    assert run.passed == run.total
+
+
+async def test_bare_mode_default():
+    async with AsyncSessionLocal() as db:
+        run = await runner.run_eval(db, generate=_perfect_gen())
+        await db.commit()
+    assert run.mode == "bare"
+
+
 async def test_multi_gold_accepts_alternative_form():
     """A correct-but-alternative gold form (here: top-1 row instead of MAX()) passes."""
     case = next(c for c in GOLDEN_SET if c.nl_query.startswith("ən yüksək tək satış"))

@@ -16,8 +16,11 @@ router = APIRouter(prefix="/ai", tags=["ai-quality"])
 # Eval + reindex drive real AI work (generations / embeddings), so they consume
 # the AI quota like every other AI-heavy endpoint — bounding abuse + cost.
 @router.post("/eval/run", response_model=EvalRunResponse)
-async def run_eval(user: RateLimitedUser, db: DbDep) -> EvalRunResponse:
-    return EvalRunResponse.model_validate(await runner.run_eval(db))
+async def run_eval(user: RateLimitedUser, db: DbDep, grounded: bool = False) -> EvalRunResponse:
+    # grounded=True measures the shipped pipeline (engine + metric context + RAG)
+    # against this user's corpus; bare (default) measures the engine alone.
+    run = await runner.run_eval(db, grounded=grounded, user_id=user.id)
+    return EvalRunResponse.model_validate(run)
 
 
 @router.get("/eval/runs", response_model=list[EvalRunResponse])

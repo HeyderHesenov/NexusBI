@@ -41,6 +41,13 @@ export function AIQualityPage() {
   // Oldest → newest for the trend line.
   const trend = [...runs].reverse().map((r) => r.exec_accuracy)
 
+  const latestBare = runs.find((r) => r.mode === 'bare')
+  const latestGrounded = runs.find((r) => r.mode === 'grounded')
+  const ragDelta =
+    latestBare && latestGrounded
+      ? Math.round((latestGrounded.exec_accuracy - latestBare.exec_accuracy) * 100)
+      : null
+
   const TIERS = ['easy', 'medium', 'hard'] as const
   const TIER_LABEL: Record<string, string> = { easy: 'Asan', medium: 'Orta', hard: 'Çətin' }
   const tierStats = latest
@@ -73,7 +80,14 @@ export function AIQualityPage() {
             <RefreshCw size={15} /> Yenidən indekslə
           </button>
           <button
-            onClick={runEval}
+            onClick={() => runEval(true)}
+            disabled={busy}
+            className="flex items-center gap-1.5 rounded-xl border border-accent px-3 py-2 text-sm font-semibold text-accent transition hover:bg-accent-soft disabled:opacity-60"
+          >
+            <Sparkles size={15} /> Grounded (RAG)
+          </button>
+          <button
+            onClick={() => runEval(false)}
             disabled={busy}
             className="flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press disabled:opacity-60"
           >
@@ -109,6 +123,31 @@ export function AIQualityPage() {
         />
       </div>
 
+      {(latestBare || latestGrounded) && (
+        <div className="mt-3 flex flex-wrap items-stretch gap-2">
+          <div className="rounded-xl border border-line bg-surface px-3 py-2">
+            <span className="eyebrow">Bare engine</span>
+            <span className="ml-2 font-mono text-ink">
+              {latestBare ? `${Math.round(latestBare.exec_accuracy * 100)}%` : '—'}
+            </span>
+          </div>
+          <div className="rounded-xl border border-accent/40 bg-accent-soft px-3 py-2">
+            <span className="eyebrow text-accent">Grounded (RAG)</span>
+            <span className="ml-2 font-mono text-ink">
+              {latestGrounded ? `${Math.round(latestGrounded.exec_accuracy * 100)}%` : '—'}
+            </span>
+          </div>
+          {ragDelta != null && (
+            <div className="flex items-center rounded-xl border border-line bg-surface px-3 py-2 text-sm">
+              <span className="eyebrow">RAG təsiri</span>
+              <span className={`ml-2 font-mono ${ragDelta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {ragDelta > 0 ? '+' : ''}{ragDelta}%
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       {tierStats.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {tierStats.map((s) => (
@@ -140,7 +179,16 @@ export function AIQualityPage() {
             <ul className="space-y-1.5 text-sm">
               {runs.slice(0, 8).map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-ink-soft">{new Date(r.created_at).toLocaleString('az')}</span>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`rounded px-1 text-[10px] uppercase ${
+                        r.mode === 'grounded' ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-ink-faint'
+                      }`}
+                    >
+                      {r.mode === 'grounded' ? 'RAG' : 'bare'}
+                    </span>
+                    <span className="font-mono text-ink-soft">{new Date(r.created_at).toLocaleString('az')}</span>
+                  </span>
                   <span className="font-mono text-ink">
                     {r.passed}/{r.total} · {Math.round(r.exec_accuracy * 100)}%
                   </span>

@@ -1,8 +1,8 @@
 import { client } from './client'
 import type { EvalRun, ObservabilitySummary } from '../types'
 
-export async function runEval(): Promise<EvalRun> {
-  const { data } = await client.post<EvalRun>('/ai/eval/run')
+export async function runEval(grounded = false): Promise<EvalRun> {
+  const { data } = await client.post<EvalRun>('/ai/eval/run', null, { params: { grounded } })
   return data
 }
 

@@ -182,4 +182,24 @@ GOLDEN_SET: list[GoldenCase] = [
         "WHERE total_spent > (SELECT AVG(total_spent) FROM customers)",
         tier="hard",
     ),
+
+    # ══ customer↔sales joins (customer_id) ══ "satışlardan gəlir" ≠ total_spent
+    GoldenCase(
+        "hər ölkənin müştərilərinin satışlardan ümumi gəliri",
+        "SELECT c.country, SUM(s.revenue) AS total_revenue FROM customers c "
+        "JOIN sales s ON s.customer_id = c.id GROUP BY c.country",
+        tier="medium",
+    ),
+    GoldenCase(
+        "satışlardan ən çox gəlir gətirən 5 müştərinin adı və gəliri",
+        "SELECT c.name, SUM(s.revenue) AS total_revenue FROM customers c "
+        "JOIN sales s ON s.customer_id = c.id GROUP BY c.id ORDER BY total_revenue DESC LIMIT 5",
+        tier="hard",
+    ),
+    GoldenCase(
+        "heç bir satışı olmayan müştərilərin sayı",
+        "SELECT COUNT(*) AS count FROM customers "
+        "WHERE id NOT IN (SELECT DISTINCT customer_id FROM sales)",
+        tier="hard",
+    ),
 ]

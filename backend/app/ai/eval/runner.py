@@ -56,6 +56,32 @@ async def _default_generate(nl: str, schema: str, dialect: str, ctx: str) -> Tex
     return await _engine.generate_sql(nl, schema, dialect, ctx)
 
 
+def _grounded_generate(user_id: str) -> GenerateFn:
+    """A generator that grounds the engine with the SHIPPED pipeline's context —
+    the user's metric catalog + RAG-retrieved similar prior queries. The only
+    difference from bare generation, so the bare→grounded delta isolates RAG's value.
+
+    Each call opens its OWN session: cases run concurrently (asyncio.gather) and an
+    AsyncSession is not safe for concurrent use, so a shared session would error.
+    """
+    async def gen(nl: str, schema: str, dialect: str, _ctx: str) -> Text2SQLResult:
+        from app.ai import retrieval
+        from app.db.session import AsyncSessionLocal
+        from app.services import metric_service
+        from app.services.query_service import _engine
+
+        async with AsyncSessionLocal() as db:
+            extra = metric_service.metrics_as_prompt(
+                await metric_service.list_for(db, user_id, None)
+            )
+            rag = await retrieval.retrieve_context(db, nl, user_id, None)
+        if rag:
+            extra = f"{extra}\n\n{rag}" if extra else rag
+        return await _engine.generate_sql(nl, schema, dialect, extra)
+
+    return gen
+
+
 async def evaluate_case(case: GoldenCase, generate: GenerateFn, schema_text: str) -> dict:
     """Return {nl, passed, strict_passed} for one case.
 
@@ -85,9 +111,20 @@ async def evaluate_case(case: GoldenCase, generate: GenerateFn, schema_text: str
             "latency_ms": latency_ms, "tier": case.tier}
 
 
-async def run_eval(db: AsyncSession, *, generate: GenerateFn | None = None) -> EvalRun:
-    """Score the golden set, persist + gauge the result, return the EvalRun."""
-    generate = generate or _default_generate
+async def run_eval(
+    db: AsyncSession,
+    *,
+    generate: GenerateFn | None = None,
+    grounded: bool = False,
+    user_id: str | None = None,
+) -> EvalRun:
+    """Score the golden set, persist + gauge the result, return the EvalRun.
+
+    ``grounded=True`` measures the shipped pipeline (engine + metric context + RAG)
+    instead of the bare engine; the bare→grounded accuracy delta quantifies RAG's value.
+    """
+    if generate is None:
+        generate = _grounded_generate(user_id or "") if grounded else _default_generate
     schema_text = demo_data.format_demo_schema()
     # Cases are independent — run them concurrently so a 20-case set stays snappy
     # (wall-clock ≈ one generation, not the sum).
@@ -104,6 +141,7 @@ async def run_eval(db: AsyncSession, *, generate: GenerateFn | None = None) -> E
 
     run = EvalRun(
         model=settings.OPENAI_MODEL or "rule_based",
+        mode="grounded" if grounded else "bare",
         total=total,
         passed=passed,
         exec_accuracy=round(accuracy, 4),

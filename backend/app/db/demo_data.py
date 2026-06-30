@@ -15,7 +15,7 @@ from app.core.exceptions import InvalidSQLError
 DEMO_SCHEMA: dict[str, list[str]] = {
     "sales": [
         "id", "product_name", "category", "revenue",
-        "quantity", "sale_date", "region",
+        "quantity", "sale_date", "region", "customer_id",
     ],
     "customers": ["id", "name", "email", "country", "signup_date", "total_spent"],
     "products": ["id", "name", "category", "price", "stock_quantity"],
@@ -59,7 +59,7 @@ def _seed(conn: sqlite3.Connection) -> None:
     )
     cur.execute(
         "CREATE TABLE sales (id INTEGER, product_name TEXT, category TEXT,"
-        " revenue REAL, quantity INTEGER, sale_date TEXT, region TEXT)"
+        " revenue REAL, quantity INTEGER, sale_date TEXT, region TEXT, customer_id INTEGER)"
     )
     cur.execute(
         "CREATE TABLE customers (id INTEGER, name TEXT, email TEXT,"
@@ -89,10 +89,11 @@ def _seed(conn: sqlite3.Connection) -> None:
                 qty,
                 _MONTHS[i % 12] + "-15",
                 _REGIONS[i % len(_REGIONS)],
+                (i % 60) + 1,  # customer_id → customers.id (60 customers, ~5 sales each)
             )
         )
         sid += 1
-    cur.executemany("INSERT INTO sales VALUES (?,?,?,?,?,?,?)", sales)
+    cur.executemany("INSERT INTO sales VALUES (?,?,?,?,?,?,?,?)", sales)
 
     customers = []
     for i in range(60):
@@ -123,6 +124,7 @@ _DEMO_COLUMN_META: dict[str, list[tuple[str, str, list[str]]]] = {
         ("quantity", "INTEGER", ["3", "12"]),
         ("sale_date", "DATE", ["2024-03-15", "2024-11-15"]),  # always day 15
         ("region", "TEXT", _REGIONS[:3]),
+        ("customer_id", "INTEGER", ["1", "2"]),  # → customers.id
     ],
     "customers": [
         ("id", "INTEGER", []),

@@ -17,6 +17,7 @@ class EvalCaseDetail(BaseModel):
 class EvalRunResponse(BaseModel):
     id: str
     model: str
+    mode: str = "bare"
     total: int
     passed: int
     exec_accuracy: float

@@ -211,6 +211,7 @@ export interface EvalCaseDetail {
 export interface EvalRun {
   id: string
   model: string
+  mode: 'bare' | 'grounded'
   total: number
   passed: number
   exec_accuracy: number

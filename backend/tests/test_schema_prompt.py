@@ -14,3 +14,15 @@ def test_demo_schema_has_real_types_and_samples():
     assert "e.g." in text
     assert "North" in text  # a real region sample
     assert "Electronics" in text  # a real category sample
+
+
+def test_demo_sales_has_customer_id():
+    """customer_id enables realistic customer↔sales joins."""
+    from app.db.demo_data import DEMO_SCHEMA
+
+    assert "customer_id" in DEMO_SCHEMA["sales"]
+    # And it actually joins to customers.
+    _c, rows = demo_data.execute_demo_sql(
+        "SELECT COUNT(*) AS n FROM sales s JOIN customers c ON s.customer_id = c.id"
+    )
+    assert rows[0]["n"] == 300  # every sale maps to a customer
