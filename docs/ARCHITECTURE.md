@@ -182,12 +182,13 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
   job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
   background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
   `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (246) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (293) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `OPENAI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
-  deterministic, no cost — identical to CI). Frontend Vitest (67) covers `lib/*`, hooks, and Zustand
-  store reducers (`src/**/*.test.*`, incl. decision-measure + AI-quality eval; e2e specs belong to
+  deterministic, no cost — identical to CI). Frontend Vitest (96) covers `lib/*`, hooks, and Zustand
+  store reducers (`src/**/*.test.*`, incl. decision-measure, AI-quality eval, and the advanced-analytics
+  stores/panels — experiment/insight/metric-tree/data-contract/Dropdown/color; e2e specs belong to
   Playwright). E2E: `frontend/e2e/smoke.spec.ts` over login → query → dashboards against the preview.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus
   `ai_latency_seconds`, `rag_retrievals_total` (hit/miss), and the `text2sql_eval_accuracy` gauge at
@@ -199,8 +200,9 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 `users` (1)─<(N)) `datasources`, `query_logs`, `dashboards`, `saved_queries`, `metrics`,
 `alerts`, `notifications`, `decisions`, **`requirement_docs`, `kpi_targets`,
 `integration_channels`, `workspaces`, `workspace_members`, `rls_rules`, `audit_logs`,
-`brand_configs` (1:1), `refresh_tokens`, **`query_embeddings`, `eval_runs`** (`eval_runs` is
-global, no FK)**; `dashboards` (1)─<(N) `widgets` and `dashboard_comments`;
+`brand_configs` (1:1), `refresh_tokens`, `query_embeddings`, `eval_runs` (global, no FK),
+**`experiments`, `insights`, `metric_nodes` (self-FK tree), `data_contracts`**; `dashboards`
+(1)─<(N) `widgets` and `dashboard_comments`; `data_contracts` (1)─<(N) `contract_runs`;
 `decisions` (1)─<(N) `decision_measurements`; `alerts` → `saved_queries`; `widgets.query_log_id`
 → `query_logs`; `rls_rules` → `datasources` (+ owner/member → `users`); `workspace_members` →
 `workspaces`; `query_logs.datasource_id` / `metrics.datasource_id` / `saved_queries.datasource_id`
@@ -209,15 +211,27 @@ global, no FK)**; `dashboards` (1)─<(N) `widgets` and `dashboard_comments`;
 Latest schema changes: **`f8a9b0c1d2e3`** — Decision Intelligence Loop (`decisions` metric-binding
 columns + the `decision_measurements` table); **`a9b0c1d2e3f4`** — AI engineering (`query_embeddings`
 RAG vector store + `eval_runs`); **`b0c1d2e3f4a5`** — `eval_runs.details` (per-case breakdown);
-**`c1d2e3f4a5b6`** — `eval_runs.mode` (bare/grounded/history). Earlier this cycle: `refresh_tokens`
-(`e7f8a9b0c1d2`); `users.last_digest_at`; `metrics.verified*`; `datasources.freshness_sla_hours`/
-`last_refreshed_at`; `dashboards.embed_enabled`. Migrations are Alembic, chained under
-`db/migrations/versions`; current head = **`c1d2e3f4a5b6`**. NOTE: the **demo** schema is seeded
+**`c1d2e3f4a5b6`** — `eval_runs.mode` (bare/grounded/history); **`d2e3f4a5b6c7`** —
+`notifications.category`. Advanced-analytics round (6 features): **`e3f4a5b6c7d8`** (`experiments`),
+**`f4a5b6c7d8e9`** (`insights`), **`a5b6c7d8e9f0`** (`metric_nodes`), **`b6c7d8e9f0a1`**
+(`data_contracts` + `contract_runs`). Migrations are Alembic, chained under
+`db/migrations/versions`; current head = **`b6c7d8e9f0a1`**. NOTE: the **demo** schema is seeded
 in-memory (`db/demo_data._seed`, no migration) — `sales.customer_id` was added there to enable realistic
 customer↔sales joins; `format_demo_schema` sends real column types + sample values to the prompt.
 
 ## Notable architecture deltas (this round)
 
+- **Advanced-analytics subsystem (6 features, deterministic stats — scipy added).**
+  `services/stats.py` is the shared statistical core (Welch t-test + Cohen's d, two-proportion
+  z-test, Pearson, Benjamini-Hochberg FDR, MAD outliers, summary-stats t-test); `services/tabular.py`
+  holds the shared numeric-column/row-alignment helpers. Built on it: **statistical guard** (`ai/stats_guard`
+  + `POST /query/{id}/significance`), **causal driver analysis** (`services/causal` + `/causal`),
+  **A/B testing** (`ab_service`, `experiments`), **insight engine** (`insight_engine.scan` — discovery +
+  impact ranking + idempotent dedup, reuses `scan_recent_distinct`), **metric tree** (`metric_tree_service`
+  bottom-up roll-up, recursive subtree delete since SQLite cascade is inert), and **data contracts**
+  (`data_contract_service` reuses `profiling_service` for safe sample-based checks + schema-hash drift +
+  freshness; fail-CLOSED on unknown rules). Per-query analytics surface as lazy ChartView panels;
+  the rest as their own pages (Planlama/Analiz/Məlumat sidebar groups).
 - `dashboard_service.assemble_dashboard` was extracted so AI auto-dashboard and
   requirements→dashboard share one fan-out path; `dashboard_service.to_response` is now the
   single source of truth for every dashboard response shape (dashboard/requirement routers reuse it).
