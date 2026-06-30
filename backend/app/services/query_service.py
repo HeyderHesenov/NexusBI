@@ -122,6 +122,9 @@ async def process_nl_query(
             )
             extra_context = f"{extra_context}\n\n{block}" if extra_context else block
 
+    # Result cache is keyed on the STABLE context (metrics + prior turn) only — RAG
+    # grounding is applied to generation below, never to this key, so self-indexed
+    # examples can't bust the cache for a repeated question.
     key = _cache_key(datasource_id, nl_query, user_id, extra_context)
 
     cached = None if bypass_cache else await cache.get(key)
@@ -140,13 +143,26 @@ async def process_nl_query(
             from_cache=True,
         )
 
+    # Cache miss → ground generation with RAG (similar prior queries + verified
+    # metrics). Best-effort and prompt-only; the result cache key above is unaffected.
+    prompt_context = extra_context
+    if settings.RAG_ENABLED:
+        try:
+            from app.ai import retrieval
+
+            rag = await retrieval.retrieve_context(db, nl_query, user_id, datasource_id)
+            if rag:
+                prompt_context = f"{extra_context}\n\n{rag}" if extra_context else rag
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("rag_retrieve_failed", error=str(exc)[:200])
+
     if settings.DEMO_MODE and not datasource_id:
-        query_text, columns, rows = await _demo_pipeline(nl_query, extra_context)
+        query_text, columns, rows = await _demo_pipeline(nl_query, prompt_context)
         resolved_ds_id: str | None = None
         query_language = "sql"
     else:
         query_text, columns, rows, query_language = await _live_pipeline(
-            nl_query, datasource_id, user_id, db, cache, extra_context
+            nl_query, datasource_id, user_id, db, cache, prompt_context
         )
         resolved_ds_id = datasource_id
 
@@ -181,7 +197,7 @@ async def process_nl_query(
         ttl=settings.CACHE_TTL_SECONDS,
     )
 
-    return await _finalize(
+    result = await _finalize(
         db, user_id, resolved_ds_id, nl_query,
         sql=query_text,
         query_language=query_language,
@@ -193,6 +209,21 @@ async def process_nl_query(
         elapsed_ms=elapsed_ms,
         from_cache=False,
     )
+
+    # Index this fresh NL→SQL pair so future questions retrieve it (RAG). Only real
+    # SQL with data is worth grounding on; best-effort so it never fails the query.
+    if settings.RAG_INDEX_ON_WRITE and settings.RAG_ENABLED and query_language == "sql" and snapped:
+        try:
+            from app.ai import retrieval
+
+            await retrieval.index_text(
+                db, user_id=user_id, datasource_id=resolved_ds_id, kind="query",
+                text=nl_query, sql=query_text,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("rag_index_failed", error=str(exc)[:200])
+
+    return result
 
 
 async def reexecute_logged_query(

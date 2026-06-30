@@ -1,4 +1,4 @@
-import { BookMarked, CreditCard, Database, FileText, Gauge, History, LayoutDashboard, MessageSquare, Palette, Tag, Target, Users } from 'lucide-react'
+import { BookMarked, BrainCircuit, CreditCard, Database, FileText, Gauge, History, LayoutDashboard, MessageSquare, Palette, Tag, Target, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { NexusMark } from '../brand/NexusMark'
 import { useDatasourceStore } from '../../store/datasourceStore'
@@ -38,6 +38,7 @@ const groups = [
     title: 'İdarəetmə',
     items: [
       { to: '/workspaces', label: 'Komanda', icon: Users },
+      { to: '/ai-quality', label: 'AI Keyfiyyət', icon: BrainCircuit },
       { to: '/branding', label: 'Brendinq', icon: Palette },
       { to: '/pricing', label: 'Planlar', icon: CreditCard },
     ],

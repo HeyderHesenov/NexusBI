@@ -6,7 +6,9 @@ from app.models.comment import DashboardComment
 from app.models.dashboard import Dashboard, Widget
 from app.models.datasource import DataSource, DBType
 from app.models.decision import Decision, DecisionMeasurement
+from app.models.eval_run import EvalRun
 from app.models.integration import IntegrationChannel
+from app.models.query_embedding import QueryEmbedding
 from app.models.kpi_target import KPITarget
 from app.models.metric import Metric
 from app.models.query_log import QueryLog
@@ -32,6 +34,8 @@ __all__ = [
     "DashboardComment",
     "Decision",
     "DecisionMeasurement",
+    "QueryEmbedding",
+    "EvalRun",
     "RequirementDoc",
     "KPITarget",
     "IntegrationChannel",

@@ -1,7 +1,7 @@
 """Prometheus metrics — low-cardinality counters/histograms for observability."""
 from __future__ import annotations
 
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Gauge, Histogram
 
 http_requests_total = Counter(
     "nexusbi_http_requests_total",
@@ -26,4 +26,18 @@ sql_executions_total = Counter(
     "nexusbi_sql_executions_total",
     "Datasource SQL executions",
     ["status"],
+)
+ai_latency_seconds = Histogram(
+    "nexusbi_ai_latency_seconds",
+    "AI engine call latency",
+    ["kind"],
+)
+rag_retrievals_total = Counter(
+    "nexusbi_rag_retrievals_total",
+    "RAG context retrievals by outcome",
+    ["outcome"],  # hit | miss
+)
+text2sql_eval_accuracy = Gauge(
+    "nexusbi_text2sql_eval_accuracy",
+    "Latest Text2SQL golden-set execution accuracy (0-1)",
 )

@@ -22,6 +22,18 @@ class Settings(BaseSettings):
     # Engine identity is configured via .env only — no model name is committed.
     OPENAI_API_KEY: str = Field(default="")
     OPENAI_MODEL: str = Field(default="")
+    EMBEDDING_MODEL: str = Field(default="text-embedding-3-small")
+
+    # ─── RAG / vector grounding (portable: SQLite + numpy cosine) ───
+    RAG_ENABLED: bool = Field(default=True)
+    RAG_TOP_K: int = Field(default=5)  # similar examples injected into the prompt
+    RAG_MAX_CANDIDATES: int = Field(default=200)  # rows scored per retrieval (bounds cost)
+    RAG_HASH_DIM: int = Field(default=256)  # dim of the keyless/offline hash embedding
+    RAG_INDEX_ON_WRITE: bool = Field(default=True)  # embed each fresh NL→SQL pair
+
+    # ─── AI eval & observability ───
+    AI_TRACE_ENABLED: bool = Field(default=True)  # persist token/latency per AI call
+    EVAL_MIN_ACCURACY: float = Field(default=0.5)  # CI fails below this exec-accuracy
 
     # ─── OAuth ───
     GOOGLE_CLIENT_ID: str = Field(default="")
