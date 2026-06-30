@@ -408,6 +408,22 @@ export interface SignificanceResult {
   summary: string
 }
 
+export interface CausalDriver {
+  feature: string
+  r: number
+  p_value: number
+  significant: boolean
+  direction: string // "müsbət" | "mənfi"
+  strength: string // "zəif" | "orta" | "güclü"
+}
+
+export interface CausalResult {
+  target: string
+  drivers: CausalDriver[]
+  summary: string
+  caveats: string[]
+}
+
 export interface KpiItem {
   name: string
   question: string

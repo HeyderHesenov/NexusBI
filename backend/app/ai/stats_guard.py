@@ -12,34 +12,7 @@ import numpy as np
 from app.ai import analysis
 from app.core.exceptions import AIGenerationError
 from app.services import stats
-
-
-def _is_num(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool)
-
-
-def _numeric_columns(columns: list[str], rows: list[dict]) -> dict[str, list[float]]:
-    """Columns whose values are mostly real numbers → list of floats (row order)."""
-    out: dict[str, list[float]] = {}
-    for col in columns:
-        vals = [float(r[col]) for r in rows if _is_num(r.get(col))]
-        if len(vals) >= max(3, len(rows) // 2):
-            out[col] = vals
-    return out
-
-
-def _aligned_pair(rows: list[dict], col_a: str, col_b: str) -> tuple[list[float], list[float]]:
-    """Row-aligned (x, y) for two columns — only rows where BOTH are numeric, so
-    correlations are computed on matching observations (not positionally misaligned
-    per-column survivors)."""
-    xs: list[float] = []
-    ys: list[float] = []
-    for r in rows:
-        a, b = r.get(col_a), r.get(col_b)
-        if _is_num(a) and _is_num(b):
-            xs.append(float(a))
-            ys.append(float(b))
-    return xs, ys
+from app.services.tabular import aligned_pair, numeric_columns
 
 
 def build_report(columns: list[str], rows: list[dict]) -> dict:
@@ -51,7 +24,7 @@ def build_report(columns: list[str], rows: list[dict]) -> dict:
     checks.append({"name": "Nümunə həcmi", "passed": ok,
                    "severity": "warn" if not ok else "ok", "detail": msg})
 
-    numerics = _numeric_columns(columns, rows)
+    numerics = numeric_columns(columns, rows)
 
     # Spread check: if the metric is nearly flat (low coefficient of variation), the
     # segment ranking is essentially noise. This is descriptive — NOT a select-then-test
@@ -83,7 +56,7 @@ def build_report(columns: list[str], rows: list[dict]) -> dict:
     flagged = 0
     for i in range(len(cols)):
         for j in range(i + 1, len(cols)):
-            xs, ys = _aligned_pair(rows, cols[i], cols[j])
+            xs, ys = aligned_pair(rows, cols[i], cols[j])
             pr = stats.pearson(xs, ys)
             if abs(pr["r"]) >= 0.7 and (pr["n"] < stats.MIN_SAMPLE or not pr["significant"]):
                 flagged += 1

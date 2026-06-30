@@ -1,9 +1,10 @@
-import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp, Workflow } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import type {
   AnomalyResult,
   ChartConfig,
   ChartType,
+  CausalResult,
   ExplainResult,
   ForecastResult,
   Lineage,
@@ -23,6 +24,7 @@ const LineagePanel = lazy(() => import('./LineagePanel').then((m) => ({ default:
 const StatsGuardPanel = lazy(() =>
   import('./StatsGuardPanel').then((m) => ({ default: m.StatsGuardPanel })),
 )
+const CausalPanel = lazy(() => import('./CausalPanel').then((m) => ({ default: m.CausalPanel })))
 const ScenarioPanel = lazy(() =>
   import('./ScenarioPanel').then((m) => ({ default: m.ScenarioPanel })),
 )
@@ -78,6 +80,8 @@ export function ChartView({
   const [tracing, setTracing] = useState(false)
   const [significance, setSignificance] = useState<SignificanceResult | null>(null)
   const [checking, setChecking] = useState(false)
+  const [causal, setCausal] = useState<CausalResult | null>(null)
+  const [findingDrivers, setFindingDrivers] = useState(false)
   const [scenario, setScenario] = useState(false)
   const [internalFs, setInternalFs] = useState(false)
   // Controlled if the parent passes fullscreen/onFullscreenChange, else internal.
@@ -94,6 +98,7 @@ export function ChartView({
     setRootCause(null)
     setLineage(null)
     setSignificance(null)
+    setCausal(null)
     setScenario(false)
   }, [config.chart_type, data])
 
@@ -161,6 +166,18 @@ export function ChartView({
       /* interceptor toast */
     } finally {
       setChecking(false)
+    }
+  }
+
+  const runCausal = async () => {
+    if (!queryLogId) return
+    setFindingDrivers(true)
+    try {
+      setCausal(await analysisApi.causal(queryLogId))
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setFindingDrivers(false)
     }
   }
 
@@ -296,6 +313,15 @@ export function ChartView({
               >
                 <ShieldCheck size={14} /> {checking ? 'Yoxlanır…' : 'Statistik yoxlama'}
               </button>
+              <button
+                onClick={runCausal}
+                disabled={findingDrivers}
+                className={`${CHART_BTN} border ${
+                  causal ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
+                }`}
+              >
+                <Workflow size={14} /> {findingDrivers ? 'Axtarılır…' : 'Səbəb analizi'}
+              </button>
             </>
           )}
           {valueCol && (
@@ -341,6 +367,8 @@ export function ChartView({
       {lineage && <LineagePanel lineage={lineage} />}
 
       {significance && <StatsGuardPanel result={significance} />}
+
+      {causal && <CausalPanel result={causal} />}
 
       {scenario && <ScenarioPanel data={filtered} valueCol={valueCol} queryLogId={queryLogId} />}
 

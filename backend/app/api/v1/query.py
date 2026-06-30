@@ -29,7 +29,8 @@ from app.schemas.scenario import (
     MonteCarloRequest,
     MonteCarloResponse,
 )
-from app.services import lineage_service, metric_service, query_service, scenario_service
+from app.schemas.causal import CausalResponse
+from app.services import causal, lineage_service, metric_service, query_service, scenario_service
 
 router = APIRouter(prefix="/query", tags=["query"])
 
@@ -208,6 +209,15 @@ async def significance(query_id: str, user: CurrentUser, db: DbDep) -> Significa
     log = await _get_log(db, user.id, query_id)
     data = log.result_data or {"columns": [], "rows": []}
     return SignificanceResponse(**stats_guard.build_report(data.get("columns", []), data.get("rows", [])))
+
+
+@router.post("/{query_id}/causal", response_model=CausalResponse)
+async def causal_drivers(query_id: str, user: CurrentUser, db: DbDep) -> CausalResponse:
+    """Driver analysis: which other numeric columns correlate with the target metric
+    (Pearson + BH-FDR + caveats). Pure stats — no AI quota."""
+    log = await _get_log(db, user.id, query_id)
+    data = log.result_data or {"columns": [], "rows": []}
+    return CausalResponse(**causal.analyze(data.get("columns", []), data.get("rows", [])))
 
 
 async def _get_log(db: DbDep, user_id: str, query_id: str) -> QueryLog:

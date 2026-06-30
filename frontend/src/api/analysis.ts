@@ -3,6 +3,7 @@ import type {
   AnomalyResult,
   ExplainResult,
   ForecastResult,
+  CausalResult,
   Lineage,
   RootCauseResult,
   SignificanceResult,
@@ -35,5 +36,10 @@ export async function lineage(queryId: string): Promise<Lineage> {
 
 export async function significance(queryId: string): Promise<SignificanceResult> {
   const { data } = await client.post<SignificanceResult>(`/query/${queryId}/significance`)
+  return data
+}
+
+export async function causal(queryId: string): Promise<CausalResult> {
+  const { data } = await client.post<CausalResult>(`/query/${queryId}/causal`)
   return data
 }
