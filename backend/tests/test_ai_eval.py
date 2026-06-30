@@ -31,6 +31,30 @@ async def test_run_eval_perfect_engine():
     assert all(d["passed"] for d in run.details)
 
 
+def test_all_golds_execute():
+    """Every authored gold SQL (primary + alts) must run on the demo schema."""
+    from app.db import demo_data
+
+    for case in GOLDEN_SET:
+        for sql in case.expected_sqls:
+            demo_data.execute_demo_sql(sql)  # raises if a gold is malformed
+
+
+async def test_multi_gold_accepts_alternative_form():
+    """A correct-but-alternative gold form (here: top-1 row instead of MAX()) passes."""
+    case = next(c for c in GOLDEN_SET if c.nl_query.startswith("ən yüksək tək satış"))
+    assert len(case.expected_sqls) >= 2  # has an accepted alternative
+
+    async def gen(nl, schema, dialect, ctx):
+        return Text2SQLResult(
+            sql="SELECT revenue FROM sales ORDER BY revenue DESC LIMIT 1",
+            explanation="", confidence=1.0, warnings=[],
+        )
+
+    result = await runner.evaluate_case(case, gen, "")
+    assert result["passed"] is True  # matches the alt gold, not the primary MAX()
+
+
 async def test_value_match_ignores_column_alias():
     """An equivalent query with a different alias must still pass (value match),
     while strict (column-name) match flags the alias difference."""

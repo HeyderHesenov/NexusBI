@@ -17,6 +17,8 @@ QAYDALAR:
 - Filtr literallarını schema-dakı nümunə dəyərlərlə uyğunlaşdır (məs. region = 'North')
 - Aqreqatları AYDIN, təsviri adla adlandır: SUM(revenue) AS total_revenue, COUNT(*) AS count
 - "top/ən çox N" soruşulanda ORDER BY ... DESC LIMIT N tətbiq et
+- YALNIZ soruşulan sütunları qaytar — lazımsız id/əlavə sütun qoyma
+- Skalyar dəyər soruşulanda aqreqatın özünü qaytar (tam sətir yox)
 - Hədəf SQL dialekti: {dialect}
 - Cavabı YALNIZ JSON formatında ver
 
