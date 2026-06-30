@@ -205,6 +205,7 @@ export interface EvalCaseDetail {
   passed: boolean
   strict_passed: boolean
   latency_ms: number
+  tier: 'easy' | 'medium' | 'hard'
 }
 
 export interface EvalRun {

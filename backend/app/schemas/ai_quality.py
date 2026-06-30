@@ -11,6 +11,7 @@ class EvalCaseDetail(BaseModel):
     passed: bool
     strict_passed: bool
     latency_ms: int = 0
+    tier: str = "easy"
 
 
 class EvalRunResponse(BaseModel):

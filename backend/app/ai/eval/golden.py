@@ -23,6 +23,10 @@ class GoldenCase:
     # (e.g. the model may or may not include an `id` column). A case passes if the
     # candidate value-matches ANY gold — standard multi-reference Text2SQL scoring.
     alt_sqls: tuple[str, ...] = ()
+    # Difficulty: "easy" = single-table aggregation, "medium" = join/HAVING/date,
+    # "hard" = subquery/ranking/percentage. Reported per-tier so a 100% on easy +
+    # lower on hard tells the truth instead of one saturated number.
+    tier: str = "easy"
 
     @property
     def expected_sqls(self) -> tuple[str, ...]:
@@ -102,4 +106,80 @@ GOLDEN_SET: list[GoldenCase] = [
     # ── Distinct ──
     GoldenCase("məhsul kateqoriyaları", "SELECT DISTINCT category FROM products"),
     GoldenCase("müştəri ölkələri", "SELECT DISTINCT country FROM customers"),
+
+    # ══ MEDIUM ══ joins · HAVING · date · paraphrase
+    GoldenCase(
+        "hər məhsulun adı və ümumi satış gəliri",
+        "SELECT p.name, SUM(s.revenue) AS total_revenue FROM products p "
+        "JOIN sales s ON s.product_name = p.name GROUP BY p.name",
+        # The join is equivalent to grouping sales by product_name — both correct.
+        alt_sqls=(
+            "SELECT product_name, SUM(revenue) AS total_revenue FROM sales GROUP BY product_name",
+        ),
+        tier="medium",
+    ),
+    GoldenCase(
+        # Join + filter on a column that lives ONLY on products (price), reduced to a
+        # single numeric — keeps _denotation's one-number invariant intact.
+        "qiyməti 50-dən baha olan məhsulların ümumi satış gəliri",
+        "SELECT SUM(s.revenue) AS total_revenue FROM sales s "
+        "JOIN products p ON s.product_name = p.name WHERE p.price > 50",
+        tier="medium",
+    ),
+    GoldenCase(
+        "ümumi gəliri 12000-dən çox olan kateqoriyalar",  # → {Books, Sports}
+        "SELECT category FROM sales GROUP BY category HAVING SUM(revenue) > 12000",
+        tier="medium",
+    ),
+    GoldenCase(
+        "ümumi gəliri 10000-dən çox olan regionlar",  # → {Central, West, East}
+        "SELECT region FROM sales GROUP BY region HAVING SUM(revenue) > 10000",
+        tier="medium",
+    ),
+    GoldenCase(
+        "2024-cü ilin birinci rübünün ümumi gəliri",
+        "SELECT SUM(revenue) AS total_revenue FROM sales "
+        "WHERE substr(sale_date, 6, 2) IN ('01', '02', '03')",
+        tier="medium",
+    ),
+    GoldenCase(
+        "regionlar üzrə gəliri göstər",  # paraphrase of an easy case — robustness
+        "SELECT region, SUM(revenue) AS total_revenue FROM sales GROUP BY region",
+        tier="medium",
+    ),
+
+    # ══ HARD ══ subquery · ranking · percentage
+    GoldenCase(
+        "orta qiymətdən baha olan məhsulların adları",
+        "SELECT name FROM products WHERE price > (SELECT AVG(price) FROM products)",
+        tier="hard",
+    ),
+    GoldenCase(
+        "ikinci ən bahalı məhsulun qiyməti",
+        "SELECT DISTINCT price FROM products ORDER BY price DESC LIMIT 1 OFFSET 1",
+        tier="hard",
+    ),
+    GoldenCase(
+        "gəlirə görə ikinci ən yüksək region",
+        "SELECT region FROM sales GROUP BY region ORDER BY SUM(revenue) DESC LIMIT 1 OFFSET 1",
+        tier="hard",
+    ),
+    GoldenCase(
+        "ən çox ümumi gəlir gətirən kateqoriyadakı məhsulların adları",
+        "SELECT name FROM products WHERE category = ("
+        "SELECT category FROM sales GROUP BY category ORDER BY SUM(revenue) DESC LIMIT 1)",
+        tier="hard",
+    ),
+    GoldenCase(
+        "hər regionun ümumi gəlirdəki faiz payı (2 onluq dəqiqliklə)",
+        "SELECT region, ROUND(SUM(revenue) * 100.0 / (SELECT SUM(revenue) FROM sales), 2) AS pct "
+        "FROM sales GROUP BY region",
+        tier="hard",
+    ),
+    GoldenCase(
+        "orta müştəri xərcindən çox xərcləyən müştərilərin sayı",
+        "SELECT COUNT(*) AS count FROM customers "
+        "WHERE total_spent > (SELECT AVG(total_spent) FROM customers)",
+        tier="hard",
+    ),
 ]
