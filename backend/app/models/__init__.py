@@ -4,6 +4,7 @@ from app.models.alert import Alert, Notification
 from app.models.brand import BrandConfig
 from app.models.comment import DashboardComment
 from app.models.dashboard import Dashboard, Widget
+from app.models.data_contract import ContractRun, DataContract
 from app.models.datasource import DataSource, DBType
 from app.models.decision import Decision, DecisionMeasurement
 from app.models.eval_run import EvalRun
@@ -50,4 +51,6 @@ __all__ = [
     "WorkspaceMember",
     "RLSRule",
     "AuditLog",
+    "DataContract",
+    "ContractRun",
 ]
