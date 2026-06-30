@@ -92,6 +92,11 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - ⚡ **Performans** — Redis nəticə keşi (user-scoped), per-datasource connection pooling,
   **lazy chart bundle** (ağır recharts yalnız qrafik render olunanda yüklənir — ilk açılış yüngül).
 - 📈 **Müşahidə** — Prometheus `/metrics`, struktur loglar.
+- 🧠 **AI-Engineering təməli** — **RAG grounding** (keçmiş sorğular + verified metriklər
+  portativ vektor store ilə Text2SQL-ə inject olunur) + **LLM eval/observability** ("AI Keyfiyyət"
+  səhifəsi: Text2SQL golden-set dəqiqliyi, gecikmə, token, RAG hit-rate).
+- 🎯 **Qərar İntellekti Döngüsü** — qərarı metrikə bağla, baseline tut, real təsiri avtomatik
+  ölç, proqnozla müqayisə et; "Qərar dəqiqliyi" ilə AI tövsiyələri kalibrlənir (closed-loop ROI).
 - ✅ **Keyfiyyət darvazası** — backend pytest, frontend Vitest, **bloklayıcı Playwright E2E smoke** (CI).
 
 ---
@@ -243,7 +248,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 220 test
+cd backend && pytest        # 230 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token

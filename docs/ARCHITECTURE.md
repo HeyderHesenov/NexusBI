@@ -140,7 +140,7 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
   job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
   background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
   `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (220) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (230) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). Frontend Vitest (65) covers `lib/*`,
   hooks, and Zustand store reducers (`src/**/*.test.*`; e2e specs belong to Playwright). E2E:
