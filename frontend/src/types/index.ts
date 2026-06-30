@@ -419,6 +419,35 @@ export interface Insight {
   created_at: string
 }
 
+export type TreeOperator = 'add' | 'sub' | 'mul' | 'div'
+
+export interface MetricNode {
+  id: string
+  parent_id: string | null
+  name: string
+  operator: TreeOperator
+  manual_value: number | null
+  position: number
+  created_at: string
+}
+
+export interface EvaluatedNode {
+  id: string
+  name: string
+  operator: string
+  value: number
+  manual_value: number | null
+  contribution_pct: number | null
+  children: EvaluatedNode[]
+}
+
+export interface MetricNodeCreate {
+  name: string
+  parent_id?: string | null
+  operator?: TreeOperator
+  manual_value?: number | null
+}
+
 export interface CausalDriver {
   feature: string
   r: number
