@@ -36,6 +36,7 @@ class NotificationResponse(BaseModel):
     title: str
     body: str
     read: bool
+    category: str
     alert_id: str | None
     created_at: datetime
 

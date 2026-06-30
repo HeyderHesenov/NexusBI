@@ -6,6 +6,7 @@ import re
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.notification_types import NotificationCategory
 from app.models.alert import Notification
 from app.models.comment import DashboardComment
 from app.models.dashboard import Widget
@@ -47,6 +48,7 @@ async def _notify_mentions(
                 alert_id=None,
                 title="Səni qeyd etdilər",
                 body=f"{author_name}: {content[:200]}",
+                category=NotificationCategory.MENTION,
             )
         )
     await db.flush()

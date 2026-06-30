@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai import insight_digest
 from app.config import settings
 from app.core.logging import get_logger
+from app.core.notification_types import NotificationCategory
 from app.models.alert import Notification
 from app.models.user import User
 from app.services import insight_service
@@ -88,7 +89,10 @@ async def build_digest(
         return None
 
     body = "Son sorğularının ən vacib nəticələri:\n" + "\n".join(items)
-    notif = Notification(user_id=user_id, alert_id=None, title=_TITLE, body=body)
+    notif = Notification(
+        user_id=user_id, alert_id=None, title=_TITLE, body=body,
+        category=NotificationCategory.DIGEST,
+    )
     db.add(notif)
     await db.flush()
     # Fan out to the user's workflow channels (Slack/Teams/email) — mock-first.

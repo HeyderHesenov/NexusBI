@@ -12,6 +12,7 @@ interface NotificationState {
   generate: () => Promise<void>
   generateDigest: () => Promise<void>
   markAllRead: () => Promise<void>
+  markOneRead: (id: string) => Promise<void>
 }
 
 // Track which notifications we've already shown so polling only toasts truly new ones.
@@ -25,9 +26,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   load: async () => {
     const items = await api.listNotifications()
     if (known !== null) {
-      // Briefs (🌅) announce themselves via generateDigest; don't double-toast them here.
+      // Briefs announce themselves via generateDigest; don't double-toast them here.
       const fresh = items.filter(
-        (n) => !n.read && !known!.has(n.id) && !n.title.startsWith('🌅'),
+        (n) => !n.read && !known!.has(n.id) && n.category !== 'digest',
       ).length
       if (fresh > 0) toast(`${fresh} yeni smart insight ✨`, { icon: '🔔' })
     }
@@ -66,5 +67,18 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   markAllRead: async () => {
     await api.readAll()
     set({ items: get().items.map((n) => ({ ...n, read: true })), unread: 0 })
+  },
+  markOneRead: async (id) => {
+    const target = get().items.find((n) => n.id === id)
+    if (!target || target.read) return
+    set({
+      items: get().items.map((n) => (n.id === id ? { ...n, read: true } : n)),
+      unread: Math.max(0, get().unread - 1),
+    })
+    try {
+      await api.readOne(id)
+    } catch {
+      /* interceptor toast; optimistic state stays — next load() reconciles */
+    }
   },
 }))

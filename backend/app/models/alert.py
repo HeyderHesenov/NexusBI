@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.notification_types import NotificationCategory
 from app.db.base import Base, TimestampMixin
 
 
@@ -45,3 +46,7 @@ class Notification(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
     read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    category: Mapped[str] = mapped_column(
+        String(20), nullable=False,
+        default=NotificationCategory.INSIGHT, server_default="insight",
+    )
