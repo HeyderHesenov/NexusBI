@@ -1,7 +1,7 @@
 """Auth request/response schemas."""
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, computed_field
 
 
 class RegisterRequest(BaseModel):
@@ -40,3 +40,10 @@ class UserResponse(BaseModel):
     full_name: str
     is_active: bool
     subscription_tier: str = "free"
+
+    @computed_field  # derived server-side so the client never re-implements tier rules
+    @property
+    def white_label(self) -> bool:
+        from app.billing.tiers import has_white_label
+
+        return has_white_label(self.subscription_tier)

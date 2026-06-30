@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 
+from app.billing.tiers import has_white_label
 from app.core.rate_limit import rate_limit
 from app.dependencies import DbDep
+from app.models.user import User
 from app.schemas.comment import CommentResponse
 from app.schemas.dashboard import DashboardResponse
 from app.schemas.embed import BrandConfigResponse, EmbeddedDashboard
@@ -34,7 +37,11 @@ async def shared_dashboard(token: str, db: DbDep) -> DashboardResponse:
 async def embedded_dashboard(token: str, db: DbDep) -> EmbeddedDashboard:
     """Serve a read-only embedded dashboard + the owner's white-label brand."""
     dash = await embed_service.resolve(db, token)  # validates token + embed_enabled
-    brand = await brand_service.get(db, dash.user_id)
+    # White-label only renders for owners on a tier that includes it; otherwise the
+    # embed falls back to default NexusBI branding (so a downgrade silently reverts,
+    # and a stored config from a former paid period is never leaked).
+    owner_tier = await db.scalar(select(User.subscription_tier).where(User.id == dash.user_id))
+    brand = await brand_service.get(db, dash.user_id) if has_white_label(owner_tier) else None
     return EmbeddedDashboard(
         dashboard=DashboardResponse(
             id=dash.id,

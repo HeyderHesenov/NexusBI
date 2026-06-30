@@ -17,6 +17,7 @@ class Tier:
     price_usd: int
     monthly_quota: int
     features: list[str] = field(default_factory=list)
+    white_label: bool = False  # may set/serve custom branding on embeds
 
 
 TIERS: dict[str, Tier] = {
@@ -32,7 +33,8 @@ TIERS: dict[str, Tier] = {
         name="Pro",
         price_usd=20,
         monthly_quota=300,
-        features=["Aylıq 300 AI sorğusu", "Proqnoz & anomaliya", "Prioritet emal"],
+        features=["Aylıq 300 AI sorğusu", "Proqnoz & anomaliya", "White-label brending"],
+        white_label=True,
     ),
     "max": Tier(
         key="max",
@@ -40,6 +42,7 @@ TIERS: dict[str, Tier] = {
         price_usd=100,
         monthly_quota=1500,
         features=["Aylıq 1500 AI sorğusu (5x)", "Bütün Pro üstünlükləri", "Genişləndirilmiş tarixçə"],
+        white_label=True,
     ),
     "max_plus": Tier(
         key="max_plus",
@@ -47,6 +50,7 @@ TIERS: dict[str, Tier] = {
         price_usd=150,
         monthly_quota=3000,
         features=["Aylıq 3000 AI sorğusu (10x)", "Bütün Max üstünlükləri", "Ən yüksək limit"],
+        white_label=True,
     ),
     # Internal demo/test tier — unlimited usage, not shown as a purchasable plan.
     "unlimited": Tier(
@@ -55,6 +59,7 @@ TIERS: dict[str, Tier] = {
         price_usd=0,
         monthly_quota=10**9,
         features=["Limitsiz AI sorğusu", "Bütün özəlliklər"],
+        white_label=True,
     ),
 }
 
@@ -69,3 +74,8 @@ def is_unlimited(key: str | None) -> bool:
 def get_tier(key: str | None) -> Tier:
     """Return the tier for a key, falling back to Free for unknown values."""
     return TIERS.get(key or DEFAULT_TIER, TIERS[DEFAULT_TIER])
+
+
+def has_white_label(key: str | None) -> bool:
+    """True if the tier may set/serve custom white-label branding."""
+    return get_tier(key).white_label

@@ -3,19 +3,14 @@ import { useParams } from 'react-router-dom'
 import { ChartRenderer } from '../components/charts/LazyChartRenderer'
 import * as branding from '../api/branding'
 import type { EmbeddedDashboardView } from '../api/branding'
-
-/** Apply a white-label primary color by overriding the --accent CSS triplet. */
-function hexToTriplet(hex: string): string | null {
-  const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex.trim())
-  if (!m) return null
-  return `${parseInt(m[1], 16)} ${parseInt(m[2], 16)} ${parseInt(m[3], 16)}`
-}
+import { deriveAccentVariants, hexToTriplet } from '../lib/color'
 
 /** Layout-less, white-label, read-only embedded dashboard for external apps. */
 export function EmbedDashboardPage() {
   const { token } = useParams<{ token: string }>()
   const [view, setView] = useState<EmbeddedDashboardView | null>(null)
   const [error, setError] = useState(false)
+  const [logoBroken, setLogoBroken] = useState(false)
 
   useEffect(() => {
     if (!token) return
@@ -25,11 +20,30 @@ export function EmbedDashboardPage() {
       .catch(() => setError(true))
   }, [token])
 
-  // Brand the embed: app name + primary color.
+  // Re-skin the embed with the owner's primary color. Override the full accent set
+  // (--accent + press + soft) so nothing stays default emerald, and restore the
+  // prior values on unmount so the global <html> style doesn't leak.
   useEffect(() => {
     if (!view) return
+    const root = document.documentElement
     const triplet = hexToTriplet(view.brand.primary_color)
-    if (triplet) document.documentElement.style.setProperty('--accent', triplet)
+    if (!triplet) return
+    const vars = { '--accent': triplet } as Record<string, string>
+    const variants = deriveAccentVariants(view.brand.primary_color, root.classList.contains('dark'))
+    if (variants) {
+      vars['--accent-press'] = variants.press
+      vars['--accent-soft'] = variants.soft
+    }
+    const prev = Object.fromEntries(
+      Object.keys(vars).map((k) => [k, root.style.getPropertyValue(k)]),
+    )
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v)
+    return () => {
+      for (const [k, v] of Object.entries(prev)) {
+        if (v) root.style.setProperty(k, v)
+        else root.style.removeProperty(k)
+      }
+    }
   }, [view])
 
   if (error) {
@@ -47,8 +61,13 @@ export function EmbedDashboardPage() {
   return (
     <div className="min-h-screen bg-bg">
       <header className="flex items-center gap-2.5 border-b border-line px-6 py-3">
-        {brand.logo_url ? (
-          <img src={brand.logo_url} alt={brand.app_name} className="h-6 w-auto" />
+        {brand.logo_url && !logoBroken ? (
+          <img
+            src={brand.logo_url}
+            alt={brand.app_name}
+            className="h-6 w-auto"
+            onError={() => setLogoBroken(true)}
+          />
         ) : (
           <span className="font-display text-base font-bold tracking-tight text-ink">
             {brand.app_name}
