@@ -1,4 +1,4 @@
-import { BookMarked, CreditCard, Database, FileText, FlaskConical, Gauge, History, LayoutDashboard, MessageSquare, Palette, Sparkles, Tag, Target, Users } from 'lucide-react'
+import { BookMarked, CreditCard, Database, FileText, FlaskConical, Gauge, GitBranch, History, LayoutDashboard, MessageSquare, Palette, Sparkles, Tag, Target, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { NexusMark } from '../brand/NexusMark'
 import { useDatasourceStore } from '../../store/datasourceStore'
@@ -18,6 +18,7 @@ const groups = [
     items: [
       { to: '/sources', label: 'Mənbələr', icon: Database },
       { to: '/metrics', label: 'Metriklər', icon: Tag },
+      { to: '/metric-tree', label: 'Metrik ağacı', icon: GitBranch },
       { to: '/requirements', label: 'Tələblər', icon: FileText },
     ],
   },
