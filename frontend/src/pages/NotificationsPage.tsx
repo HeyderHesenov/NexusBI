@@ -43,7 +43,7 @@ export function NotificationsPage() {
   const visible = active === 'all' ? items : items.filter((n) => n.category === active)
 
   return (
-    <div className="w-full">
+    <div className="mx-auto w-full max-w-3xl">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">Mərkəz</p>
@@ -102,7 +102,7 @@ export function NotificationsPage() {
           </div>
         </div>
       ) : (
-        <ul className="grid items-start gap-2 lg:grid-cols-2">
+        <ul className="flex flex-col gap-2">
           {visible.map((n) => {
             const brief = n.category === 'digest'
             // Guard the runtime API boundary: an unknown category (e.g. one shipped
