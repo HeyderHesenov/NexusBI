@@ -28,8 +28,11 @@ class QueryEmbedding(Base):
         String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True
     )
     datasource_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    # "query" (NL→SQL example) | "metric" (verified semantic term)
+    # RAG kinds: "query" (NL→SQL example) | "metric" (verified semantic term).
+    # Asset-search kinds: "dashboard" | "metric_asset" | "saved_query".
     kind: Mapped[str] = mapped_column(String(20), nullable=False, default="query")
+    # For asset-search entries: id of the source asset (dashboard/metric/saved query).
+    ref_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     sql: Mapped[str | None] = mapped_column(Text, nullable=True)
     embedding: Mapped[list[float]] = mapped_column(JSON, nullable=False)

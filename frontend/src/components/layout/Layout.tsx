@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { CopilotWidget } from '../copilot/CopilotWidget'
+import { SearchPalette } from '../search/SearchPalette'
 import { ErrorBoundary } from '../ui/ErrorBoundary'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -22,6 +23,7 @@ export function Layout() {
         </main>
       </div>
       <CopilotWidget />
+      <SearchPalette />
     </div>
   )
 }
