@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { RotateCcw, ZoomIn, ZoomOut } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const BTN =
   'grid h-7 w-7 place-items-center rounded-md border border-line bg-surface/80 text-ink-soft backdrop-blur transition hover:border-accent hover:text-ink disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-soft'
@@ -23,6 +24,7 @@ interface Props {
  *  Used for horizontal bar charts so every column is reachable by scrolling while
  *  zoom changes how big each bar is. */
 export function ScrollZoom({ height, children }: Props) {
+  const { t } = useTranslation()
   const [zoom, setZoom] = useState(1)
   const viewportRef = useRef<HTMLDivElement>(null)
   // Drag bookkeeping; `moved` suppresses the click that would otherwise drill down.
@@ -110,8 +112,8 @@ export function ScrollZoom({ height, children }: Props) {
           type="button"
           onClick={() => zoomByButton(STEP)}
           disabled={zoom >= MAX_ZOOM}
-          title="Böyüt (Ctrl/⌘ + scroll, pinch). Adi scroll sütunları gəzir."
-          aria-label="Böyüt"
+          title={t('scrollZoom.zoomInTitle')}
+          aria-label={t('scrollZoom.zoomIn')}
           className={BTN}
         >
           <ZoomIn size={14} />
@@ -120,7 +122,7 @@ export function ScrollZoom({ height, children }: Props) {
           type="button"
           onClick={() => zoomByButton(1 / STEP)}
           disabled={zoom <= MIN_ZOOM}
-          aria-label="Kiçilt"
+          aria-label={t('scrollZoom.zoomOut')}
           className={BTN}
         >
           <ZoomOut size={14} />
@@ -129,7 +131,7 @@ export function ScrollZoom({ height, children }: Props) {
           type="button"
           onClick={() => setZoom(1)}
           disabled={zoom === 1}
-          aria-label="Sıfırla"
+          aria-label={t('scrollZoom.reset')}
           className={BTN}
         >
           <RotateCcw size={13} />

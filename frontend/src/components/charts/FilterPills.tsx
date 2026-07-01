@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export interface Filter {
   field: string
@@ -13,11 +14,12 @@ interface Props {
 
 /** Active drill-down filters applied to a chart, as removable pills. */
 export function FilterPills({ filters, onRemove, onClear }: Props) {
+  const { t } = useTranslation()
   if (!filters.length) return null
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-        Filtr:
+        {t('filterPills.filter')}
       </span>
       {filters.map((f, i) => (
         <button
@@ -34,7 +36,7 @@ export function FilterPills({ filters, onRemove, onClear }: Props) {
         onClick={onClear}
         className="ml-1 text-xs text-ink-faint underline-offset-2 transition-colors hover:text-ink hover:underline"
       >
-        Təmizlə
+        {t('filterPills.clear')}
       </button>
     </div>
   )

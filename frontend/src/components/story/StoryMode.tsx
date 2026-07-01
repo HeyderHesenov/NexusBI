@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Pause, Play, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { DataStory, Widget } from '../../types'
 import { ChartRenderer } from '../charts/LazyChartRenderer'
 import { TypewriterText } from '../charts/TypewriterText'
@@ -16,6 +17,7 @@ function slideMs(narrative: string): number {
 }
 
 export function StoryMode({ story, widgets, onClose }: Props) {
+  const { t } = useTranslation()
   const [index, setIndex] = useState(0)
   const [playing, setPlaying] = useState(true)
   const slides = story.slides
@@ -65,10 +67,10 @@ export function StoryMode({ story, widgets, onClose }: Props) {
 
       {/* Top bar */}
       <div className="relative flex items-center justify-between px-6 py-4">
-        <span className="eyebrow text-accent">Data hekayəsi</span>
+        <span className="eyebrow text-accent">{t('storyMode.dataStory')}</span>
         <button
           onClick={onClose}
-          aria-label="Bağla"
+          aria-label={t('storyMode.close')}
           className="rounded-full border border-line p-2 text-ink-soft transition hover:border-accent hover:text-ink"
         >
           <X size={18} />
@@ -104,7 +106,7 @@ export function StoryMode({ story, widgets, onClose }: Props) {
         <button
           onClick={() => go(-1)}
           disabled={index === 0}
-          aria-label="Əvvəlki"
+          aria-label={t('storyMode.previous')}
           className="rounded-full border border-line p-2.5 text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-40"
         >
           <ChevronLeft size={18} />
@@ -112,7 +114,7 @@ export function StoryMode({ story, widgets, onClose }: Props) {
 
         <button
           onClick={() => setPlaying((p) => !p)}
-          aria-label={playing ? 'Dayandır' : 'Oynat'}
+          aria-label={playing ? t('storyMode.pause') : t('storyMode.play')}
           className="rounded-full bg-accent p-3 text-bg shadow-card transition hover:bg-accent-press"
         >
           {playing ? <Pause size={18} /> : <Play size={18} />}
@@ -121,7 +123,7 @@ export function StoryMode({ story, widgets, onClose }: Props) {
         <button
           onClick={() => go(1)}
           disabled={last}
-          aria-label="Növbəti"
+          aria-label={t('storyMode.next')}
           className="rounded-full border border-line p-2.5 text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-40"
         >
           <ChevronRight size={18} />
@@ -132,7 +134,7 @@ export function StoryMode({ story, widgets, onClose }: Props) {
             <button
               key={i}
               onClick={() => setIndex(i)}
-              aria-label={`Slayd ${i + 1}`}
+              aria-label={t('storyMode.slide', { n: i + 1 })}
               className={`h-1.5 rounded-full transition-all ${
                 i === index ? 'w-6 bg-accent' : 'w-1.5 bg-line hover:bg-ink-faint'
               }`}

@@ -1,5 +1,6 @@
 import { ArrowUp } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   onSubmit: (q: string) => void
@@ -8,15 +9,17 @@ interface Props {
   samples?: string[]
 }
 
-const DEMO_EXAMPLES = [
-  'Ən çox satan 5 məhsul hansıdır?',
-  'Aylıq gəlir trendi necədir?',
-  'Regionlar üzrə satış payı',
-  'Ölkələrə görə müştəri sayı',
+const DEMO_EXAMPLE_KEYS = [
+  'nLQueryInput.demoExampleTopProducts',
+  'nLQueryInput.demoExampleRevenueTrend',
+  'nLQueryInput.demoExampleSalesByRegion',
+  'nLQueryInput.demoExampleCustomersByCountry',
 ]
 
 export function NLQueryInput({ onSubmit, loading, samples }: Props) {
-  const examples = samples && samples.length ? samples : DEMO_EXAMPLES
+  const { t } = useTranslation()
+  const examples =
+    samples && samples.length ? samples : DEMO_EXAMPLE_KEYS.map((k) => t(k))
   const [value, setValue] = useState('')
   const submit = (q?: string) => {
     const text = (q ?? value).trim()
@@ -33,13 +36,13 @@ export function NLQueryInput({ onSubmit, loading, samples }: Props) {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder="Datana sual ver — adi dildə yaz…"
+            placeholder={t('nLQueryInput.placeholder')}
             className="flex-1 bg-transparent text-lg text-ink placeholder:text-ink-faint focus:outline-none"
           />
           <button
             onClick={() => submit()}
             disabled={loading || !value.trim()}
-            aria-label="Soruş"
+            aria-label={t('nLQueryInput.ask')}
             className="grid h-9 w-9 place-items-center rounded-xl bg-accent text-bg transition hover:bg-accent-press active:translate-y-px disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ArrowUp size={18} strokeWidth={2.5} />

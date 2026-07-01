@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { Code2, Copy, Link2 } from 'lucide-react'
 import { ModalShell } from '../ui/ModalShell'
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
+  const { t } = useTranslation()
   const [token, setToken] = useState<string | null>(null)
   const [embedToken, setEmbedToken] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -33,7 +35,7 @@ export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
       if (embedToken) {
         await dashApi.setEmbed(dashboardId, false)
         setEmbedToken(null)
-        toast.success('Embed söndürüldü.')
+        toast.success(t('shareDashboardModal.embedDisabled'))
       } else {
         const res = await dashApi.setEmbed(dashboardId, true)
         setEmbedToken(res.token)
@@ -57,33 +59,33 @@ export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
     try {
       await dashApi.disableShare(dashboardId)
       setToken(null)
-      toast.success('Paylaşım ləğv edildi.')
+      toast.success(t('shareDashboardModal.shareRevoked'))
     } finally {
       setBusy(false)
     }
   }
 
   const copy = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => toast.success('Kopyalandı.'))
+    navigator.clipboard.writeText(text).then(() => toast.success(t('shareDashboardModal.copied')))
   }
 
   return (
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Dashboard-u paylaş"
-      subtitle="Tokenli read-only link — giriş tələb olunmur."
+      title={t('shareDashboardModal.title')}
+      subtitle={t('shareDashboardModal.subtitle')}
       footer={
         <div className="flex justify-between gap-2">
           {token ? (
             <button onClick={revoke} disabled={busy} className="rounded-xl px-4 py-2 text-sm text-[#D87C6B] transition hover:opacity-80">
-              Paylaşımı ləğv et
+              {t('shareDashboardModal.revokeShare')}
             </button>
           ) : (
             <span />
           )}
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
-            Bağla
+            {t('shareDashboardModal.close')}
           </button>
         </div>
       }
@@ -95,14 +97,14 @@ export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
             disabled={busy}
             className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition hover:bg-accent-press disabled:opacity-60"
           >
-            <Link2 size={15} /> Public link yarat
+            <Link2 size={15} /> {t('shareDashboardModal.createPublicLink')}
           </button>
         ) : (
           <>
-            <Field label="Public link" value={url} onCopy={() => copy(url)} />
-            <Field label="Embed (iframe)" value={embed} onCopy={() => copy(embed)} mono />
+            <Field label={t('shareDashboardModal.publicLinkLabel')} value={url} onCopy={() => copy(url)} />
+            <Field label={t('shareDashboardModal.embedIframeLabel')} value={embed} onCopy={() => copy(embed)} mono />
             <p className="text-xs text-ink-faint">
-              Bu linkə malik hər kəs paneli (yalnız oxuma) görə bilər.
+              {t('shareDashboardModal.publicLinkHint')}
             </p>
           </>
         )}
@@ -110,7 +112,7 @@ export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
         <div className="border-t border-line pt-3">
           <div className="mb-2 flex items-center gap-2">
             <Code2 size={15} className="text-accent" />
-            <span className="eyebrow text-ink-soft">White-label embed (imzalı token)</span>
+            <span className="eyebrow text-ink-soft">{t('shareDashboardModal.whiteLabelEmbed')}</span>
           </div>
           {!embedToken ? (
             <button
@@ -118,7 +120,7 @@ export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
               disabled={busy}
               className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3 py-2 text-sm font-semibold text-accent transition hover:border-accent disabled:opacity-60"
             >
-              <Code2 size={15} /> Embed aktiv et
+              <Code2 size={15} /> {t('shareDashboardModal.enableEmbed')}
             </button>
           ) : (
             <div className="space-y-3">
@@ -129,7 +131,7 @@ export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
                 disabled={busy}
                 className="text-sm text-[#D87C6B] transition hover:opacity-80"
               >
-                Embed-i söndür
+                {t('shareDashboardModal.disableEmbed')}
               </button>
             </div>
           )}

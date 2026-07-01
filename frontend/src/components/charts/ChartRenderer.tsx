@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { ChartConfig } from '../../types'
 import { AreaChartWidget } from './AreaChartWidget'
 import { BarChartWidget } from './BarChartWidget'
@@ -31,8 +32,9 @@ export function ChartRenderer({
   anomalyLabels,
   scrollableBars = false,
 }: ChartRendererProps) {
+  const { t } = useTranslation()
   if (!data.length) {
-    return <p className="text-ink-soft">Nəticə tapılmadı.</p>
+    return <p className="text-ink-soft">{t('chartRenderer.noResults')}</p>
   }
   switch (config.chart_type) {
     case 'bar':

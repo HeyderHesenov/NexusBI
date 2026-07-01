@@ -1,5 +1,6 @@
 import { MessageCircle, Send, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useCollabStore } from '../../store/collabStore'
 
 function time(ts: string): string {
@@ -8,6 +9,7 @@ function time(ts: string): string {
 
 /** Slide-in team chat for a dashboard. Messages arrive live over the WS. */
 export function CollabPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation()
   const { messages, participants, connected, sendChat } = useCollabStore()
   const [text, setText] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
@@ -30,15 +32,15 @@ export function CollabPanel({ open, onClose }: { open: boolean; onClose: () => v
       <header className="flex items-center justify-between border-b border-line px-4 py-3">
         <div className="flex items-center gap-2">
           <MessageCircle size={18} className="text-accent" />
-          <h3 className="font-display text-base font-bold text-ink">Komanda</h3>
+          <h3 className="font-display text-base font-bold text-ink">{t('collabPanel.team')}</h3>
           <span
             className={`h-2 w-2 rounded-full ${connected ? 'bg-accent' : 'bg-ink-faint'}`}
-            title={connected ? 'Qoşulu' : 'Qoşulmayıb'}
+            title={connected ? t('collabPanel.connected') : t('collabPanel.disconnected')}
           />
         </div>
         <button
           onClick={onClose}
-          aria-label="Bağla"
+          aria-label={t('collabPanel.close')}
           className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <X size={16} />
@@ -62,7 +64,7 @@ export function CollabPanel({ open, onClose }: { open: boolean; onClose: () => v
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {messages.length === 0 ? (
           <p className="mt-8 text-center text-sm text-ink-faint">
-            Hələ mesaj yoxdur. İlk şərhi sən yaz.
+            {t('collabPanel.emptyState')}
           </p>
         ) : (
           messages.map((m) => (
@@ -83,13 +85,13 @@ export function CollabPanel({ open, onClose }: { open: boolean; onClose: () => v
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="Mesaj yaz…"
+          placeholder={t('collabPanel.messagePlaceholder')}
           className="flex-1 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         />
         <button
           onClick={submit}
           disabled={!text.trim()}
-          aria-label="Göndər"
+          aria-label={t('collabPanel.send')}
           className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-xl bg-accent text-bg transition hover:bg-accent-press disabled:opacity-50"
         >
           <Send size={16} />

@@ -44,6 +44,20 @@
     "title": "AI Kalitesi",
     "trendEmpty": "Trend için en az 2 eval gerekir."
   },
+  "addWidgetModal": {
+    "close": "Kapat",
+    "emptyState": "Henüz sorgu yok. Önce bir soru sorun.",
+    "subtitle": "Geçmişten bir sorgu seçin.",
+    "title": "Widget ekle"
+  },
+  "anomalyPanel": {
+    "anomalies": "Anomaliler",
+    "noAnomalies": "Anomali bulunamadı."
+  },
+  "barChartWidget": {
+    "others": "Diğer ({{n}})",
+    "othersLabel": "Diğer"
+  },
   "brandingPage": {
     "appliesNote": "Gömme (iframe / SDK) görünümüne uygulanır.",
     "colorPickerLabel": "Renk seçici",
@@ -69,8 +83,125 @@
     "upsellBody": "Gömülü panellerde kendi adınızı, renginizi ve logonuzu göstermek için Pro veya daha üst plana geçin.",
     "upsellHeading": "White-label bir Pro özelliğidir"
   },
+  "causalPanel": {
+    "insignificant": "önemsiz",
+    "title": "Nedensellik analizi"
+  },
+  "chartFullscreenModal": {
+    "chart": "Grafik",
+    "close": "Kapat"
+  },
+  "chartRenderer": {
+    "noResults": "Sonuç bulunamadı."
+  },
+  "chartToolbar": {
+    "area": "Alan",
+    "bar": "Sütun",
+    "line": "Çizgi",
+    "pie": "Pasta",
+    "pivot": "Özet",
+    "scatter": "Dağılım",
+    "table": "Tablo"
+  },
+  "chartView": {
+    "anomalies": "Anomaliler",
+    "causal": "Neden analizi",
+    "chart": "Grafik",
+    "checking": "Kontrol…",
+    "detecting": "Analiz…",
+    "downloadCsv": "CSV indir",
+    "explain": "Açıkla",
+    "explaining": "Açıklama…",
+    "findingDrivers": "Aranıyor…",
+    "forecast": "Tahmin",
+    "forecasting": "Tahmin…",
+    "legend": "Açıklama",
+    "lineage": "Köken",
+    "rooting": "Ayrıştırılıyor…",
+    "scenario": "Senaryo",
+    "significance": "İstatistiksel kontrol",
+    "tracing": "İzleniyor…",
+    "why": "Neden?"
+  },
+  "chartZoom": {
+    "reset": "Sıfırla",
+    "zoomIn": "Yakınlaştır",
+    "zoomInTitle": "Yakınlaştır (Ctrl/⌘ + kaydırma, kıstırma). Yakınlaştırdıktan sonra normal kaydırma kaydırır.",
+    "zoomOut": "Uzaklaştır"
+  },
+  "collabPanel": {
+    "close": "Kapat",
+    "connected": "Bağlı",
+    "disconnected": "Bağlı değil",
+    "emptyState": "Henüz mesaj yok. İlk yorumu sen yaz.",
+    "messagePlaceholder": "Mesaj yaz…",
+    "send": "Gönder",
+    "team": "Ekip"
+  },
   "common": {
     "demoMode": "Demo modu"
+  },
+  "confirmDialog": {
+    "cancel": "İptal",
+    "delete": "Sil"
+  },
+  "connectPowerBIModal": {
+    "cancel": "İptal",
+    "connect": "Bağlan",
+    "connecting": "Bağlanıyor…",
+    "hint": "Doğal dilde sorun — NexusBI DAX oluşturup Power BI modeline gönderir.",
+    "noDataset": "Veri kümesi bulunamadı",
+    "sourceNamePlaceholder": "Kaynak adı",
+    "subtitle": "Bir Power BI veri kümesi seçin — sorgular canlı DAX olarak çalıştırılır.",
+    "title": "Power BI'a bağlan"
+  },
+  "connectSourceModal": {
+    "cancel": "İptal",
+    "connect": "Bağla",
+    "connecting": "Bağlanıyor…",
+    "namePlaceholder": "Ad (örn. Production DB)",
+    "readOnlyNote": "Salt okunur (read-only) kullanıcı önerilir. Sorgular yalnızca SELECT'tir.",
+    "subtitle": "Kendi verinizi SQLAlchemy bağlantı dizesiyle bağlayın.",
+    "title": "Veritabanı bağla"
+  },
+  "copilotWidget": {
+    "agentic": "Ajanik",
+    "approve": "Onayla",
+    "assistantAria": "AI asistan",
+    "cancel": "İptal et",
+    "executing": "Yürütülüyor…",
+    "greeting": "Merhaba! Ben NexusBI'nin akıllı asistanıyım. Soruyu günlük dille yaz — sorguyu çalıştırır, doğru grafiği seçer, pano oluşturur, içgörü, tahmin ve anomali çıkarırım. Bir şey sor:",
+    "inputPlaceholder": "Sor veya görev ver…",
+    "plan": "Plan",
+    "send": "Gönder",
+    "suggestion1": "Q4 gelirini analiz eden bir pano oluştur",
+    "suggestion2": "En çok satan 5 ürün hangisi?",
+    "suggestion3": "Bölgelere göre gelir dağılımı",
+    "thinking": "Düşünüyorum…",
+    "title": "AI Asistan"
+  },
+  "createDecisionModal": {
+    "actionPlaceholder": "Atılacak adım (isteğe bağlı)",
+    "baselineHint": "Bu sorgunun sonucu temel değer olarak alınır, ardından gerçek etki otomatik olarak ölçülür.",
+    "cadenceDaily": "Günlük ölç",
+    "cadenceOff": "Otomatik ölçüm yok",
+    "cadenceWeekly": "Haftalık ölç",
+    "cancel": "İptal",
+    "create": "Oluştur",
+    "directionDecrease": "Azalmalı ↓",
+    "directionIncrease": "Artmalı ↑",
+    "metricColumnPlaceholder": "Metrik sütunu (boş = ilk sayısal sütun)",
+    "predictedPlaceholder": "Beklenen değer",
+    "subtitle": "Bu içgörüden izlenen, ölçülebilir bir karar oluşturun.",
+    "title": "Karara dönüştür",
+    "titlePlaceholder": "Karar başlığı",
+    "trackLabel": "Bir metriğe bağla ve etkisini izle"
+  },
+  "dashboardGrid": {
+    "chart": "Grafik",
+    "noResults": "Bu sorgunun sonucu yok.",
+    "refresh": "Yenile",
+    "remove": "Sil"
   },
   "dashboardPage": {
     "addWidget": "Widget ekle",
@@ -131,6 +262,19 @@
     "tablePlaceholder": "tablo adı",
     "title": "Veri sözleşmeleri"
   },
+  "dataPrepModal": {
+    "close": "Kapat",
+    "demoData": "Demo veri",
+    "instructionPlaceholder": "örn. orders ve customers'ı customer_id üzerinden birleştir, aya göre grupla",
+    "newSourceNamePlaceholder": "Yeni kaynak adı",
+    "preview": "Önizle",
+    "previewing": "Hazırlanıyor…",
+    "saveAsSource": "Kaynak olarak kaydet",
+    "savedToast": "Yeni kaynak kaydedildi 📦",
+    "saving": "Kaydediliyor…",
+    "subtitle": "Doğal dilde yazın — NexusBI birleştirir (join), gruplar ve sonucu hazırlar.",
+    "title": "Veri hazırla"
+  },
   "dataSourcesPage": {
     "active": "Aktif",
     "connectDb": "Veritabanı bağla",
@@ -184,6 +328,12 @@
     "noResults": "Sonuç yok.",
     "notFoundOrDisabled": "Gömme bulunamadı veya devre dışı."
   },
+  "errorBoundary": {
+    "panelDescription": "Bu bölümde beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
+    "retry": "Tekrar dene",
+    "titleGeneric": "Bir şeyler ters gitti",
+    "titleWithLabel": "{{label}} yüklenemedi"
+  },
   "experimentsPage": {
     "analyze": "Analiz et",
     "analyzing": "Analiz…",
@@ -212,6 +362,36 @@
     "variantA": "Varyant A",
     "variantB": "Varyant B"
   },
+  "explainPanel": {
+    "noDrivers": "Belirgin bir etken bulunamadı.",
+    "rootCauseAnalysis": "Kök neden analizi"
+  },
+  "filterPills": {
+    "clear": "Temizle",
+    "filter": "Filtre:"
+  },
+  "forecastChartWidget": {
+    "confidenceInterval": "Güven aralığı",
+    "forecast": "Tahmin",
+    "historical": "Geçmiş"
+  },
+  "generateDashboardModal": {
+    "build": "Oluştur",
+    "building": "Oluşturuluyor…",
+    "cancel": "İptal",
+    "exampleCustomer": "Müşteri davranışı analizi",
+    "exampleProduct": "Ürün kârlılığı",
+    "exampleSales": "Satış performansı genel görünümü",
+    "placeholder": "örn. Bu çeyreğin satış performansını göster",
+    "progress": "Sorular seçiliyor, sorgular çalıştırılıyor ve widget'lar toplanıyor… bu birkaç saniye sürebilir.",
+    "subtitle": "Hedefini yaz — NexusBI uygun soruları seçip panoyu senin için oluşturur.",
+    "title": "AI ile pano oluştur"
+  },
+  "historyDeleteUI": {
+    "confirmMessage": "Bu sorgu geçmişten silinecek. Bu işlem geri alınamaz.",
+    "confirmTitle": "Sorguyu sil",
+    "delete": "Sil"
+  },
   "historyPage": {
     "colDate": "Tarih",
     "colQuery": "Sorgu",
@@ -233,6 +413,28 @@
     "scanning": "Taranıyor…",
     "subtitle": "Motor son sonuçları otomatik tarar — etkiye göre sıralanmış bulgular.",
     "title": "İçgörüler"
+  },
+  "integrationsPanel": {
+    "add": "Ekle",
+    "deleteTooltip": "Sil",
+    "description": "Brief ve uyarıları Slack, Teams veya e-postaya gönderin. (Demo: mock modu.)",
+    "hintEmail": "e-posta adresi",
+    "hintWebhook": "webhook URL",
+    "testTooltip": "Test gönder",
+    "title": "Bildirim kanalları",
+    "toastAdded": "Kanal eklendi.",
+    "toastTestFailed": "Test başarısız oldu.",
+    "toastTestSent": "Test gönderildi."
+  },
+  "layout": {
+    "pageLabel": "Sayfa"
+  },
+  "lineagePanel": {
+    "columns": "Sütunlar",
+    "empty": "Köken bilgisi çıkarılamadı.",
+    "metrics": "Metrikler",
+    "tables": "Tablolar",
+    "title": "Köken (lineage)"
   },
   "loginPage": {
     "busy": "Lütfen bekleyin…",
@@ -308,6 +510,14 @@
     "verifiedBy": "Onaylayan: {{by}}",
     "verify": "Onayla"
   },
+  "nLQueryInput": {
+    "ask": "Sor",
+    "demoExampleCustomersByCountry": "Ülkelere göre müşteri sayısı",
+    "demoExampleRevenueTrend": "Aylık gelir trendi nasıl?",
+    "demoExampleSalesByRegion": "Bölgelere göre satış payı",
+    "demoExampleTopProducts": "En çok satan 5 ürün hangisi?",
+    "placeholder": "Verilerinize sorun — sade dille yazın…"
+  },
   "nav": {
     "branding": "Marka",
     "contracts": "Veri sözleşmeleri",
@@ -348,6 +558,19 @@
     "smartInsight": "Akıllı içgörü oluştur",
     "title": "Bildirimler"
   },
+  "pieChartWidget": {
+    "others": "Diğer",
+    "othersWithCount": "Diğer ({{count}})"
+  },
+  "pivotWidget": {
+    "aggregate": "Toplam",
+    "column": "Sütun",
+    "measure": "Ölçü",
+    "noResult": "Sonuç yok.",
+    "none": "Yok",
+    "row": "Satır",
+    "total": "Toplam"
+  },
   "pricingPage": {
     "currentPlan": "Mevcut plan",
     "demoUnlimitedLabel": "Demo · Sınırsız",
@@ -361,6 +584,19 @@
     "switch": "Geç",
     "upgrade": "Yükselt",
     "usageThisMonth": "Bu ay: {{used}} / {{limit}} sorgu kullanıldı"
+  },
+  "profilePanel": {
+    "column": "Sütun",
+    "distinct": "Farklı",
+    "loading": "Profil yükleniyor…",
+    "max": "Maks",
+    "min": "Min",
+    "noTablesFound": "Profil için tablo bulunamadı.",
+    "notAvailable": "Profil alınamadı.",
+    "nullPct": "Boş %",
+    "rowSample": "{{n}} satırlık örnek",
+    "table": "Tablo",
+    "type": "Tür"
   },
   "publicDashboardPage": {
     "emptyPanel": "Bu pano boş.",
@@ -445,6 +681,119 @@
     "textPlaceholder": "Gereksinim metnini buraya yapıştırın…",
     "title": "Gereksinimler"
   },
+  "rlsModal": {
+    "addRule": "Kural ekle",
+    "allowedValuePlaceholder": "izin verilen değer",
+    "close": "Kapat",
+    "columnPlaceholder": "sütun (örn. region)",
+    "memberEmailPlaceholder": "üye e-postası",
+    "ruleAdded": "Kural eklendi.",
+    "subtitle": "{{name}}: üye yalnızca izin verilen satırları görür.",
+    "title": "Satır düzeyinde güvenlik (RLS)"
+  },
+  "rootCausePanel": {
+    "noDrivers": "Belirgin bir etken bulunamadı.",
+    "title": "Kök neden ağacı"
+  },
+  "sQLEditorInner": {
+    "cancel": "İptal",
+    "run": "Çalıştır",
+    "runShortcutHint": "⌘↵ ile çalıştır",
+    "running": "Çalışıyor…"
+  },
+  "sQLPreview": {
+    "generatedDax": "Oluşturulan DAX",
+    "generatedSql": "Oluşturulan SQL"
+  },
+  "saveDashboardModal": {
+    "cancel": "İptal",
+    "create": "Oluştur",
+    "namePlaceholder": "Pano adı",
+    "subtitle": "Panonuza bir ad verin.",
+    "title": "Yeni pano"
+  },
+  "saveQueryModal": {
+    "cancel": "İptal",
+    "namePlaceholder": "Ad (örn. Haftalık satış)",
+    "save": "Kaydet",
+    "scheduleDaily": "Günlük",
+    "scheduleHourly": "Saatlik",
+    "scheduleOff": "Zamanlama yok",
+    "scheduleWeekly": "Haftalık",
+    "subtitle": "Adlandırın ve isterseniz otomatik yenileme zamanlaması ekleyin.",
+    "title": "Sorguyu kaydet"
+  },
+  "saveToDashboardModal": {
+    "addedToDashboard": "Panoya eklendi.",
+    "create": "Oluştur",
+    "createdAndAdded": "\"{{name}}\" oluşturuldu ve eklendi.",
+    "newDashboardPlaceholder": "Yeni pano adı",
+    "noDashboardsYet": "Henüz pano yok.",
+    "subtitle": "Mevcut bir pano seçin veya yeni bir tane oluşturun.",
+    "title": "Panoya kaydet"
+  },
+  "scenarioPanel": {
+    "actual": "Gerçek",
+    "calculate": "Hesapla",
+    "change": "Değişim",
+    "current": "mevcut",
+    "goalSeek": "Hedef arama",
+    "monteCarloForecast": "Monte Carlo tahmini",
+    "noNumericColumn": "Senaryo için sayısal sütun bulunamadı.",
+    "rangeMeanReturn": "P10–P90 aralığı · ortalama getiri {{pct}}%/dönem",
+    "required": "gerekli",
+    "scenario": "Senaryo",
+    "simulating": "Simüle ediliyor…",
+    "targetValuePlaceholder": "hedef değer"
+  },
+  "schemaBrowser": {
+    "loading": "Şema yükleniyor…",
+    "notFound": "Şema bulunamadı."
+  },
+  "scrollZoom": {
+    "reset": "Sıfırla",
+    "zoomIn": "Yakınlaştır",
+    "zoomInTitle": "Yakınlaştır (Ctrl/⌘ + kaydırma, tutma). Normal kaydırma sütunlarda gezinir.",
+    "zoomOut": "Uzaklaştır"
+  },
+  "searchPalette": {
+    "dialogLabel": "Arama",
+    "emptyHint": "Ada veya anlama göre ara.",
+    "hintClose": "esc kapat",
+    "hintNavigate": "↑↓ gezin",
+    "hintOpen": "↵ aç",
+    "inputPlaceholder": "Dashboard, metrik, rapor ara…",
+    "noResults": "Sonuç bulunamadı.",
+    "resultCount": "{{n}} sonuç"
+  },
+  "shareDashboardModal": {
+    "close": "Kapat",
+    "copied": "Kopyalandı.",
+    "createPublicLink": "Genel bağlantı oluştur",
+    "disableEmbed": "Yerleştirmeyi kapat",
+    "embedDisabled": "Yerleştirme kapatıldı.",
+    "embedIframeLabel": "Yerleştirme (iframe)",
+    "enableEmbed": "Yerleştirmeyi etkinleştir",
+    "publicLinkHint": "Bu bağlantıya sahip herkes panoyu (salt okunur) görüntüleyebilir.",
+    "publicLinkLabel": "Genel bağlantı",
+    "revokeShare": "Paylaşımı iptal et",
+    "shareRevoked": "Paylaşım iptal edildi.",
+    "subtitle": "Token'lı salt okunur bağlantı — giriş gerekmez.",
+    "title": "Panoyu paylaş",
+    "whiteLabelEmbed": "White-label yerleştirme (imzalı token)"
+  },
+  "storyMode": {
+    "close": "Kapat",
+    "dataStory": "Veri hikayesi",
+    "next": "Sonraki",
+    "pause": "Duraklat",
+    "play": "Oynat",
+    "previous": "Önceki",
+    "slide": "Slayt {{n}}"
+  },
+  "tableWidget": {
+    "noResults": "Sonuç yok."
+  },
   "targetsPage": {
     "addTarget": "Hedef ekle",
     "attainment": "%{{pct}} gerçekleşme",
@@ -482,6 +831,16 @@
     "notifications": "Bildirimler",
     "search": "Ara…",
     "searchTitle": "Ara (⌘K)"
+  },
+  "uploadSourceModal": {
+    "cancel": "İptal",
+    "clickToSelect": "Dosya seçmek için tıkla",
+    "fileHint": ".csv veya .xlsx — maks. 10 MB",
+    "namePlaceholder": "Kaynak adı (isteğe bağlı)",
+    "subtitle": "Dosyayı yükle, NexusBI onu sorgulanabilir bir tabloya dönüştürsün.",
+    "title": "CSV / Excel yükle",
+    "upload": "Yükle",
+    "uploading": "Yükleniyor…"
   },
   "workspacePage": {
     "addMember": "Ekle",

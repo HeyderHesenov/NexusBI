@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { Plug, Plus, Send, Trash2 } from 'lucide-react'
 import * as api from '../api/integration'
 import type { IntegrationChannel } from '../api/integration'
 
 const TYPES = [
-  { value: 'slack', label: 'Slack', hint: 'webhook URL' },
-  { value: 'teams', label: 'Teams', hint: 'webhook URL' },
-  { value: 'email', label: 'Email', hint: 'e-poçt ünvanı' },
+  { value: 'slack', label: 'Slack', hintKey: 'integrationsPanel.hintWebhook' },
+  { value: 'teams', label: 'Teams', hintKey: 'integrationsPanel.hintWebhook' },
+  { value: 'email', label: 'Email', hintKey: 'integrationsPanel.hintEmail' },
 ]
 
 /** Manage Slack/Teams/email channels that receive briefs & alerts. */
 export function IntegrationsPanel() {
+  const { t } = useTranslation()
   const [channels, setChannels] = useState<IntegrationChannel[]>([])
   const [type, setType] = useState('slack')
   const [target, setTarget] = useState('')
@@ -29,7 +31,7 @@ export function IntegrationsPanel() {
       await api.createChannel(type, '', target.trim())
       setTarget('')
       await load()
-      toast.success('Kanal əlavə olundu.')
+      toast.success(t('integrationsPanel.toastAdded'))
     } catch {
       /* interceptor toast */
     } finally {
@@ -39,7 +41,7 @@ export function IntegrationsPanel() {
 
   const test = async (id: string) => {
     const ok = await api.testChannel(id).catch(() => false)
-    toast[ok ? 'success' : 'error'](ok ? 'Test göndərildi.' : 'Test alınmadı.')
+    toast[ok ? 'success' : 'error'](ok ? t('integrationsPanel.toastTestSent') : t('integrationsPanel.toastTestFailed'))
   }
 
   const remove = async (id: string) => {
@@ -47,16 +49,17 @@ export function IntegrationsPanel() {
     setChannels((c) => c.filter((x) => x.id !== id))
   }
 
-  const hint = TYPES.find((t) => t.value === type)?.hint ?? ''
+  const hintKey = TYPES.find((x) => x.value === type)?.hintKey ?? ''
+  const hint = hintKey ? t(hintKey) : ''
 
   return (
     <section className="mt-8">
       <div className="mb-3 flex items-center gap-2">
         <Plug size={16} className="text-accent" />
-        <h2 className="font-display text-lg font-semibold text-ink">Bildiriş kanalları</h2>
+        <h2 className="font-display text-lg font-semibold text-ink">{t('integrationsPanel.title')}</h2>
       </div>
       <p className="mb-3 text-sm text-ink-soft">
-        Brif və alert-ləri Slack, Teams və ya email-ə göndər. (Demo: mock rejim.)
+        {t('integrationsPanel.description')}
       </p>
 
       <div className="mb-3 flex flex-wrap gap-2">
@@ -65,9 +68,9 @@ export function IntegrationsPanel() {
           onChange={(e) => setType(e.target.value)}
           className="rounded-xl border border-line bg-surface-2 px-2 py-2 text-sm text-ink focus:outline-none"
         >
-          {TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
+          {TYPES.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
             </option>
           ))}
         </select>
@@ -82,7 +85,7 @@ export function IntegrationsPanel() {
           disabled={busy}
           className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
         >
-          <Plus size={15} /> Əlavə et
+          <Plus size={15} /> {t('integrationsPanel.add')}
         </button>
       </div>
 
@@ -102,14 +105,14 @@ export function IntegrationsPanel() {
               <span className="flex items-center gap-1">
                 <button
                   onClick={() => test(c.id)}
-                  title="Test göndər"
+                  title={t('integrationsPanel.testTooltip')}
                   className="rounded-md border border-line p-1.5 text-ink-soft transition hover:border-accent hover:text-accent"
                 >
                   <Send size={14} />
                 </button>
                 <button
                   onClick={() => remove(c.id)}
-                  title="Sil"
+                  title={t('integrationsPanel.deleteTooltip')}
                   className="rounded-md border border-line p-1.5 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
                 >
                   <Trash2 size={14} />

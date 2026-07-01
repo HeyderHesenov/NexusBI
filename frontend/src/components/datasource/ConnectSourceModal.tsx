@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ModalShell } from '../ui/ModalShell'
 import { useDatasourceStore } from '../../store/datasourceStore'
 import type { DataSourceCreate } from '../../types'
@@ -18,6 +19,7 @@ const PLACEHOLDER: Record<string, string> = {
 }
 
 export function ConnectSourceModal({ open, onClose }: Props) {
+  const { t } = useTranslation()
   const createSource = useDatasourceStore((s) => s.create)
   const [name, setName] = useState('')
   const [dbType, setDbType] = useState<DataSourceCreate['db_type']>('postgresql')
@@ -48,19 +50,19 @@ export function ConnectSourceModal({ open, onClose }: Props) {
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Verilənlər bazası qoş"
-      subtitle="SQLAlchemy bağlantı sətri ilə öz datanı qoş."
+      title={t('connectSourceModal.title')}
+      subtitle={t('connectSourceModal.subtitle')}
       footer={
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
-            Ləğv et
+            {t('connectSourceModal.cancel')}
           </button>
           <button
             onClick={submit}
             disabled={busy}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
-            {busy ? 'Qoşulur…' : 'Qoş'}
+            {busy ? t('connectSourceModal.connecting') : t('connectSourceModal.connect')}
           </button>
         </div>
       }
@@ -70,7 +72,7 @@ export function ConnectSourceModal({ open, onClose }: Props) {
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ad (məs. Production DB)"
+          placeholder={t('connectSourceModal.namePlaceholder')}
           className={field}
         />
         <select value={dbType} onChange={(e) => setDbType(e.target.value as DataSourceCreate['db_type'])} className={field}>
@@ -86,7 +88,7 @@ export function ConnectSourceModal({ open, onClose }: Props) {
           className={`${field} font-mono text-xs`}
         />
         <p className="text-xs text-ink-faint">
-          Yalnız oxuma (read-only) istifadəçi tövsiyə olunur. Sorğular yalnız SELECT-dir.
+          {t('connectSourceModal.readOnlyNote')}
         </p>
       </div>
     </ModalShell>

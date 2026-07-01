@@ -1,5 +1,7 @@
 import { AlertTriangle, RotateCcw } from 'lucide-react'
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 interface Props {
   children: ReactNode
@@ -9,6 +11,8 @@ interface Props {
   variant?: 'panel' | 'widget'
   /** Optional label shown in the fallback ("Dashboard", "Qrafik"…). */
   label?: string
+  /** Injected translator (from the functional wrapper). */
+  t: TFunction
 }
 
 interface State {
@@ -17,7 +21,7 @@ interface State {
 
 /** Catches render/runtime errors in its subtree so one broken chart, widget, or
  * route can't white-screen the whole app. Auto-resets when `resetKeys` change. */
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundaryInner extends Component<Props, State> {
   state: State = { error: null }
 
   static getDerivedStateFromError(error: Error): State {
@@ -39,8 +43,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.error) return this.props.children
-    const { variant = 'panel', label } = this.props
-    const title = label ? `${label} yüklənmədi` : 'Nəsə səhv getdi'
+    const { variant = 'panel', label, t } = this.props
+    const title = label
+      ? t('errorBoundary.titleWithLabel', { label })
+      : t('errorBoundary.titleGeneric')
     return (
       <div
         role="alert"
@@ -54,18 +60,25 @@ export class ErrorBoundary extends Component<Props, State> {
         <p className="text-sm font-medium text-ink">{title}</p>
         {variant === 'panel' && (
           <p className="max-w-sm text-sm text-ink-soft">
-            Bu hissədə gözlənilməz xəta baş verdi. Yenidən cəhd edin.
+            {t('errorBoundary.panelDescription')}
           </p>
         )}
         <button
           onClick={this.reset}
           className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm text-ink-soft transition hover:bg-surface-2 hover:text-ink"
         >
-          <RotateCcw size={14} /> Yenidən cəhd et
+          <RotateCcw size={14} /> {t('errorBoundary.retry')}
         </button>
       </div>
     )
   }
+}
+
+/** Functional wrapper: supplies the translator to the class boundary so the
+ * error UI is localized while keeping class-based error catching. */
+export function ErrorBoundary(props: Omit<Props, 't'>) {
+  const { t } = useTranslation()
+  return <ErrorBoundaryInner {...props} t={t} />
 }
 
 function shallowEqual(a?: unknown[], b?: unknown[]): boolean {

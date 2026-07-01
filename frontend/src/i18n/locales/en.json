@@ -44,6 +44,20 @@
     "title": "AI Quality",
     "trendEmpty": "At least 2 evals are needed for a trend."
   },
+  "addWidgetModal": {
+    "close": "Close",
+    "emptyState": "No queries yet. Ask a question first.",
+    "subtitle": "Pick a query from history.",
+    "title": "Add widget"
+  },
+  "anomalyPanel": {
+    "anomalies": "Anomalies",
+    "noAnomalies": "No anomalies found."
+  },
+  "barChartWidget": {
+    "others": "Others ({{n}})",
+    "othersLabel": "Others"
+  },
   "brandingPage": {
     "appliesNote": "Applies to the embed (iframe / SDK) view.",
     "colorPickerLabel": "Color picker",
@@ -69,8 +83,125 @@
     "upsellBody": "Upgrade to Pro or higher to show your own name, color, and logo in embedded dashboards.",
     "upsellHeading": "White-label is a Pro feature"
   },
+  "causalPanel": {
+    "insignificant": "insignificant",
+    "title": "Causal analysis"
+  },
+  "chartFullscreenModal": {
+    "chart": "Chart",
+    "close": "Close"
+  },
+  "chartRenderer": {
+    "noResults": "No results found."
+  },
+  "chartToolbar": {
+    "area": "Area",
+    "bar": "Bar",
+    "line": "Line",
+    "pie": "Pie",
+    "pivot": "Pivot",
+    "scatter": "Scatter",
+    "table": "Table"
+  },
+  "chartView": {
+    "anomalies": "Anomalies",
+    "causal": "Cause analysis",
+    "chart": "Chart",
+    "checking": "Checking…",
+    "detecting": "Analyzing…",
+    "downloadCsv": "Download CSV",
+    "explain": "Explain",
+    "explaining": "Explaining…",
+    "findingDrivers": "Searching…",
+    "forecast": "Forecast",
+    "forecasting": "Forecasting…",
+    "legend": "Legend",
+    "lineage": "Lineage",
+    "rooting": "Breaking down…",
+    "scenario": "Scenario",
+    "significance": "Statistical check",
+    "tracing": "Tracing…",
+    "why": "Why?"
+  },
+  "chartZoom": {
+    "reset": "Reset",
+    "zoomIn": "Zoom in",
+    "zoomInTitle": "Zoom in (Ctrl/⌘ + scroll, pinch). After zooming, plain scroll pans.",
+    "zoomOut": "Zoom out"
+  },
+  "collabPanel": {
+    "close": "Close",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "emptyState": "No messages yet. Be the first to comment.",
+    "messagePlaceholder": "Write a message…",
+    "send": "Send",
+    "team": "Team"
+  },
   "common": {
     "demoMode": "Demo mode"
+  },
+  "confirmDialog": {
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "connectPowerBIModal": {
+    "cancel": "Cancel",
+    "connect": "Connect",
+    "connecting": "Connecting…",
+    "hint": "Ask in natural language — NexusBI generates DAX and sends it to the Power BI model.",
+    "noDataset": "No dataset found",
+    "sourceNamePlaceholder": "Source name",
+    "subtitle": "Select a Power BI dataset — queries run live as DAX.",
+    "title": "Connect to Power BI"
+  },
+  "connectSourceModal": {
+    "cancel": "Cancel",
+    "connect": "Connect",
+    "connecting": "Connecting…",
+    "namePlaceholder": "Name (e.g. Production DB)",
+    "readOnlyNote": "A read-only user is recommended. Queries are SELECT only.",
+    "subtitle": "Connect your own data with a SQLAlchemy connection string.",
+    "title": "Connect database"
+  },
+  "copilotWidget": {
+    "agentic": "Agentic",
+    "approve": "Approve",
+    "assistantAria": "AI assistant",
+    "cancel": "Cancel",
+    "executing": "Executing…",
+    "greeting": "Hi! I'm NexusBI's smart assistant. Ask in plain language — I'll run the query, pick the right chart, build a dashboard, and surface insights, forecasts and anomalies. Ask me something:",
+    "inputPlaceholder": "Ask or assign…",
+    "plan": "Plan",
+    "send": "Send",
+    "suggestion1": "Build a dashboard analyzing Q4 revenue",
+    "suggestion2": "What are the top 5 best-selling products?",
+    "suggestion3": "Revenue distribution by region",
+    "thinking": "Thinking…",
+    "title": "AI Assistant"
+  },
+  "createDecisionModal": {
+    "actionPlaceholder": "Action to take (optional)",
+    "baselineHint": "This query's result is captured as a baseline, then the real impact is measured automatically.",
+    "cadenceDaily": "Measure daily",
+    "cadenceOff": "No automatic measurement",
+    "cadenceWeekly": "Measure weekly",
+    "cancel": "Cancel",
+    "create": "Create",
+    "directionDecrease": "Should decrease ↓",
+    "directionIncrease": "Should increase ↑",
+    "metricColumnPlaceholder": "Metric column (empty = first numeric column)",
+    "predictedPlaceholder": "Expected value",
+    "subtitle": "Create a tracked, measurable decision from this insight.",
+    "title": "Turn into decision",
+    "titlePlaceholder": "Decision title",
+    "trackLabel": "Link to a metric and track its impact"
+  },
+  "dashboardGrid": {
+    "chart": "Chart",
+    "noResults": "This query has no results.",
+    "refresh": "Refresh",
+    "remove": "Remove"
   },
   "dashboardPage": {
     "addWidget": "Add widget",
@@ -131,6 +262,19 @@
     "tablePlaceholder": "table name",
     "title": "Data contracts"
   },
+  "dataPrepModal": {
+    "close": "Close",
+    "demoData": "Demo data",
+    "instructionPlaceholder": "e.g. join orders and customers on customer_id, group by month",
+    "newSourceNamePlaceholder": "New source name",
+    "preview": "Preview",
+    "previewing": "Preparing…",
+    "saveAsSource": "Save as source",
+    "savedToast": "New source saved 📦",
+    "saving": "Saving…",
+    "subtitle": "Write in natural language — NexusBI joins, groups and prepares the result.",
+    "title": "Prepare data"
+  },
   "dataSourcesPage": {
     "active": "Active",
     "connectDb": "Connect database",
@@ -184,6 +328,12 @@
     "noResults": "No results.",
     "notFoundOrDisabled": "Embed not found or disabled."
   },
+  "errorBoundary": {
+    "panelDescription": "An unexpected error occurred in this section. Please try again.",
+    "retry": "Try again",
+    "titleGeneric": "Something went wrong",
+    "titleWithLabel": "{{label}} failed to load"
+  },
   "experimentsPage": {
     "analyze": "Analyze",
     "analyzing": "Analyzing…",
@@ -212,6 +362,36 @@
     "variantA": "Variant A",
     "variantB": "Variant B"
   },
+  "explainPanel": {
+    "noDrivers": "No clear driver found.",
+    "rootCauseAnalysis": "Root-cause analysis"
+  },
+  "filterPills": {
+    "clear": "Clear",
+    "filter": "Filter:"
+  },
+  "forecastChartWidget": {
+    "confidenceInterval": "Confidence interval",
+    "forecast": "Forecast",
+    "historical": "Historical"
+  },
+  "generateDashboardModal": {
+    "build": "Build",
+    "building": "Building…",
+    "cancel": "Cancel",
+    "exampleCustomer": "Customer behavior analysis",
+    "exampleProduct": "Product profitability",
+    "exampleSales": "Sales performance overview",
+    "placeholder": "e.g. Show this quarter's sales performance",
+    "progress": "Selecting questions, running queries and assembling widgets… this may take a few seconds.",
+    "subtitle": "Describe your goal — NexusBI will pick the right questions and build the dashboard for you.",
+    "title": "Build a dashboard with AI"
+  },
+  "historyDeleteUI": {
+    "confirmMessage": "This query will be removed from history. This cannot be undone.",
+    "confirmTitle": "Delete query",
+    "delete": "Delete"
+  },
   "historyPage": {
     "colDate": "Date",
     "colQuery": "Query",
@@ -233,6 +413,28 @@
     "scanning": "Scanning…",
     "subtitle": "The engine automatically scans recent results — findings ranked by impact.",
     "title": "Insights"
+  },
+  "integrationsPanel": {
+    "add": "Add",
+    "deleteTooltip": "Delete",
+    "description": "Send briefs and alerts to Slack, Teams or email. (Demo: mock mode.)",
+    "hintEmail": "email address",
+    "hintWebhook": "webhook URL",
+    "testTooltip": "Send test",
+    "title": "Notification channels",
+    "toastAdded": "Channel added.",
+    "toastTestFailed": "Test failed.",
+    "toastTestSent": "Test sent."
+  },
+  "layout": {
+    "pageLabel": "Page"
+  },
+  "lineagePanel": {
+    "columns": "Columns",
+    "empty": "No lineage information available.",
+    "metrics": "Metrics",
+    "tables": "Tables",
+    "title": "Lineage"
   },
   "loginPage": {
     "busy": "Please wait…",
@@ -308,6 +510,14 @@
     "verifiedBy": "Verified by: {{by}}",
     "verify": "Verify"
   },
+  "nLQueryInput": {
+    "ask": "Ask",
+    "demoExampleCustomersByCountry": "Number of customers by country",
+    "demoExampleRevenueTrend": "What is the monthly revenue trend?",
+    "demoExampleSalesByRegion": "Sales share by region",
+    "demoExampleTopProducts": "What are the top 5 best-selling products?",
+    "placeholder": "Ask your data — write in plain language…"
+  },
   "nav": {
     "branding": "Branding",
     "contracts": "Data contracts",
@@ -348,6 +558,19 @@
     "smartInsight": "Generate smart insight",
     "title": "Notifications"
   },
+  "pieChartWidget": {
+    "others": "Other",
+    "othersWithCount": "Other ({{count}})"
+  },
+  "pivotWidget": {
+    "aggregate": "Aggregate",
+    "column": "Column",
+    "measure": "Measure",
+    "noResult": "No results.",
+    "none": "None",
+    "row": "Row",
+    "total": "Total"
+  },
   "pricingPage": {
     "currentPlan": "Current plan",
     "demoUnlimitedLabel": "Demo · Unlimited",
@@ -361,6 +584,19 @@
     "switch": "Switch",
     "upgrade": "Upgrade",
     "usageThisMonth": "This month: {{used}} / {{limit}} queries used"
+  },
+  "profilePanel": {
+    "column": "Column",
+    "distinct": "Distinct",
+    "loading": "Loading profile…",
+    "max": "Max",
+    "min": "Min",
+    "noTablesFound": "No table found to profile.",
+    "notAvailable": "Profile not available.",
+    "nullPct": "Null %",
+    "rowSample": "{{n}} row sample",
+    "table": "Table",
+    "type": "Type"
   },
   "publicDashboardPage": {
     "emptyPanel": "This panel is empty.",
@@ -445,6 +681,119 @@
     "textPlaceholder": "Paste the requirement text here…",
     "title": "Requirements"
   },
+  "rlsModal": {
+    "addRule": "Add rule",
+    "allowedValuePlaceholder": "allowed value",
+    "close": "Close",
+    "columnPlaceholder": "column (e.g. region)",
+    "memberEmailPlaceholder": "member email",
+    "ruleAdded": "Rule added.",
+    "subtitle": "{{name}}: a member sees only the allowed rows.",
+    "title": "Row-level security (RLS)"
+  },
+  "rootCausePanel": {
+    "noDrivers": "No clear driver found.",
+    "title": "Root-cause tree"
+  },
+  "sQLEditorInner": {
+    "cancel": "Cancel",
+    "run": "Run",
+    "runShortcutHint": "Run with ⌘↵",
+    "running": "Running…"
+  },
+  "sQLPreview": {
+    "generatedDax": "Generated DAX",
+    "generatedSql": "Generated SQL"
+  },
+  "saveDashboardModal": {
+    "cancel": "Cancel",
+    "create": "Create",
+    "namePlaceholder": "Dashboard name",
+    "subtitle": "Name your dashboard.",
+    "title": "New dashboard"
+  },
+  "saveQueryModal": {
+    "cancel": "Cancel",
+    "namePlaceholder": "Name (e.g. Weekly sales)",
+    "save": "Save",
+    "scheduleDaily": "Daily",
+    "scheduleHourly": "Hourly",
+    "scheduleOff": "No schedule",
+    "scheduleWeekly": "Weekly",
+    "subtitle": "Name it and optionally set an auto-refresh schedule.",
+    "title": "Save query"
+  },
+  "saveToDashboardModal": {
+    "addedToDashboard": "Added to dashboard.",
+    "create": "Create",
+    "createdAndAdded": "\"{{name}}\" created and added.",
+    "newDashboardPlaceholder": "New dashboard name",
+    "noDashboardsYet": "No dashboards yet.",
+    "subtitle": "Select an existing dashboard or create a new one.",
+    "title": "Save to dashboard"
+  },
+  "scenarioPanel": {
+    "actual": "Actual",
+    "calculate": "Calculate",
+    "change": "Change",
+    "current": "current",
+    "goalSeek": "Goal seek",
+    "monteCarloForecast": "Monte Carlo forecast",
+    "noNumericColumn": "No numeric column found for scenario.",
+    "rangeMeanReturn": "P10–P90 range · mean return {{pct}}%/period",
+    "required": "required",
+    "scenario": "Scenario",
+    "simulating": "Simulating…",
+    "targetValuePlaceholder": "target value"
+  },
+  "schemaBrowser": {
+    "loading": "Loading schema…",
+    "notFound": "No schema found."
+  },
+  "scrollZoom": {
+    "reset": "Reset",
+    "zoomIn": "Zoom in",
+    "zoomInTitle": "Zoom in (Ctrl/⌘ + scroll, pinch). Plain scroll moves through columns.",
+    "zoomOut": "Zoom out"
+  },
+  "searchPalette": {
+    "dialogLabel": "Search",
+    "emptyHint": "Search by name or meaning.",
+    "hintClose": "esc close",
+    "hintNavigate": "↑↓ navigate",
+    "hintOpen": "↵ open",
+    "inputPlaceholder": "Search dashboards, metrics, reports…",
+    "noResults": "No results found.",
+    "resultCount": "{{n}} results"
+  },
+  "shareDashboardModal": {
+    "close": "Close",
+    "copied": "Copied.",
+    "createPublicLink": "Create public link",
+    "disableEmbed": "Disable embed",
+    "embedDisabled": "Embed disabled.",
+    "embedIframeLabel": "Embed (iframe)",
+    "enableEmbed": "Enable embed",
+    "publicLinkHint": "Anyone with this link can view the dashboard (read-only).",
+    "publicLinkLabel": "Public link",
+    "revokeShare": "Revoke share",
+    "shareRevoked": "Sharing revoked.",
+    "subtitle": "Token-based read-only link — no login required.",
+    "title": "Share dashboard",
+    "whiteLabelEmbed": "White-label embed (signed token)"
+  },
+  "storyMode": {
+    "close": "Close",
+    "dataStory": "Data story",
+    "next": "Next",
+    "pause": "Pause",
+    "play": "Play",
+    "previous": "Previous",
+    "slide": "Slide {{n}}"
+  },
+  "tableWidget": {
+    "noResults": "No results."
+  },
   "targetsPage": {
     "addTarget": "Add target",
     "attainment": "{{pct}}% attainment",
@@ -482,6 +831,16 @@
     "notifications": "Notifications",
     "search": "Search…",
     "searchTitle": "Search (⌘K)"
+  },
+  "uploadSourceModal": {
+    "cancel": "Cancel",
+    "clickToSelect": "Click to select a file",
+    "fileHint": ".csv or .xlsx — max. 10 MB",
+    "namePlaceholder": "Source name (optional)",
+    "subtitle": "Upload a file and NexusBI turns it into a queryable table.",
+    "title": "Upload CSV / Excel",
+    "upload": "Upload",
+    "uploading": "Uploading…"
   },
   "workspacePage": {
     "addMember": "Add",

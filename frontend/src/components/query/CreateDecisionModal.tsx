@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ModalShell } from '../ui/ModalShell'
 import { useDecisionStore } from '../../store/decisionStore'
 import type { DecisionCadence, DecisionDirection } from '../../types'
@@ -16,6 +17,7 @@ const field =
   'w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none'
 
 export function CreateDecisionModal({ open, onClose, insight, queryLogId, question, datasourceId }: Props) {
+  const { t } = useTranslation()
   const add = useDecisionStore((s) => s.add)
   const [title, setTitle] = useState('')
   const [action, setAction] = useState('')
@@ -61,19 +63,19 @@ export function CreateDecisionModal({ open, onClose, insight, queryLogId, questi
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Qərara çevir"
-      subtitle="Bu insight-dan izlənən, ölçülən bir qərar yarat."
+      title={t('createDecisionModal.title')}
+      subtitle={t('createDecisionModal.subtitle')}
       footer={
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
-            Ləğv et
+            {t('createDecisionModal.cancel')}
           </button>
           <button
             onClick={submit}
             disabled={busy}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
-            Yarat
+            {t('createDecisionModal.create')}
           </button>
         </div>
       }
@@ -84,23 +86,23 @@ export function CreateDecisionModal({ open, onClose, insight, queryLogId, questi
             {insight}
           </p>
         )}
-        <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Qərar başlığı" className={field} />
-        <input value={action} onChange={(e) => setAction(e.target.value)} placeholder="Atılacaq addım (opsional)" className={field} />
+        <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('createDecisionModal.titlePlaceholder')} className={field} />
+        <input value={action} onChange={(e) => setAction(e.target.value)} placeholder={t('createDecisionModal.actionPlaceholder')} className={field} />
 
         <label className="flex cursor-pointer items-center gap-2 pt-1 text-sm text-ink">
           <input type="checkbox" checked={track} onChange={(e) => setTrack(e.target.checked)} className="accent-accent" />
-          Metrikə bağla və təsirini izlə
+          {t('createDecisionModal.trackLabel')}
         </label>
 
         {track && (
           <div className="space-y-3 rounded-xl border border-line bg-surface-2/50 p-3">
             <p className="text-xs text-ink-faint">
-              Bu sorğunun nəticəsi baseline kimi tutulur, sonra real təsir avtomatik ölçülür.
+              {t('createDecisionModal.baselineHint')}
             </p>
             <input
               value={metricColumn}
               onChange={(e) => setMetricColumn(e.target.value)}
-              placeholder="Metrik sütunu (boş = ilk rəqəmsal sütun)"
+              placeholder={t('createDecisionModal.metricColumnPlaceholder')}
               className={field}
             />
             <div className="flex gap-2">
@@ -108,18 +110,18 @@ export function CreateDecisionModal({ open, onClose, insight, queryLogId, questi
                 type="number"
                 value={predicted}
                 onChange={(e) => setPredicted(e.target.value)}
-                placeholder="Gözlənilən dəyər"
+                placeholder={t('createDecisionModal.predictedPlaceholder')}
                 className={field}
               />
               <select value={direction} onChange={(e) => setDirection(e.target.value as DecisionDirection)} className={field}>
-                <option value="increase">Artmalı ↑</option>
-                <option value="decrease">Azalmalı ↓</option>
+                <option value="increase">{t('createDecisionModal.directionIncrease')}</option>
+                <option value="decrease">{t('createDecisionModal.directionDecrease')}</option>
               </select>
             </div>
             <select value={cadence} onChange={(e) => setCadence(e.target.value as DecisionCadence)} className={field}>
-              <option value="off">Avtomatik ölçmə yoxdur</option>
-              <option value="daily">Gündəlik ölç</option>
-              <option value="weekly">Həftəlik ölç</option>
+              <option value="off">{t('createDecisionModal.cadenceOff')}</option>
+              <option value="daily">{t('createDecisionModal.cadenceDaily')}</option>
+              <option value="weekly">{t('createDecisionModal.cadenceWeekly')}</option>
             </select>
           </div>
         )}

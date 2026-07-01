@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ModalShell } from './ModalShell'
 
 interface Props {
@@ -17,8 +18,9 @@ export function ConfirmDialog({
   onConfirm,
   title,
   message,
-  confirmLabel = 'Sil',
+  confirmLabel,
 }: Props) {
+  const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
 
   const confirm = async () => {
@@ -44,14 +46,14 @@ export function ConfirmDialog({
             onClick={onClose}
             className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink"
           >
-            Ləğv et
+            {t('confirmDialog.cancel')}
           </button>
           <button
             onClick={confirm}
             disabled={busy}
             className="rounded-xl bg-[#D87C6B] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 active:translate-y-px disabled:opacity-60"
           >
-            {busy ? '…' : confirmLabel}
+            {busy ? '…' : confirmLabel ?? t('confirmDialog.delete')}
           </button>
         </div>
       }

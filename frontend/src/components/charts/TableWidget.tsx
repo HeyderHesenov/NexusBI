@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   data: Record<string, unknown>[]
 }
 
 export function TableWidget({ data }: Props) {
+  const { t } = useTranslation()
   const columns = useMemo(() => (data[0] ? Object.keys(data[0]) : []), [data])
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [asc, setAsc] = useState(true)
@@ -19,7 +21,7 @@ export function TableWidget({ data }: Props) {
     })
   }, [data, sortKey, asc])
 
-  if (!columns.length) return <p className="text-ink-soft">Nəticə yoxdur.</p>
+  if (!columns.length) return <p className="text-ink-soft">{t('tableWidget.noResults')}</p>
 
   return (
     <div className="max-h-96 overflow-auto rounded-xl border border-line">

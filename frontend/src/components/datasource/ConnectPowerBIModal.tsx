@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ModalShell } from '../ui/ModalShell'
 import { useDatasourceStore } from '../../store/datasourceStore'
 import * as dsApi from '../../api/datasource'
@@ -13,6 +14,7 @@ const field =
   'w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none'
 
 export function ConnectPowerBIModal({ open, onClose }: Props) {
+  const { t } = useTranslation()
   const connect = useDatasourceStore((s) => s.connectPowerBI)
   const [datasets, setDatasets] = useState<PowerBIDataset[]>([])
   const [datasetId, setDatasetId] = useState('')
@@ -50,19 +52,19 @@ export function ConnectPowerBIModal({ open, onClose }: Props) {
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Power BI-a qoşul"
-      subtitle="Power BI dataset seç — sorğular canlı DAX kimi icra olunacaq."
+      title={t('connectPowerBIModal.title')}
+      subtitle={t('connectPowerBIModal.subtitle')}
       footer={
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
-            Ləğv et
+            {t('connectPowerBIModal.cancel')}
           </button>
           <button
             onClick={submit}
             disabled={busy || !datasetId || !name.trim()}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
-            {busy ? 'Qoşulur…' : 'Qoş'}
+            {busy ? t('connectPowerBIModal.connecting') : t('connectPowerBIModal.connect')}
           </button>
         </div>
       }
@@ -80,7 +82,7 @@ export function ConnectPowerBIModal({ open, onClose }: Props) {
           }}
           className={field}
         >
-          {datasets.length === 0 && <option value="">Dataset tapılmadı</option>}
+          {datasets.length === 0 && <option value="">{t('connectPowerBIModal.noDataset')}</option>}
           {datasets.map((d) => (
             <option key={d.id} value={d.id}>
               {d.workspace ? `${d.workspace} / ${d.name}` : d.name}
@@ -91,11 +93,11 @@ export function ConnectPowerBIModal({ open, onClose }: Props) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="Mənbə adı"
+          placeholder={t('connectPowerBIModal.sourceNamePlaceholder')}
           className={field}
         />
         <p className="text-xs text-ink-faint">
-          Təbii dildə soruş — NexusBI DAX yaradıb Power BI modelinə göndərir.
+          {t('connectPowerBIModal.hint')}
         </p>
       </div>
     </ModalShell>

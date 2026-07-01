@@ -44,6 +44,20 @@
     "title": "AI Keyfiyyət",
     "trendEmpty": "Trend üçün ən azı 2 eval lazımdır."
   },
+  "addWidgetModal": {
+    "close": "Bağla",
+    "emptyState": "Hələ sorğu yoxdur. Əvvəlcə bir sual ver.",
+    "subtitle": "Tarixçədən bir sorğu seç.",
+    "title": "Widget əlavə et"
+  },
+  "anomalyPanel": {
+    "anomalies": "Anomaliyalar",
+    "noAnomalies": "Anomaliya tapılmadı."
+  },
+  "barChartWidget": {
+    "others": "Digər ({{n}})",
+    "othersLabel": "Digər"
+  },
   "brandingPage": {
     "appliesNote": "Embed (iframe / SDK) görünüşünə tətbiq olunur.",
     "colorPickerLabel": "Rəng seçici",
@@ -69,8 +83,125 @@
     "upsellBody": "Embed olunmuş panellərdə öz adını, rəngini və loqonu göstərmək üçün Pro və ya daha yüksək plana keç.",
     "upsellHeading": "White-label Pro özəlliyidir"
   },
+  "causalPanel": {
+    "insignificant": "əhəmiyyətsiz",
+    "title": "Səbəb analizi"
+  },
+  "chartFullscreenModal": {
+    "chart": "Qrafik",
+    "close": "Bağla"
+  },
+  "chartRenderer": {
+    "noResults": "Nəticə tapılmadı."
+  },
+  "chartToolbar": {
+    "area": "Sahə",
+    "bar": "Sütun",
+    "line": "Xətt",
+    "pie": "Dairə",
+    "pivot": "Pivot",
+    "scatter": "Səpələnmə",
+    "table": "Cədvəl"
+  },
+  "chartView": {
+    "anomalies": "Anomaliyalar",
+    "causal": "Səbəb analizi",
+    "chart": "Qrafik",
+    "checking": "Yoxlanır…",
+    "detecting": "Təhlil…",
+    "downloadCsv": "CSV yüklə",
+    "explain": "İzah et",
+    "explaining": "İzah…",
+    "findingDrivers": "Axtarılır…",
+    "forecast": "Proqnoz",
+    "forecasting": "Proqnoz…",
+    "legend": "Açıqlama",
+    "lineage": "Mənşə",
+    "rooting": "Parçalanır…",
+    "scenario": "Ssenari",
+    "significance": "Statistik yoxlama",
+    "tracing": "İzlənir…",
+    "why": "Niyə?"
+  },
+  "chartZoom": {
+    "reset": "Sıfırla",
+    "zoomIn": "Yaxınlaşdır",
+    "zoomInTitle": "Yaxınlaşdır (Ctrl/⌘ + scroll, pinch). Zoom-dan sonra adi scroll sürüşdürür.",
+    "zoomOut": "Uzaqlaşdır"
+  },
+  "collabPanel": {
+    "close": "Bağla",
+    "connected": "Qoşulu",
+    "disconnected": "Qoşulmayıb",
+    "emptyState": "Hələ mesaj yoxdur. İlk şərhi sən yaz.",
+    "messagePlaceholder": "Mesaj yaz…",
+    "send": "Göndər",
+    "team": "Komanda"
+  },
   "common": {
     "demoMode": "Demo rejimi"
+  },
+  "confirmDialog": {
+    "cancel": "Ləğv et",
+    "delete": "Sil"
+  },
+  "connectPowerBIModal": {
+    "cancel": "Ləğv et",
+    "connect": "Qoş",
+    "connecting": "Qoşulur…",
+    "hint": "Təbii dildə soruş — NexusBI DAX yaradıb Power BI modelinə göndərir.",
+    "noDataset": "Dataset tapılmadı",
+    "sourceNamePlaceholder": "Mənbə adı",
+    "subtitle": "Power BI dataset seç — sorğular canlı DAX kimi icra olunacaq.",
+    "title": "Power BI-a qoşul"
+  },
+  "connectSourceModal": {
+    "cancel": "Ləğv et",
+    "connect": "Qoş",
+    "connecting": "Qoşulur…",
+    "namePlaceholder": "Ad (məs. Production DB)",
+    "readOnlyNote": "Yalnız oxuma (read-only) istifadəçi tövsiyə olunur. Sorğular yalnız SELECT-dir.",
+    "subtitle": "SQLAlchemy bağlantı sətri ilə öz datanı qoş.",
+    "title": "Verilənlər bazası qoş"
+  },
+  "copilotWidget": {
+    "agentic": "Agentik",
+    "approve": "Təsdiqlə",
+    "assistantAria": "AI köməkçi",
+    "cancel": "Ləğv et",
+    "executing": "İcra olunur…",
+    "greeting": "Salam! Mən NexusBI-ın ağıllı köməkçisiyəm. Sualını adi dildə yaz — sorğunu işlədim, doğru qrafiki seçim, dashboard qurum, insight, proqnoz və anomaliya çıxarım. Bir şey soruş:",
+    "inputPlaceholder": "Soruş və ya tapşır…",
+    "plan": "Plan",
+    "send": "Göndər",
+    "suggestion1": "Q4 gəlirini analiz edən dashboard qur",
+    "suggestion2": "Ən çox satan 5 məhsul hansıdır?",
+    "suggestion3": "Regionlar üzrə gəlir paylanması",
+    "thinking": "Düşünürəm…",
+    "title": "AI Köməkçi"
+  },
+  "createDecisionModal": {
+    "actionPlaceholder": "Atılacaq addım (opsional)",
+    "baselineHint": "Bu sorğunun nəticəsi baseline kimi tutulur, sonra real təsir avtomatik ölçülür.",
+    "cadenceDaily": "Gündəlik ölç",
+    "cadenceOff": "Avtomatik ölçmə yoxdur",
+    "cadenceWeekly": "Həftəlik ölç",
+    "cancel": "Ləğv et",
+    "create": "Yarat",
+    "directionDecrease": "Azalmalı ↓",
+    "directionIncrease": "Artmalı ↑",
+    "metricColumnPlaceholder": "Metrik sütunu (boş = ilk rəqəmsal sütun)",
+    "predictedPlaceholder": "Gözlənilən dəyər",
+    "subtitle": "Bu insight-dan izlənən, ölçülən bir qərar yarat.",
+    "title": "Qərara çevir",
+    "titlePlaceholder": "Qərar başlığı",
+    "trackLabel": "Metrikə bağla və təsirini izlə"
+  },
+  "dashboardGrid": {
+    "chart": "Qrafik",
+    "noResults": "Bu sorğunun nəticəsi yoxdur.",
+    "refresh": "Yenilə",
+    "remove": "Sil"
   },
   "dashboardPage": {
     "addWidget": "Widget əlavə et",
@@ -131,6 +262,19 @@
     "tablePlaceholder": "cədvəl adı",
     "title": "Data müqavilələri"
   },
+  "dataPrepModal": {
+    "close": "Bağla",
+    "demoData": "Demo data",
+    "instructionPlaceholder": "məs. orders və customers-i customer_id üzrə birləşdir, aya görə qrupla",
+    "newSourceNamePlaceholder": "Yeni mənbənin adı",
+    "preview": "Önizlə",
+    "previewing": "Hazırlanır…",
+    "saveAsSource": "Mənbə kimi saxla",
+    "savedToast": "Yeni mənbə saxlanıldı 📦",
+    "saving": "Saxlanır…",
+    "subtitle": "Təbii dillə yaz — NexusBI birləşdirib (join), qruplayıb nəticəni hazırlayır.",
+    "title": "Data hazırla"
+  },
   "dataSourcesPage": {
     "active": "Aktiv",
     "connectDb": "Baza qoş",
@@ -184,6 +328,12 @@
     "noResults": "Nəticə yoxdur.",
     "notFoundOrDisabled": "Embed tapılmadı və ya söndürülüb."
   },
+  "errorBoundary": {
+    "panelDescription": "Bu hissədə gözlənilməz xəta baş verdi. Yenidən cəhd edin.",
+    "retry": "Yenidən cəhd et",
+    "titleGeneric": "Nəsə səhv getdi",
+    "titleWithLabel": "{{label}} yüklənmədi"
+  },
   "experimentsPage": {
     "analyze": "Təhlil et",
     "analyzing": "Təhlil…",
@@ -212,6 +362,36 @@
     "variantA": "A variantı",
     "variantB": "B variantı"
   },
+  "explainPanel": {
+    "noDrivers": "Aydın driver tapılmadı.",
+    "rootCauseAnalysis": "Kök-səbəb analizi"
+  },
+  "filterPills": {
+    "clear": "Təmizlə",
+    "filter": "Filtr:"
+  },
+  "forecastChartWidget": {
+    "confidenceInterval": "Güvən aralığı",
+    "forecast": "Proqnoz",
+    "historical": "Tarixi"
+  },
+  "generateDashboardModal": {
+    "build": "Qur",
+    "building": "Qurulur…",
+    "cancel": "Ləğv et",
+    "exampleCustomer": "Müştəri davranışı təhlili",
+    "exampleProduct": "Məhsul gəlirliliyi",
+    "exampleSales": "Satış performansı icmalı",
+    "placeholder": "məs. Bu rüblük satış performansını göstər",
+    "progress": "Suallar seçilir, sorğular işlədilir və widgetlər yığılır… bu bir neçə saniyə çəkə bilər.",
+    "subtitle": "Məqsədini yaz — NexusBI uyğun sualları seçib paneli özü düzəldəcək.",
+    "title": "AI ilə dashboard qur"
+  },
+  "historyDeleteUI": {
+    "confirmMessage": "Bu sorğu tarixçədən silinəcək. Bunu geri qaytarmaq olmaz.",
+    "confirmTitle": "Sorğunu sil",
+    "delete": "Sil"
+  },
   "historyPage": {
     "colDate": "Tarix",
     "colQuery": "Sorğu",
@@ -233,6 +413,28 @@
     "scanning": "Taranır…",
     "subtitle": "Mühərrik son nəticələrini avtomatik tarayır — təsirə görə sıralanmış tapıntılar.",
     "title": "Kəşflər"
+  },
+  "integrationsPanel": {
+    "add": "Əlavə et",
+    "deleteTooltip": "Sil",
+    "description": "Brif və alert-ləri Slack, Teams və ya email-ə göndər. (Demo: mock rejim.)",
+    "hintEmail": "e-poçt ünvanı",
+    "hintWebhook": "webhook URL",
+    "testTooltip": "Test göndər",
+    "title": "Bildiriş kanalları",
+    "toastAdded": "Kanal əlavə olundu.",
+    "toastTestFailed": "Test alınmadı.",
+    "toastTestSent": "Test göndərildi."
+  },
+  "layout": {
+    "pageLabel": "Səhifə"
+  },
+  "lineagePanel": {
+    "columns": "Sütunlar",
+    "empty": "Mənşə məlumatı çıxarılmadı.",
+    "metrics": "Metriklər",
+    "tables": "Cədvəllər",
+    "title": "Mənşə (lineage)"
   },
   "loginPage": {
     "busy": "Gözləyin…",
@@ -308,6 +510,14 @@
     "verifiedBy": "Təsdiqləyən: {{by}}",
     "verify": "Təsdiqlə"
   },
+  "nLQueryInput": {
+    "ask": "Soruş",
+    "demoExampleCustomersByCountry": "Ölkələrə görə müştəri sayı",
+    "demoExampleRevenueTrend": "Aylıq gəlir trendi necədir?",
+    "demoExampleSalesByRegion": "Regionlar üzrə satış payı",
+    "demoExampleTopProducts": "Ən çox satan 5 məhsul hansıdır?",
+    "placeholder": "Datana sual ver — adi dildə yaz…"
+  },
   "nav": {
     "branding": "Brendinq",
     "contracts": "Data müqavilələri",
@@ -348,6 +558,19 @@
     "smartInsight": "Smart insight yarat",
     "title": "Bildirişlər"
   },
+  "pieChartWidget": {
+    "others": "Digər",
+    "othersWithCount": "Digər ({{count}})"
+  },
+  "pivotWidget": {
+    "aggregate": "Aqreqat",
+    "column": "Sütun",
+    "measure": "Ölçü",
+    "noResult": "Nəticə yoxdur.",
+    "none": "Yoxdur",
+    "row": "Sətir",
+    "total": "Cəm"
+  },
   "pricingPage": {
     "currentPlan": "Cari plan",
     "demoUnlimitedLabel": "Demo · Limitsiz",
@@ -361,6 +584,19 @@
     "switch": "Keç",
     "upgrade": "Yüksəlt",
     "usageThisMonth": "Bu ay: {{used}} / {{limit}} sorğu istifadə olunub"
+  },
+  "profilePanel": {
+    "column": "Sütun",
+    "distinct": "Fərqli",
+    "loading": "Profil yüklənir…",
+    "max": "Maks",
+    "min": "Min",
+    "noTablesFound": "Profil üçün cədvəl tapılmadı.",
+    "notAvailable": "Profil alınmadı.",
+    "nullPct": "Boş %",
+    "rowSample": "{{n}} sətir nümunəsi",
+    "table": "Cədvəl",
+    "type": "Tip"
   },
   "publicDashboardPage": {
     "emptyPanel": "Bu panel boşdur.",
@@ -445,6 +681,119 @@
     "textPlaceholder": "Tələb mətnini bura yapışdır…",
     "title": "Tələbnamə"
   },
+  "rlsModal": {
+    "addRule": "Qayda əlavə et",
+    "allowedValuePlaceholder": "icazəli dəyər",
+    "close": "Bağla",
+    "columnPlaceholder": "sütun (məs. region)",
+    "memberEmailPlaceholder": "üzv e-poçtu",
+    "ruleAdded": "Qayda əlavə olundu.",
+    "subtitle": "{{name}}: üzv yalnız icazə verilən sətirləri görür.",
+    "title": "Sətir-səviyyə təhlükəsizlik (RLS)"
+  },
+  "rootCausePanel": {
+    "noDrivers": "Aydın driver tapılmadı.",
+    "title": "Kök-səbəb ağacı"
+  },
+  "sQLEditorInner": {
+    "cancel": "Ləğv et",
+    "run": "İşlət",
+    "runShortcutHint": "⌘↵ ilə işlət",
+    "running": "İşləyir…"
+  },
+  "sQLPreview": {
+    "generatedDax": "Generasiya olunmuş DAX",
+    "generatedSql": "Generasiya olunmuş SQL"
+  },
+  "saveDashboardModal": {
+    "cancel": "Ləğv et",
+    "create": "Yarat",
+    "namePlaceholder": "Dashboard adı",
+    "subtitle": "Panelinə ad ver.",
+    "title": "Yeni dashboard"
+  },
+  "saveQueryModal": {
+    "cancel": "Ləğv et",
+    "namePlaceholder": "Ad (məs. Həftəlik satış)",
+    "save": "Saxla",
+    "scheduleDaily": "Gündəlik",
+    "scheduleHourly": "Saatlıq",
+    "scheduleOff": "Cədvəl yox",
+    "scheduleWeekly": "Həftəlik",
+    "subtitle": "Adlandır və istəyə görə avto-yeniləmə cədvəli ver.",
+    "title": "Sorğunu saxla"
+  },
+  "saveToDashboardModal": {
+    "addedToDashboard": "Dashboard-a əlavə olundu.",
+    "create": "Yarat",
+    "createdAndAdded": "\"{{name}}\" yaradıldı və əlavə olundu.",
+    "newDashboardPlaceholder": "Yeni dashboard adı",
+    "noDashboardsYet": "Hələ dashboard yoxdur.",
+    "subtitle": "Mövcud panel seç və ya yenisini yarat.",
+    "title": "Dashboard-a saxla"
+  },
+  "scenarioPanel": {
+    "actual": "Faktiki",
+    "calculate": "Hesabla",
+    "change": "Dəyişiklik",
+    "current": "cari",
+    "goalSeek": "Hədəf-axtar",
+    "monteCarloForecast": "Monte Carlo proqnoz",
+    "noNumericColumn": "Ssenari üçün ədədi sütun tapılmadı.",
+    "rangeMeanReturn": "P10–P90 diapazon · orta gəlir {{pct}}%/dövr",
+    "required": "tələb olunan",
+    "scenario": "Ssenari",
+    "simulating": "Simulyasiya…",
+    "targetValuePlaceholder": "hədəf dəyər"
+  },
+  "schemaBrowser": {
+    "loading": "Schema yüklənir…",
+    "notFound": "Schema tapılmadı."
+  },
+  "scrollZoom": {
+    "reset": "Sıfırla",
+    "zoomIn": "Böyüt",
+    "zoomInTitle": "Böyüt (Ctrl/⌘ + scroll, pinch). Adi scroll sütunları gəzir.",
+    "zoomOut": "Kiçilt"
+  },
+  "searchPalette": {
+    "dialogLabel": "Axtarış",
+    "emptyHint": "Adı və ya mənası ilə axtar.",
+    "hintClose": "esc bağla",
+    "hintNavigate": "↑↓ naviqasiya",
+    "hintOpen": "↵ aç",
+    "inputPlaceholder": "Dashboard, metrik, hesabat axtar…",
+    "noResults": "Nəticə tapılmadı.",
+    "resultCount": "{{n}} nəticə"
+  },
+  "shareDashboardModal": {
+    "close": "Bağla",
+    "copied": "Kopyalandı.",
+    "createPublicLink": "Public link yarat",
+    "disableEmbed": "Embed-i söndür",
+    "embedDisabled": "Embed söndürüldü.",
+    "embedIframeLabel": "Embed (iframe)",
+    "enableEmbed": "Embed aktiv et",
+    "publicLinkHint": "Bu linkə malik hər kəs paneli (yalnız oxuma) görə bilər.",
+    "publicLinkLabel": "Public link",
+    "revokeShare": "Paylaşımı ləğv et",
+    "shareRevoked": "Paylaşım ləğv edildi.",
+    "subtitle": "Tokenli read-only link — giriş tələb olunmur.",
+    "title": "Dashboard-u paylaş",
+    "whiteLabelEmbed": "White-label embed (imzalı token)"
+  },
+  "storyMode": {
+    "close": "Bağla",
+    "dataStory": "Data hekayəsi",
+    "next": "Növbəti",
+    "pause": "Dayandır",
+    "play": "Oynat",
+    "previous": "Əvvəlki",
+    "slide": "Slayd {{n}}"
+  },
+  "tableWidget": {
+    "noResults": "Nəticə yoxdur."
+  },
   "targetsPage": {
     "addTarget": "Hədəf əlavə et",
     "attainment": "{{pct}}% icra",
@@ -482,6 +831,16 @@
     "notifications": "Bildirişlər",
     "search": "Axtar…",
     "searchTitle": "Axtar (⌘K)"
+  },
+  "uploadSourceModal": {
+    "cancel": "Ləğv et",
+    "clickToSelect": "Fayl seçmək üçün tıkla",
+    "fileHint": ".csv və ya .xlsx — maks. 10 MB",
+    "namePlaceholder": "Mənbə adı (opsional)",
+    "subtitle": "Faylı yüklə, NexusBI onu sorğulana bilən cədvələ çevirir.",
+    "title": "CSV / Excel yüklə",
+    "upload": "Yüklə",
+    "uploading": "Yüklənir…"
   },
   "workspacePage": {
     "addMember": "Əlavə et",

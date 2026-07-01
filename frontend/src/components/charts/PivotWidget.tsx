@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AGG_LABELS, computePivot, formatPivotValue, type AggFn } from '../../lib/pivot'
 
 interface Props {
@@ -21,6 +22,7 @@ function classify(columns: string[], data: Record<string, unknown>[]) {
 
 /** Client-side pivot explorer — Excel-PivotTable-style cross-tab over a result set. */
 export function PivotWidget({ data }: Props) {
+  const { t } = useTranslation()
   const columns = useMemo(() => (data[0] ? Object.keys(data[0]) : []), [data])
   const { rowField: defRow, measure: defMeasure } = useMemo(
     () => classify(columns, data),
@@ -55,7 +57,7 @@ export function PivotWidget({ data }: Props) {
     [data, rowField, colField, measure, agg],
   )
 
-  if (!columns.length) return <p className="text-ink-soft">Nəticə yoxdur.</p>
+  if (!columns.length) return <p className="text-ink-soft">{t('pivotWidget.noResult')}</p>
 
   const valueHeader = `${AGG_LABELS[agg]}(${agg === 'count' ? '*' : measure})`
 
@@ -63,7 +65,7 @@ export function PivotWidget({ data }: Props) {
     <div className="space-y-3">
       {/* Controls */}
       <div className="flex flex-wrap items-end gap-3">
-        <Field label="Sətir">
+        <Field label={t('pivotWidget.row')}>
           <select className={SELECT_CLS} value={rowField} onChange={(e) => setRow(e.target.value)}>
             {columns.map((c) => (
               <option key={c} value={c}>
@@ -72,9 +74,9 @@ export function PivotWidget({ data }: Props) {
             ))}
           </select>
         </Field>
-        <Field label="Sütun">
+        <Field label={t('pivotWidget.column')}>
           <select className={SELECT_CLS} value={colField} onChange={(e) => setColField(e.target.value)}>
-            <option value="">Yoxdur</option>
+            <option value="">{t('pivotWidget.none')}</option>
             {columns
               .filter((c) => c !== rowField)
               .map((c) => (
@@ -84,7 +86,7 @@ export function PivotWidget({ data }: Props) {
               ))}
           </select>
         </Field>
-        <Field label="Ölçü">
+        <Field label={t('pivotWidget.measure')}>
           <select
             className={SELECT_CLS}
             value={measure}
@@ -98,7 +100,7 @@ export function PivotWidget({ data }: Props) {
             ))}
           </select>
         </Field>
-        <Field label="Aqreqat">
+        <Field label={t('pivotWidget.aggregate')}>
           <select className={SELECT_CLS} value={agg} onChange={(e) => setAgg(e.target.value as AggFn)}>
             {AGGS.map((a) => (
               <option key={a} value={a}>
@@ -128,7 +130,7 @@ export function PivotWidget({ data }: Props) {
                     </th>
                   ))}
                   <th className="border-b border-line px-4 py-2.5 text-right font-mono text-[11px] uppercase tracking-wider text-accent">
-                    Cəm
+                    {t('pivotWidget.total')}
                   </th>
                 </>
               ) : (
@@ -163,7 +165,7 @@ export function PivotWidget({ data }: Props) {
           </tbody>
           <tfoot className="sticky bottom-0 bg-surface-2">
             <tr className="border-t border-line">
-              <td className="px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider text-accent">Cəm</td>
+              <td className="px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider text-accent">{t('pivotWidget.total')}</td>
               {pivot.hasCol ? (
                 <>
                   {pivot.colKeys.map((ck) => (

@@ -1,6 +1,7 @@
 import { Bookmark, LayoutGrid, Ruler, Search } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import type { SearchHit } from '../../api/search'
 import { groupHits, routeFor } from '../../lib/searchGroups'
@@ -17,6 +18,7 @@ const EXAMPLES = ['gəlir', 'churn', 'regional satış']
 /** Global ⌘K command palette — top-anchored, keyboard-driven semantic search across
  * dashboards / metrics / reports. Mounted once (in Layout); owns the global hotkey. */
 export function SearchPalette() {
+  const { t } = useTranslation()
   const { open, query, hits, loading, setOpen, toggle, setQuery, run } = useSearchStore()
   const navigate = useNavigate()
   const [active, setActive] = useState(0)
@@ -119,7 +121,7 @@ export function SearchPalette() {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Axtarış"
+        aria-label={t('searchPalette.dialogLabel')}
         onMouseDown={(e) => e.stopPropagation()}
         className="palette-in relative flex max-h-[62vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-pop"
       >
@@ -140,7 +142,7 @@ export function SearchPalette() {
             }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Dashboard, metrik, hesabat axtar…"
+            placeholder={t('searchPalette.inputPlaceholder')}
             className="flex-1 bg-transparent text-base text-ink placeholder:text-ink-faint focus:outline-none"
           />
           <kbd className="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-[10px] text-ink-faint">
@@ -150,14 +152,14 @@ export function SearchPalette() {
 
         {/* Screen-reader result count — kept OUTSIDE the listbox content model. */}
         <div aria-live="polite" className="sr-only">
-          {query.trim() ? `${flat.length} nəticə` : ''}
+          {query.trim() ? t('searchPalette.resultCount', { n: flat.length }) : ''}
         </div>
 
         {/* Results */}
         <div ref={listRef} id="search-listbox" role="listbox" className="relative min-h-0 flex-1 overflow-auto p-2">
           {showEmpty && (
             <div className="px-3 py-8 text-center">
-              <p className="text-sm text-ink-faint">Adı və ya mənası ilə axtar.</p>
+              <p className="text-sm text-ink-faint">{t('searchPalette.emptyHint')}</p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
                 {EXAMPLES.map((x) => (
                   <button
@@ -181,7 +183,7 @@ export function SearchPalette() {
           )}
 
           {showNoResults && (
-            <p className="px-3 py-8 text-center text-sm text-ink-faint">Nəticə tapılmadı.</p>
+            <p className="px-3 py-8 text-center text-sm text-ink-faint">{t('searchPalette.noResults')}</p>
           )}
 
           {groups.map((group) => (
@@ -228,9 +230,9 @@ export function SearchPalette() {
 
         {/* Footer key hints */}
         <div className="relative flex items-center gap-4 border-t border-line px-4 py-2.5 font-mono text-[10px] text-ink-faint">
-          <span>↑↓ naviqasiya</span>
-          <span>↵ aç</span>
-          <span>esc bağla</span>
+          <span>{t('searchPalette.hintNavigate')}</span>
+          <span>{t('searchPalette.hintOpen')}</span>
+          <span>{t('searchPalette.hintClose')}</span>
         </div>
       </div>
     </div>

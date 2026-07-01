@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { QueryHistoryItem } from '../../types'
 import { useQueryStore } from '../../store/queryStore'
 import { ModalShell } from '../ui/ModalShell'
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function AddWidgetModal({ open, onClose, onPick }: Props) {
+  const { t } = useTranslation()
   const { history, loadHistory } = useQueryStore()
 
   useEffect(() => {
@@ -20,22 +22,22 @@ export function AddWidgetModal({ open, onClose, onPick }: Props) {
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Widget əlavə et"
-      subtitle="Tarixçədən bir sorğu seç."
+      title={t('addWidgetModal.title')}
+      subtitle={t('addWidgetModal.subtitle')}
       footer={
         <div className="text-right">
           <button
             onClick={onClose}
             className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink"
           >
-            Bağla
+            {t('addWidgetModal.close')}
           </button>
         </div>
       }
     >
       {history.length === 0 ? (
         <p className="px-3 py-6 text-center text-sm text-ink-faint">
-          Hələ sorğu yoxdur. Əvvəlcə bir sual ver.
+          {t('addWidgetModal.emptyState')}
         </p>
       ) : (
         <ul className="space-y-1 p-2">

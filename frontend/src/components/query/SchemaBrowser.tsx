@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight, Table2 } from 'lucide-react'
 import { useDatasourceStore } from '../../store/datasourceStore'
 import type { DataSourceSchema } from '../../types'
 
 /** Compact, collapsible schema (tables → columns) for the active datasource. */
 export function SchemaBrowser({ datasourceId }: { datasourceId: string }) {
+  const { t } = useTranslation()
   const loadSchema = useDatasourceStore((s) => s.loadSchema)
   const [schema, setSchema] = useState<DataSourceSchema | null>(null)
   const [open, setOpen] = useState<string | null>(null)
@@ -16,9 +18,9 @@ export function SchemaBrowser({ datasourceId }: { datasourceId: string }) {
       .catch(() => setSchema({}))
   }, [datasourceId, loadSchema])
 
-  if (!schema) return <p className="text-sm text-ink-faint">Schema yüklənir…</p>
+  if (!schema) return <p className="text-sm text-ink-faint">{t('schemaBrowser.loading')}</p>
   const tables = Object.entries(schema)
-  if (!tables.length) return <p className="text-sm text-ink-faint">Schema tapılmadı.</p>
+  if (!tables.length) return <p className="text-sm text-ink-faint">{t('schemaBrowser.notFound')}</p>
 
   return (
     <ul className="space-y-0.5">

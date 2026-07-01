@@ -10,13 +10,13 @@ import {
   YAxis,
 } from 'recharts'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ChartConfig } from '../../types'
 import { TruncatedTick } from './axis'
 import { ScrollZoom } from './ScrollZoom'
 import { useChartTheme } from './theme'
 
 const ANOMALY_FILL = '#EF4444'
-const OTHERS_LABEL = 'Digər'
 // Past this many bars the axis gets cluttered; keep the biggest TOP_N and fold
 // the rest into one "Digər" bar. Small sets are simply sorted, not folded.
 const TOP_N = 14
@@ -50,7 +50,9 @@ export function BarChartWidget({
   anomalyLabels,
   scrollable = false,
 }: Props) {
+  const { t } = useTranslation()
   const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
+  const othersLabel = t('barChartWidget.othersLabel')
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
 
@@ -65,10 +67,10 @@ export function BarChartWidget({
     const top = sorted.slice(0, foldAfter)
     const rest = sorted.slice(foldAfter)
     const restSum = rest.reduce((sum, row) => sum + (Number(row[y]) || 0), 0)
-    return [...top, { [x]: `${OTHERS_LABEL} (${rest.length})`, [y]: restSum }]
-  }, [data, x, y, foldAfter])
+    return [...top, { [x]: t('barChartWidget.others', { n: rest.length }), [y]: restSum }]
+  }, [data, x, y, foldAfter, t])
 
-  const isOthers = (label: unknown) => String(label ?? '').startsWith(OTHERS_LABEL)
+  const isOthers = (label: unknown) => String(label ?? '').startsWith(othersLabel)
   const maxLen = barData.reduce((m, d) => Math.max(m, String(d[x] ?? '').length), 0)
   const yWidth = Math.min(190, Math.max(72, maxLen * 7 + 16))
 

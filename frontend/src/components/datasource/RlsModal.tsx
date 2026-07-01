@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { Plus, ShieldHalf, Trash2 } from 'lucide-react'
 import { ModalShell } from '../ui/ModalShell'
@@ -14,6 +15,7 @@ interface Props {
 
 /** Manage row-level security rules for one datasource (owner only). */
 export function RlsModal({ open, onClose, datasourceId, datasourceName }: Props) {
+  const { t } = useTranslation()
   const [rules, setRules] = useState<RLSRule[]>([])
   const [email, setEmail] = useState('')
   const [column, setColumn] = useState('')
@@ -35,7 +37,7 @@ export function RlsModal({ open, onClose, datasourceId, datasourceName }: Props)
       setEmail('')
       setColumn('')
       setValue('')
-      toast.success('Qayda əlavə olundu.')
+      toast.success(t('rlsModal.ruleAdded'))
     } catch {
       /* interceptor toast */
     } finally {
@@ -53,12 +55,12 @@ export function RlsModal({ open, onClose, datasourceId, datasourceName }: Props)
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Sətir-səviyyə təhlükəsizlik (RLS)"
-      subtitle={`${datasourceName}: üzv yalnız icazə verilən sətirləri görür.`}
+      title={t('rlsModal.title')}
+      subtitle={t('rlsModal.subtitle', { name: datasourceName })}
       footer={
         <div className="flex justify-end">
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
-            Bağla
+            {t('rlsModal.close')}
           </button>
         </div>
       }
@@ -91,20 +93,20 @@ export function RlsModal({ open, onClose, datasourceId, datasourceName }: Props)
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="üzv e-poçtu"
+            placeholder={t('rlsModal.memberEmailPlaceholder')}
             className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
           />
           <div className="flex gap-2">
             <input
               value={column}
               onChange={(e) => setColumn(e.target.value)}
-              placeholder="sütun (məs. region)"
+              placeholder={t('rlsModal.columnPlaceholder')}
               className="flex-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
             />
             <input
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder="icazəli dəyər"
+              placeholder={t('rlsModal.allowedValuePlaceholder')}
               className="flex-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
             />
           </div>
@@ -113,7 +115,7 @@ export function RlsModal({ open, onClose, datasourceId, datasourceName }: Props)
             disabled={busy}
             className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
-            <Plus size={14} /> Qayda əlavə et
+            <Plus size={14} /> {t('rlsModal.addRule')}
           </button>
         </div>
       </div>

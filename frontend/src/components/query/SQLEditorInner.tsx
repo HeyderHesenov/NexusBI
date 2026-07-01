@@ -7,6 +7,7 @@ import { tags as t } from '@lezer/highlight'
 import { basicSetup } from 'codemirror'
 import { AlertTriangle, Play, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { DataSourceSchema } from '../../types'
 
 export interface SQLRunError {
@@ -62,7 +63,8 @@ const highlight = HighlightStyle.define([
   { tag: [t.operator, t.punctuation, t.separator], color: 'rgb(var(--ink-faint))' },
 ])
 
-export function SQLEditorInner({ initialValue, schema, onRun, onCancel, runLabel = 'İşlət' }: Props) {
+export function SQLEditorInner({ initialValue, schema, onRun, onCancel, runLabel }: Props) {
+  const { t } = useTranslation()
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onRunRef = useRef(onRun)
@@ -134,17 +136,17 @@ export function SQLEditorInner({ initialValue, schema, onRun, onCancel, runLabel
           disabled={running}
           className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-medium text-bg transition hover:bg-accent-press active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <Play size={14} /> {running ? 'İşləyir…' : runLabel}
+          <Play size={14} /> {running ? t('sQLEditorInner.running') : runLabel ?? t('sQLEditorInner.run')}
         </button>
         {onCancel && (
           <button
             onClick={onCancel}
             className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
           >
-            <X size={14} /> Ləğv et
+            <X size={14} /> {t('sQLEditorInner.cancel')}
           </button>
         )}
-        <span className="ml-auto font-mono text-[11px] text-ink-faint">⌘↵ ilə işlət</span>
+        <span className="ml-auto font-mono text-[11px] text-ink-faint">{t('sQLEditorInner.runShortcutHint')}</span>
       </div>
     </div>
   )

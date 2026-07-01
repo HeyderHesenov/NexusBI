@@ -1,5 +1,6 @@
 import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp, Workflow } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   AnomalyResult,
   ChartConfig,
@@ -65,6 +66,7 @@ export function ChartView({
   fullscreen,
   onFullscreenChange,
 }: Props) {
+  const { t } = useTranslation()
   const [type, setType] = useState<ChartType>(config.chart_type)
   const [showLegend, setShowLegend] = useState(false)
   const [filters, setFilters] = useState<Filter[]>([])
@@ -235,7 +237,7 @@ export function ChartView({
       />
     )
     return (
-      <ErrorBoundary variant="widget" label="Qrafik" resetKeys={[filtered, type]}>
+      <ErrorBoundary variant="widget" label={t('chartView.chart')} resetKeys={[filtered, type]}>
         {zoomable ? <ChartZoom data={filtered}>{chart}</ChartZoom> : chart(filtered)}
       </ErrorBoundary>
     )
@@ -254,7 +256,7 @@ export function ChartView({
                 showLegend ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
               }`}
             >
-              <Tags size={14} /> Açıqlama
+              <Tags size={14} /> {t('chartView.legend')}
             </button>
           )}
           {queryLogId && (
@@ -266,7 +268,7 @@ export function ChartView({
                   forecast ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
                 }`}
               >
-                <TrendingUp size={14} /> {forecasting ? 'Proqnoz…' : 'Proqnoz'}
+                <TrendingUp size={14} /> {forecasting ? t('chartView.forecasting') : t('chartView.forecast')}
               </button>
               <button
                 onClick={runAnomalies}
@@ -275,7 +277,7 @@ export function ChartView({
                   anomalies ? 'border-amber-500/50 text-amber-300' : 'border-line text-ink-soft hover:text-ink'
                 }`}
               >
-                <AlertTriangle size={14} /> {detecting ? 'Təhlil…' : 'Anomaliyalar'}
+                <AlertTriangle size={14} /> {detecting ? t('chartView.detecting') : t('chartView.anomalies')}
               </button>
               <button
                 onClick={runExplain}
@@ -284,7 +286,7 @@ export function ChartView({
                   explanation ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
                 }`}
               >
-                <Sparkles size={14} /> {explaining ? 'İzah…' : 'İzah et'}
+                <Sparkles size={14} /> {explaining ? t('chartView.explaining') : t('chartView.explain')}
               </button>
               <button
                 onClick={runRootCause}
@@ -293,7 +295,7 @@ export function ChartView({
                   rootCause ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
                 }`}
               >
-                <GitBranch size={14} /> {rooting ? 'Parçalanır…' : 'Niyə?'}
+                <GitBranch size={14} /> {rooting ? t('chartView.rooting') : t('chartView.why')}
               </button>
               <button
                 onClick={runLineage}
@@ -302,7 +304,7 @@ export function ChartView({
                   lineage ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
                 }`}
               >
-                <GitFork size={14} /> {tracing ? 'İzlənir…' : 'Mənşə'}
+                <GitFork size={14} /> {tracing ? t('chartView.tracing') : t('chartView.lineage')}
               </button>
               <button
                 onClick={runSignificance}
@@ -311,7 +313,7 @@ export function ChartView({
                   significance ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
                 }`}
               >
-                <ShieldCheck size={14} /> {checking ? 'Yoxlanır…' : 'Statistik yoxlama'}
+                <ShieldCheck size={14} /> {checking ? t('chartView.checking') : t('chartView.significance')}
               </button>
               <button
                 onClick={runCausal}
@@ -320,7 +322,7 @@ export function ChartView({
                   causal ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
                 }`}
               >
-                <Workflow size={14} /> {findingDrivers ? 'Axtarılır…' : 'Səbəb analizi'}
+                <Workflow size={14} /> {findingDrivers ? t('chartView.findingDrivers') : t('chartView.causal')}
               </button>
             </>
           )}
@@ -332,12 +334,12 @@ export function ChartView({
                 scenario ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
               }`}
             >
-              <SlidersHorizontal size={14} /> Ssenari
+              <SlidersHorizontal size={14} /> {t('chartView.scenario')}
             </button>
           )}
           <button
             onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
-            aria-label="CSV yüklə"
+            aria-label={t('chartView.downloadCsv')}
             className={`${CHART_BTN} border border-line text-ink-soft hover:border-accent hover:text-ink`}
           >
             <Download size={14} /> CSV
@@ -376,7 +378,7 @@ export function ChartView({
         <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">
           <div className="flex items-center gap-2">
             <TrendingUp size={15} className="text-accent" />
-            <p className="eyebrow text-ink-soft">Proqnoz</p>
+            <p className="eyebrow text-ink-soft">{t('chartView.forecast')}</p>
           </div>
           <ForecastChartWidget result={forecast} />
           {forecast.narrative && (

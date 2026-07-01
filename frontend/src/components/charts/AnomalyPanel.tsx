@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { AnomalyResult } from '../../types'
 
 const SEVERITY: Record<string, string> = {
@@ -8,10 +9,11 @@ const SEVERITY: Record<string, string> = {
 }
 
 export function AnomalyPanel({ result }: { result: AnomalyResult }) {
+  const { t } = useTranslation()
   if (!result.anomalies.length) {
     return (
       <div className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm text-ink-soft">
-        {result.summary || 'Anomaliya tapılmadı.'}
+        {result.summary || t('anomalyPanel.noAnomalies')}
       </div>
     )
   }
@@ -19,7 +21,7 @@ export function AnomalyPanel({ result }: { result: AnomalyResult }) {
     <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">
       <div className="flex items-center gap-2">
         <AlertTriangle size={15} className="text-amber-400" />
-        <p className="eyebrow text-ink-soft">{result.summary || 'Anomaliyalar'}</p>
+        <p className="eyebrow text-ink-soft">{result.summary || t('anomalyPanel.anomalies')}</p>
       </div>
       <ul className="space-y-1.5">
         {result.anomalies.map((a, i) => (

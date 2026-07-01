@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { RotateCcw, ZoomIn, ZoomOut } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useChartZoom } from './useChartZoom'
 
 const BTN =
@@ -21,6 +22,7 @@ interface Props {
  *  axis (up/down for horizontal bars), or drag. Plain wheel while unzoomed is
  *  left alone so the page can still scroll. */
 export function ChartZoom({ data, children, axis = 'x' }: Props) {
+  const { t } = useTranslation()
   const { window: win, zoomBy, pan, reset, zoomed } = useChartZoom(data.length)
   const ref = useRef<HTMLDivElement>(null)
   // Drag bookkeeping; `acc` carries the sub-index remainder between moves.
@@ -136,8 +138,8 @@ export function ChartZoom({ data, children, axis = 'x' }: Props) {
         <button
           type="button"
           onClick={() => zoomBy(0.6)}
-          title="Yaxınlaşdır (Ctrl/⌘ + scroll, pinch). Zoom-dan sonra adi scroll sürüşdürür."
-          aria-label="Yaxınlaşdır"
+          title={t('chartZoom.zoomInTitle')}
+          aria-label={t('chartZoom.zoomIn')}
           className={`pointer-events-auto ${BTN}`}
         >
           <ZoomIn size={14} />
@@ -146,7 +148,7 @@ export function ChartZoom({ data, children, axis = 'x' }: Props) {
           type="button"
           onClick={() => zoomBy(1 / 0.6)}
           disabled={!zoomed}
-          aria-label="Uzaqlaşdır"
+          aria-label={t('chartZoom.zoomOut')}
           className={`pointer-events-auto ${BTN}`}
         >
           <ZoomOut size={14} />
@@ -155,7 +157,7 @@ export function ChartZoom({ data, children, axis = 'x' }: Props) {
           type="button"
           onClick={reset}
           disabled={!zoomed}
-          aria-label="Sıfırla"
+          aria-label={t('chartZoom.reset')}
           className={`pointer-events-auto ${BTN}`}
         >
           <RotateCcw size={13} />

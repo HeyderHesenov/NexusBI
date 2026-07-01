@@ -44,6 +44,20 @@
     "title": "Качество AI",
     "trendEmpty": "Для тренда нужно минимум 2 eval."
   },
+  "addWidgetModal": {
+    "close": "Закрыть",
+    "emptyState": "Пока нет запросов. Сначала задайте вопрос.",
+    "subtitle": "Выберите запрос из истории.",
+    "title": "Добавить виджет"
+  },
+  "anomalyPanel": {
+    "anomalies": "Аномалии",
+    "noAnomalies": "Аномалии не найдены."
+  },
+  "barChartWidget": {
+    "others": "Другие ({{n}})",
+    "othersLabel": "Другие"
+  },
   "brandingPage": {
     "appliesNote": "Применяется к встроенному представлению (iframe / SDK).",
     "colorPickerLabel": "Выбор цвета",
@@ -69,8 +83,125 @@
     "upsellBody": "Перейдите на план Pro или выше, чтобы показывать своё название, цвет и логотип во встроенных панелях.",
     "upsellHeading": "White-label — это функция Pro"
   },
+  "causalPanel": {
+    "insignificant": "незначимо",
+    "title": "Причинный анализ"
+  },
+  "chartFullscreenModal": {
+    "chart": "График",
+    "close": "Закрыть"
+  },
+  "chartRenderer": {
+    "noResults": "Результаты не найдены."
+  },
+  "chartToolbar": {
+    "area": "Область",
+    "bar": "Столбцы",
+    "line": "Линия",
+    "pie": "Круговая",
+    "pivot": "Сводная",
+    "scatter": "Точечная",
+    "table": "Таблица"
+  },
+  "chartView": {
+    "anomalies": "Аномалии",
+    "causal": "Анализ причин",
+    "chart": "График",
+    "checking": "Проверка…",
+    "detecting": "Анализ…",
+    "downloadCsv": "Скачать CSV",
+    "explain": "Объяснить",
+    "explaining": "Объяснение…",
+    "findingDrivers": "Поиск…",
+    "forecast": "Прогноз",
+    "forecasting": "Прогноз…",
+    "legend": "Легенда",
+    "lineage": "Происхождение",
+    "rooting": "Разбор…",
+    "scenario": "Сценарий",
+    "significance": "Статистическая проверка",
+    "tracing": "Отслеживание…",
+    "why": "Почему?"
+  },
+  "chartZoom": {
+    "reset": "Сбросить",
+    "zoomIn": "Приблизить",
+    "zoomInTitle": "Приблизить (Ctrl/⌘ + прокрутка, щипок). После масштабирования обычная прокрутка панорамирует.",
+    "zoomOut": "Отдалить"
+  },
+  "collabPanel": {
+    "close": "Закрыть",
+    "connected": "Подключено",
+    "disconnected": "Не подключено",
+    "emptyState": "Пока нет сообщений. Оставьте первый комментарий.",
+    "messagePlaceholder": "Напишите сообщение…",
+    "send": "Отправить",
+    "team": "Команда"
+  },
   "common": {
     "demoMode": "Демо-режим"
+  },
+  "confirmDialog": {
+    "cancel": "Отмена",
+    "delete": "Удалить"
+  },
+  "connectPowerBIModal": {
+    "cancel": "Отмена",
+    "connect": "Подключить",
+    "connecting": "Подключение…",
+    "hint": "Спрашивайте на естественном языке — NexusBI создаёт DAX и отправляет его в модель Power BI.",
+    "noDataset": "Набор данных не найден",
+    "sourceNamePlaceholder": "Название источника",
+    "subtitle": "Выберите набор данных Power BI — запросы выполняются вживую как DAX.",
+    "title": "Подключить Power BI"
+  },
+  "connectSourceModal": {
+    "cancel": "Отмена",
+    "connect": "Подключить",
+    "connecting": "Подключение…",
+    "namePlaceholder": "Название (напр. Production DB)",
+    "readOnlyNote": "Рекомендуется пользователь только для чтения (read-only). Запросы выполняются только через SELECT.",
+    "subtitle": "Подключите свои данные с помощью строки подключения SQLAlchemy.",
+    "title": "Подключить базу данных"
+  },
+  "copilotWidget": {
+    "agentic": "Агентный",
+    "approve": "Подтвердить",
+    "assistantAria": "ИИ-помощник",
+    "cancel": "Отменить",
+    "executing": "Выполняется…",
+    "greeting": "Привет! Я умный помощник NexusBI. Спрашивайте обычным языком — я выполню запрос, подберу нужный график, построю дашборд и найду инсайты, прогнозы и аномалии. Спросите что-нибудь:",
+    "inputPlaceholder": "Спросите или поручите…",
+    "plan": "План",
+    "send": "Отправить",
+    "suggestion1": "Создать дашборд для анализа выручки за Q4",
+    "suggestion2": "Какие 5 самых продаваемых товаров?",
+    "suggestion3": "Распределение выручки по регионам",
+    "thinking": "Думаю…",
+    "title": "ИИ-помощник"
+  },
+  "createDecisionModal": {
+    "actionPlaceholder": "Действие (необязательно)",
+    "baselineHint": "Результат этого запроса фиксируется как базовый, затем реальное влияние измеряется автоматически.",
+    "cadenceDaily": "Измерять ежедневно",
+    "cadenceOff": "Без автоматического измерения",
+    "cadenceWeekly": "Измерять еженедельно",
+    "cancel": "Отмена",
+    "create": "Создать",
+    "directionDecrease": "Должно снижаться ↓",
+    "directionIncrease": "Должно расти ↑",
+    "metricColumnPlaceholder": "Столбец метрики (пусто = первый числовой столбец)",
+    "predictedPlaceholder": "Ожидаемое значение",
+    "subtitle": "Создайте отслеживаемое, измеримое решение на основе этого инсайта.",
+    "title": "Превратить в решение",
+    "titlePlaceholder": "Название решения",
+    "trackLabel": "Привязать к метрике и отслеживать влияние"
+  },
+  "dashboardGrid": {
+    "chart": "График",
+    "noResults": "У этого запроса нет результатов.",
+    "refresh": "Обновить",
+    "remove": "Удалить"
   },
   "dashboardPage": {
     "addWidget": "Добавить виджет",
@@ -131,6 +262,19 @@
     "tablePlaceholder": "имя таблицы",
     "title": "Контракты данных"
   },
+  "dataPrepModal": {
+    "close": "Закрыть",
+    "demoData": "Демо-данные",
+    "instructionPlaceholder": "напр. объедини orders и customers по customer_id, сгруппируй по месяцам",
+    "newSourceNamePlaceholder": "Имя нового источника",
+    "preview": "Предпросмотр",
+    "previewing": "Подготовка…",
+    "saveAsSource": "Сохранить как источник",
+    "savedToast": "Новый источник сохранён 📦",
+    "saving": "Сохранение…",
+    "subtitle": "Пишите на естественном языке — NexusBI объединяет (join), группирует и готовит результат.",
+    "title": "Подготовить данные"
+  },
   "dataSourcesPage": {
     "active": "Активно",
     "connectDb": "Подключить базу",
@@ -184,6 +328,12 @@
     "noResults": "Нет результатов.",
     "notFoundOrDisabled": "Встраивание не найдено или отключено."
   },
+  "errorBoundary": {
+    "panelDescription": "В этом разделе произошла непредвиденная ошибка. Попробуйте снова.",
+    "retry": "Повторить",
+    "titleGeneric": "Что-то пошло не так",
+    "titleWithLabel": "Не удалось загрузить {{label}}"
+  },
   "experimentsPage": {
     "analyze": "Анализировать",
     "analyzing": "Анализ…",
@@ -212,6 +362,36 @@
     "variantA": "Вариант A",
     "variantB": "Вариант B"
   },
+  "explainPanel": {
+    "noDrivers": "Явных факторов не найдено.",
+    "rootCauseAnalysis": "Анализ первопричин"
+  },
+  "filterPills": {
+    "clear": "Очистить",
+    "filter": "Фильтр:"
+  },
+  "forecastChartWidget": {
+    "confidenceInterval": "Доверительный интервал",
+    "forecast": "Прогноз",
+    "historical": "Исторические"
+  },
+  "generateDashboardModal": {
+    "build": "Создать",
+    "building": "Создание…",
+    "cancel": "Отмена",
+    "exampleCustomer": "Анализ поведения клиентов",
+    "exampleProduct": "Прибыльность продуктов",
+    "exampleSales": "Обзор эффективности продаж",
+    "placeholder": "напр. Покажи показатели продаж за этот квартал",
+    "progress": "Подбираем вопросы, выполняем запросы и собираем виджеты… это может занять несколько секунд.",
+    "subtitle": "Опишите цель — NexusBI подберёт нужные вопросы и сам построит дашборд.",
+    "title": "Создать дашборд с помощью ИИ"
+  },
+  "historyDeleteUI": {
+    "confirmMessage": "Этот запрос будет удалён из истории. Отменить это действие нельзя.",
+    "confirmTitle": "Удалить запрос",
+    "delete": "Удалить"
+  },
   "historyPage": {
     "colDate": "Дата",
     "colQuery": "Запрос",
@@ -233,6 +413,28 @@
     "scanning": "Сканирование…",
     "subtitle": "Движок автоматически сканирует последние результаты — выводы отсортированы по влиянию.",
     "title": "Инсайты"
+  },
+  "integrationsPanel": {
+    "add": "Добавить",
+    "deleteTooltip": "Удалить",
+    "description": "Отправляйте брифы и оповещения в Slack, Teams или на email. (Демо: mock-режим.)",
+    "hintEmail": "адрес эл. почты",
+    "hintWebhook": "webhook URL",
+    "testTooltip": "Отправить тест",
+    "title": "Каналы уведомлений",
+    "toastAdded": "Канал добавлен.",
+    "toastTestFailed": "Тест не удался.",
+    "toastTestSent": "Тест отправлен."
+  },
+  "layout": {
+    "pageLabel": "Страница"
+  },
+  "lineagePanel": {
+    "columns": "Столбцы",
+    "empty": "Информация о происхождении не извлечена.",
+    "metrics": "Метрики",
+    "tables": "Таблицы",
+    "title": "Происхождение (lineage)"
   },
   "loginPage": {
     "busy": "Подождите…",
@@ -308,6 +510,14 @@
     "verifiedBy": "Подтвердил: {{by}}",
     "verify": "Подтвердить"
   },
+  "nLQueryInput": {
+    "ask": "Спросить",
+    "demoExampleCustomersByCountry": "Количество клиентов по странам",
+    "demoExampleRevenueTrend": "Каков тренд ежемесячной выручки?",
+    "demoExampleSalesByRegion": "Доля продаж по регионам",
+    "demoExampleTopProducts": "Какие 5 самых продаваемых товаров?",
+    "placeholder": "Задайте вопрос данным — пишите обычным языком…"
+  },
   "nav": {
     "branding": "Брендинг",
     "contracts": "Контракты данных",
@@ -348,6 +558,19 @@
     "smartInsight": "Создать смарт-инсайт",
     "title": "Уведомления"
   },
+  "pieChartWidget": {
+    "others": "Другое",
+    "othersWithCount": "Другое ({{count}})"
+  },
+  "pivotWidget": {
+    "aggregate": "Агрегат",
+    "column": "Столбец",
+    "measure": "Мера",
+    "noResult": "Нет результатов.",
+    "none": "Нет",
+    "row": "Строка",
+    "total": "Итого"
+  },
   "pricingPage": {
     "currentPlan": "Текущий тариф",
     "demoUnlimitedLabel": "Демо · Без ограничений",
@@ -361,6 +584,19 @@
     "switch": "Перейти",
     "upgrade": "Повысить",
     "usageThisMonth": "В этом месяце: использовано {{used}} / {{limit}} запросов"
+  },
+  "profilePanel": {
+    "column": "Столбец",
+    "distinct": "Уникальные",
+    "loading": "Загрузка профиля…",
+    "max": "Макс",
+    "min": "Мин",
+    "noTablesFound": "Таблица для профилирования не найдена.",
+    "notAvailable": "Профиль недоступен.",
+    "nullPct": "Пусто %",
+    "rowSample": "Выборка из {{n}} строк",
+    "table": "Таблица",
+    "type": "Тип"
   },
   "publicDashboardPage": {
     "emptyPanel": "Эта панель пуста.",
@@ -445,6 +681,119 @@
     "textPlaceholder": "Вставьте текст требования сюда…",
     "title": "Требования"
   },
+  "rlsModal": {
+    "addRule": "Добавить правило",
+    "allowedValuePlaceholder": "разрешённое значение",
+    "close": "Закрыть",
+    "columnPlaceholder": "столбец (напр. region)",
+    "memberEmailPlaceholder": "эл. почта участника",
+    "ruleAdded": "Правило добавлено.",
+    "subtitle": "{{name}}: участник видит только разрешённые строки.",
+    "title": "Безопасность на уровне строк (RLS)"
+  },
+  "rootCausePanel": {
+    "noDrivers": "Явный драйвер не найден.",
+    "title": "Дерево первопричин"
+  },
+  "sQLEditorInner": {
+    "cancel": "Отмена",
+    "run": "Выполнить",
+    "runShortcutHint": "Выполнить через ⌘↵",
+    "running": "Выполняется…"
+  },
+  "sQLPreview": {
+    "generatedDax": "Сгенерированный DAX",
+    "generatedSql": "Сгенерированный SQL"
+  },
+  "saveDashboardModal": {
+    "cancel": "Отмена",
+    "create": "Создать",
+    "namePlaceholder": "Название дашборда",
+    "subtitle": "Дайте имя дашборду.",
+    "title": "Новый дашборд"
+  },
+  "saveQueryModal": {
+    "cancel": "Отмена",
+    "namePlaceholder": "Название (напр. Еженедельные продажи)",
+    "save": "Сохранить",
+    "scheduleDaily": "Ежедневно",
+    "scheduleHourly": "Ежечасно",
+    "scheduleOff": "Без расписания",
+    "scheduleWeekly": "Еженедельно",
+    "subtitle": "Задайте имя и при желании укажите расписание автообновления.",
+    "title": "Сохранить запрос"
+  },
+  "saveToDashboardModal": {
+    "addedToDashboard": "Добавлено на дашборд.",
+    "create": "Создать",
+    "createdAndAdded": "\"{{name}}\" создан и добавлен.",
+    "newDashboardPlaceholder": "Название нового дашборда",
+    "noDashboardsYet": "Пока нет дашбордов.",
+    "subtitle": "Выберите существующий дашборд или создайте новый.",
+    "title": "Сохранить на дашборд"
+  },
+  "scenarioPanel": {
+    "actual": "Фактическое",
+    "calculate": "Рассчитать",
+    "change": "Изменение",
+    "current": "текущее",
+    "goalSeek": "Подбор параметра",
+    "monteCarloForecast": "Прогноз Монте-Карло",
+    "noNumericColumn": "Числовой столбец для сценария не найден.",
+    "rangeMeanReturn": "Диапазон P10–P90 · средняя доходность {{pct}}%/период",
+    "required": "требуется",
+    "scenario": "Сценарий",
+    "simulating": "Симуляция…",
+    "targetValuePlaceholder": "целевое значение"
+  },
+  "schemaBrowser": {
+    "loading": "Загрузка схемы…",
+    "notFound": "Схема не найдена."
+  },
+  "scrollZoom": {
+    "reset": "Сбросить",
+    "zoomIn": "Увеличить",
+    "zoomInTitle": "Увеличить (Ctrl/⌘ + прокрутка, щипок). Обычная прокрутка перемещает по столбцам.",
+    "zoomOut": "Уменьшить"
+  },
+  "searchPalette": {
+    "dialogLabel": "Поиск",
+    "emptyHint": "Ищите по названию или смыслу.",
+    "hintClose": "esc закрыть",
+    "hintNavigate": "↑↓ навигация",
+    "hintOpen": "↵ открыть",
+    "inputPlaceholder": "Поиск дашбордов, метрик, отчётов…",
+    "noResults": "Ничего не найдено.",
+    "resultCount": "{{n}} результатов"
+  },
+  "shareDashboardModal": {
+    "close": "Закрыть",
+    "copied": "Скопировано.",
+    "createPublicLink": "Создать публичную ссылку",
+    "disableEmbed": "Отключить встраивание",
+    "embedDisabled": "Встраивание отключено.",
+    "embedIframeLabel": "Встраивание (iframe)",
+    "enableEmbed": "Включить встраивание",
+    "publicLinkHint": "Любой, у кого есть эта ссылка, может просматривать дашборд (только чтение).",
+    "publicLinkLabel": "Публичная ссылка",
+    "revokeShare": "Отозвать доступ",
+    "shareRevoked": "Доступ отозван.",
+    "subtitle": "Ссылка только для чтения с токеном — вход не требуется.",
+    "title": "Поделиться дашбордом",
+    "whiteLabelEmbed": "White-label встраивание (подписанный токен)"
+  },
+  "storyMode": {
+    "close": "Закрыть",
+    "dataStory": "История данных",
+    "next": "Следующий",
+    "pause": "Пауза",
+    "play": "Воспроизвести",
+    "previous": "Предыдущий",
+    "slide": "Слайд {{n}}"
+  },
+  "tableWidget": {
+    "noResults": "Нет результатов."
+  },
   "targetsPage": {
     "addTarget": "Добавить цель",
     "attainment": "{{pct}}% выполнено",
@@ -482,6 +831,16 @@
     "notifications": "Уведомления",
     "search": "Поиск…",
     "searchTitle": "Поиск (⌘K)"
+  },
+  "uploadSourceModal": {
+    "cancel": "Отмена",
+    "clickToSelect": "Нажмите, чтобы выбрать файл",
+    "fileHint": ".csv или .xlsx — макс. 10 МБ",
+    "namePlaceholder": "Название источника (необязательно)",
+    "subtitle": "Загрузите файл, и NexusBI превратит его в таблицу, доступную для запросов.",
+    "title": "Загрузить CSV / Excel",
+    "upload": "Загрузить",
+    "uploading": "Загрузка…"
   },
   "workspacePage": {
     "addMember": "Добавить",

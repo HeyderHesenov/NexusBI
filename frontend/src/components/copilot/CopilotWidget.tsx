@@ -1,18 +1,20 @@
 import { ArrowRight, Check, ListChecks, Send, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import type { CopilotAction } from '../../api/copilot'
 import { useCopilotStore } from '../../store/copilotStore'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { TypewriterText } from '../charts/TypewriterText'
 
-const SUGGESTIONS = [
-  'Q4 gəlirini analiz edən dashboard qur',
-  'Ən çox satan 5 məhsul hansıdır?',
-  'Regionlar üzrə gəlir paylanması',
+const SUGGESTION_KEYS = [
+  'copilotWidget.suggestion1',
+  'copilotWidget.suggestion2',
+  'copilotWidget.suggestion3',
 ]
 
 export function CopilotWidget() {
+  const { t } = useTranslation()
   const { open, sending, thread, toggle, setOpen, send, approve, cancel } = useCopilotStore()
   const [text, setText] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
@@ -28,10 +30,10 @@ export function CopilotWidget() {
   )
 
   const submit = (value?: string) => {
-    const t = (value ?? text).trim()
-    if (!t) return
+    const q = (value ?? text).trim()
+    if (!q) return
     setText('')
-    send(t)
+    send(q)
   }
 
   const navTarget = (a: CopilotAction): string | null => {
@@ -57,7 +59,7 @@ export function CopilotWidget() {
     <>
       <button
         onClick={toggle}
-        aria-label="AI köməkçi"
+        aria-label={t('copilotWidget.assistantAria')}
         className="fixed bottom-6 right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-accent text-bg shadow-pop transition hover:bg-accent-press active:translate-y-px"
       >
         {open ? <X size={22} /> : <Sparkles size={22} strokeWidth={2.5} />}
@@ -67,26 +69,24 @@ export function CopilotWidget() {
         <div className="fixed bottom-24 right-6 z-40 flex h-[32rem] w-[calc(100vw-3rem)] max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-pop">
           <header className="flex items-center gap-2 border-b border-line px-4 py-3">
             <Sparkles size={18} className="text-accent" />
-            <h3 className="font-display text-base font-bold text-ink">AI Köməkçi</h3>
-            <span className="ml-auto text-xs text-ink-faint">Agentik</span>
+            <h3 className="font-display text-base font-bold text-ink">{t('copilotWidget.title')}</h3>
+            <span className="ml-auto text-xs text-ink-faint">{t('copilotWidget.agentic')}</span>
           </header>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3">
             {thread.length === 0 && (
               <div className="mt-2">
                 <p className="text-sm text-ink-soft">
-                  Salam! Mən NexusBI-ın ağıllı köməkçisiyəm. Sualını adi dildə yaz —
-                  sorğunu işlədim, doğru qrafiki seçim, dashboard qurum, insight,
-                  proqnoz və anomaliya çıxarım. Bir şey soruş:
+                  {t('copilotWidget.greeting')}
                 </p>
                 <div className="mt-3 flex flex-col gap-2">
-                  {SUGGESTIONS.map((s) => (
+                  {SUGGESTION_KEYS.map((key) => (
                     <button
-                      key={s}
-                      onClick={() => submit(s)}
+                      key={key}
+                      onClick={() => submit(t(key))}
                       className="rounded-xl border border-line px-3 py-2 text-left text-sm text-ink-soft transition hover:border-accent hover:text-ink"
                     >
-                      {s}
+                      {t(key)}
                     </button>
                   ))}
                 </div>
@@ -115,7 +115,7 @@ export function CopilotWidget() {
                 {m.plan && m.plan.length > 0 && m.pendingMessage && (
                   <div className="mt-2 rounded-xl border border-line bg-surface-2 p-3 text-left">
                     <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-                      <ListChecks size={13} className="text-accent" /> Plan
+                      <ListChecks size={13} className="text-accent" /> {t('copilotWidget.plan')}
                     </div>
                     <ol className="space-y-1">
                       {m.plan.map((s, k) => (
@@ -131,14 +131,14 @@ export function CopilotWidget() {
                         disabled={m.approving || sending}
                         className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1.5 text-xs font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
                       >
-                        <Check size={13} /> {m.approving ? 'İcra olunur…' : 'Təsdiqlə'}
+                        <Check size={13} /> {m.approving ? t('copilotWidget.executing') : t('copilotWidget.approve')}
                       </button>
                       <button
                         onClick={() => cancel(i)}
                         disabled={m.approving || sending}
                         className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink-soft transition hover:text-ink disabled:opacity-50"
                       >
-                        Ləğv et
+                        {t('copilotWidget.cancel')}
                       </button>
                     </div>
                   </div>
@@ -163,7 +163,7 @@ export function CopilotWidget() {
             {sending && (
               <div className="flex items-center gap-1.5 text-sm text-ink-faint">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-                Düşünürəm…
+                {t('copilotWidget.thinking')}
               </div>
             )}
             <div ref={endRef} />
@@ -174,14 +174,14 @@ export function CopilotWidget() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && submit()}
-              placeholder="Soruş və ya tapşır…"
+              placeholder={t('copilotWidget.inputPlaceholder')}
               disabled={sending}
               className="flex-1 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none disabled:opacity-60"
             />
             <button
               onClick={() => submit()}
               disabled={!text.trim() || sending}
-              aria-label="Göndər"
+              aria-label={t('copilotWidget.send')}
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-bg transition hover:bg-accent-press disabled:opacity-50"
             >
               <Send size={16} />

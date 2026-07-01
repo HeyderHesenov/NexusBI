@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useTranslation } from 'react-i18next'
 import type { ForecastResult } from '../../types'
 import { useChartTheme } from './theme'
 
@@ -19,6 +20,7 @@ interface Props {
 
 /** Historical series (solid) + forecast (dashed) with an 80% confidence band. */
 export function ForecastChartWidget({ result, height = 320 }: Props) {
+  const { t } = useTranslation()
   const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const { history, forecast, label_col, value_col } = result
 
@@ -64,13 +66,13 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
           dataKey="bandSpan"
           stroke="none"
           fill="rgb(var(--accent) / 0.16)"
-          name="Güvən aralığı"
+          name={t('forecastChartWidget.confidenceInterval')}
           isAnimationActive={false}
         />
 
         <Line
           dataKey="actual"
-          name="Tarixi"
+          name={t('forecastChartWidget.historical')}
           stroke={ACCENT}
           strokeWidth={2}
           dot={false}
@@ -78,7 +80,7 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
         />
         <Line
           dataKey="forecast"
-          name="Proqnoz"
+          name={t('forecastChartWidget.forecast')}
           stroke={ACCENT}
           strokeWidth={2}
           strokeDasharray="5 5"

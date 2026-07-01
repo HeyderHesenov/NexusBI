@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, GitBranch } from 'lucide-react'
 import type { RootCauseNode, RootCauseResult } from '../../types'
 import { TypewriterText } from './TypewriterText'
@@ -68,17 +69,18 @@ function Node({ node, depth }: { node: RootCauseNode; depth: number }) {
 
 /** Interactive hierarchical root-cause ("Why?") decomposition tree. */
 export function RootCausePanel({ result }: { result: RootCauseResult }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">
       <div className="flex items-center gap-2">
         <GitBranch size={15} className="text-accent" />
-        <p className="eyebrow text-ink-soft">Kök-səbəb ağacı{result.metric ? ` · ${result.metric}` : ''}</p>
+        <p className="eyebrow text-ink-soft">{t('rootCausePanel.title')}{result.metric ? ` · ${result.metric}` : ''}</p>
       </div>
       {result.summary && (
         <TypewriterText text={result.summary} className="text-sm leading-relaxed text-ink-soft" />
       )}
       {result.drivers.length === 0 ? (
-        <p className="text-sm text-ink-faint">Aydın driver tapılmadı.</p>
+        <p className="text-sm text-ink-faint">{t('rootCausePanel.noDrivers')}</p>
       ) : (
         <ul className="mt-1">
           {result.drivers.map((d, i) => (

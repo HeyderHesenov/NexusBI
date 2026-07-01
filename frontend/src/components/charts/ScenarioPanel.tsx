@@ -10,6 +10,7 @@ import {
   YAxis,
 } from 'recharts'
 import { Crosshair, SlidersHorizontal, Sparkles } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { ChartRenderer } from './LazyChartRenderer'
 import { useChartTheme } from './theme'
 import * as scenarioApi from '../../api/scenario'
@@ -24,6 +25,7 @@ interface Props {
 
 /** What-if + goal-seek + Monte Carlo scenario planning for a result series. */
 export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
+  const { t } = useTranslation()
   const theme = useChartTheme()
   const [pct, setPct] = useState('10')
   const [goal, setGoal] = useState('')
@@ -41,15 +43,15 @@ export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
   if (!valueCol) {
     return (
       <div className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm text-ink-faint">
-        Ssenari üçün ədədi sütun tapılmadı.
+        {t('scenarioPanel.noNumericColumn')}
       </div>
     )
   }
 
   const delta = projected - actual
   const compareData = [
-    { ssenari: 'Faktiki', dəyər: Math.round(actual * 100) / 100 },
-    { ssenari: 'Ssenari', dəyər: Math.round(projected * 100) / 100 },
+    { ssenari: t('scenarioPanel.actual'), dəyər: Math.round(actual * 100) / 100 },
+    { ssenari: t('scenarioPanel.scenario'), dəyər: Math.round(projected * 100) / 100 },
   ]
   const compareConfig = {
     chart_type: 'bar', x_axis: 'ssenari', y_axis: 'dəyər', color_by: null,
@@ -101,7 +103,7 @@ export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
           <span className="eyebrow text-ink-soft">What-if · {valueCol}</span>
         </div>
         <label className="flex items-center gap-2 text-sm text-ink-soft">
-          Dəyişiklik
+          {t('scenarioPanel.change')}
           <input
             type="number"
             value={pct}
@@ -124,24 +126,24 @@ export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
           {/* Goal-seek */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 text-sm text-ink-soft">
-              <Crosshair size={14} className="text-accent" /> Hədəf-axtar
+              <Crosshair size={14} className="text-accent" /> {t('scenarioPanel.goalSeek')}
             </span>
             <input
               type="number"
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
-              placeholder="hədəf dəyər"
+              placeholder={t('scenarioPanel.targetValuePlaceholder')}
               className="w-32 rounded-lg border border-line bg-surface px-2 py-1 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
             />
             <button
               onClick={runGoalSeek}
               className="rounded-lg border border-accent/40 bg-accent-soft px-2.5 py-1 text-sm font-semibold text-accent transition hover:border-accent"
             >
-              Hesabla
+              {t('scenarioPanel.calculate')}
             </button>
             {goalSeek && (
               <span className="font-mono text-xs text-ink-soft">
-                cari {goalSeek.current.toLocaleString()} → tələb olunan{' '}
+                {t('scenarioPanel.current')} {goalSeek.current.toLocaleString()} → {t('scenarioPanel.required')}{' '}
                 <span className="text-ink">
                   {goalSeek.required_pct != null ? `${goalSeek.required_pct}%` : '—'}
                 </span>
@@ -157,12 +159,12 @@ export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
               className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-2.5 py-1 text-sm font-semibold text-accent transition hover:border-accent disabled:opacity-60"
             >
               <Sparkles size={14} className={busy ? 'animate-pulse' : ''} />
-              {busy ? 'Simulyasiya…' : 'Monte Carlo proqnoz'}
+              {busy ? t('scenarioPanel.simulating') : t('scenarioPanel.monteCarloForecast')}
             </button>
             {mc && (
               <div className="mt-2">
                 <p className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-                  P10–P90 diapazon · orta gəlir {mc.mean_return_pct}%/dövr
+                  {t('scenarioPanel.rangeMeanReturn', { pct: mc.mean_return_pct })}
                 </p>
                 <ResponsiveContainer width="100%" height={200}>
                   <ComposedChart data={fan} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>

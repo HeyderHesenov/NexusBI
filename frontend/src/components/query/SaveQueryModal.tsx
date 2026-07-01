@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ModalShell } from '../ui/ModalShell'
 import { useSavedQueryStore } from '../../store/savedQueryStore'
 import type { Schedule } from '../../types'
@@ -13,14 +14,15 @@ interface Props {
 const field =
   'w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none'
 
-const SCHEDULES: { value: Schedule; label: string }[] = [
-  { value: 'off', label: 'Cədvəl yox' },
-  { value: 'hourly', label: 'Saatlıq' },
-  { value: 'daily', label: 'Gündəlik' },
-  { value: 'weekly', label: 'Həftəlik' },
+const SCHEDULES: { value: Schedule; labelKey: string }[] = [
+  { value: 'off', labelKey: 'saveQueryModal.scheduleOff' },
+  { value: 'hourly', labelKey: 'saveQueryModal.scheduleHourly' },
+  { value: 'daily', labelKey: 'saveQueryModal.scheduleDaily' },
+  { value: 'weekly', labelKey: 'saveQueryModal.scheduleWeekly' },
 ]
 
 export function SaveQueryModal({ open, onClose, nlQuery, datasourceId }: Props) {
+  const { t } = useTranslation()
   const save = useSavedQueryStore((s) => s.save)
   const [name, setName] = useState('')
   const [schedule, setSchedule] = useState<Schedule>('off')
@@ -45,19 +47,19 @@ export function SaveQueryModal({ open, onClose, nlQuery, datasourceId }: Props) 
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Sorğunu saxla"
-      subtitle="Adlandır və istəyə görə avto-yeniləmə cədvəli ver."
+      title={t('saveQueryModal.title')}
+      subtitle={t('saveQueryModal.subtitle')}
       footer={
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
-            Ləğv et
+            {t('saveQueryModal.cancel')}
           </button>
           <button
             onClick={submit}
             disabled={busy}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
-            Saxla
+            {t('saveQueryModal.save')}
           </button>
         </div>
       }
@@ -71,13 +73,13 @@ export function SaveQueryModal({ open, onClose, nlQuery, datasourceId }: Props) 
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="Ad (məs. Həftəlik satış)"
+          placeholder={t('saveQueryModal.namePlaceholder')}
           className={field}
         />
         <select value={schedule} onChange={(e) => setSchedule(e.target.value as Schedule)} className={field}>
           {SCHEDULES.map((s) => (
             <option key={s.value} value={s.value}>
-              {s.label}
+              {t(s.labelKey)}
             </option>
           ))}
         </select>

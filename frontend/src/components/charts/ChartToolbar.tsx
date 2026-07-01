@@ -7,16 +7,17 @@ import {
   Table as TableIcon,
   Grid3x3 as PivotIcon,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { ChartType } from '../../types'
 
-const OPTIONS: { type: ChartType; label: string; Icon: typeof BarChart3 }[] = [
-  { type: 'bar', label: 'Sütun', Icon: BarChart3 },
-  { type: 'line', label: 'Xətt', Icon: LineIcon },
-  { type: 'area', label: 'Sahə', Icon: AreaIcon },
-  { type: 'pie', label: 'Dairə', Icon: PieIcon },
-  { type: 'scatter', label: 'Səpələnmə', Icon: ScatterIcon },
-  { type: 'table', label: 'Cədvəl', Icon: TableIcon },
-  { type: 'pivot', label: 'Pivot', Icon: PivotIcon },
+const OPTIONS: { type: ChartType; labelKey: string; Icon: typeof BarChart3 }[] = [
+  { type: 'bar', labelKey: 'chartToolbar.bar', Icon: BarChart3 },
+  { type: 'line', labelKey: 'chartToolbar.line', Icon: LineIcon },
+  { type: 'area', labelKey: 'chartToolbar.area', Icon: AreaIcon },
+  { type: 'pie', labelKey: 'chartToolbar.pie', Icon: PieIcon },
+  { type: 'scatter', labelKey: 'chartToolbar.scatter', Icon: ScatterIcon },
+  { type: 'table', labelKey: 'chartToolbar.table', Icon: TableIcon },
+  { type: 'pivot', labelKey: 'chartToolbar.pivot', Icon: PivotIcon },
 ]
 
 /** Shared base for small chart control buttons (toolbar + ChartView actions). */
@@ -29,10 +30,12 @@ interface Props {
 }
 
 export function ChartToolbar({ value, onChange }: Props) {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-wrap items-center gap-1 rounded-xl border border-line bg-surface-2 p-1">
-      {OPTIONS.map(({ type, label, Icon }) => {
+      {OPTIONS.map(({ type, labelKey, Icon }) => {
         const active = value === type
+        const label = t(labelKey)
         return (
           <button
             key={type}

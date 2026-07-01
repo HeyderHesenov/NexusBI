@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import type { ChartConfig } from '../../types'
 import { useChartTheme } from './theme'
@@ -22,10 +23,11 @@ export function PieChartWidget({
   showLegend = false,
   onPointClick,
 }: Props) {
+  const { t } = useTranslation()
   const { SERIES, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const name = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const value = config.y_axis ?? Object.keys(data[0] ?? {})[1]
-  const othersLabel = 'Digər'
+  const othersLabel = t('pieChartWidget.others')
 
   // Sort by value desc; collapse the long tail into one "Digər (k)" slice so the
   // donut stays legible. The summed value is preserved → percentages stay exact.
@@ -35,8 +37,8 @@ export function PieChartWidget({
     const top = sorted.slice(0, TOP_N)
     const rest = sorted.slice(TOP_N)
     const restSum = rest.reduce((sum, row) => sum + (Number(row[value]) || 0), 0)
-    return [...top, { [name]: `${othersLabel} (${rest.length})`, [value]: restSum }]
-  }, [data, name, value])
+    return [...top, { [name]: t('pieChartWidget.othersWithCount', { count: rest.length }), [value]: restSum }]
+  }, [data, name, value, t])
 
   const total = pieData.reduce((sum, row) => sum + (Number(row[value]) || 0), 0)
   const isOthers = (label: unknown) => String(label ?? '').startsWith(othersLabel)

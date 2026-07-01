@@ -1,5 +1,6 @@
 import { Database, GripVertical, RefreshCw, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Responsive, WidthProvider, type Layout, type Layouts } from 'react-grid-layout'
 import type { Dashboard } from '../../types'
 import { useDashboardStore } from '../../store/dashboardStore'
@@ -30,6 +31,7 @@ function buildLayouts(dashboard: Dashboard): Layouts {
 }
 
 export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLayoutChange }: Props) {
+  const { t } = useTranslation()
   const layouts = useMemo(() => buildLayouts(dashboard), [dashboard.layout, dashboard.widgets])
   const pulses = useDashboardStore((s) => s.pulses)
   const [busy, setBusy] = useState<string | null>(null)
@@ -96,14 +98,14 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
               <button
                 onClick={() => refresh(w.id)}
                 disabled={busy === w.id}
-                aria-label="Yenilə"
+                aria-label={t('dashboardGrid.refresh')}
                 className="text-ink-faint transition hover:text-accent disabled:opacity-50"
               >
                 <RefreshCw size={14} className={busy === w.id ? 'animate-spin' : ''} />
               </button>
               <button
                 onClick={() => onRemoveWidget(w.id)}
-                aria-label="Sil"
+                aria-label={t('dashboardGrid.remove')}
                 className="text-ink-faint transition hover:text-[#D87C6B]"
               >
                 <X size={15} />
@@ -112,7 +114,7 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
           </div>
           <div className="min-h-0 flex-1 p-3">
             {w.chart && w.chart.data.length ? (
-              <ErrorBoundary variant="widget" label="Qrafik" resetKeys={[w.chart]}>
+              <ErrorBoundary variant="widget" label={t('dashboardGrid.chart')} resetKeys={[w.chart]}>
                 <ChartRenderer
                   data={widgetData(w.chart.columns, w.chart.data)}
                   config={w.chart.chart_config}
@@ -124,7 +126,7 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
               </ErrorBoundary>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-ink-faint">
-                Bu sorğunun nəticəsi yoxdur.
+                {t('dashboardGrid.noResults')}
               </div>
             )}
           </div>

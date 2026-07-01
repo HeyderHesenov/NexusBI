@@ -1,16 +1,18 @@
 import { ArrowDownRight, ArrowUpRight, Sparkles } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { ExplainResult } from '../../types'
 
 /** Root-cause: shows the biggest drivers behind a result. */
 export function ExplainPanel({ result }: { result: ExplainResult }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">
       <div className="flex items-center gap-2">
         <Sparkles size={15} className="text-accent" />
-        <p className="eyebrow text-ink-soft">{result.summary || 'Kök-səbəb analizi'}</p>
+        <p className="eyebrow text-ink-soft">{result.summary || t('explainPanel.rootCauseAnalysis')}</p>
       </div>
       {result.drivers.length === 0 ? (
-        <p className="text-sm text-ink-faint">Aydın driver tapılmadı.</p>
+        <p className="text-sm text-ink-faint">{t('explainPanel.noDrivers')}</p>
       ) : (
         <ul className="space-y-1.5">
           {result.drivers.map((d, i) => {

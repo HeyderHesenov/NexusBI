@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { Database, Save, Wand2 } from 'lucide-react'
 import { ModalShell } from '../ui/ModalShell'
@@ -14,6 +15,7 @@ interface Props {
 
 /** Kodsuz data hazırlıq: NL → SELECT önizləməsi → yeni mənbə kimi saxla. */
 export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
+  const { t } = useTranslation()
   const [datasourceId, setDatasourceId] = useState<string | null>(null)
   const [instruction, setInstruction] = useState('')
   const [preview, setPreview] = useState<DataPrepPreview | null>(null)
@@ -45,7 +47,7 @@ export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
     setSaving(true)
     try {
       await api.materializeTransform(datasourceId, preview.sql, name.trim())
-      toast.success('Yeni mənbə saxlanıldı 📦')
+      toast.success(t('dataPrepModal.savedToast'))
       onSaved()
       reset()
       onClose()
@@ -68,8 +70,8 @@ export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
     <ModalShell
       open={open}
       onClose={busy || saving ? () => undefined : onClose}
-      title="Data hazırla"
-      subtitle="Təbii dillə yaz — NexusBI birləşdirib (join), qruplayıb nəticəni hazırlayır."
+      title={t('dataPrepModal.title')}
+      subtitle={t('dataPrepModal.subtitle')}
       footer={
         <div className="flex justify-end gap-2">
           <button
@@ -77,7 +79,7 @@ export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
             disabled={busy || saving}
             className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink disabled:opacity-50"
           >
-            Bağla
+            {t('dataPrepModal.close')}
           </button>
           {preview && (
             <button
@@ -85,7 +87,7 @@ export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
               disabled={saving || !name.trim()}
               className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
             >
-              <Save size={15} /> {saving ? 'Saxlanır…' : 'Mənbə kimi saxla'}
+              <Save size={15} /> {saving ? t('dataPrepModal.saving') : t('dataPrepModal.saveAsSource')}
             </button>
           )}
         </div>
@@ -103,7 +105,7 @@ export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
               }}
               className="bg-transparent text-ink focus:outline-none"
             >
-              <option value="">Demo data</option>
+              <option value="">{t('dataPrepModal.demoData')}</option>
               {sources.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -116,7 +118,7 @@ export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
           rows={3}
-          placeholder="məs. orders və customers-i customer_id üzrə birləşdir, aya görə qrupla"
+          placeholder={t('dataPrepModal.instructionPlaceholder')}
           className="w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         />
         <div className="flex justify-end">
@@ -126,7 +128,7 @@ export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
             className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3 py-2 text-sm font-semibold text-accent transition hover:border-accent disabled:opacity-60"
           >
             <Wand2 size={15} className={busy ? 'animate-pulse' : ''} />
-            {busy ? 'Hazırlanır…' : 'Önizlə'}
+            {busy ? t('dataPrepModal.previewing') : t('dataPrepModal.preview')}
           </button>
         </div>
 
@@ -176,7 +178,7 @@ export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Yeni mənbənin adı"
+              placeholder={t('dataPrepModal.newSourceNamePlaceholder')}
               className="w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
             />
           </div>

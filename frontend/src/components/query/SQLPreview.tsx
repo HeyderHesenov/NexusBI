@@ -1,9 +1,11 @@
 import { ChevronDown, ChevronRight, Database } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export function SQLPreview({ sql, language = 'sql' }: { sql: string; language?: 'sql' | 'dax' }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const label = language === 'dax' ? 'Generasiya olunmuş DAX' : 'Generasiya olunmuş SQL'
+  const label = language === 'dax' ? t('sQLPreview.generatedDax') : t('sQLPreview.generatedSql')
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
       <button

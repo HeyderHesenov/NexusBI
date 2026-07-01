@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ModalShell } from '../ui/ModalShell'
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function SaveDashboardModal({ open, onClose, onSave }: Props) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const submit = () => name.trim() && onSave(name.trim())
 
@@ -15,21 +17,21 @@ export function SaveDashboardModal({ open, onClose, onSave }: Props) {
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Yeni dashboard"
-      subtitle="Panelinə ad ver."
+      title={t('saveDashboardModal.title')}
+      subtitle={t('saveDashboardModal.subtitle')}
       footer={
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
             className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink"
           >
-            Ləğv et
+            {t('saveDashboardModal.cancel')}
           </button>
           <button
             onClick={submit}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
           >
-            Yarat
+            {t('saveDashboardModal.create')}
           </button>
         </div>
       }
@@ -40,7 +42,7 @@ export function SaveDashboardModal({ open, onClose, onSave }: Props) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="Dashboard adı"
+          placeholder={t('saveDashboardModal.namePlaceholder')}
           className="w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         />
       </div>

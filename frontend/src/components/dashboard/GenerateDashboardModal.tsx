@@ -1,5 +1,6 @@
 import { Sparkles } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ModalShell } from '../ui/ModalShell'
 
 interface Props {
@@ -8,13 +9,14 @@ interface Props {
   onGenerate: (goal: string) => Promise<void>
 }
 
-const EXAMPLES = [
-  'Satış performansı icmalı',
-  'Müştəri davranışı təhlili',
-  'Məhsul gəlirliliyi',
+const EXAMPLE_KEYS = [
+  'generateDashboardModal.exampleSales',
+  'generateDashboardModal.exampleCustomer',
+  'generateDashboardModal.exampleProduct',
 ]
 
 export function GenerateDashboardModal({ open, onClose, onGenerate }: Props) {
+  const { t } = useTranslation()
   const [goal, setGoal] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -34,8 +36,8 @@ export function GenerateDashboardModal({ open, onClose, onGenerate }: Props) {
     <ModalShell
       open={open}
       onClose={busy ? () => undefined : onClose}
-      title="AI ilə dashboard qur"
-      subtitle="Məqsədini yaz — NexusBI uyğun sualları seçib paneli özü düzəldəcək."
+      title={t('generateDashboardModal.title')}
+      subtitle={t('generateDashboardModal.subtitle')}
       footer={
         <div className="flex justify-end gap-2">
           <button
@@ -43,7 +45,7 @@ export function GenerateDashboardModal({ open, onClose, onGenerate }: Props) {
             disabled={busy}
             className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink disabled:opacity-50"
           >
-            Ləğv et
+            {t('generateDashboardModal.cancel')}
           </button>
           <button
             onClick={submit}
@@ -51,7 +53,7 @@ export function GenerateDashboardModal({ open, onClose, onGenerate }: Props) {
             className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
             <Sparkles size={15} strokeWidth={2.5} />
-            {busy ? 'Qurulur…' : 'Qur'}
+            {busy ? t('generateDashboardModal.building') : t('generateDashboardModal.build')}
           </button>
         </div>
       }
@@ -63,24 +65,24 @@ export function GenerateDashboardModal({ open, onClose, onGenerate }: Props) {
           onChange={(e) => setGoal(e.target.value)}
           onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && submit()}
           rows={3}
-          placeholder="məs. Bu rüblük satış performansını göstər"
+          placeholder={t('generateDashboardModal.placeholder')}
           className="w-full resize-none rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         />
         <div className="flex flex-wrap gap-2">
-          {EXAMPLES.map((ex) => (
+          {EXAMPLE_KEYS.map((exKey) => (
             <button
-              key={ex}
+              key={exKey}
               type="button"
-              onClick={() => setGoal(ex)}
+              onClick={() => setGoal(t(exKey))}
               className="rounded-full border border-line px-3 py-1 text-xs text-ink-soft transition-colors hover:border-accent hover:text-ink"
             >
-              {ex}
+              {t(exKey)}
             </button>
           ))}
         </div>
         {busy && (
           <p className="text-xs text-ink-faint">
-            Suallar seçilir, sorğular işlədilir və widgetlər yığılır… bu bir neçə saniyə çəkə bilər.
+            {t('generateDashboardModal.progress')}
           </p>
         )}
       </div>

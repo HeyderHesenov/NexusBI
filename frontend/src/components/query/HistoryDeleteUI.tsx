@@ -1,4 +1,5 @@
 import { Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { ContextMenu } from '../ui/ContextMenu'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import type { useHistoryDelete } from '../../hooks/useHistoryDelete'
@@ -6,6 +7,7 @@ import type { useHistoryDelete } from '../../hooks/useHistoryDelete'
 /** Renders the right-click menu + delete confirmation for history items.
  *  Pair with the `useHistoryDelete` hook; place once per page. */
 export function HistoryDeleteUI({ del }: { del: ReturnType<typeof useHistoryDelete> }) {
+  const { t } = useTranslation()
   return (
     <>
       {del.menu && (
@@ -15,7 +17,7 @@ export function HistoryDeleteUI({ del }: { del: ReturnType<typeof useHistoryDele
           onClose={del.closeMenu}
           items={[
             {
-              label: 'Sil',
+              label: t('historyDeleteUI.delete'),
               icon: Trash2,
               destructive: true,
               onSelect: () => del.askDelete(del.menu!.id),
@@ -28,8 +30,8 @@ export function HistoryDeleteUI({ del }: { del: ReturnType<typeof useHistoryDele
         open={!!del.confirmId}
         onClose={del.cancelDelete}
         onConfirm={del.confirmDelete}
-        title="Sorğunu sil"
-        message="Bu sorğu tarixçədən silinəcək. Bunu geri qaytarmaq olmaz."
+        title={t('historyDeleteUI.confirmTitle')}
+        message={t('historyDeleteUI.confirmMessage')}
       />
     </>
   )

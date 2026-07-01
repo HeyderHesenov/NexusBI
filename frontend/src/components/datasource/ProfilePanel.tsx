@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import * as dsApi from '../../api/datasource'
 import * as api from '../../api/dataprep'
 import type { DataProfile } from '../../types'
 
 /** Per-column data profile for one datasource (null %, distinct, range). */
 export function ProfilePanel({ datasourceId }: { datasourceId: string }) {
+  const { t } = useTranslation()
   const [tables, setTables] = useState<string[]>([])
   const [table, setTable] = useState<string>('')
   const [profile, setProfile] = useState<DataProfile | null>(null)
@@ -37,13 +39,13 @@ export function ProfilePanel({ datasourceId }: { datasourceId: string }) {
   }, [datasourceId, table])
 
   if (tables.length === 0) {
-    return <p className="text-sm text-ink-faint">Profil üçün cədvəl tapılmadı.</p>
+    return <p className="text-sm text-ink-faint">{t('profilePanel.noTablesFound')}</p>
   }
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <span className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">Cədvəl</span>
+        <span className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">{t('profilePanel.table')}</span>
         <select
           value={table}
           onChange={(e) => setTable(e.target.value)}
@@ -57,24 +59,24 @@ export function ProfilePanel({ datasourceId }: { datasourceId: string }) {
         </select>
         {profile && (
           <span className="font-mono text-[10px] text-ink-faint">
-            {profile.row_sample} sətir nümunəsi
+            {t('profilePanel.rowSample', { n: profile.row_sample })}
           </span>
         )}
       </div>
 
       {loading ? (
-        <p className="text-sm text-ink-faint">Profil yüklənir…</p>
+        <p className="text-sm text-ink-faint">{t('profilePanel.loading')}</p>
       ) : profile ? (
         <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-xs">
             <thead className="bg-surface">
               <tr className="text-ink-faint">
-                <th className="px-3 py-1.5 font-medium">Sütun</th>
-                <th className="px-3 py-1.5 font-medium">Tip</th>
-                <th className="px-3 py-1.5 font-medium">Boş %</th>
-                <th className="px-3 py-1.5 font-medium">Fərqli</th>
-                <th className="px-3 py-1.5 font-medium">Min</th>
-                <th className="px-3 py-1.5 font-medium">Maks</th>
+                <th className="px-3 py-1.5 font-medium">{t('profilePanel.column')}</th>
+                <th className="px-3 py-1.5 font-medium">{t('profilePanel.type')}</th>
+                <th className="px-3 py-1.5 font-medium">{t('profilePanel.nullPct')}</th>
+                <th className="px-3 py-1.5 font-medium">{t('profilePanel.distinct')}</th>
+                <th className="px-3 py-1.5 font-medium">{t('profilePanel.min')}</th>
+                <th className="px-3 py-1.5 font-medium">{t('profilePanel.max')}</th>
               </tr>
             </thead>
             <tbody>
@@ -92,7 +94,7 @@ export function ProfilePanel({ datasourceId }: { datasourceId: string }) {
           </table>
         </div>
       ) : (
-        <p className="text-sm text-ink-faint">Profil alınmadı.</p>
+        <p className="text-sm text-ink-faint">{t('profilePanel.notAvailable')}</p>
       )}
     </div>
   )
