@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { QueryHistoryItem, QueryResult } from '../types'
 import * as queryApi from '../api/query'
+import { SQL_LABEL_PREFIX } from '../lib/sqlLabel'
 
 export interface QueryError {
   message: string
@@ -23,6 +24,10 @@ interface QueryState {
   datasourceId: string | null
   setDatasource: (id: string | null) => void
   ask: (nlQuery: string) => Promise<void>
+  // Power-user path: run analyst-authored SQL. Resolves to an error (shown inline
+  // by the editor) or null on success — it never sets the global error card, so
+  // the NL "retry" flow stays independent of manual SQL.
+  runSql: (sql: string, label?: string) => Promise<QueryError | null>
   retry: () => Promise<void>
   newChat: () => void
   loadHistory: () => Promise<void>
@@ -60,6 +65,26 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       })
     } finally {
       set({ loading: false })
+    }
+  },
+  runSql: async (sql, label) => {
+    // No global `loading` toggle: the SQL editor owns its own running state, so a
+    // manual run must not trigger the page-level NL loading skeleton or disable
+    // the natural-language input.
+    try {
+      const result = await queryApi.runSql(sql, get().datasourceId, label ?? null)
+      const q = `${SQL_LABEL_PREFIX} ${label ?? 'SQL'}`
+      set((s) => ({ result, thread: [...s.thread, { q, result }] }))
+      await get().loadHistory()
+      return null
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string; detail?: string; sql?: string } } }
+      const data = e.response?.data
+      return {
+        message: data?.message ?? 'SQL icra olunmadı.',
+        sql: data?.sql ?? null,
+        detail: data?.detail ?? null,
+      }
     }
   },
   retry: async () => {

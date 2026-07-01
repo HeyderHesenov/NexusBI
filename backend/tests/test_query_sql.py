@@ -92,6 +92,19 @@ async def test_run_requires_auth(client: AsyncClient):
     assert resp.status_code == 401
 
 
+async def test_run_rejects_no_datasource_outside_demo(client: AsyncClient, auth: dict, monkeypatch):
+    """Outside demo mode, a null datasource must NOT fall through to the demo DB."""
+    from app.services import query_service
+
+    monkeypatch.setattr(query_service.settings, "DEMO_MODE", False)
+    resp = await client.post(
+        "/api/v1/query/run",
+        json={"sql": "SELECT region FROM sales", "datasource_id": None},
+        headers=auth,
+    )
+    assert resp.status_code == 400, resp.text
+
+
 async def test_run_rejects_missing_datasource(client: AsyncClient, auth: dict):
     resp = await client.post(
         "/api/v1/query/run",

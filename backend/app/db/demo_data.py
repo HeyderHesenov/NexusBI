@@ -144,6 +144,11 @@ _DEMO_COLUMN_META: dict[str, list[tuple[str, str, list[str]]]] = {
 }
 
 
+def demo_table_names() -> list[str]:
+    """Table names in the demo model — the SELECT allowlist for demo-mode SQL."""
+    return list(_DEMO_COLUMN_META.keys())
+
+
 def format_demo_schema() -> str:
     """Schema text for the Text2SQL prompt — real types + sample values."""
     schema = {
@@ -154,6 +159,11 @@ def format_demo_schema() -> str:
         for table, cols in _DEMO_COLUMN_META.items()
     }
     return format_schema_for_prompt(schema)
+
+
+# Upper bound on rows returned from a single demo query — matches the live
+# path's MAX_RESULT_ROWS so a crafted CROSS JOIN can't exhaust worker memory.
+_DEMO_MAX_ROWS = 10000
 
 
 def execute_demo_sql(sql: str) -> tuple[list[str], list[dict[str, Any]]]:
@@ -169,7 +179,9 @@ def execute_demo_sql(sql: str) -> tuple[list[str], list[dict[str, Any]]]:
         _seed(conn)
         conn.row_factory = sqlite3.Row
         cur = conn.execute(sql)
-        rows = cur.fetchall()
+        # Bound the fetch: a power-user CROSS JOIN over the demo tables could
+        # otherwise materialize unbounded rows (the live path caps at MAX_RESULT_ROWS).
+        rows = cur.fetchmany(_DEMO_MAX_ROWS)
         columns = [d[0] for d in cur.description] if cur.description else []
         return columns, [dict(r) for r in rows]
     except sqlite3.Error as exc:

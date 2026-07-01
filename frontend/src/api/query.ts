@@ -14,6 +14,19 @@ export async function askQuery(
   return data
 }
 
+export async function runSql(
+  sql: string,
+  datasource_id: string | null,
+  label: string | null = null,
+): Promise<QueryResult> {
+  const { data } = await client.post<QueryResult>('/query/run', {
+    sql,
+    datasource_id,
+    label,
+  })
+  return data
+}
+
 export async function getHistory(page = 1, limit = 20): Promise<QueryHistoryPage> {
   const { data } = await client.get<QueryHistoryPage>('/query/history', {
     params: { page, limit },

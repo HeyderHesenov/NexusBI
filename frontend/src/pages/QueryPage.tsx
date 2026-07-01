@@ -1,4 +1,4 @@
-import { AlertTriangle, Bookmark, Clock, Database, Lightbulb, LayoutGrid, Maximize2, MessageSquarePlus, RefreshCw, Target, Trash2 } from 'lucide-react'
+import { AlertTriangle, Bookmark, Clock, Code2, Database, Lightbulb, LayoutGrid, Maximize2, MessageSquarePlus, Pencil, RefreshCw, Sparkles, Target, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ChartView } from '../components/charts/ChartView'
 import { HistoryDeleteUI } from '../components/query/HistoryDeleteUI'
@@ -10,19 +10,24 @@ import { DatasourcePicker } from '../components/query/DatasourcePicker'
 import { NLQueryInput } from '../components/query/NLQueryInput'
 import { SaveQueryModal } from '../components/query/SaveQueryModal'
 import { SchemaBrowser } from '../components/query/SchemaBrowser'
+import { SQLEditor } from '../components/query/SQLEditor'
 import { SQLPreview } from '../components/query/SQLPreview'
-import { useQueryStore, type ChatTurn } from '../store/queryStore'
+import { useQueryStore, type ChatTurn, type QueryError } from '../store/queryStore'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { buildSamples } from '../lib/sampleQueries'
+import { isSqlLabel, stripSqlLabel } from '../lib/sqlLabel'
+import type { DataSourceSchema } from '../types'
 
 export function QueryPage() {
-  const { thread, loading, error, ask, retry, newChat, history, loadHistory, datasourceId } =
+  const { thread, loading, error, ask, runSql, retry, newChat, history, loadHistory, datasourceId } =
     useQueryStore()
   const { schemas, loadSchema } = useDatasourceStore()
   const del = useHistoryDelete()
   const [saveLogId, setSaveLogId] = useState<string | null>(null)
   const [saveQ, setSaveQ] = useState<string | null>(null)
   const [decideFor, setDecideFor] = useState<{ insight: string; logId: string | null; question: string } | null>(null)
+  const [mode, setMode] = useState<'nl' | 'sql'>('nl')
+  const schema = datasourceId ? schemas[datasourceId] : undefined
 
   useEffect(() => {
     loadHistory().catch(() => undefined)
@@ -56,18 +61,33 @@ export function QueryPage() {
 
           <div className="flex items-center justify-between gap-2">
             <DatasourcePicker />
-            {thread.length > 0 && (
-              <button
-                onClick={newChat}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink"
-              >
-                <MessageSquarePlus size={14} /> Yeni söhbət
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              <ModeToggle mode={mode} onChange={setMode} />
+              {thread.length > 0 && (
+                <button
+                  onClick={newChat}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+                >
+                  <MessageSquarePlus size={14} /> Yeni söhbət
+                </button>
+              )}
+            </div>
           </div>
 
-          <NLQueryInput onSubmit={onAsk} loading={loading} samples={samples} />
-          {thread.length > 0 && (
+          {mode === 'nl' ? (
+            <NLQueryInput onSubmit={onAsk} loading={loading} samples={samples} />
+          ) : (
+            <SqlEditorCard
+              // Remount when the source (and therefore the autocomplete schema)
+              // changes so table/column completion reflects the active datasource.
+              editorKey={`sql-${datasourceId ?? 'demo'}-${schema ? 'ready' : 'pending'}`}
+              schema={schema}
+              onRun={(sql) => runSql(sql)}
+              runLabel="Sorğunu işlət"
+              subtitle="— öz sorğunu yaz, AI-siz işlət"
+            />
+          )}
+          {mode === 'nl' && thread.length > 0 && (
             <p className="text-xs text-ink-faint">
               İpucu: davam sualı ver — “bunu aya görə böl”, “yalnız 2024”.
             </p>
@@ -101,6 +121,8 @@ export function QueryPage() {
             <TurnCard
               key={thread.length - 1 - i}
               turn={turn}
+              schema={schema}
+              onRunSql={(sql) => runSql(sql)}
               onSaveDashboard={() => turn.result.query_log_id && setSaveLogId(turn.result.query_log_id)}
               onSaveQuery={() => setSaveQ(turn.q)}
               onMakeDecision={() =>
@@ -139,12 +161,17 @@ export function QueryPage() {
                 {history.slice(0, 12).map((item) => (
                   <li key={item.id} className="group relative">
                     <button
-                      onClick={() => onAsk(item.natural_language)}
+                      onClick={() => !isSqlLabel(item.natural_language) && onAsk(item.natural_language)}
                       onContextMenu={(e) => del.openMenu(item.id, e)}
                       title={item.natural_language}
-                      className="w-full truncate rounded-lg px-2 py-1.5 pr-8 text-left text-sm text-ink-soft transition hover:bg-surface hover:text-ink"
+                      className="flex w-full items-center gap-1.5 truncate rounded-lg px-2 py-1.5 pr-8 text-left text-sm text-ink-soft transition hover:bg-surface hover:text-ink"
                     >
-                      {item.natural_language}
+                      {isSqlLabel(item.natural_language) && (
+                        <span className="shrink-0 rounded border border-line px-1 font-mono text-[9px] uppercase tracking-wider text-ink-faint">
+                          sql
+                        </span>
+                      )}
+                      <span className="truncate">{stripSqlLabel(item.natural_language)}</span>
                     </button>
                     <button
                       onClick={() => del.askDelete(item.id)}
@@ -197,17 +224,24 @@ export function QueryPage() {
 
 function TurnCard({
   turn,
+  schema,
+  onRunSql,
   onSaveDashboard,
   onSaveQuery,
   onMakeDecision,
 }: {
   turn: ChatTurn
+  schema?: DataSourceSchema
+  onRunSql: (sql: string) => Promise<QueryError | null>
   onSaveDashboard: () => void
   onSaveQuery: () => void
   onMakeDecision: () => void
 }) {
   const { result, q } = turn
   const [fs, setFs] = useState(false)
+  const [editing, setEditing] = useState(false)
+  // Editing raw SQL only makes sense for SQL sources (Power BI results are DAX).
+  const canEdit = (result.query_language ?? 'sql') === 'sql'
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-2">
@@ -263,6 +297,30 @@ function TurnCard({
 
       <SQLPreview sql={result.sql} language={result.query_language} />
 
+      {canEdit && !editing && (
+        <button
+          onClick={() => setEditing(true)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft transition hover:text-accent"
+        >
+          <Pencil size={13} /> SQL-i redaktə et
+        </button>
+      )}
+      {canEdit && editing && (
+        <SqlEditorCard
+          editorKey={`edit-${result.query_log_id ?? q}`}
+          initialValue={result.sql}
+          schema={schema}
+          emphasized
+          onRun={async (sql) => {
+            const err = await onRunSql(sql)
+            if (!err) setEditing(false)
+            return err
+          }}
+          onCancel={() => setEditing(false)}
+          runLabel="Redaktə edilmiş SQL-i işlət"
+        />
+      )}
+
       <div className="flex flex-wrap gap-2">
         <button
           onClick={onSaveDashboard}
@@ -283,6 +341,69 @@ function TurnCard({
           <Target size={15} /> Qərara çevir
         </button>
       </div>
+    </div>
+  )
+}
+
+function SqlEditorCard({
+  editorKey,
+  schema,
+  initialValue,
+  onRun,
+  onCancel,
+  runLabel,
+  subtitle,
+  emphasized,
+}: {
+  editorKey: string
+  schema?: DataSourceSchema
+  initialValue?: string
+  onRun: (sql: string) => Promise<QueryError | null>
+  onCancel?: () => void
+  runLabel: string
+  subtitle?: string
+  emphasized?: boolean
+}) {
+  return (
+    <div
+      className={`rounded-2xl border ${emphasized ? 'border-accent/30' : 'border-line'} bg-surface p-4 shadow-card`}
+    >
+      <div className="mb-3 flex items-center gap-2">
+        <Code2 size={14} className="text-accent" />
+        <span className="eyebrow text-accent">SQL redaktoru</span>
+        {subtitle && <span className="text-xs text-ink-faint">{subtitle}</span>}
+      </div>
+      <SQLEditor
+        key={editorKey}
+        schema={schema}
+        initialValue={initialValue}
+        onRun={onRun}
+        onCancel={onCancel}
+        runLabel={runLabel}
+      />
+    </div>
+  )
+}
+
+function ModeToggle({ mode, onChange }: { mode: 'nl' | 'sql'; onChange: (m: 'nl' | 'sql') => void }) {
+  const base =
+    'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition'
+  return (
+    <div className="inline-flex rounded-lg border border-line bg-surface p-0.5">
+      <button
+        onClick={() => onChange('nl')}
+        aria-pressed={mode === 'nl'}
+        className={`${base} ${mode === 'nl' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink'}`}
+      >
+        <Sparkles size={13} /> Təbii dil
+      </button>
+      <button
+        onClick={() => onChange('sql')}
+        aria-pressed={mode === 'sql'}
+        className={`${base} ${mode === 'sql' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink'}`}
+      >
+        <Code2 size={13} /> SQL
+      </button>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../api/query', () => ({
   askQuery: vi.fn(),
+  runSql: vi.fn(),
   getHistory: vi.fn(),
   deleteQuery: vi.fn(),
 }))
@@ -10,6 +11,7 @@ import { useQueryStore } from './queryStore'
 import * as queryApi from '../api/query'
 
 const askQuery = vi.mocked(queryApi.askQuery)
+const runSql = vi.mocked(queryApi.runSql)
 const getHistory = vi.mocked(queryApi.getHistory)
 const deleteQuery = vi.mocked(queryApi.deleteQuery)
 
@@ -68,5 +70,45 @@ describe('queryStore.deleteHistoryItem', () => {
     expect(deleteQuery).toHaveBeenCalledWith('gone')
     expect(s.thread.map((t) => t.result.query_log_id)).toEqual(['keep'])
     expect(s.history).toEqual([{ id: 'keep' }]) // reloaded from server
+  })
+})
+
+describe('queryStore.runSql', () => {
+  it('appends a ✎-labelled turn on success and returns null (no global error)', async () => {
+    runSql.mockResolvedValue({ query_log_id: 'r1', sql: 'SELECT 1' } as never)
+    getHistory.mockResolvedValue({ items: [] } as never)
+    useQueryStore.setState({ datasourceId: 'ds1', thread: [], error: null })
+
+    const err = await useQueryStore.getState().runSql('SELECT 1', 'baxış')
+
+    expect(err).toBeNull()
+    expect(runSql).toHaveBeenCalledWith('SELECT 1', 'ds1', 'baxış')
+    const s = useQueryStore.getState()
+    expect(s.thread).toHaveLength(1)
+    expect(s.thread[0].q).toBe('✎ baxış')
+    expect(s.error).toBeNull() // manual SQL never touches the NL error card
+    expect(s.loading).toBe(false)
+  })
+
+  it('uses a generic ✎ SQL label when none is given', async () => {
+    runSql.mockResolvedValue({ query_log_id: 'r2' } as never)
+    getHistory.mockResolvedValue({ items: [] } as never)
+    useQueryStore.setState({ thread: [], datasourceId: null })
+
+    await useQueryStore.getState().runSql('SELECT 2')
+    expect(useQueryStore.getState().thread[0].q).toBe('✎ SQL')
+  })
+
+  it('returns the structured error inline and does not append a turn', async () => {
+    runSql.mockRejectedValue({ response: { data: { message: 'Pis SQL', detail: 'd' } } })
+    useQueryStore.setState({ thread: [], error: null })
+
+    const err = await useQueryStore.getState().runSql('DROP TABLE x')
+
+    expect(err).toEqual({ message: 'Pis SQL', sql: null, detail: 'd' })
+    const s = useQueryStore.getState()
+    expect(s.thread).toHaveLength(0)
+    expect(s.error).toBeNull() // stays out of the global error state
+    expect(s.loading).toBe(false)
   })
 })

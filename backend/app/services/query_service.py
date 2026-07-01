@@ -244,8 +244,6 @@ async def reexecute_logged_query(
     ds = await ds_service.get_datasource(db, user_id, log.datasource_id)
     if ds.db_type == DBType.powerbi:
         raise ValueError("live refresh unsupported for Power BI")
-    from app.services import rls_service, rls_sql
-
     # Re-introspect the schema once: needed for both the table allowlist and RLS.
     own_cache = cache or await build_cache_service()
     try:
@@ -253,17 +251,34 @@ async def reexecute_logged_query(
     finally:
         if cache is None:  # close only the transient client we created here
             await own_cache.aclose()
-    # Allowlist on the re-run path too — stored SQL must not read tables outside
-    # the current schema (e.g. rows written before the allowlist existed).
-    sql_guard.assert_tables_in_schema(log.generated_sql, list(schema.keys()), ds.db_type.value)
-    # Row-level security: constrain the stored SQL for this viewer (SQL-level,
-    # correct for aggregates) before re-running.
-    exec_sql = log.generated_sql
+    # Same guard chain as generation/manual paths (allowlist + per-viewer RLS).
+    return await _guarded_execute(ds, log.generated_sql, schema, db, user_id)
+
+
+async def _guarded_execute(
+    ds: Any,
+    clean_sql: str,
+    schema: dict[str, Any],
+    db: AsyncSession,
+    user_id: str,
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """Table allowlist + per-viewer RLS + execute, for SELECT-validated SQL.
+
+    Single source of truth for the live-source guard chain shared by the AI
+    pipeline, live refresh, and the manual SQL path — so a new guard (or a change
+    to the ordering) can't be added to one path and silently missed on another.
+    The allowlist is the ONLY place tables are checked (execute_select re-validates
+    SELECT-only but never the table set); RLS is per-viewer and constrains BEFORE
+    aggregation (post-fetch filtering leaks SUM/GROUP BY totals). Fails closed.
+    """
+    sql_guard.assert_tables_in_schema(clean_sql, list(schema.keys()), ds.db_type.value)
+    from app.services import rls_service, rls_sql
+
     rules = await rls_service.rules_for_user(db, ds.id, user_id)
+    exec_sql = clean_sql
     if rules:
         exec_sql = rls_sql.constrain_sql(exec_sql, rules, schema, ds.db_type.value)
-    columns, rows = await ds_service.execute_select(ds, exec_sql)
-    return columns, rows
+    return await ds_service.execute_select(ds, exec_sql)
 
 
 def _sql_label(label: str | None, sql: str) -> str:
@@ -297,12 +312,18 @@ async def run_user_sql(
     clean_sql = sql_guard.validate_select_only(sql)
 
     if datasource_id is None:
-        # Demo / no datasource: allowlist against the fixed demo model, run in-memory.
+        # Ad-hoc SQL over the synthetic demo model — only when demo mode is on
+        # (mirrors process_nl_query's DEMO_MODE gate; never expose it in prod).
+        if not settings.DEMO_MODE:
+            raise NexusBIException("Sorğu üçün əvvəlcə mənbə seçin.")
         from app.db import demo_data
 
-        allowed = list(demo_data._DEMO_COLUMN_META.keys())
-        sql_guard.assert_tables_in_schema(clean_sql, allowed, "sqlite")
-        columns, rows = demo_data.execute_demo_sql(clean_sql)
+        sql_guard.assert_tables_in_schema(clean_sql, demo_data.demo_table_names(), "sqlite")
+        try:
+            columns, rows = demo_data.execute_demo_sql(clean_sql)
+        except NexusBIException as exc:
+            exc.sql = clean_sql  # surface the user's SQL in the error card
+            raise
     else:
         ds = await ds_service.get_datasource(db, user_id, datasource_id)
         if ds.db_type == DBType.powerbi:
@@ -310,17 +331,8 @@ async def run_user_sql(
                 "Power BI mənbələri əl ilə SQL dəstəkləmir (DAX istifadə olunur)."
             )
         schema = await ds_service.get_schema_cached(ds, cache)
-        # Mandatory allowlist — execute_select re-validates SELECT-only but never
-        # checks tables, so this is the sole gate against metadata/cross-DB reads.
-        sql_guard.assert_tables_in_schema(clean_sql, list(schema.keys()), ds.db_type.value)
-        from app.services import rls_service, rls_sql
-
-        rules = await rls_service.rules_for_user(db, ds.id, user_id)
-        exec_sql = clean_sql
-        if rules:
-            exec_sql = rls_sql.constrain_sql(exec_sql, rules, schema, ds.db_type.value)
         try:
-            columns, rows = await ds_service.execute_select(ds, exec_sql)
+            columns, rows = await _guarded_execute(ds, clean_sql, schema, db, user_id)
         except NexusBIException as exc:
             exc.sql = clean_sql  # surface the user's SQL in the error card
             raise
@@ -410,21 +422,11 @@ async def _live_pipeline(
     sql_result = await _generate_sql_cached(
         nl_query, schema_text, ds.db_type.value, extra_context, cache
     )
-    # Allowlist: the generated query may only read tables this datasource exposes
-    # (blocks metadata/catalog exfil and any hallucinated cross-DB table).
-    sql_guard.assert_tables_in_schema(sql_result.sql, list(schema.keys()), ds.db_type.value)
-    # Row-level security: rewrite the SQL so each protected table is row-filtered
-    # BEFORE aggregation (post-fetch filtering leaks SUM/GROUP BY totals). The
-    # original (unconstrained) SQL is what we persist/show — RLS is per-viewer and
-    # re-applied on every execution, not baked into the stored query.
-    from app.services import rls_service, rls_sql
-
-    rules = await rls_service.rules_for_user(db, ds.id, user_id)
-    exec_sql = sql_result.sql
-    if rules:
-        exec_sql = rls_sql.constrain_sql(exec_sql, rules, schema, ds.db_type.value)
+    # Guard chain (allowlist + per-viewer RLS). The original (unconstrained) SQL is
+    # what we persist/show — RLS is per-viewer and re-applied on every execution,
+    # not baked into the stored query.
     try:
-        columns, rows = await ds_service.execute_select(ds, exec_sql)
+        columns, rows = await _guarded_execute(ds, sql_result.sql, schema, db, user_id)
     except NexusBIException as exc:
         # Surface the AI-generated SQL so the user can see what failed.
         exc.sql = sql_result.sql
