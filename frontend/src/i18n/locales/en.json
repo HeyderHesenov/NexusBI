@@ -61,6 +61,8 @@
   "brandingPage": {
     "appliesNote": "Applies to the embed (iframe / SDK) view.",
     "colorPickerLabel": "Color picker",
+    "contrastLow": "Low contrast",
+    "contrastOk": "AA contrast",
     "errColorFormat": "Color must be in #RRGGBB format.",
     "errLogoLong": "URL is too long.",
     "errLogoScheme": "URL must start with http:// or https://.",
@@ -71,6 +73,7 @@
     "labelLogoUrl": "Logo URL (optional)",
     "labelPrimaryColor": "Primary color",
     "loadError": "Brand configuration failed to load — showing default values.",
+    "presetsLabel": "Preset colors",
     "previewLabel": "Preview · embed dashboard",
     "resetDefault": "Reset to default",
     "sampleButton": "Sample button",

@@ -61,6 +61,8 @@
   "brandingPage": {
     "appliesNote": "Gömme (iframe / SDK) görünümüne uygulanır.",
     "colorPickerLabel": "Renk seçici",
+    "contrastLow": "Düşük kontrast",
+    "contrastOk": "AA kontrast",
     "errColorFormat": "Renk #RRGGBB biçiminde olmalıdır.",
     "errLogoLong": "URL çok uzun.",
     "errLogoScheme": "URL http:// veya https:// ile başlamalıdır.",
@@ -71,6 +73,7 @@
     "labelLogoUrl": "Logo URL (isteğe bağlı)",
     "labelPrimaryColor": "Ana renk",
     "loadError": "Marka yapılandırması yüklenemedi — varsayılan değerler gösteriliyor.",
+    "presetsLabel": "Hazır renkler",
     "previewLabel": "Önizleme · gömme paneli",
     "resetDefault": "Varsayılana sıfırla",
     "sampleButton": "Örnek düğme",
