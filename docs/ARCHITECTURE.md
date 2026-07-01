@@ -57,6 +57,18 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
      embeds the fresh NL→SQL pair, best-effort) → return `QueryResult`.
 3. Errors raise `NexusBIException` (mapped to JSON with `sql` surfaced for query failures).
 
+**Manual SQL path (`query_service.run_user_sql`, `POST /query/run`):** the power-user
+entry point runs analyst-authored SQL with **no AI** — `sql_guard.validate_select_only`
+first (cheap DML/DDL/multi-statement reject), then the shared **`_guarded_execute`** helper
+(table allowlist → per-viewer RLS `constrain_sql` → pooled `execute_select`). That helper is
+the single source of truth for the live-source guard chain, reused by `_live_pipeline`,
+`reexecute_logged_query`, and `run_user_sql`, so a guard can't drift onto one path only.
+Charts are picked **rule-based** (`chart_selector.rule_based_chart`), no insight is generated,
+and the run persists a `QueryLog` (label `✎ …` in `natural_language`; no migration) so history,
+dashboards, and the analysis panels keep working. Demo/no-datasource is gated on `DEMO_MODE`
+(rejected in prod) and the demo executor caps rows (`fetchmany`). Power BI sources are rejected
+(DAX ≠ SQL). Rate-limited per-IP (`sql_run`, no AI quota).
+
 ## Key subsystems
 
 - **Semantic layer (metrics):** user-defined metric definitions (name/expression/
@@ -221,6 +233,14 @@ customer↔sales joins; `format_demo_schema` sends real column types + sample va
 
 ## Notable architecture deltas (this round)
 
+- **SQL power-user path + guard-chain consolidation.** New AI-free `POST /query/run`
+  (`run_user_sql`) lets analysts run/edit raw SQL. The allowlist+RLS+execute sequence that was
+  copy-pasted across `_live_pipeline` and `reexecute_logged_query` is now a single
+  `query_service._guarded_execute` helper reused by all three callers (no security drift). Manual
+  runs are DEMO_MODE-gated for the no-datasource case, demo execution is row-capped (`fetchmany`),
+  and history rows are marked with a `✎` label (no migration). Frontend: CodeMirror 6 lazy chunk
+  (`SQLEditor`→`SQLEditorInner`, schema-aware autocomplete) — kept out of the initial route bundle
+  like recharts; `lib/sqlLabel.ts` centralizes the marker.
 - **Advanced-analytics subsystem (6 features, deterministic stats — scipy added).**
   `services/stats.py` is the shared statistical core (Welch t-test + Cohen's d, two-proportion
   z-test, Pearson, Benjamini-Hochberg FDR, MAD outliers, summary-stats t-test); `services/tabular.py`
