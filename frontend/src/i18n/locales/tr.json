@@ -1,0 +1,54 @@
+{
+  "common": {
+    "demoMode": "Demo modu"
+  },
+  "title": {
+    "sources": "Veri kaynakları",
+    "reports": "Raporlar",
+    "decisions": "Kararlar",
+    "metrics": "Metrikler",
+    "requirements": "Gereksinimler",
+    "workspaces": "Çalışma alanları",
+    "targets": "KPI hedefleri",
+    "branding": "Marka",
+    "notifications": "Bildirimler",
+    "dashboards": "Panolar",
+    "history": "Geçmiş",
+    "pricing": "Planlar",
+    "home": "Sorgu",
+    "fallback": "NexusBI"
+  },
+  "topbar": {
+    "search": "Ara…",
+    "searchTitle": "Ara (⌘K)",
+    "notifications": "Bildirimler",
+    "lightTheme": "Açık tema",
+    "darkTheme": "Koyu tema",
+    "language": "Dil"
+  },
+  "nav": {
+    "groups": {
+      "analytics": "Analiz",
+      "data": "Veri",
+      "viz": "Görselleştirme",
+      "planning": "Planlama",
+      "admin": "Yönetim"
+    },
+    "query": "Sor",
+    "history": "Geçmiş",
+    "insights": "Keşifler",
+    "sources": "Kaynaklar",
+    "metrics": "Metrikler",
+    "metricTree": "Metrik ağacı",
+    "contracts": "Veri sözleşmeleri",
+    "requirements": "Gereksinimler",
+    "dashboards": "Panolar",
+    "reports": "Raporlar",
+    "decisions": "Kararlar",
+    "targets": "Hedefler",
+    "experiments": "A/B testleri",
+    "workspaces": "Takım",
+    "branding": "Marka",
+    "pricing": "Planlar"
+  }
+}

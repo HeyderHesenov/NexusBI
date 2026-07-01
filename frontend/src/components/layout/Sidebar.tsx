@@ -1,5 +1,6 @@
 import { BookMarked, CreditCard, Database, FileText, FlaskConical, Gauge, GitBranch, History, LayoutDashboard, MessageSquare, Palette, ShieldCheck, Sparkles, Tag, Target, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { NexusMark } from '../brand/NexusMark'
 import { SidebarAccount } from './SidebarAccount'
 import { useDatasourceStore } from '../../store/datasourceStore'
@@ -7,51 +8,52 @@ import { useQueryStore } from '../../store/queryStore'
 
 const groups = [
   {
-    title: 'Analiz',
+    titleKey: 'nav.groups.analytics',
     items: [
-      { to: '/', label: 'Soruş', icon: MessageSquare },
-      { to: '/history', label: 'Tarixçə', icon: History },
-      { to: '/insights', label: 'Kəşflər', icon: Sparkles },
+      { to: '/', labelKey: 'nav.query', icon: MessageSquare },
+      { to: '/history', labelKey: 'nav.history', icon: History },
+      { to: '/insights', labelKey: 'nav.insights', icon: Sparkles },
     ],
   },
   {
-    title: 'Məlumat',
+    titleKey: 'nav.groups.data',
     items: [
-      { to: '/sources', label: 'Mənbələr', icon: Database },
-      { to: '/metrics', label: 'Metriklər', icon: Tag },
-      { to: '/metric-tree', label: 'Metrik ağacı', icon: GitBranch },
-      { to: '/contracts', label: 'Data müqavilələri', icon: ShieldCheck },
-      { to: '/requirements', label: 'Tələblər', icon: FileText },
+      { to: '/sources', labelKey: 'nav.sources', icon: Database },
+      { to: '/metrics', labelKey: 'nav.metrics', icon: Tag },
+      { to: '/metric-tree', labelKey: 'nav.metricTree', icon: GitBranch },
+      { to: '/contracts', labelKey: 'nav.contracts', icon: ShieldCheck },
+      { to: '/requirements', labelKey: 'nav.requirements', icon: FileText },
     ],
   },
   {
-    title: 'Vizuallaşdırma',
+    titleKey: 'nav.groups.viz',
     items: [
-      { to: '/dashboards', label: 'Dashboard-lar', icon: LayoutDashboard },
-      { to: '/reports', label: 'Hesabatlar', icon: BookMarked },
+      { to: '/dashboards', labelKey: 'nav.dashboards', icon: LayoutDashboard },
+      { to: '/reports', labelKey: 'nav.reports', icon: BookMarked },
     ],
   },
   {
-    title: 'Planlama',
+    titleKey: 'nav.groups.planning',
     items: [
-      { to: '/decisions', label: 'Qərarlar', icon: Target },
-      { to: '/targets', label: 'Hədəflər', icon: Gauge },
-      { to: '/experiments', label: 'A/B testlər', icon: FlaskConical },
+      { to: '/decisions', labelKey: 'nav.decisions', icon: Target },
+      { to: '/targets', labelKey: 'nav.targets', icon: Gauge },
+      { to: '/experiments', labelKey: 'nav.experiments', icon: FlaskConical },
     ],
   },
   {
-    title: 'İdarəetmə',
+    titleKey: 'nav.groups.admin',
     items: [
-      { to: '/workspaces', label: 'Komanda', icon: Users },
+      { to: '/workspaces', labelKey: 'nav.workspaces', icon: Users },
       // AI Keyfiyyət operator/developer alətidir — əsas naviqasiyadan çıxarıldı;
       // route qalır, yalnız /ai-quality URL-i ilə əlçatandır.
-      { to: '/branding', label: 'Brendinq', icon: Palette },
-      { to: '/pricing', label: 'Planlar', icon: CreditCard },
+      { to: '/branding', labelKey: 'nav.branding', icon: Palette },
+      { to: '/pricing', labelKey: 'nav.pricing', icon: CreditCard },
     ],
   },
 ]
 
 export function Sidebar() {
+  const { t } = useTranslation()
   const datasourceId = useQueryStore((s) => s.datasourceId)
   const sources = useDatasourceStore((s) => s.sources)
   const active = sources.find((s) => s.id === datasourceId)
@@ -73,10 +75,10 @@ export function Sidebar() {
 
       <nav className="mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-3">
         {groups.map((group, gi) => (
-          <div key={group.title} className={gi === 0 ? '' : 'mt-5'}>
-            <span className="eyebrow block px-3 pb-1.5">{group.title}</span>
+          <div key={group.titleKey} className={gi === 0 ? '' : 'mt-5'}>
+            <span className="eyebrow block px-3 pb-1.5">{t(group.titleKey)}</span>
             <div className="flex flex-col gap-0.5">
-              {group.items.map(({ to, label, icon: Icon }) => (
+              {group.items.map(({ to, labelKey, icon: Icon }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -99,7 +101,7 @@ export function Sidebar() {
                         strokeWidth={2}
                         className={isActive ? 'text-accent' : ''}
                       />
-                      <span className="font-medium">{label}</span>
+                      <span className="font-medium">{t(labelKey)}</span>
                     </>
                   )}
                 </NavLink>
@@ -113,7 +115,7 @@ export function Sidebar() {
         <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent shadow-[0_0_6px_rgb(var(--accent))]" />
           <span className="truncate font-mono text-[10px] uppercase tracking-wider text-ink-soft">
-            {active ? active.name : 'Demo mode'}
+            {active ? active.name : t('common.demoMode')}
           </span>
         </div>
       </div>

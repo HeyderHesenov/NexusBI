@@ -1,0 +1,54 @@
+{
+  "common": {
+    "demoMode": "Demo mode"
+  },
+  "title": {
+    "sources": "Data sources",
+    "reports": "Reports",
+    "decisions": "Decisions",
+    "metrics": "Metrics",
+    "requirements": "Requirements",
+    "workspaces": "Workspaces",
+    "targets": "KPI targets",
+    "branding": "Branding",
+    "notifications": "Notifications",
+    "dashboards": "Dashboards",
+    "history": "History",
+    "pricing": "Plans",
+    "home": "Query",
+    "fallback": "NexusBI"
+  },
+  "topbar": {
+    "search": "Search…",
+    "searchTitle": "Search (⌘K)",
+    "notifications": "Notifications",
+    "lightTheme": "Light theme",
+    "darkTheme": "Dark theme",
+    "language": "Language"
+  },
+  "nav": {
+    "groups": {
+      "analytics": "Analytics",
+      "data": "Data",
+      "viz": "Visualization",
+      "planning": "Planning",
+      "admin": "Administration"
+    },
+    "query": "Ask",
+    "history": "History",
+    "insights": "Discoveries",
+    "sources": "Sources",
+    "metrics": "Metrics",
+    "metricTree": "Metric tree",
+    "contracts": "Data contracts",
+    "requirements": "Requirements",
+    "dashboards": "Dashboards",
+    "reports": "Reports",
+    "decisions": "Decisions",
+    "targets": "Targets",
+    "experiments": "A/B tests",
+    "workspaces": "Team",
+    "branding": "Branding",
+    "pricing": "Plans"
+  }
+}
