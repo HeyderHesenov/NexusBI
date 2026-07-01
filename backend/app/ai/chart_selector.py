@@ -40,6 +40,15 @@ def _rule_based(columns: list[str], data: list[dict[str, Any]]) -> ChartConfig:
     return ChartConfig(chart_type="table")
 
 
+def rule_based_chart(columns: list[str], data: list[dict[str, Any]]) -> ChartConfig:
+    """Deterministic chart selection with NO AI call.
+
+    Used by the SQL power-user path, which must stay entirely AI-free (no quota,
+    no latency). Thin public wrapper over the existing fallback heuristic.
+    """
+    return _rule_based(columns, data)
+
+
 async def select_chart_type(
     columns: list[str], data: list[dict[str, Any]], nl_query: str
 ) -> ChartConfig:

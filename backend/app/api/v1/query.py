@@ -1,7 +1,7 @@
 """Query endpoints — the NL → dashboard pipeline."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import func, select
 
 from app.ai import analysis, root_cause, stats_guard
@@ -17,11 +17,13 @@ from app.schemas.analysis import (
     RootCauseResponse,
     SignificanceResponse,
 )
+from app.core.rate_limit import rate_limit
 from app.schemas.query import (
     QueryHistoryItem,
     QueryHistoryPage,
     QueryRequest,
     QueryResult,
+    RawSQLRequest,
 )
 from app.schemas.scenario import (
     GoalSeekRequest,
@@ -46,6 +48,21 @@ async def ask(
         db,
         cache,
         previous_query_log_id=payload.previous_query_log_id,
+    )
+
+
+# Manual SQL uses no AI quota, so it's gated by a light per-IP limit instead
+# of the monthly AI counter (RateLimitedUser).
+_sql_run_limit = rate_limit("sql_run", limit=30, window_seconds=60)
+
+
+@router.post("/run", response_model=QueryResult, dependencies=[Depends(_sql_run_limit)])
+async def run_sql(
+    payload: RawSQLRequest, user: CurrentUser, db: DbDep, cache: CacheDep
+) -> QueryResult:
+    """Power-user path: execute analyst-authored SQL directly (no AI generation)."""
+    return await query_service.run_user_sql(
+        payload.sql, payload.datasource_id, payload.label, user.id, db, cache
     )
 
 

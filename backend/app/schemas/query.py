@@ -20,6 +20,15 @@ class QueryRequest(BaseModel):
     previous_query_log_id: str | None = None
 
 
+class RawSQLRequest(BaseModel):
+    """Power-user path: run analyst-authored SQL directly (no AI generation)."""
+
+    sql: str = Field(min_length=1, max_length=20000)
+    datasource_id: str | None = None
+    # Optional short history label; the SQL's first line is used when omitted.
+    label: str | None = Field(default=None, max_length=200)
+
+
 class QueryResult(BaseModel):
     sql: str
     # "sql" for database sources, "dax" for Power BI sources (UI labels it).

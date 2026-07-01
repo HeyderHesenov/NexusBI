@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.chart_selector import select_chart_type
+from app.ai.chart_selector import rule_based_chart, select_chart_type
 from app.ai.insight_generator import generate_insight
 from app.ai import sql_guard
 from app.ai.text2dax import Text2DAXEngine
@@ -264,6 +264,85 @@ async def reexecute_logged_query(
         exec_sql = rls_sql.constrain_sql(exec_sql, rules, schema, ds.db_type.value)
     columns, rows = await ds_service.execute_select(ds, exec_sql)
     return columns, rows
+
+
+def _sql_label(label: str | None, sql: str) -> str:
+    """Short, non-empty history label for a manual SQL run (marked with ✎)."""
+    text = (label or "").strip()
+    if not text:
+        # First non-blank line of the query, trimmed for the history list.
+        text = next((ln.strip() for ln in sql.splitlines() if ln.strip()), "SQL")
+    return f"✎ {text[:180]}"
+
+
+async def run_user_sql(
+    sql: str,
+    datasource_id: str | None,
+    label: str | None,
+    user_id: str,
+    db: AsyncSession,
+    cache: CacheService,
+) -> QueryResult:
+    """Execute analyst-authored SQL directly — NO AI anywhere in this path.
+
+    Reuses the exact security chain of the AI pipeline: SELECT-only validation,
+    the table allowlist (the ONLY place it is enforced — not inside execute_select),
+    and per-viewer RLS constraining (fail-closed). Charts are picked by rule
+    (no LLM), no insight is generated, and the run is persisted as a QueryLog so
+    history, dashboards, and the analysis panels keep working.
+    """
+    started = time.perf_counter()
+
+    # SELECT-only first: cheap rejection of DML/DDL/multi-statement before any DB work.
+    clean_sql = sql_guard.validate_select_only(sql)
+
+    if datasource_id is None:
+        # Demo / no datasource: allowlist against the fixed demo model, run in-memory.
+        from app.db import demo_data
+
+        allowed = list(demo_data._DEMO_COLUMN_META.keys())
+        sql_guard.assert_tables_in_schema(clean_sql, allowed, "sqlite")
+        columns, rows = demo_data.execute_demo_sql(clean_sql)
+    else:
+        ds = await ds_service.get_datasource(db, user_id, datasource_id)
+        if ds.db_type == DBType.powerbi:
+            raise NexusBIException(
+                "Power BI mənbələri əl ilə SQL dəstəkləmir (DAX istifadə olunur)."
+            )
+        schema = await ds_service.get_schema_cached(ds, cache)
+        # Mandatory allowlist — execute_select re-validates SELECT-only but never
+        # checks tables, so this is the sole gate against metadata/cross-DB reads.
+        sql_guard.assert_tables_in_schema(clean_sql, list(schema.keys()), ds.db_type.value)
+        from app.services import rls_service, rls_sql
+
+        rules = await rls_service.rules_for_user(db, ds.id, user_id)
+        exec_sql = clean_sql
+        if rules:
+            exec_sql = rls_sql.constrain_sql(exec_sql, rules, schema, ds.db_type.value)
+        try:
+            columns, rows = await ds_service.execute_select(ds, exec_sql)
+        except NexusBIException as exc:
+            exc.sql = clean_sql  # surface the user's SQL in the error card
+            raise
+
+    # No AI: deterministic chart, empty insight. On-demand panels (forecast/anomaly/
+    # explain) still work later off the persisted query_log_id + result_data.
+    chart_config = rule_based_chart(columns, rows)
+    elapsed_ms = int((time.perf_counter() - started) * 1000)
+    snapped = _snapshot_rows(rows)
+
+    return await _finalize(
+        db, user_id, datasource_id, _sql_label(label, clean_sql),
+        sql=clean_sql,
+        query_language="sql",
+        columns=columns,
+        rows=rows,
+        snapped=snapped,
+        chart_config=chart_config,
+        insight="",
+        elapsed_ms=elapsed_ms,
+        from_cache=False,
+    )
 
 
 async def _finalize(
