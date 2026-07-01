@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { CHART_BTN } from '../charts/ChartToolbar'
@@ -48,8 +49,11 @@ export function ActionMenu({
 }: ActionMenuProps) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0) // keyboard-highlighted flat index
+  // Fixed viewport coords for the portaled panel; null until measured.
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const baseId = useId()
 
   // Flatten sections to a single indexable list for keyboard nav + ids. Read the
@@ -64,12 +68,20 @@ export function ActionMenu({
   // case nothing is highlighted and aria-activedescendant is dropped).
   const firstEnabled = () => flatRef.current.findIndex((it) => !it.disabled)
 
-  // On open: highlight the first enabled row, and wire outside-click + Escape.
+  // On open: highlight the first enabled row, and wire outside-click / Escape /
+  // scroll / resize. The panel is portaled to <body> and position:fixed, so it's
+  // outside rootRef — dismissal checks both the trigger root and the panel, and
+  // scroll/resize close it (a fixed panel can't track the moving trigger).
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setCoords(null)
+      return
+    }
     setActive(firstEnabled())
     const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (rootRef.current?.contains(t) || menuRef.current?.contains(t)) return
+      setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -77,12 +89,44 @@ export function ActionMenu({
         triggerRef.current?.focus()
       }
     }
+    // Close when the trigger moves under the panel (page scroll / resize), but
+    // NOT when the user scrolls the panel's own overflow list.
+    const onReflow = (e: Event) => {
+      if (e.type === 'scroll' && menuRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onReflow, true)
+    window.addEventListener('resize', onReflow)
     return () => {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onReflow, true)
+      window.removeEventListener('resize', onReflow)
     }
+  }, [open])
+
+  // Position the fixed panel under the trigger, left-aligned, flipping up and
+  // clamping so it always stays fully on-screen. Runs before paint → no flash.
+  useLayoutEffect(() => {
+    if (!open) return
+    const t = triggerRef.current?.getBoundingClientRect()
+    if (!t) return
+    const m = menuRef.current?.getBoundingClientRect()
+    const menuW = m?.width || 224
+    const menuH = m?.height || 0
+    const gap = 6
+    const left = Math.max(8, Math.min(t.left, window.innerWidth - menuW - 8))
+    const below = t.bottom + gap
+    const preferred =
+      menuH && below + menuH > window.innerHeight && t.top - gap - menuH > 8
+        ? t.top - gap - menuH
+        : below
+    // Final safety: keep the panel fully on-screen even when it fits neither
+    // below nor flipped-up (max-h-[70vh] guarantees room to clamp into).
+    const top = menuH ? Math.max(8, Math.min(preferred, window.innerHeight - menuH - 8)) : preferred
+    setCoords({ top, left })
   }, [open])
 
   const fire = (item: ActionMenuItem) => {
@@ -162,14 +206,17 @@ export function ActionMenu({
         />
       </button>
 
-      {open && (
-        <div
-          id={menuId}
-          role="menu"
-          aria-label={ariaLabel}
-          className="absolute right-0 z-30 mt-1.5 max-h-[70vh] w-56 overflow-auto rounded-xl border border-line bg-surface p-1 shadow-pop"
-        >
-          {sections.map((section, si) => (
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            id={menuId}
+            role="menu"
+            aria-label={ariaLabel}
+            style={{ top: coords?.top ?? 0, left: coords?.left ?? 0, visibility: coords ? 'visible' : 'hidden' }}
+            className="fixed z-50 max-h-[70vh] w-56 overflow-auto rounded-xl border border-line bg-surface p-1 shadow-pop"
+          >
+            {sections.map((section, si) => (
             <div
               key={section.header}
               role="group"
@@ -216,8 +263,9 @@ export function ActionMenu({
               })}
             </div>
           ))}
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }
