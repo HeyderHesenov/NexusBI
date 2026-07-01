@@ -50,7 +50,9 @@ export function ActionMenu({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0) // keyboard-highlighted flat index
   // Fixed viewport coords for the portaled panel; null until measured.
-  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null)
+  const [coords, setCoords] = useState<{ top: number; left: number; maxHeight: number } | null>(
+    null,
+  )
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -107,26 +109,25 @@ export function ActionMenu({
     }
   }, [open])
 
-  // Position the fixed panel under the trigger, left-aligned, flipping up and
-  // clamping so it always stays fully on-screen. Runs before paint → no flash.
+  // Position the fixed panel under the trigger, left-aligned and clamped
+  // horizontally. Always opens downward; when space below is tight the panel
+  // gets a max-height and scrolls internally instead of flipping up.
   useLayoutEffect(() => {
     if (!open) return
     const t = triggerRef.current?.getBoundingClientRect()
     if (!t) return
     const m = menuRef.current?.getBoundingClientRect()
     const menuW = m?.width || 224
-    const menuH = m?.height || 0
     const gap = 6
     const left = Math.max(8, Math.min(t.left, window.innerWidth - menuW - 8))
-    const below = t.bottom + gap
-    const preferred =
-      menuH && below + menuH > window.innerHeight && t.top - gap - menuH > 8
-        ? t.top - gap - menuH
-        : below
-    // Final safety: keep the panel fully on-screen even when it fits neither
-    // below nor flipped-up (max-h-[70vh] guarantees room to clamp into).
-    const top = menuH ? Math.max(8, Math.min(preferred, window.innerHeight - menuH - 8)) : preferred
-    setCoords({ top, left })
+    // Anchor below the trigger; when the trigger sits so low that fewer than
+    // MIN_H px remain, lift the panel just enough to keep MIN_H on-screen
+    // (the panel scrolls internally — it never flips fully above).
+    const MIN_H = 160
+    let top = t.bottom + gap
+    if (window.innerHeight - top - 8 < MIN_H) top = Math.max(8, window.innerHeight - MIN_H - 8)
+    const maxHeight = Math.min(window.innerHeight * 0.7, window.innerHeight - top - 8)
+    setCoords({ top, left, maxHeight })
   }, [open])
 
   const fire = (item: ActionMenuItem) => {
@@ -213,7 +214,12 @@ export function ActionMenu({
             id={menuId}
             role="menu"
             aria-label={ariaLabel}
-            style={{ top: coords?.top ?? 0, left: coords?.left ?? 0, visibility: coords ? 'visible' : 'hidden' }}
+            style={{
+              top: coords?.top ?? 0,
+              left: coords?.left ?? 0,
+              maxHeight: coords?.maxHeight,
+              visibility: coords ? 'visible' : 'hidden',
+            }}
             className="fixed z-[60] max-h-[70vh] w-56 overflow-auto rounded-xl border border-line bg-surface p-1 shadow-pop"
           >
             {sections.map((section, si) => (

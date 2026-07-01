@@ -1,5 +1,5 @@
-import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp, Workflow, Wrench } from 'lucide-react'
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp, Workflow, Wrench, X } from 'lucide-react'
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   AnomalyResult,
@@ -313,6 +313,25 @@ export function ChartView({
     },
   ]
 
+  // Every analysis card gets a top-right dismiss button; closing it also drops
+  // the Alətlər badge count and the item's active check (same state). The
+  // card (first child) gets extra right padding so its content — wrapped AI
+  // summaries, ScenarioPanel's header input — never lands under the X.
+  const closable = (onClose: () => void, node: ReactNode) => (
+    <div className="relative [&>*:first-child]:pr-10">
+      {node}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label={t('chartView.closePanel')}
+        title={t('chartView.closePanel')}
+        className="absolute right-2 top-2 rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  )
+
   const activeConfig: ChartConfig = { ...config, chart_type: type }
 
   // Many-point line/area charts get cluttered x-axis labels; wheel/drag zoom
@@ -388,35 +407,42 @@ export function ChartView({
           <div className="h-16 animate-pulse rounded-xl border border-line bg-surface-2" />
         }
       >
-      {anomalies && <AnomalyPanel result={anomalies} />}
+      {anomalies && closable(() => setAnomalies(null), <AnomalyPanel result={anomalies} />)}
 
-      {explanation && <ExplainPanel result={explanation} />}
+      {explanation && closable(() => setExplanation(null), <ExplainPanel result={explanation} />)}
 
-      {rootCause && <RootCausePanel result={rootCause} />}
+      {rootCause && closable(() => setRootCause(null), <RootCausePanel result={rootCause} />)}
 
-      {lineage && <LineagePanel lineage={lineage} />}
+      {lineage && closable(() => setLineage(null), <LineagePanel lineage={lineage} />)}
 
-      {significance && <StatsGuardPanel result={significance} />}
+      {significance &&
+        closable(() => setSignificance(null), <StatsGuardPanel result={significance} />)}
 
-      {causal && <CausalPanel result={causal} />}
+      {causal && closable(() => setCausal(null), <CausalPanel result={causal} />)}
 
-      {scenario && <ScenarioPanel data={filtered} valueCol={valueCol} queryLogId={queryLogId} />}
+      {scenario &&
+        closable(
+          () => setScenario(false),
+          <ScenarioPanel data={filtered} valueCol={valueCol} queryLogId={queryLogId} />,
+        )}
 
-      {forecast && (
-        <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={15} className="text-accent" />
-            <p className="eyebrow text-ink-soft">{t('chartView.forecast')}</p>
-          </div>
-          <ForecastChartWidget result={forecast} />
-          {forecast.narrative && (
-            <TypewriterText
-              text={forecast.narrative}
-              className="text-sm leading-relaxed text-ink-soft"
-            />
-          )}
-        </div>
-      )}
+      {forecast &&
+        closable(
+          () => setForecast(null),
+          <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={15} className="text-accent" />
+              <p className="eyebrow text-ink-soft">{t('chartView.forecast')}</p>
+            </div>
+            <ForecastChartWidget result={forecast} />
+            {forecast.narrative && (
+              <TypewriterText
+                text={forecast.narrative}
+                className="text-sm leading-relaxed text-ink-soft"
+              />
+            )}
+          </div>,
+        )}
       </Suspense>
 
       <ChartFullscreenModal
