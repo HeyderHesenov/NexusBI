@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp, Workflow } from 'lucide-react'
+import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp, Workflow, Wrench, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -29,13 +29,13 @@ const CausalPanel = lazy(() => import('./CausalPanel').then((m) => ({ default: m
 const ScenarioPanel = lazy(() =>
   import('./ScenarioPanel').then((m) => ({ default: m.ScenarioPanel })),
 )
-import { ActionMenu } from '../ui/ActionMenu'
+import { ActionMenu, type ActionMenuSection } from '../ui/ActionMenu'
 import { ErrorBoundary } from '../ui/ErrorBoundary'
 import { ChartRenderer } from './LazyChartRenderer'
 import { ChartZoom } from './ChartZoom'
 import { ChartFullscreenModal } from './ChartFullscreenModal'
 import { CHART_BTN } from './chartControls'
-import { ViewMenu } from './ViewMenu'
+import { ChartToolbar } from './ChartToolbar'
 import { FilterPills, type Filter } from './FilterPills'
 const ForecastChartWidget = lazy(() =>
   import('./ForecastChartWidget').then((m) => ({ default: m.ForecastChartWidget })),
@@ -230,6 +230,103 @@ export function ChartView({
     scenario,
   ].filter(Boolean).length
 
+  // One source for the AI actions — rendered by both triggers ("Alətlər" on the
+  // far left and "AI Təhlil" next to CSV), each anchoring the menu at itself.
+  const aiSections: ActionMenuSection[] = [
+    {
+      header: t('chartView.groupForecast'),
+      items: [
+        {
+          key: 'forecast',
+          Icon: TrendingUp,
+          label: forecasting ? t('chartView.forecasting') : t('chartView.forecast'),
+          onSelect: runForecast,
+          active: !!forecast,
+          disabled: forecasting,
+        },
+        {
+          key: 'scenario',
+          Icon: SlidersHorizontal,
+          label: t('chartView.scenario'),
+          onSelect: () => setScenario((v) => !v),
+          active: scenario,
+          disabled: !valueCol,
+        },
+      ],
+    },
+    {
+      header: t('chartView.groupDiagnostics'),
+      items: [
+        {
+          key: 'anomalies',
+          Icon: AlertTriangle,
+          label: detecting ? t('chartView.detecting') : t('chartView.anomalies'),
+          onSelect: runAnomalies,
+          active: !!anomalies,
+          disabled: detecting,
+        },
+        {
+          key: 'why',
+          Icon: GitBranch,
+          label: rooting ? t('chartView.rooting') : t('chartView.why'),
+          onSelect: runRootCause,
+          active: !!rootCause,
+          disabled: rooting,
+        },
+        {
+          key: 'causal',
+          Icon: Workflow,
+          label: findingDrivers ? t('chartView.findingDrivers') : t('chartView.causal'),
+          onSelect: runCausal,
+          active: !!causal,
+          disabled: findingDrivers,
+        },
+        {
+          key: 'significance',
+          Icon: ShieldCheck,
+          label: checking ? t('chartView.checking') : t('chartView.significance'),
+          onSelect: runSignificance,
+          active: !!significance,
+          disabled: checking,
+        },
+      ],
+    },
+    {
+      header: t('chartView.groupExplain'),
+      items: [
+        {
+          key: 'explain',
+          Icon: Sparkles,
+          label: explaining ? t('chartView.explaining') : t('chartView.explain'),
+          onSelect: runExplain,
+          active: !!explanation,
+          disabled: explaining,
+        },
+        {
+          key: 'lineage',
+          Icon: GitFork,
+          label: tracing ? t('chartView.tracing') : t('chartView.lineage'),
+          onSelect: runLineage,
+          active: !!lineage,
+          disabled: tracing,
+        },
+      ],
+    },
+  ]
+
+  // Same menu behind both triggers ("Alətlər" far left, "AI Təhlil" next to
+  // CSV) — one definition so gating and the badge can't drift apart.
+  const aiMenu = (labelKey: string, Icon: LucideIcon) =>
+    queryLogId && (
+      <ActionMenu
+        ariaLabel={t(labelKey)}
+        triggerLabel={t(labelKey)}
+        triggerIcon={Icon}
+        count={openPanelCount}
+        sections={aiSections}
+      />
+    )
+
   const activeConfig: ChartConfig = { ...config, chart_type: type }
 
   // Many-point line/area charts get cluttered x-axis labels; wheel/drag zoom
@@ -259,9 +356,10 @@ export function ChartView({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap items-center gap-1">
-          <ViewMenu value={type} onChange={setType} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {aiMenu('chartView.tools', Wrench)}
+          <ChartToolbar value={type} onChange={setType} />
           {type === 'pie' && (
             <button
               onClick={() => setShowLegend((v) => !v)}
@@ -273,95 +371,9 @@ export function ChartView({
               <Tags size={14} /> {t('chartView.legend')}
             </button>
           )}
-          {queryLogId && (
-            <ActionMenu
-              ariaLabel={t('chartView.aiTools')}
-              triggerLabel={t('chartView.aiTools')}
-              triggerIcon={Sparkles}
-              count={openPanelCount}
-              sections={[
-                {
-                  header: t('chartView.groupForecast'),
-                  items: [
-                    {
-                      key: 'forecast',
-                      Icon: TrendingUp,
-                      label: forecasting ? t('chartView.forecasting') : t('chartView.forecast'),
-                      onSelect: runForecast,
-                      active: !!forecast,
-                      disabled: forecasting,
-                    },
-                    {
-                      key: 'scenario',
-                      Icon: SlidersHorizontal,
-                      label: t('chartView.scenario'),
-                      onSelect: () => setScenario((v) => !v),
-                      active: scenario,
-                      disabled: !valueCol,
-                    },
-                  ],
-                },
-                {
-                  header: t('chartView.groupDiagnostics'),
-                  items: [
-                    {
-                      key: 'anomalies',
-                      Icon: AlertTriangle,
-                      label: detecting ? t('chartView.detecting') : t('chartView.anomalies'),
-                      onSelect: runAnomalies,
-                      active: !!anomalies,
-                      disabled: detecting,
-                    },
-                    {
-                      key: 'why',
-                      Icon: GitBranch,
-                      label: rooting ? t('chartView.rooting') : t('chartView.why'),
-                      onSelect: runRootCause,
-                      active: !!rootCause,
-                      disabled: rooting,
-                    },
-                    {
-                      key: 'causal',
-                      Icon: Workflow,
-                      label: findingDrivers ? t('chartView.findingDrivers') : t('chartView.causal'),
-                      onSelect: runCausal,
-                      active: !!causal,
-                      disabled: findingDrivers,
-                    },
-                    {
-                      key: 'significance',
-                      Icon: ShieldCheck,
-                      label: checking ? t('chartView.checking') : t('chartView.significance'),
-                      onSelect: runSignificance,
-                      active: !!significance,
-                      disabled: checking,
-                    },
-                  ],
-                },
-                {
-                  header: t('chartView.groupExplain'),
-                  items: [
-                    {
-                      key: 'explain',
-                      Icon: Sparkles,
-                      label: explaining ? t('chartView.explaining') : t('chartView.explain'),
-                      onSelect: runExplain,
-                      active: !!explanation,
-                      disabled: explaining,
-                    },
-                    {
-                      key: 'lineage',
-                      Icon: GitFork,
-                      label: tracing ? t('chartView.tracing') : t('chartView.lineage'),
-                      onSelect: runLineage,
-                      active: !!lineage,
-                      disabled: tracing,
-                    },
-                  ],
-                },
-              ]}
-            />
-          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          {aiMenu('chartView.aiTools', Sparkles)}
           <button
             onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
             aria-label={t('chartView.downloadCsv')}
@@ -422,9 +434,7 @@ export function ChartView({
         title={title}
       >
         <div className="flex h-full flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-1">
-            <ViewMenu value={type} onChange={setType} />
-          </div>
+          <ChartToolbar value={type} onChange={setType} />
           <FilterPills
             filters={filters}
             onRemove={(i) => setFilters((cur) => cur.filter((_, idx) => idx !== i))}

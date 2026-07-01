@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import type { ChartType } from '../../types'
 
-/** Chart-type options (shared by the ViewMenu selector). */
+/** Chart-type options (shared by the ChartToolbar selector). */
 export const OPTIONS: { type: ChartType; labelKey: string; Icon: typeof BarChart3 }[] = [
   { type: 'bar', labelKey: 'chartToolbar.bar', Icon: BarChart3 },
   { type: 'line', labelKey: 'chartToolbar.line', Icon: LineIcon },

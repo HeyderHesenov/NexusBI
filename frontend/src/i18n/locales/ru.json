@@ -105,8 +105,7 @@
   },
   "chartView": {
     "aiTools": "AI-анализ",
-    "view": "Вид",
-    "chartTypeGroup": "Тип графика",
+    "tools": "Инструменты",
     "groupDiagnostics": "Диагностика",
     "groupExplain": "Объяснение и происхождение",
     "groupForecast": "Прогноз",

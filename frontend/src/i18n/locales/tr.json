@@ -105,8 +105,7 @@
   },
   "chartView": {
     "aiTools": "AI analizi",
-    "view": "Görünüm",
-    "chartTypeGroup": "Grafik türü",
+    "tools": "Araçlar",
     "groupDiagnostics": "Tanılama",
     "groupExplain": "Açıklama & köken",
     "groupForecast": "Tahmin",
