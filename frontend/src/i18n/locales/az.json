@@ -61,6 +61,8 @@
   "brandingPage": {
     "appliesNote": "Embed (iframe / SDK) görünüşünə tətbiq olunur.",
     "colorPickerLabel": "Rəng seçici",
+    "contrastLow": "Zəif kontrast",
+    "contrastOk": "AA kontrast",
     "errColorFormat": "Rəng #RRGGBB formatında olmalıdır.",
     "errLogoLong": "URL çox uzundur.",
     "errLogoScheme": "URL http:// və ya https:// ilə başlamalıdır.",
@@ -71,6 +73,7 @@
     "labelLogoUrl": "Loqo URL (ixtiyari)",
     "labelPrimaryColor": "Əsas rəng",
     "loadError": "Brend konfiqurasiyası yüklənmədi — defolt dəyərlər göstərilir.",
+    "presetsLabel": "Hazır rənglər",
     "previewLabel": "Önizləmə · embed paneli",
     "resetDefault": "Defolta qaytar",
     "sampleButton": "Nümunə düymə",

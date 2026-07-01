@@ -5,10 +5,14 @@ import toast from 'react-hot-toast'
 import { Lock, Palette, RotateCcw, Save, Sparkles } from 'lucide-react'
 import * as branding from '../api/branding'
 import { useAuthStore } from '../store/authStore'
-import { readableTextColor } from '../lib/color'
+import { contrastRatio, readableTextColor } from '../lib/color'
 
 const DEFAULTS = { app_name: 'NexusBI', primary_color: '#0E9F6E', logo_url: '' }
 const HEX = /^#[0-9a-fA-F]{6}$/
+
+// Curated brand presets — one click instead of hunting hex codes. All pass the
+// 3:1 both-themes contrast check below (no preset triggers the warning chip).
+const PRESETS = ['#0E9F6E', '#2563EB', '#6366F1', '#8B5CF6', '#E11D48', '#D97706', '#0D9488', '#64748B']
 
 const field =
   'w-full rounded-xl border bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint focus:outline-none'
@@ -115,6 +119,10 @@ export function BrandingPage() {
 
   const previewText = HEX.test(form.primary_color) ? readableTextColor(form.primary_color) : '#FFFFFF'
   const accent = HEX.test(form.primary_color) ? form.primary_color : DEFAULTS.primary_color
+  // The accent is used as text/fills on both light (#FFFFFF) and dark (#1F1E1D)
+  // surfaces — WCAG AA for UI components needs ≥3:1 against each, otherwise the
+  // brand color disappears in one of the themes (e.g. yellow on white).
+  const aaOk = contrastRatio(accent, '#FFFFFF') >= 3 && contrastRatio(accent, '#1F1E1D') >= 3
 
   return (
     <div className="w-full">
@@ -193,6 +201,41 @@ export function BrandingPage() {
                     className={`${field} font-mono ${errors.primary_color ? 'border-[#D87C6B]' : 'border-line focus:border-accent'}`}
                   />
                 </div>
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  <span className="flex items-center gap-1.5" role="group" aria-label={t('brandingPage.presetsLabel')}>
+                    {PRESETS.map((p) => {
+                      const selected = form.primary_color.toLowerCase() === p.toLowerCase()
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => set('primary_color', p)}
+                          aria-label={p}
+                          aria-pressed={selected}
+                          title={p}
+                          className={`h-6 w-6 rounded-full border border-line transition ${
+                            selected
+                              ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface'
+                              : 'hover:scale-110'
+                          }`}
+                          style={{ backgroundColor: p }}
+                        />
+                      )
+                    })}
+                  </span>
+                  {aaOk ? (
+                    <span className="ml-auto rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent">
+                      ✓ {t('brandingPage.contrastOk')}
+                    </span>
+                  ) : (
+                    <span
+                      className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      style={{ backgroundColor: 'rgba(216, 124, 107, 0.15)', color: '#D87C6B' }}
+                    >
+                      ⚠ {t('brandingPage.contrastLow')}
+                    </span>
+                  )}
+                </div>
               </Fieldset>
 
               <Fieldset
@@ -229,44 +272,95 @@ export function BrandingPage() {
           )}
         </form>
 
-        {/* Live embed preview */}
+        {/* Live preview: a miniature of the app wearing the brand */}
         <div className="overflow-hidden rounded-2xl border border-line bg-surface-2">
-          <div
-            className="flex items-center gap-2.5 border-b border-line px-5 py-4"
-            style={{ borderTopColor: accent, borderTopWidth: 3 }}
-          >
+          {/* Window chrome */}
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+            <span className="flex gap-1.5" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="h-2.5 w-2.5 rounded-full bg-line" />
+              ))}
+            </span>
+            <span className="ml-2 min-w-0 flex-1 truncate rounded-md bg-surface px-3 py-1 font-mono text-[10px] text-ink-faint">
+              app.{(form.app_name || 'nexusbi').toLowerCase().replace(/\s+/g, '')}.io
+            </span>
+            <span className="eyebrow shrink-0 text-[9px]">{t('brandingPage.previewLabel')}</span>
+          </div>
+          {/* Topbar */}
+          <div className="flex items-center gap-2.5 border-b border-line bg-surface px-4 py-3">
             {form.logo_url && !logoBroken ? (
               <img
                 src={form.logo_url}
                 alt={form.app_name}
-                className="h-7 w-auto"
+                className="h-6 w-auto"
                 onError={() => setLogoBroken(true)}
               />
             ) : (
-              <span className="font-display text-lg font-bold text-ink">{form.app_name || 'NexusBI'}</span>
+              <span className="font-display text-base font-bold text-ink">
+                {form.app_name || 'NexusBI'}
+              </span>
             )}
             <span
-              className="ml-auto rounded-lg px-3 py-1.5 text-sm font-semibold"
+              className="ml-auto rounded-lg px-3 py-1.5 text-xs font-semibold"
               style={{ backgroundColor: accent, color: previewText }}
             >
               {t('brandingPage.sampleButton')}
             </span>
           </div>
-          <div className="space-y-3 p-5">
-            <p className="eyebrow">{t('brandingPage.previewLabel')}</p>
-            <div className="h-3 w-2/3 rounded-full bg-line" />
-            <div className="grid grid-cols-3 gap-3">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="rounded-xl border border-line bg-surface p-3">
-                  <div className="mb-2 h-2 w-12 rounded-full bg-line" />
-                  <div className="h-6 w-16 rounded" style={{ backgroundColor: accent, opacity: 0.85 }} />
+          {/* Sidebar + content */}
+          <div className="flex">
+            <div className="hidden w-32 shrink-0 space-y-1.5 border-r border-line bg-surface p-3 sm:block">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+                  style={i === 0 ? { backgroundColor: `${accent}1F` } : undefined}
+                >
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: i === 0 ? accent : 'rgb(var(--line))' }}
+                  />
+                  <span
+                    className="h-1.5 flex-1 rounded-full"
+                    style={{
+                      backgroundColor: i === 0 ? accent : 'rgb(var(--line))',
+                      opacity: i === 0 ? 0.7 : 1,
+                    }}
+                  />
                 </div>
               ))}
             </div>
-            <div className="flex h-32 items-end gap-2 rounded-xl border border-line bg-surface p-3">
-              {[40, 70, 55, 90, 65, 80].map((h, i) => (
-                <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, backgroundColor: accent, opacity: 0.85 }} />
-              ))}
+            <div className="min-w-0 flex-1 space-y-3 p-4">
+              <div className="grid grid-cols-3 gap-3">
+                {['42.8k', '+12.4%', '1 284'].map((v) => (
+                  <div key={v} className="rounded-xl border border-line bg-surface p-3">
+                    <div className="mb-1.5 h-1.5 w-10 rounded-full bg-line" />
+                    <p className="font-display text-lg font-bold" style={{ color: accent }}>
+                      {v}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex h-28 items-end gap-1.5 rounded-xl border border-line bg-surface p-3">
+                {[35, 55, 45, 70, 60, 85, 75, 95].map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 rounded-t"
+                    style={{ height: `${h}%`, backgroundColor: accent, opacity: 0.85 }}
+                  />
+                ))}
+              </div>
+              <div className="space-y-1.5 rounded-xl border border-line bg-surface p-3">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="h-1.5 flex-1 rounded-full bg-line" />
+                    <span
+                      className="h-3.5 w-10 shrink-0 rounded-full"
+                      style={{ backgroundColor: `${accent}1F` }}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

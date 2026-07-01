@@ -34,6 +34,17 @@ export function readableTextColor(hex: string): string {
   return relativeLuminance(rgb) > 0.5 ? '#1F1E1D' : '#FFFFFF'
 }
 
+/** WCAG contrast ratio between two hex colors, in [1, 21]. 0 if either is malformed. */
+export function contrastRatio(hexA: string, hexB: string): number {
+  const a = hexToRgb(hexA)
+  const b = hexToRgb(hexB)
+  if (!a || !b) return 0
+  const la = relativeLuminance(a)
+  const lb = relativeLuminance(b)
+  const [hi, lo] = la >= lb ? [la, lb] : [lb, la]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
 const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)))
 const mix = (rgb: Rgb, target: number, t: number): Rgb =>
   rgb.map((c) => clamp(c * (1 - t) + target * t)) as Rgb

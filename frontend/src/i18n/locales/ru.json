@@ -61,6 +61,8 @@
   "brandingPage": {
     "appliesNote": "Применяется к встроенному представлению (iframe / SDK).",
     "colorPickerLabel": "Выбор цвета",
+    "contrastLow": "Низкий контраст",
+    "contrastOk": "Контраст AA",
     "errColorFormat": "Цвет должен быть в формате #RRGGBB.",
     "errLogoLong": "URL слишком длинный.",
     "errLogoScheme": "URL должен начинаться с http:// или https://.",
@@ -71,6 +73,7 @@
     "labelLogoUrl": "URL логотипа (необязательно)",
     "labelPrimaryColor": "Основной цвет",
     "loadError": "Не удалось загрузить конфигурацию бренда — показаны значения по умолчанию.",
+    "presetsLabel": "Готовые цвета",
     "previewLabel": "Предпросмотр · встроенная панель",
     "resetDefault": "Сбросить по умолчанию",
     "sampleButton": "Пример кнопки",
