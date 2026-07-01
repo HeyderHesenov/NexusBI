@@ -104,7 +104,9 @@
     "table": "Таблица"
   },
   "chartView": {
-    "aiTools": "Инструменты",
+    "aiTools": "AI-анализ",
+    "view": "Вид",
+    "chartTypeGroup": "Тип графика",
     "groupDiagnostics": "Диагностика",
     "groupExplain": "Объяснение и происхождение",
     "groupForecast": "Прогноз",

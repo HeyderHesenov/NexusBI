@@ -104,7 +104,7 @@
     "table": "Cədvəl"
   },
   "chartView": {
-    "aiTools": "Alətlər",
+    "aiTools": "AI Təhlil",
     "anomalies": "Anomaliyalar",
     "causal": "Səbəb analizi",
     "chart": "Qrafik",
@@ -125,6 +125,8 @@
     "scenario": "Ssenari",
     "significance": "Statistik yoxlama",
     "tracing": "İzlənir…",
+    "view": "Görünüş",
+    "chartTypeGroup": "Qrafik tipi",
     "why": "Niyə?"
   },
   "chartZoom": {

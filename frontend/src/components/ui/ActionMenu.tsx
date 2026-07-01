@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { CHART_BTN } from '../charts/ChartToolbar'
+import { CHART_BTN } from '../charts/chartControls'
 
 export interface ActionMenuItem {
   /** Stable key (used for React keys and the DOM ids). */
@@ -214,7 +214,7 @@ export function ActionMenu({
             role="menu"
             aria-label={ariaLabel}
             style={{ top: coords?.top ?? 0, left: coords?.left ?? 0, visibility: coords ? 'visible' : 'hidden' }}
-            className="fixed z-50 max-h-[70vh] w-56 overflow-auto rounded-xl border border-line bg-surface p-1 shadow-pop"
+            className="fixed z-[60] max-h-[70vh] w-56 overflow-auto rounded-xl border border-line bg-surface p-1 shadow-pop"
           >
             {sections.map((section, si) => (
             <div
@@ -237,6 +237,7 @@ export function ActionMenu({
                     role="menuitem"
                     id={`${baseId}-item-${i}`}
                     tabIndex={-1}
+                    aria-current={item.active ? 'true' : undefined}
                     disabled={item.disabled}
                     onClick={() => fire(item)}
                     onMouseEnter={() => !item.disabled && setActive(i)}

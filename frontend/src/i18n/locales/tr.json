@@ -104,7 +104,9 @@
     "table": "Tablo"
   },
   "chartView": {
-    "aiTools": "Araçlar",
+    "aiTools": "AI analizi",
+    "view": "Görünüm",
+    "chartTypeGroup": "Grafik türü",
     "groupDiagnostics": "Tanılama",
     "groupExplain": "Açıklama & köken",
     "groupForecast": "Tahmin",

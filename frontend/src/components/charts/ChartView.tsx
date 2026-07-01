@@ -34,7 +34,8 @@ import { ErrorBoundary } from '../ui/ErrorBoundary'
 import { ChartRenderer } from './LazyChartRenderer'
 import { ChartZoom } from './ChartZoom'
 import { ChartFullscreenModal } from './ChartFullscreenModal'
-import { CHART_BTN, ChartToolbar } from './ChartToolbar'
+import { CHART_BTN } from './chartControls'
+import { ViewMenu } from './ViewMenu'
 import { FilterPills, type Filter } from './FilterPills'
 const ForecastChartWidget = lazy(() =>
   import('./ForecastChartWidget').then((m) => ({ default: m.ForecastChartWidget })),
@@ -258,9 +259,9 @@ export function ChartView({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <ChartToolbar value={type} onChange={setType} />
-        <div className="flex flex-wrap items-center justify-end gap-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1">
+          <ViewMenu value={type} onChange={setType} />
           {type === 'pie' && (
             <button
               onClick={() => setShowLegend((v) => !v)}
@@ -421,7 +422,9 @@ export function ChartView({
         title={title}
       >
         <div className="flex h-full flex-col gap-3">
-          <ChartToolbar value={type} onChange={setType} />
+          <div className="flex flex-wrap items-center gap-1">
+            <ViewMenu value={type} onChange={setType} />
+          </div>
           <FilterPills
             filters={filters}
             onRemove={(i) => setFilters((cur) => cur.filter((_, idx) => idx !== i))}

@@ -104,7 +104,9 @@
     "table": "Table"
   },
   "chartView": {
-    "aiTools": "Tools",
+    "aiTools": "AI analysis",
+    "view": "View",
+    "chartTypeGroup": "Chart type",
     "groupDiagnostics": "Diagnostics",
     "groupExplain": "Explain & lineage",
     "groupForecast": "Forecast",
