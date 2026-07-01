@@ -1,0 +1,54 @@
+{
+  "common": {
+    "demoMode": "Demo rejimi"
+  },
+  "title": {
+    "sources": "Data mənbələri",
+    "reports": "Hesabatlar",
+    "decisions": "Qərarlar",
+    "metrics": "Metriklər",
+    "requirements": "Tələbnamələr",
+    "workspaces": "Workspace-lər",
+    "targets": "KPI hədəflər",
+    "branding": "Brendinq",
+    "notifications": "Bildirişlər",
+    "dashboards": "Dashboardlar",
+    "history": "Tarixçə",
+    "pricing": "Planlar",
+    "home": "Sorğu",
+    "fallback": "NexusBI"
+  },
+  "topbar": {
+    "search": "Axtar…",
+    "searchTitle": "Axtar (⌘K)",
+    "notifications": "Bildirişlər",
+    "lightTheme": "İşıqlı tema",
+    "darkTheme": "Tünd tema",
+    "language": "Dil"
+  },
+  "nav": {
+    "groups": {
+      "analytics": "Analiz",
+      "data": "Məlumat",
+      "viz": "Vizuallaşdırma",
+      "planning": "Planlama",
+      "admin": "İdarəetmə"
+    },
+    "query": "Soruş",
+    "history": "Tarixçə",
+    "insights": "Kəşflər",
+    "sources": "Mənbələr",
+    "metrics": "Metriklər",
+    "metricTree": "Metrik ağacı",
+    "contracts": "Data müqavilələri",
+    "requirements": "Tələblər",
+    "dashboards": "Dashboard-lar",
+    "reports": "Hesabatlar",
+    "decisions": "Qərarlar",
+    "targets": "Hədəflər",
+    "experiments": "A/B testlər",
+    "workspaces": "Komanda",
+    "branding": "Brendinq",
+    "pricing": "Planlar"
+  }
+}

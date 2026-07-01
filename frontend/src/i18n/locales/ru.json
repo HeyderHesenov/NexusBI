@@ -1,0 +1,54 @@
+{
+  "common": {
+    "demoMode": "Демо-режим"
+  },
+  "title": {
+    "sources": "Источники данных",
+    "reports": "Отчёты",
+    "decisions": "Решения",
+    "metrics": "Метрики",
+    "requirements": "Требования",
+    "workspaces": "Рабочие пространства",
+    "targets": "KPI цели",
+    "branding": "Брендинг",
+    "notifications": "Уведомления",
+    "dashboards": "Дашборды",
+    "history": "История",
+    "pricing": "Планы",
+    "home": "Запрос",
+    "fallback": "NexusBI"
+  },
+  "topbar": {
+    "search": "Поиск…",
+    "searchTitle": "Поиск (⌘K)",
+    "notifications": "Уведомления",
+    "lightTheme": "Светлая тема",
+    "darkTheme": "Тёмная тема",
+    "language": "Язык"
+  },
+  "nav": {
+    "groups": {
+      "analytics": "Аналитика",
+      "data": "Данные",
+      "viz": "Визуализация",
+      "planning": "Планирование",
+      "admin": "Администрирование"
+    },
+    "query": "Спросить",
+    "history": "История",
+    "insights": "Открытия",
+    "sources": "Источники",
+    "metrics": "Метрики",
+    "metricTree": "Дерево метрик",
+    "contracts": "Контракты данных",
+    "requirements": "Требования",
+    "dashboards": "Дашборды",
+    "reports": "Отчёты",
+    "decisions": "Решения",
+    "targets": "Цели",
+    "experiments": "A/B тесты",
+    "workspaces": "Команда",
+    "branding": "Брендинг",
+    "pricing": "Планы"
+  }
+}
