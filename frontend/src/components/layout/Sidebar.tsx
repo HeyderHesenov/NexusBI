@@ -1,6 +1,7 @@
 import { BookMarked, CreditCard, Database, FileText, FlaskConical, Gauge, GitBranch, History, LayoutDashboard, MessageSquare, Palette, ShieldCheck, Sparkles, Tag, Target, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { NexusMark } from '../brand/NexusMark'
+import { SidebarAccount } from './SidebarAccount'
 import { useDatasourceStore } from '../../store/datasourceStore'
 import { useQueryStore } from '../../store/queryStore'
 
@@ -108,7 +109,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="shrink-0 px-5 py-5">
+      <div className="shrink-0 px-5 pb-3 pt-4">
         <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent shadow-[0_0_6px_rgb(var(--accent))]" />
           <span className="truncate font-mono text-[10px] uppercase tracking-wider text-ink-soft">
@@ -116,6 +117,8 @@ export function Sidebar() {
           </span>
         </div>
       </div>
+
+      <SidebarAccount />
     </aside>
   )
 }
