@@ -28,8 +28,8 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 |-------|------|----------------|
 | API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, metric, saved_query, billing, branding, decision, integration, copilot, requirement, scenario, workspace, **ai_quality (eval/observability/reindex)**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
-| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/* |
-| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding), eval/* (tiered golden set, value-based execution-match, bare/grounded/history runner + regression)**, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, **client (chat + embed + rolling AI trace)** |
+| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service** |
+| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding), eval/* (tiered golden set, value-based execution-match, bare/grounded/history runner + regression)**, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **client (chat + embed + rolling AI trace)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit |
 | Realtime | `realtime/*` | hub (collab WS pub/sub), live_refresh (canlı dashboard loop) |
@@ -233,6 +233,17 @@ customer↔sales joins; `format_demo_schema` sends real column types + sample va
 
 ## Notable architecture deltas (this round)
 
+- **BA-magnet features (4).** (1) **Pivot explorer** — pure client-side (`lib/pivot.ts` +
+  `PivotWidget`), slots into the ChartView type switcher; no backend. (2) **Global semantic
+  search** — reuses the `query_embeddings` vector store + `client.embed` cosine via a parallel
+  `ai/search.py` (new asset kinds + `ref_id` column; upsert with orphan/dup prune; keyless
+  hash fallback); `GET /search` (per-IP rate-limited) + `POST /search/reindex`; ⌘K palette in
+  `TopBar`/`Layout`. (3) **Scheduled PDF/Excel report delivery** — `ReportSubscription` model +
+  `report_renderer` (openpyxl/reportlab) + `report_delivery_service.run_deliveries_due` as a
+  4th scheduler phase (cadence stamped up-front so a failing subscription retries at most once
+  per interval, never per tick); `integrations.deliver_report` adds attachment support
+  (`INTEGRATIONS_LIVE`-gated). (4) **MySQL connector fix** — added the missing `aiomysql` async
+  driver (enum/timeout/dialect were already MySQL-ready) + UI option.
 - **SQL power-user path + guard-chain consolidation.** New AI-free `POST /query/run`
   (`run_user_sql`) lets analysts run/edit raw SQL. The allowlist+RLS+execute sequence that was
   copy-pasted across `_live_pipeline` and `reexecute_logged_query` is now a single

@@ -23,8 +23,10 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   AI-nin SQL-ini redaktə edib yenidən işlədir** (CodeMirror, sxem-bilən autocomplete).
   Tamamilə **AI-siz** (kvota yemir); eyni təhlükəsizlik zənciri (SELECT-only → cədvəl
   allowlist → RLS fail-closed). `POST /query/run`.
-- 📊 **Avtomatik chart + əl ilə keçid** — bar · line · area · pie · scatter · cədvəl;
+- 📊 **Avtomatik chart + əl ilə keçid** — bar · line · area · pie · scatter · cədvəl · **pivot**;
   CSV export, drill-down filtr (qrafik elementinə klik).
+- 🔲 **Pivot cədvəl explorer** — nəticə üzərində sürüklə-seç çarpaz analiz (sətir/sütun/ölçü/
+  aqreqat: cəm·orta·say·min·maks), SQL-siz — Excel PivotTable eqvivalenti, tam client-side.
 - 💡 **AI insight** — nəticədən qısa biznes təhlili (sorğunun dilində).
 - 🔮 **Proqnoz (forecast)** + 🚨 **anomaliya aşkarlama** — AI mühərriki ilə.
 - 🧭 **"Bunu izah et" (kök-səbəb)** — nəticəni ən böyük driver-lərə parçalayır (seqment + töhfə %).
@@ -60,7 +62,7 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   config-gated); dashboard chat-də **@mention** → bildiriş.
 
 ### Data mənbələri & hazırlıq
-- 🔌 **Öz SQL bazanı qoş** — PostgreSQL / SQLite (connection string, şifrəli saxlanılır).
+- 🔌 **Öz SQL bazanı qoş** — PostgreSQL / MySQL / SQLite (connection string, şifrəli saxlanılır).
 - 📁 **CSV / Excel yüklə** — fayl avtomatik sorğulana bilən SQLite cədvəlinə çevrilir.
 - 🪄 **NL data-prep + çoxcədvəli join** — "orders ilə customers-i birləşdir, aylıq qrupla"
   → AI transform planı → önizləmə → yeni törəmə mənbə kimi saxla (SELECT-only guard).
@@ -78,6 +80,9 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   per-widget mənbə nişanı + yenilə, **cross-filter** (bir widget-də klik → bütün panel filtrlənir).
 - 🔴 **Canlı (real-time) dashboard** + 🎬 **AI Data Story** (kinematik təqdimat) + 🤖 **Copilot**.
 - 🔖 **Saxlanan sorğular + cədvəlli (cron) avto-yeniləmə** ("Hesabatlar").
+- 📧 **Planlı PDF/Excel hesabat çatdırılması** — saxlanan sorğunu cədvəl üzrə (saatlıq/gündəlik/
+  həftəlik) **email-ə PDF (reportlab) və ya Excel (openpyxl) əlavəsi** kimi göndər (mock-first,
+  `INTEGRATIONS_LIVE` gated). BA-ların #1 paylama ehtiyacı.
 
 ### Komanda & idarəetmə (enterprise)
 - 👥 **Workspace + rollar (RBAC)** — owner / editor / viewer; e-poçtla dəvət.
@@ -96,6 +101,8 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   (reuse-detection + family-revoke) və `/auth/logout`.
 - 💳 **Abunə planları + per-user rate limiting** — Free/Pro/Max/Max+ aylıq AI limiti;
   demo-da mock upgrade, prod-da **config-gated Stripe Checkout**.
+- 🔎 **Qlobal semantik axtarış (⌘K)** — "churn-u harda izləyirik?" → dashboard/metrik/hesabat
+  mənası ilə tapılır (embedding vektor store reuse, keyless offline fallback; komanda-paleti).
 - 🎨 **Claude-ilhamlı UI** — light/dark toggle, emerald accent, Source Serif 4 başlıqlar.
 - ⚡ **Performans** — Redis nəticə keşi (user-scoped), per-datasource connection pooling,
   **lazy chart bundle** (ağır recharts yalnız qrafik render olunanda yüklənir — ilk açılış yüngül).
@@ -253,6 +260,8 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | GET/POST/PATCH/DELETE | `/api/v1/metric-tree/...` (+ `/evaluate`) | Metrik ağacı — KPI dekompozisiya + roll-up |
 | POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
 | GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` · `/checkout` | Planlar · istifadə · mock upgrade · Stripe (gated) |
+| GET/POST | `/api/v1/search` · `/search/reindex` | Qlobal semantik axtarış (asset) · indeks yenilə |
+| POST/GET/DELETE | `/api/v1/saved/{id}/subscriptions` | Planlı PDF/Excel hesabat çatdırılması (email) |
 | GET | `/health` · `/metrics` | Sağlamlıq · Prometheus metrikləri |
 
 ---
