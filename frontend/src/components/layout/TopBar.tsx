@@ -1,11 +1,9 @@
 import { useEffect } from 'react'
-import { Bell, LogOut, Moon, Search, Sun } from 'lucide-react'
+import { Bell, Moon, Search, Sun } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
-import { useAuthStore } from '../../store/authStore'
 import { useThemeStore } from '../../store/themeStore'
 import { useNotificationStore } from '../../store/notificationStore'
 import { useSearchStore } from '../../store/searchStore'
-import { UsageMeter } from '../billing/UsageMeter'
 
 // Route → başlıq: header solunu doldurur, naviqasiya kontekstini göstərir.
 const TITLES: Array<[string, string]> = [
@@ -29,12 +27,10 @@ function titleFor(pathname: string): string {
 }
 
 export function TopBar() {
-  const { user, logout } = useAuthStore()
   const { mode, toggle } = useThemeStore()
   const { unread, load } = useNotificationStore()
   const openSearch = useSearchStore((s) => s.setOpen)
   const { pathname } = useLocation()
-  const initial = (user?.full_name || user?.email || '?').charAt(0).toUpperCase()
 
   useEffect(() => {
     load().catch(() => undefined)
@@ -58,7 +54,6 @@ export function TopBar() {
         <Search size={14} />
         <kbd className="hidden font-mono text-[10px] sm:inline">⌘K</kbd>
       </button>
-      <UsageMeter />
       <Link
         to="/notifications"
         aria-label="Bildirişlər"
@@ -79,20 +74,6 @@ export function TopBar() {
         className="grid h-8 w-8 place-items-center rounded-lg border border-line text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
       >
         {mode === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-      </button>
-      <span className="h-5 w-px bg-line" />
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs font-semibold text-bg">
-          {initial}
-        </span>
-        <span className="text-sm text-ink-soft">{user?.email ?? ''}</span>
-      </div>
-      <span className="h-5 w-px bg-line" />
-      <button
-        onClick={logout}
-        className="flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
-      >
-        <LogOut size={15} /> Çıxış
       </button>
       </div>
     </header>
