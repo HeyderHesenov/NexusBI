@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp, Workflow, Wrench, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp, Workflow, Wrench } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -230,8 +230,7 @@ export function ChartView({
     scenario,
   ].filter(Boolean).length
 
-  // One source for the AI actions — rendered by both triggers ("Alətlər" on the
-  // far left and "AI Təhlil" next to CSV), each anchoring the menu at itself.
+  // The AI actions behind the "Alətlər" menu trigger.
   const aiSections: ActionMenuSection[] = [
     {
       header: t('chartView.groupForecast'),
@@ -314,19 +313,6 @@ export function ChartView({
     },
   ]
 
-  // Same menu behind both triggers ("Alətlər" far left, "AI Təhlil" next to
-  // CSV) — one definition so gating and the badge can't drift apart.
-  const aiMenu = (labelKey: string, Icon: LucideIcon) =>
-    queryLogId && (
-      <ActionMenu
-        ariaLabel={t(labelKey)}
-        triggerLabel={t(labelKey)}
-        triggerIcon={Icon}
-        count={openPanelCount}
-        sections={aiSections}
-      />
-    )
-
   const activeConfig: ChartConfig = { ...config, chart_type: type }
 
   // Many-point line/area charts get cluttered x-axis labels; wheel/drag zoom
@@ -356,32 +342,37 @@ export function ChartView({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {aiMenu('chartView.tools', Wrench)}
-          <ChartToolbar value={type} onChange={setType} />
-          {type === 'pie' && (
-            <button
-              onClick={() => setShowLegend((v) => !v)}
-              aria-pressed={showLegend}
-              className={`${CHART_BTN} border ${
-                showLegend ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
-              }`}
-            >
-              <Tags size={14} /> {t('chartView.legend')}
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {aiMenu('chartView.aiTools', Sparkles)}
+      <div className="flex flex-wrap items-center gap-2">
+        <ChartToolbar value={type} onChange={setType} />
+        {type === 'pie' && (
           <button
-            onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
-            aria-label={t('chartView.downloadCsv')}
-            className={`${CHART_BTN} border border-line text-ink-soft hover:border-accent hover:text-ink`}
+            onClick={() => setShowLegend((v) => !v)}
+            aria-pressed={showLegend}
+            className={`${CHART_BTN} border ${
+              showLegend ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
+            }`}
           >
-            <Download size={14} /> CSV
+            <Tags size={14} /> {t('chartView.legend')}
           </button>
-        </div>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {queryLogId && (
+          <ActionMenu
+            ariaLabel={t('chartView.tools')}
+            triggerLabel={t('chartView.tools')}
+            triggerIcon={Wrench}
+            count={openPanelCount}
+            sections={aiSections}
+          />
+        )}
+        <button
+          onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
+          aria-label={t('chartView.downloadCsv')}
+          className={`${CHART_BTN} border border-line text-ink-soft hover:border-accent hover:text-ink`}
+        >
+          <Download size={14} /> CSV
+        </button>
       </div>
 
       <FilterPills

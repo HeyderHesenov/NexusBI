@@ -104,7 +104,6 @@
     "table": "Таблица"
   },
   "chartView": {
-    "aiTools": "AI-анализ",
     "tools": "Инструменты",
     "groupDiagnostics": "Диагностика",
     "groupExplain": "Объяснение и происхождение",
