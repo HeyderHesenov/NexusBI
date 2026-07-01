@@ -19,6 +19,10 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - 💬 **Chat-with-your-data** — çoxdönüşlü follow-up: "bunu aya görə böl", "yalnız 2024";
   əvvəlki sual+SQL kontekst kimi saxlanılır.
 - 🧠 **Text2SQL** — sual təhlükəsiz `SELECT`-ə çevrilir (guard + re-validation).
+- ⌨️ **SQL power-user rejimi** — analitik təbii dil əvəzinə **öz SQL-ini yazır və ya
+  AI-nin SQL-ini redaktə edib yenidən işlədir** (CodeMirror, sxem-bilən autocomplete).
+  Tamamilə **AI-siz** (kvota yemir); eyni təhlükəsizlik zənciri (SELECT-only → cədvəl
+  allowlist → RLS fail-closed). `POST /query/run`.
 - 📊 **Avtomatik chart + əl ilə keçid** — bar · line · area · pie · scatter · cədvəl;
   CSV export, drill-down filtr (qrafik elementinə klik).
 - 💡 **AI insight** — nəticədən qısa biznes təhlili (sorğunun dilində).
@@ -224,6 +228,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST/GET/DELETE | `/api/v1/datasource/...` | Connect/list/schema/test/sil |
 | POST | `/api/v1/datasource/upload` | CSV/Excel → SQLite datasource |
 | POST | `/api/v1/query/ask` | NL sorğu (+ `previous_query_log_id` follow-up) → QueryResult |
+| POST | `/api/v1/query/run` | Power-user əl-SQL (AI-siz; SELECT-only + allowlist + RLS) → QueryResult |
 | GET | `/api/v1/query/history` · `/{id}` | Tarixçə · saxlanmış nəticə |
 | POST | `/api/v1/query/{id}/retry` · `/anomalies` · `/forecast` · `/explain` | Yenidən · anomaliya · proqnoz · kök-səbəb |
 | POST/GET | `/api/v1/query/{id}/root-cause` · `/goal-seek` · `/monte-carlo` · `/lineage` | Kök-səbəb ağacı · goal-seek · Monte Carlo · mənşə |
