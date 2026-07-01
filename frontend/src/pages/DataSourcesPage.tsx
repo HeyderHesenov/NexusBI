@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { BarChart3, Database, Gauge, Plug, Plus, ShieldHalf, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { useQueryStore } from '../store/queryStore'
@@ -20,14 +21,15 @@ function parseUtc(ts: string): number {
 
 /** Freshness status from last refresh + SLA: ok / stale / unknown. */
 function freshness(s: { last_refreshed_at?: string | null; freshness_sla_hours?: number | null }) {
-  if (!s.last_refreshed_at) return { tone: 'text-ink-faint', dot: 'bg-ink-faint', label: 'Naməlum' }
+  if (!s.last_refreshed_at) return { tone: 'text-ink-faint', dot: 'bg-ink-faint', labelKey: 'dataSourcesPage.freshnessUnknown' }
   const ageH = (Date.now() - parseUtc(s.last_refreshed_at)) / 3_600_000
   if (s.freshness_sla_hours && ageH > s.freshness_sla_hours)
-    return { tone: 'text-[#D87C6B]', dot: 'bg-[#D87C6B]', label: 'Köhnəlib' }
-  return { tone: 'text-accent', dot: 'bg-accent', label: 'Təzə' }
+    return { tone: 'text-[#D87C6B]', dot: 'bg-[#D87C6B]', labelKey: 'dataSourcesPage.freshnessStale' }
+  return { tone: 'text-accent', dot: 'bg-accent', labelKey: 'dataSourcesPage.freshnessFresh' }
 }
 
 export function DataSourcesPage() {
+  const { t } = useTranslation()
   const { sources, load, test, remove, setSla } = useDatasourceStore()
   const { datasourceId, setDatasource } = useQueryStore()
   const [connectOpen, setConnectOpen] = useState(false)
@@ -61,12 +63,12 @@ export function DataSourcesPage() {
     <div className="w-full">
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Mənbələr</p>
+          <p className="eyebrow">{t('dataSourcesPage.eyebrow')}</p>
           <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
-            Verilənlər mənbələri
+            {t('dataSourcesPage.title')}
           </h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Öz SQL bazanı qoş və ya CSV/Excel yüklə, sonra təbii dillə sorğula.
+            {t('dataSourcesPage.subtitle')}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -74,7 +76,7 @@ export function DataSourcesPage() {
             onClick={() => setPrepOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
           >
-            <Wand2 size={15} /> Data hazırla
+            <Wand2 size={15} /> {t('dataSourcesPage.prepData')}
           </button>
           <button
             onClick={() => setUploadOpen(true)}
@@ -92,7 +94,7 @@ export function DataSourcesPage() {
             onClick={() => setConnectOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
           >
-            <Plus size={15} /> Baza qoş
+            <Plus size={15} /> {t('dataSourcesPage.connectDb')}
           </button>
         </div>
       </header>
@@ -100,9 +102,9 @@ export function DataSourcesPage() {
       {sources.length === 0 ? (
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <Database size={22} className="mx-auto text-ink-faint" />
-          <p className="mt-2 font-display text-lg text-ink">Hələ mənbə yoxdur</p>
+          <p className="mt-2 font-display text-lg text-ink">{t('dataSourcesPage.emptyTitle')}</p>
           <p className="mt-1 text-sm text-ink-soft">
-            Demo data ilə işləyə, ya da öz mənbəni qoşa bilərsən.
+            {t('dataSourcesPage.emptyDesc')}
           </p>
         </div>
       ) : (
@@ -134,7 +136,7 @@ export function DataSourcesPage() {
                         : 'border-line text-ink-soft hover:text-ink'
                     }`}
                   >
-                    {datasourceId === s.id ? 'Aktiv' : 'Seç'}
+                    {datasourceId === s.id ? t('dataSourcesPage.active') : t('dataSourcesPage.select')}
                   </button>
                   <button
                     onClick={() => toggleSchema(s.id)}
@@ -146,7 +148,7 @@ export function DataSourcesPage() {
                   {s.db_type !== 'powerbi' && (
                     <button
                       onClick={() => setOpenProfile(openProfile === s.id ? null : s.id)}
-                      title="Profil"
+                      title={t('dataSourcesPage.profileTitle')}
                       className={`rounded-lg border p-1.5 transition ${
                         openProfile === s.id
                           ? 'border-accent text-accent'
@@ -159,7 +161,7 @@ export function DataSourcesPage() {
                   {s.db_type !== 'powerbi' && (
                     <button
                       onClick={() => setRlsFor({ id: s.id, name: s.name })}
-                      title="RLS qaydaları"
+                      title={t('dataSourcesPage.rlsTitle')}
                       className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-accent hover:text-accent"
                     >
                       <ShieldHalf size={15} />
@@ -167,14 +169,14 @@ export function DataSourcesPage() {
                   )}
                   <button
                     onClick={() => test(s.id)}
-                    title="Bağlantını yoxla"
+                    title={t('dataSourcesPage.testConnectionTitle')}
                     className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:text-ink"
                   >
                     <Plug size={15} />
                   </button>
                   <button
                     onClick={() => remove(s.id)}
-                    title="Sil"
+                    title={t('dataSourcesPage.deleteTitle')}
                     className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
                   >
                     <Trash2 size={15} />
@@ -188,12 +190,12 @@ export function DataSourcesPage() {
                     const f = freshness(s)
                     return (
                       <span className={`inline-flex items-center gap-1.5 ${f.tone}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${f.dot}`} /> {f.label}
+                        <span className={`h-1.5 w-1.5 rounded-full ${f.dot}`} /> {t(f.labelKey)}
                       </span>
                     )
                   })()}
                   <label className="inline-flex items-center gap-1.5 text-ink-faint">
-                    Təzəlik SLA (saat):
+                    {t('dataSourcesPage.freshnessSlaLabel')}
                     <input
                       key={s.freshness_sla_hours ?? 'none'}
                       type="number"
@@ -216,9 +218,9 @@ export function DataSourcesPage() {
               {openSchema === s.id && (
                 <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3">
                   {schema === null ? (
-                    <p className="text-sm text-ink-faint">Schema yüklənir…</p>
+                    <p className="text-sm text-ink-faint">{t('dataSourcesPage.schemaLoading')}</p>
                   ) : Object.keys(schema).length === 0 ? (
-                    <p className="text-sm text-ink-faint">Schema tapılmadı.</p>
+                    <p className="text-sm text-ink-faint">{t('dataSourcesPage.schemaNotFound')}</p>
                   ) : (
                     <div className="space-y-2">
                       {Object.entries(schema).map(([table, cols]) => (

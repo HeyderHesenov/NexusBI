@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Lock, Palette, RotateCcw, Save, Sparkles } from 'lucide-react'
@@ -17,18 +18,19 @@ type Errors = Partial<Record<keyof Form, string>>
 
 function validate(f: Form): Errors {
   const e: Errors = {}
-  if (f.app_name.length > 120) e.app_name = 'Ad ən çox 120 simvol ola bilər.'
-  else if (/[<>]/.test(f.app_name)) e.app_name = '< və > simvollarına icazə yoxdur.'
-  if (!HEX.test(f.primary_color)) e.primary_color = 'Rəng #RRGGBB formatında olmalıdır.'
+  if (f.app_name.length > 120) e.app_name = 'brandingPage.errNameLength'
+  else if (/[<>]/.test(f.app_name)) e.app_name = 'brandingPage.errNameAngle'
+  if (!HEX.test(f.primary_color)) e.primary_color = 'brandingPage.errColorFormat'
   if (f.logo_url) {
-    if (f.logo_url.length > 2000) e.logo_url = 'URL çox uzundur.'
+    if (f.logo_url.length > 2000) e.logo_url = 'brandingPage.errLogoLong'
     // Case-sensitive to mirror the backend's `startswith(("http://","https://"))`.
-    else if (!/^https?:\/\//.test(f.logo_url)) e.logo_url = 'URL http:// və ya https:// ilə başlamalıdır.'
+    else if (!/^https?:\/\//.test(f.logo_url)) e.logo_url = 'brandingPage.errLogoScheme'
   }
   return e
 }
 
 export function BrandingPage() {
+  const { t } = useTranslation()
   const whiteLabel = useAuthStore((s) => s.user?.white_label)
   const ids = { name: useId(), color: useId(), logo: useId() }
 
@@ -73,7 +75,7 @@ export function BrandingPage() {
       const next = { app_name: b.app_name, primary_color: b.primary_color, logo_url: b.logo_url }
       setForm(next)
       setSaved(next)
-      toast.success('Brendinq yadda saxlanıldı.')
+      toast.success(t('brandingPage.savedToast'))
     } catch {
       /* interceptor toast */
     } finally {
@@ -88,23 +90,22 @@ export function BrandingPage() {
       <div className="w-full">
         <header className="mb-6">
           <p className="eyebrow">White-label</p>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">Brendinq</h1>
+          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">{t('brandingPage.title')}</h1>
         </header>
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <div className="max-w-md">
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-accent-soft text-accent">
               <Lock size={22} />
             </span>
-            <h2 className="mt-4 font-display text-xl font-bold text-ink">White-label Pro özəlliyidir</h2>
+            <h2 className="mt-4 font-display text-xl font-bold text-ink">{t('brandingPage.upsellHeading')}</h2>
             <p className="mt-2 text-sm text-ink-soft">
-              Embed olunmuş panellərdə öz adını, rəngini və loqonu göstərmək üçün Pro və ya daha
-              yüksək plana keç.
+              {t('brandingPage.upsellBody')}
             </p>
             <Link
               to="/pricing"
               className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
             >
-              <Sparkles size={15} /> Pro plana keç
+              <Sparkles size={15} /> {t('brandingPage.upgradeCta')}
             </Link>
           </div>
         </div>
@@ -120,9 +121,9 @@ export function BrandingPage() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">White-label</p>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">Brendinq</h1>
+          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">{t('brandingPage.title')}</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Embed olunmuş panellərdə görünən ad, rəng və loqonu təyin et.
+            {t('brandingPage.subtitle')}
           </p>
         </div>
         {canReset && (
@@ -130,14 +131,14 @@ export function BrandingPage() {
             onClick={() => setForm(DEFAULTS)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-line-strong hover:text-ink"
           >
-            <RotateCcw size={14} /> Defolta qaytar
+            <RotateCcw size={14} /> {t('brandingPage.resetDefault')}
           </button>
         )}
       </header>
 
       {loadError && (
         <p className="mb-4 rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-sm text-ink-soft">
-          Brend konfiqurasiyası yüklənmədi — defolt dəyərlər göstərilir.
+          {t('brandingPage.loadError')}
         </p>
       )}
 
@@ -161,7 +162,7 @@ export function BrandingPage() {
             </div>
           ) : (
             <>
-              <Fieldset id={ids.name} label="Tətbiq adı" error={errors.app_name}>
+              <Fieldset id={ids.name} label={t('brandingPage.labelAppName')} error={errors.app_name ? t(errors.app_name) : undefined}>
                 <input
                   id={ids.name}
                   value={form.app_name}
@@ -173,11 +174,11 @@ export function BrandingPage() {
                 />
               </Fieldset>
 
-              <Fieldset id={ids.color} label="Əsas rəng" error={errors.primary_color}>
+              <Fieldset id={ids.color} label={t('brandingPage.labelPrimaryColor')} error={errors.primary_color ? t(errors.primary_color) : undefined}>
                 <div className="flex items-center gap-3">
                   <input
                     type="color"
-                    aria-label="Rəng seçici"
+                    aria-label={t('brandingPage.colorPickerLabel')}
                     value={HEX.test(form.primary_color) ? form.primary_color : DEFAULTS.primary_color}
                     onChange={(e) => set('primary_color', e.target.value)}
                     className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-line bg-surface-2"
@@ -196,9 +197,9 @@ export function BrandingPage() {
 
               <Fieldset
                 id={ids.logo}
-                label="Loqo URL (ixtiyari)"
-                error={errors.logo_url}
-                hint="https:// ilə başlamalıdır"
+                label={t('brandingPage.labelLogoUrl')}
+                error={errors.logo_url ? t(errors.logo_url) : undefined}
+                hint={t('brandingPage.hintLogoUrl')}
               >
                 <input
                   id={ids.logo}
@@ -214,14 +215,14 @@ export function BrandingPage() {
 
               <div className="flex items-center justify-between gap-2 pt-1">
                 <span className="flex items-center gap-2 text-xs text-ink-faint">
-                  <Palette size={13} /> Embed (iframe / SDK) görünüşünə tətbiq olunur.
+                  <Palette size={13} /> {t('brandingPage.appliesNote')}
                 </span>
                 <button
                   type="submit"
                   disabled={busy || !dirty || !valid}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-50"
                 >
-                  <Save size={15} /> {busy ? 'Saxlanır…' : 'Yadda saxla'}
+                  <Save size={15} /> {busy ? t('brandingPage.saving') : t('brandingPage.save')}
                 </button>
               </div>
             </>
@@ -248,11 +249,11 @@ export function BrandingPage() {
               className="ml-auto rounded-lg px-3 py-1.5 text-sm font-semibold"
               style={{ backgroundColor: accent, color: previewText }}
             >
-              Nümunə düymə
+              {t('brandingPage.sampleButton')}
             </span>
           </div>
           <div className="space-y-3 p-5">
-            <p className="eyebrow">Önizləmə · embed paneli</p>
+            <p className="eyebrow">{t('brandingPage.previewLabel')}</p>
             <div className="h-3 w-2/3 rounded-full bg-line" />
             <div className="grid grid-cols-3 gap-3">
               {[0, 1, 2].map((i) => (

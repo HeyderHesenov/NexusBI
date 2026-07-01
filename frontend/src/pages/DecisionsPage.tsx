@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Activity, Lightbulb, Target, TrendingDown, TrendingUp, Trash2 } from 'lucide-react'
 import { useDecisionStore } from '../store/decisionStore'
 import { TypewriterText } from '../components/charts/TypewriterText'
 import * as decisionApi from '../api/decision'
 import type { Decision, DecisionMeasurement, DecisionStatus, ImpactStatus } from '../types'
 
-const STATUS: { value: DecisionStatus; label: string }[] = [
-  { value: 'open', label: 'Açıq' },
-  { value: 'in_progress', label: 'İcrada' },
-  { value: 'done', label: 'Bitib' },
+const STATUS: { value: DecisionStatus; labelKey: string }[] = [
+  { value: 'open', labelKey: 'decisionsPage.statusOpen' },
+  { value: 'in_progress', labelKey: 'decisionsPage.statusInProgress' },
+  { value: 'done', labelKey: 'decisionsPage.statusDone' },
 ]
 
 const STATUS_STYLE: Record<DecisionStatus, string> = {
@@ -17,18 +18,19 @@ const STATUS_STYLE: Record<DecisionStatus, string> = {
   done: 'border-accent/40 bg-accent-soft text-accent',
 }
 
-const IMPACT: Record<ImpactStatus, { label: string; cls: string }> = {
-  pending: { label: 'Gözləyir', cls: 'border-line text-ink-faint' },
-  on_track: { label: 'İrəliləyir', cls: 'border-accent/40 bg-accent-soft text-accent' },
-  achieved: { label: 'Nail olundu', cls: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' },
-  missed: { label: 'Çatmadı', cls: 'border-amber-500/40 bg-amber-500/10 text-amber-300' },
-  regressed: { label: 'Geriləyir', cls: 'border-red-500/40 bg-red-500/10 text-red-400' },
+const IMPACT: Record<ImpactStatus, { labelKey: string; cls: string }> = {
+  pending: { labelKey: 'decisionsPage.impactPending', cls: 'border-line text-ink-faint' },
+  on_track: { labelKey: 'decisionsPage.impactOnTrack', cls: 'border-accent/40 bg-accent-soft text-accent' },
+  achieved: { labelKey: 'decisionsPage.impactAchieved', cls: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' },
+  missed: { labelKey: 'decisionsPage.impactMissed', cls: 'border-amber-500/40 bg-amber-500/10 text-amber-300' },
+  regressed: { labelKey: 'decisionsPage.impactRegressed', cls: 'border-red-500/40 bg-red-500/10 text-red-400' },
 }
 
 const fmt = (n: number | null) =>
   n == null ? '—' : Intl.NumberFormat('az', { notation: 'compact', maximumFractionDigits: 2 }).format(n)
 
 export function DecisionsPage() {
+  const { t } = useTranslation()
   const { items, accuracy, load, loadAccuracy, patch, measure, remove } = useDecisionStore()
 
   useEffect(() => {
@@ -40,24 +42,24 @@ export function DecisionsPage() {
     <div className="w-full">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Qərarlar</p>
+          <p className="eyebrow">{t('decisionsPage.eyebrow')}</p>
           <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
             Insight → Action → Outcome
           </h1>
           <p className="mt-1 text-sm text-ink-soft">
-            İnsight-dan qərara, qərardan ölçülən təsirə — qapanan döngü.
+            {t('decisionsPage.subtitle')}
           </p>
         </div>
         {accuracy && accuracy.total_measured > 0 && (
           <div className="rounded-2xl border border-line bg-surface px-4 py-3 text-right">
             <p className="eyebrow flex items-center justify-end gap-1.5">
-              <Activity size={12} /> Qərar dəqiqliyi
+              <Activity size={12} /> {t('decisionsPage.decisionAccuracy')}
             </p>
             <p className="mt-1 font-display text-2xl font-bold text-ink">
               {accuracy.accuracy_pct == null ? '—' : `${accuracy.accuracy_pct}%`}
             </p>
             <p className="text-xs text-ink-faint">
-              {accuracy.achieved}/{accuracy.total_measured} hədəfə çatdı
+              {t('decisionsPage.targetsReached', { achieved: accuracy.achieved, total: accuracy.total_measured })}
             </p>
           </div>
         )}
@@ -66,9 +68,9 @@ export function DecisionsPage() {
       {items.length === 0 ? (
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <Target size={22} className="mx-auto text-ink-faint" />
-          <p className="mt-2 font-display text-lg text-ink">Hələ qərar yoxdur</p>
+          <p className="mt-2 font-display text-lg text-ink">{t('decisionsPage.emptyTitle')}</p>
           <p className="mt-1 text-sm text-ink-soft">
-            “Soruş” səhifəsində nəticədə “Qərara çevir” düyməsini işlət.
+            {t('decisionsPage.emptyHint')}
           </p>
         </div>
       ) : (
@@ -115,6 +117,7 @@ function DecisionCard({
   onMeasure: (id: string) => Promise<void>
   onRemove: (id: string) => Promise<void>
 }) {
+  const { t } = useTranslation()
   const [outcome, setOutcome] = useState(d.outcome)
   const [traj, setTraj] = useState<DecisionMeasurement[]>([])
   const [busy, setBusy] = useState(false)
@@ -156,12 +159,12 @@ function DecisionCard({
             className={`rounded-lg border bg-surface-2 px-2 py-1.5 text-xs focus:outline-none ${STATUS_STYLE[d.status]}`}
           >
             {STATUS.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
+              <option key={s.value} value={s.value}>{t(s.labelKey)}</option>
             ))}
           </select>
           <button
             onClick={() => onRemove(d.id)}
-            title="Sil"
+            title={t('decisionsPage.delete')}
             className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
           >
             <Trash2 size={15} />
@@ -172,27 +175,27 @@ function DecisionCard({
       {tracked && (
         <div className="mt-3 rounded-xl border border-line bg-surface-2/50 p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className={`rounded-full border px-2 py-0.5 text-xs ${impact.cls}`}>{impact.label}</span>
+            <span className={`rounded-full border px-2 py-0.5 text-xs ${impact.cls}`}>{t(impact.labelKey)}</span>
             <button
               onClick={doMeasure}
               disabled={busy}
               className="rounded-lg border border-line px-2.5 py-1 text-xs text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-50"
             >
-              {busy ? 'Ölçülür…' : 'İndi ölç'}
+              {busy ? t('decisionsPage.measuring') : t('decisionsPage.measureNow')}
             </button>
           </div>
           <div className="mt-3 flex items-end justify-between gap-3">
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div>
-                <p className="eyebrow">Baseline</p>
+                <p className="eyebrow">{t('decisionsPage.baseline')}</p>
                 <p className="font-mono text-ink">{fmt(d.baseline_value)}</p>
               </div>
               <div>
-                <p className="eyebrow">Proqnoz</p>
+                <p className="eyebrow">{t('decisionsPage.forecast')}</p>
                 <p className="font-mono text-ink-soft">{fmt(d.predicted_value)}</p>
               </div>
               <div>
-                <p className="eyebrow">Real</p>
+                <p className="eyebrow">{t('decisionsPage.real')}</p>
                 <p className="flex items-center gap-1 font-mono text-ink">
                   {fmt(d.realized_value)}
                   {delta != null && delta !== 0 &&
@@ -208,7 +211,7 @@ function DecisionCard({
           </div>
           {delta != null && (
             <p className="mt-1 text-xs text-ink-faint">
-              Baseline-dan dəyişmə: {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
+              {t('decisionsPage.changeFromBaseline')}: {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
             </p>
           )}
         </div>
@@ -220,15 +223,15 @@ function DecisionCard({
           <TypewriterText text={d.insight} />
         </div>
       )}
-      {d.action && <p className="mt-1 text-sm text-ink"><span className="text-ink-faint">Addım:</span> {d.action}</p>}
+      {d.action && <p className="mt-1 text-sm text-ink"><span className="text-ink-faint">{t('decisionsPage.step')}:</span> {d.action}</p>}
 
       <div className="mt-3">
-        <p className="eyebrow mb-1">Nəticə (outcome)</p>
+        <p className="eyebrow mb-1">{t('decisionsPage.outcomeLabel')}</p>
         <textarea
           value={outcome}
           onChange={(e) => setOutcome(e.target.value)}
           onBlur={() => outcome !== d.outcome && onPatch(d.id, { outcome })}
-          placeholder="Qərarın nəticəsini yaz…"
+          placeholder={t('decisionsPage.outcomePlaceholder')}
           rows={2}
           className="w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         />

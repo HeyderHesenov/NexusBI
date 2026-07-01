@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { History, Plus, Shield, Trash2, UserPlus, Users } from 'lucide-react'
 import { useWorkspaceStore } from '../store/workspaceStore'
 
@@ -13,6 +14,7 @@ function fmt(ts: string): string {
 const ROLES = ['viewer', 'editor', 'owner']
 
 export function WorkspacePage() {
+  const { t } = useTranslation()
   const {
     workspaces, members, audit, load, create, loadMembers, addMember, removeMember, loadAudit,
   } = useWorkspaceStore()
@@ -35,10 +37,10 @@ export function WorkspacePage() {
   return (
     <div className="w-full">
       <header className="mb-6">
-        <p className="eyebrow">Komanda</p>
-        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">İş sahələri</h1>
+        <p className="eyebrow">{t('workspacePage.eyebrow')}</p>
+        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">{t('workspacePage.title')}</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Komanda üzvlərini rolla idarə et (owner / editor / viewer) və audit jurnalını izlə.
+          {t('workspacePage.subtitle')}
         </p>
       </header>
 
@@ -46,7 +48,7 @@ export function WorkspacePage() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Yeni iş sahəsinin adı"
+          placeholder={t('workspacePage.newWorkspacePlaceholder')}
           className="flex-1 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         />
         <button
@@ -58,14 +60,14 @@ export function WorkspacePage() {
           }}
           className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
         >
-          <Plus size={15} /> Yarat
+          <Plus size={15} /> {t('workspacePage.create')}
         </button>
       </div>
 
       {workspaces.length === 0 ? (
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-12 text-center">
           <Users size={22} className="mx-auto text-ink-faint" />
-          <p className="mt-2 font-display text-lg text-ink">Hələ iş sahəsi yoxdur</p>
+          <p className="mt-2 font-display text-lg text-ink">{t('workspacePage.emptyWorkspaces')}</p>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -105,7 +107,7 @@ export function WorkspacePage() {
                       <input
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="üzv e-poçtu"
+                        placeholder={t('workspacePage.memberEmailPlaceholder')}
                         className="flex-1 rounded-lg border border-line bg-surface-2 px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
                       />
                       <select
@@ -128,7 +130,7 @@ export function WorkspacePage() {
                         }}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent transition hover:border-accent"
                       >
-                        <UserPlus size={14} /> Əlavə et
+                        <UserPlus size={14} /> {t('workspacePage.addMember')}
                       </button>
                     </div>
                   )}
@@ -142,10 +144,10 @@ export function WorkspacePage() {
       <section className="mt-8">
         <div className="mb-3 flex items-center gap-2">
           <History size={16} className="text-accent" />
-          <h2 className="font-display text-lg font-semibold text-ink">Audit jurnalı</h2>
+          <h2 className="font-display text-lg font-semibold text-ink">{t('workspacePage.auditLog')}</h2>
         </div>
         {audit.length === 0 ? (
-          <p className="text-sm text-ink-faint">Hələ qeyd yoxdur.</p>
+          <p className="text-sm text-ink-faint">{t('workspacePage.emptyAudit')}</p>
         ) : (
           <ul className="space-y-1.5">
             {audit.map((a) => (

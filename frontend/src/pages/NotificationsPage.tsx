@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Bell, BellOff, CheckCheck, Sparkles, Sunrise } from 'lucide-react'
 import { useNotificationStore } from '../store/notificationStore'
 import { IntegrationsPanel } from '../components/IntegrationsPanel'
@@ -13,6 +14,7 @@ function fmt(ts: string): string {
 }
 
 export function NotificationsPage() {
+  const { t } = useTranslation()
   const { items, unread, generating, briefing, load, generate, generateDigest, markAllRead, markOneRead } =
     useNotificationStore()
   const [active, setActive] = useState<Filter>('all')
@@ -31,7 +33,7 @@ export function NotificationsPage() {
   }, [items])
 
   const filterOptions: DropdownOption<Filter>[] = [
-    { value: 'all', label: 'Hamısı', Icon: Bell, count: unread },
+    { value: 'all', label: t('notificationsPage.filterAll'), Icon: Bell, count: unread },
     ...CATEGORY_ORDER.map((c) => ({
       value: c,
       label: CATEGORY_META[c].label,
@@ -46,8 +48,8 @@ export function NotificationsPage() {
     <div className="mx-auto w-full max-w-3xl">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow">Mərkəz</p>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">Bildirişlər</h1>
+          <p className="eyebrow">{t('notificationsPage.eyebrow')}</p>
+          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">{t('notificationsPage.title')}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -56,7 +58,7 @@ export function NotificationsPage() {
             className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
             <Sunrise size={15} className={briefing ? 'animate-pulse' : ''} />
-            {briefing ? 'Hazırlanır…' : 'Səhər brifi'}
+            {briefing ? t('notificationsPage.briefingLoading') : t('notificationsPage.morningBrief')}
           </button>
           <button
             onClick={() => generate()}
@@ -64,14 +66,14 @@ export function NotificationsPage() {
             className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3 py-2 text-sm font-semibold text-accent transition hover:border-accent disabled:opacity-60"
           >
             <Sparkles size={15} className={generating ? 'animate-pulse' : ''} />
-            {generating ? 'Təhlil…' : 'Smart insight yarat'}
+            {generating ? t('notificationsPage.analyzing') : t('notificationsPage.smartInsight')}
           </button>
           {unread > 0 && (
             <button
               onClick={() => markAllRead()}
               className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
             >
-              <CheckCheck size={15} /> Hamısını oxudum
+              <CheckCheck size={15} /> {t('notificationsPage.markAllRead')}
             </button>
           )}
         </div>
@@ -79,7 +81,7 @@ export function NotificationsPage() {
 
       <div className="mb-5">
         <Dropdown
-          ariaLabel="Bildiriş kateqoriyası"
+          ariaLabel={t('notificationsPage.categoryAria')}
           options={filterOptions}
           value={active}
           onChange={setActive}
@@ -92,12 +94,12 @@ export function NotificationsPage() {
           <div>
             <BellOff size={22} className="mx-auto text-ink-faint" />
             <p className="mt-2 font-display text-lg text-ink">
-              {active === 'all' ? 'Bildiriş yoxdur' : 'Bu kateqoriyada bildiriş yoxdur'}
+              {active === 'all' ? t('notificationsPage.emptyAll') : t('notificationsPage.emptyCategory')}
             </p>
             <p className="mt-1 text-sm text-ink-soft">
               {active === 'all'
-                ? 'Alert qur (Hesabatlar → saxlanan sorğu) — şərt pozulanda burada görünəcək.'
-                : 'Başqa kateqoriyaya keç və ya yeni brif/insight yarat.'}
+                ? t('notificationsPage.emptyAllHint')
+                : t('notificationsPage.emptyCategoryHint')}
             </p>
           </div>
         </div>

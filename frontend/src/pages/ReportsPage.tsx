@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { BellPlus, Clock, Mail, Play, Trash2, BookMarked } from 'lucide-react'
 import { useSavedQueryStore } from '../store/savedQueryStore'
@@ -8,19 +9,19 @@ import * as subApi from '../api/reportSubscription'
 import type { ReportFormat, ReportSchedule, Subscription } from '../api/reportSubscription'
 import type { AlertOperator, Schedule } from '../types'
 
-const SCHEDULES: { value: Schedule; label: string }[] = [
-  { value: 'off', label: 'Cədvəl yox' },
-  { value: 'hourly', label: 'Saatlıq' },
-  { value: 'daily', label: 'Gündəlik' },
-  { value: 'weekly', label: 'Həftəlik' },
+const SCHEDULES: { value: Schedule; labelKey: string }[] = [
+  { value: 'off', labelKey: 'reportsPage.scheduleOff' },
+  { value: 'hourly', labelKey: 'reportsPage.scheduleHourly' },
+  { value: 'daily', labelKey: 'reportsPage.scheduleDaily' },
+  { value: 'weekly', labelKey: 'reportsPage.scheduleWeekly' },
 ]
 
-function fmt(ts: string | null): string {
-  if (!ts) return 'heç vaxt'
-  return new Date(ts).toLocaleString('az-AZ', { dateStyle: 'short', timeStyle: 'short' })
-}
-
 export function ReportsPage() {
+  const { t } = useTranslation()
+  const fmt = (ts: string | null): string => {
+    if (!ts) return t('reportsPage.never')
+    return new Date(ts).toLocaleString('az-AZ', { dateStyle: 'short', timeStyle: 'short' })
+  }
   const { items, load, run, remove, setSchedule } = useSavedQueryStore()
   const [alertFor, setAlertFor] = useState<{ id: string; name: string } | null>(null)
   const [deliverFor, setDeliverFor] = useState<{ id: string; name: string } | null>(null)
@@ -32,21 +33,21 @@ export function ReportsPage() {
   return (
     <div className="w-full">
       <header className="mb-6">
-        <p className="eyebrow">Hesabatlar</p>
+        <p className="eyebrow">{t('reportsPage.eyebrow')}</p>
         <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
-          Saxlanan sorğular
+          {t('reportsPage.title')}
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Sorğunu bir kliklə yenidən işlət və ya avto-yeniləmə cədvəli təyin et.
+          {t('reportsPage.subtitle')}
         </p>
       </header>
 
       {items.length === 0 ? (
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <BookMarked size={22} className="mx-auto text-ink-faint" />
-          <p className="mt-2 font-display text-lg text-ink">Hələ saxlanan sorğu yoxdur</p>
+          <p className="mt-2 font-display text-lg text-ink">{t('reportsPage.emptyTitle')}</p>
           <p className="mt-1 text-sm text-ink-soft">
-            “Soruş” səhifəsində nəticənin yanındakı “Saxla” düyməsini işlət.
+            {t('reportsPage.emptyHint')}
           </p>
         </div>
       ) : (
@@ -58,7 +59,7 @@ export function ReportsPage() {
                   <p className="font-medium text-ink">{s.name}</p>
                   <p className="truncate text-sm text-ink-soft">“{s.nl_query}”</p>
                   <p className="mt-1 flex items-center gap-1.5 font-mono text-[11px] text-ink-faint">
-                    <Clock size={11} /> son işləmə: {fmt(s.last_run_at)}
+                    <Clock size={11} /> {t('reportsPage.lastRun')}: {fmt(s.last_run_at)}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -69,34 +70,34 @@ export function ReportsPage() {
                   >
                     {SCHEDULES.map((o) => (
                       <option key={o.value} value={o.value}>
-                        {o.label}
+                        {t(o.labelKey)}
                       </option>
                     ))}
                   </select>
                   <button
                     onClick={() => run(s.id)}
-                    title="İndi işlət"
+                    title={t('reportsPage.runNow')}
                     className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-accent hover:text-accent"
                   >
                     <Play size={15} />
                   </button>
                   <button
                     onClick={() => setAlertFor({ id: s.id, name: s.name })}
-                    title="Alert qur"
+                    title={t('reportsPage.setAlert')}
                     className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-accent hover:text-accent"
                   >
                     <BellPlus size={15} />
                   </button>
                   <button
                     onClick={() => setDeliverFor({ id: s.id, name: s.name })}
-                    title="PDF/Excel çatdırılması"
+                    title={t('reportsPage.deliveryTitle')}
                     className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-accent hover:text-accent"
                   >
                     <Mail size={15} />
                   </button>
                   <button
                     onClick={() => remove(s.id)}
-                    title="Sil"
+                    title={t('reportsPage.delete')}
                     className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
                   >
                     <Trash2 size={15} />
@@ -140,6 +141,7 @@ function AlertModal({
   savedQueryName: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [column, setColumn] = useState('')
   const [operator, setOperator] = useState<AlertOperator>('>')
@@ -157,7 +159,7 @@ function AlertModal({
         operator,
         threshold: Number(threshold) || 0,
       })
-      toast.success('Alert quruldu.')
+      toast.success(t('reportsPage.alertCreated'))
       onClose()
     } catch {
       /* interceptor toast */
@@ -170,26 +172,26 @@ function AlertModal({
     <ModalShell
       open
       onClose={onClose}
-      title="Alert qur"
-      subtitle={`“${savedQueryName}” işləyəndə şərt pozulsa bildiriş gəlir.`}
+      title={t('reportsPage.setAlert')}
+      subtitle={t('reportsPage.alertSubtitle', { name: savedQueryName })}
       footer={
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
-            Ləğv et
+            {t('reportsPage.cancel')}
           </button>
           <button
             onClick={submit}
             disabled={busy}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
-            Qur
+            {t('reportsPage.create')}
           </button>
         </div>
       }
     >
       <div className="space-y-3 p-5">
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad (məs. Gəlir düşdü)" className={field} />
-        <input value={column} onChange={(e) => setColumn(e.target.value)} placeholder="Sütun (məs. total)" className={`${field} font-mono text-sm`} />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t('reportsPage.namePlaceholder')} className={field} />
+        <input value={column} onChange={(e) => setColumn(e.target.value)} placeholder={t('reportsPage.columnPlaceholder')} className={`${field} font-mono text-sm`} />
         <div className="flex gap-2">
           <select value={operator} onChange={(e) => setOperator(e.target.value as AlertOperator)} className={`${field} w-24`}>
             {OPERATORS.map((o) => (
@@ -200,7 +202,7 @@ function AlertModal({
             type="number"
             value={threshold}
             onChange={(e) => setThreshold(e.target.value)}
-            placeholder="Hədd"
+            placeholder={t('reportsPage.thresholdPlaceholder')}
             className={`${field} font-mono`}
           />
         </div>
@@ -209,10 +211,10 @@ function AlertModal({
   )
 }
 
-const DELIVERY_SCHEDULES: { value: ReportSchedule; label: string }[] = [
-  { value: 'hourly', label: 'Saatlıq' },
-  { value: 'daily', label: 'Gündəlik' },
-  { value: 'weekly', label: 'Həftəlik' },
+const DELIVERY_SCHEDULES: { value: ReportSchedule; labelKey: string }[] = [
+  { value: 'hourly', labelKey: 'reportsPage.scheduleHourly' },
+  { value: 'daily', labelKey: 'reportsPage.scheduleDaily' },
+  { value: 'weekly', labelKey: 'reportsPage.scheduleWeekly' },
 ]
 
 function DeliveryModal({
@@ -224,6 +226,7 @@ function DeliveryModal({
   savedQueryName: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [subs, setSubs] = useState<Subscription[]>([])
   const [recipient, setRecipient] = useState('')
   const [format, setFormat] = useState<ReportFormat>('pdf')
@@ -245,7 +248,7 @@ function DeliveryModal({
       })
       setSubs((prev) => [...prev, sub])
       setRecipient('')
-      toast.success('Çatdırılma quruldu.')
+      toast.success(t('reportsPage.deliveryCreated'))
     } catch {
       /* interceptor toast */
     } finally {
@@ -262,19 +265,19 @@ function DeliveryModal({
     <ModalShell
       open
       onClose={onClose}
-      title="PDF/Excel çatdırılması"
-      subtitle={`“${savedQueryName}” hesabatı cədvəl üzrə email-ə göndərilir.`}
+      title={t('reportsPage.deliveryTitle')}
+      subtitle={t('reportsPage.deliverySubtitle', { name: savedQueryName })}
       footer={
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
-            Bağla
+            {t('reportsPage.close')}
           </button>
           <button
             onClick={add}
             disabled={busy || !recipient.trim()}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
-            Əlavə et
+            {t('reportsPage.add')}
           </button>
         </div>
       }
@@ -288,7 +291,7 @@ function DeliveryModal({
                 <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
                   {s.format} · {s.schedule}
                 </span>
-                <button onClick={() => del(s.id)} aria-label="Sil" className="shrink-0 text-ink-faint transition hover:text-[#D87C6B]">
+                <button onClick={() => del(s.id)} aria-label={t('reportsPage.delete')} className="shrink-0 text-ink-faint transition hover:text-[#D87C6B]">
                   <Trash2 size={14} />
                 </button>
               </li>
@@ -299,7 +302,7 @@ function DeliveryModal({
           type="email"
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
-          placeholder="Email ünvanı"
+          placeholder={t('reportsPage.emailPlaceholder')}
           className={field}
         />
         <div className="flex gap-2">
@@ -309,7 +312,7 @@ function DeliveryModal({
           </select>
           <select value={schedule} onChange={(e) => setSchedule(e.target.value as ReportSchedule)} className={field}>
             {DELIVERY_SCHEDULES.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
             ))}
           </select>
         </div>

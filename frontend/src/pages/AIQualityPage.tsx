@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Activity, Database, Gauge, HelpCircle, PlayCircle, RefreshCw, Sparkles } from 'lucide-react'
 import { useAIQualityStore } from '../store/aiQualityStore'
 
@@ -31,6 +32,7 @@ function StatCard({ icon, label, value, hint }: { icon: React.ReactNode; label: 
 }
 
 export function AIQualityPage() {
+  const { t } = useTranslation()
   const { runs, obs, busy, load, runEval, runHistory, reindex } = useAIQualityStore()
   const [showHelp, setShowHelp] = useState(false)
 
@@ -51,7 +53,10 @@ export function AIQualityPage() {
 
   const TIERS = ['easy', 'medium', 'hard'] as const
   const TIER_LABEL: Record<string, string> = {
-    easy: 'Asan', medium: 'Orta', hard: 'Çətin', history: 'Tarixçə',
+    easy: t('aIQualityPage.tierEasy'),
+    medium: t('aIQualityPage.tierMedium'),
+    hard: t('aIQualityPage.tierHard'),
+    history: t('aIQualityPage.tierHistory'),
   }
   const latestHistory = runs.find((r) => r.mode === 'history')
   const tierStats = latest
@@ -65,14 +70,13 @@ export function AIQualityPage() {
     <div className="w-full">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">AI Mühəndisliyi</p>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">AI Keyfiyyət</h1>
+          <p className="eyebrow">{t('aIQualityPage.eyebrow')}</p>
+          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">{t('aIQualityPage.title')}</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Text2SQL dəqiqliyi, gecikmə, token istifadəsi və RAG əsaslandırması — app öz AI-ını ölçür.
+            {t('aIQualityPage.subtitle')}
           </p>
           <p className="mt-1 text-xs text-ink-faint">
-            ⚠ Demo schema üzərində səviyyələnmiş golden dəsti (bare engine) — reqressiya siqnalı,
-            mütləq real-dünya Text2SQL dəqiqliyi deyil.
+            {t('aIQualityPage.disclaimer')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -82,69 +86,62 @@ export function AIQualityPage() {
               showHelp ? 'border-accent text-accent' : 'border-line text-ink-soft hover:border-accent hover:text-accent'
             }`}
           >
-            <HelpCircle size={15} /> Necə işləyir?
+            <HelpCircle size={15} /> {t('aIQualityPage.howItWorks')}
           </button>
           <button
             onClick={reindex}
             disabled={busy}
             className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-50"
           >
-            <RefreshCw size={15} /> Yenidən indekslə
+            <RefreshCw size={15} /> {t('aIQualityPage.reindex')}
           </button>
           <button
             onClick={runHistory}
             disabled={busy}
             className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-50"
           >
-            <Activity size={15} /> Tarixçə reqressiyası
+            <Activity size={15} /> {t('aIQualityPage.historyRegression')}
           </button>
           <button
             onClick={() => runEval(true)}
             disabled={busy}
             className="flex items-center gap-1.5 rounded-xl border border-accent px-3 py-2 text-sm font-semibold text-accent transition hover:bg-accent-soft disabled:opacity-60"
           >
-            <Sparkles size={15} /> Grounded (RAG)
+            <Sparkles size={15} /> {t('aIQualityPage.grounded')}
           </button>
           <button
             onClick={() => runEval(false)}
             disabled={busy}
             className="flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press disabled:opacity-60"
           >
-            <PlayCircle size={15} /> {busy ? 'İşləyir…' : 'Eval işlət'}
+            <PlayCircle size={15} /> {busy ? t('aIQualityPage.running') : t('aIQualityPage.runEval')}
           </button>
         </div>
       </header>
 
       {showHelp && (
         <div className="mb-4 rounded-2xl border border-line bg-surface p-5 text-sm leading-relaxed">
-          <p className="eyebrow mb-2">Necə işləyir?</p>
+          <p className="eyebrow mb-2">{t('aIQualityPage.howItWorks')}</p>
           <p className="text-ink-soft">
-            Bu səhifə app-ın öz <span className="text-ink">Text2SQL AI-ının düzgün işlədiyini</span> yoxlayır
-            — istifadəçinin sualına yox, AI-nin özünün doğruluğuna. Bu, app-ı saxlayan/inkişaf etdirən
-            üçün alətdir (analitik üçün deyil — o, “Soruş” səhifəsini işlədir).
+            {t('aIQualityPage.helpIntro')}
           </p>
 
-          <p className="eyebrow mt-4 mb-1">Düymələr</p>
+          <p className="eyebrow mt-4 mb-1">{t('aIQualityPage.helpButtonsTitle')}</p>
           <ul className="space-y-1 text-ink-soft">
-            <li><span className="font-semibold text-ink">Eval işlət</span> — 37 etalon sualı AI-dan keçirir, neçəsində nəticə DOĞRU çıxdığını ölçür (bare engine). Model/prompt dəyişəndən sonra bas.</li>
-            <li><span className="font-semibold text-accent">Grounded (RAG)</span> — eyni testi RAG kontekstilə işlədir; <span className="text-ink">RAG təsiri</span> deltası RAG-ın faydasını göstərir.</li>
-            <li><span className="font-semibold text-ink">Tarixçə reqressiyası</span> — SƏNİN saxladığın/dashboard sorğularını yenidən yoxlayır: AI hələ də eyni cavabı verirmi? <span className="text-ink">Stabillik %</span> + drift edən real suallar.</li>
-            <li><span className="font-semibold text-ink">Yenidən indekslə</span> — RAG vektor indeksini sənin sorğularından + verified metriklərdən yenidən qurur.</li>
+            <li><span className="font-semibold text-ink">{t('aIQualityPage.runEval')}</span> — {t('aIQualityPage.helpRunEval')}</li>
+            <li><span className="font-semibold text-accent">{t('aIQualityPage.grounded')}</span> — {t('aIQualityPage.helpGrounded')}</li>
+            <li><span className="font-semibold text-ink">{t('aIQualityPage.historyRegression')}</span> — {t('aIQualityPage.helpHistory')}</li>
+            <li><span className="font-semibold text-ink">{t('aIQualityPage.reindex')}</span> — {t('aIQualityPage.helpReindex')}</li>
           </ul>
 
-          <p className="eyebrow mt-4 mb-1">Rəqəmləri necə oxu</p>
+          <p className="eyebrow mt-4 mb-1">{t('aIQualityPage.helpReadNumbersTitle')}</p>
           <p className="text-ink-soft">
-            <span className="text-ink">Dəqiqlik %</span> = neçə sual düz keçdi · <span className="text-ink">Asan/Orta/Çətin</span> ayrıca
-            (çətində düşmə normaldır) · <span className="text-ink">Bare vs Grounded vs Tarixçə</span> yan-yana ·
-            per-case <span className="text-emerald-400">✓</span>/<span className="text-red-400">✗</span> hansı sualın keçmədiyini göstərir.
+            {t('aIQualityPage.helpReadNumbers')}
           </p>
 
-          <p className="eyebrow mt-4 mb-1">İş axını</p>
+          <p className="eyebrow mt-4 mb-1">{t('aIQualityPage.helpWorkflowTitle')}</p>
           <p className="text-ink-soft">
-            Dəyişiklik et → <span className="text-ink">Eval işlət</span> (reqressiya tut, trendlə müqayisə) →
-            vaxtaşırı <span className="text-ink">Tarixçə reqressiyası</span> (real drift tut). Fonda
-            <span className="text-ink"> CI gate</span> (keyfiyyət düşsə build qırmızı) və <span className="text-ink">alert</span>
-            (həddən aşağı düşsə bildiriş) avtomatik qoruyur — AI-nin səssizcə pisləşməsini istifadəçi vurmamış tutursan.
+            {t('aIQualityPage.helpWorkflow')}
           </p>
         </div>
       )}
@@ -152,25 +149,25 @@ export function AIQualityPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={<Gauge size={12} />}
-          label="Text2SQL dəqiqliyi"
+          label={t('aIQualityPage.statAccuracyLabel')}
           value={latest ? `${Math.round(latest.exec_accuracy * 100)}%` : '—'}
-          hint={latest ? `${latest.passed}/${latest.total} golden keçdi` : 'Hələ eval yoxdur'}
+          hint={latest ? t('aIQualityPage.statAccuracyHint', { passed: latest.passed, total: latest.total }) : t('aIQualityPage.statAccuracyEmpty')}
         />
         <StatCard
           icon={<Activity size={12} />}
-          label="Orta gecikmə"
+          label={t('aIQualityPage.statLatencyLabel')}
           value={obs ? `${obs.avg_latency_ms} ms` : '—'}
-          hint={obs ? `${obs.calls} AI çağırışı` : undefined}
+          hint={obs ? t('aIQualityPage.statLatencyHint', { calls: obs.calls }) : undefined}
         />
         <StatCard
           icon={<Sparkles size={12} />}
-          label="Token istifadəsi"
+          label={t('aIQualityPage.statTokensLabel')}
           value={obs ? Intl.NumberFormat('az', { notation: 'compact' }).format(obs.total_tokens) : '—'}
-          hint="cari sessiya"
+          hint={t('aIQualityPage.statTokensHint')}
         />
         <StatCard
           icon={<Database size={12} />}
-          label="Çağırış növləri"
+          label={t('aIQualityPage.statCallTypesLabel')}
           value={obs ? String(Object.keys(obs.by_kind).length) : '—'}
           hint={obs ? Object.entries(obs.by_kind).map(([k, v]) => `${k}:${v}`).join(' · ') : undefined}
         />
@@ -179,28 +176,28 @@ export function AIQualityPage() {
       {(latestBare || latestGrounded || latestHistory) && (
         <div className="mt-3 flex flex-wrap items-stretch gap-2">
           <div className="rounded-xl border border-line bg-surface px-3 py-2">
-            <span className="eyebrow">Bare engine</span>
+            <span className="eyebrow">{t('aIQualityPage.bareEngine')}</span>
             <span className="ml-2 font-mono text-ink">
               {latestBare ? `${Math.round(latestBare.exec_accuracy * 100)}%` : '—'}
             </span>
           </div>
           <div className="rounded-xl border border-accent/40 bg-accent-soft px-3 py-2">
-            <span className="eyebrow text-accent">Grounded (RAG)</span>
+            <span className="eyebrow text-accent">{t('aIQualityPage.grounded')}</span>
             <span className="ml-2 font-mono text-ink">
               {latestGrounded ? `${Math.round(latestGrounded.exec_accuracy * 100)}%` : '—'}
             </span>
           </div>
           {ragDelta != null && (
             <div className="flex items-center rounded-xl border border-line bg-surface px-3 py-2 text-sm">
-              <span className="eyebrow">RAG təsiri</span>
+              <span className="eyebrow">{t('aIQualityPage.ragImpact')}</span>
               <span className={`ml-2 font-mono ${ragDelta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {ragDelta > 0 ? '+' : ''}{ragDelta}%
               </span>
             </div>
           )}
           {latestHistory && (
-            <div className="rounded-xl border border-line bg-surface px-3 py-2" title="Sənin saxlanmış/dashboard sorğularında AI drift">
-              <span className="eyebrow">Tarixçə stabilliyi</span>
+            <div className="rounded-xl border border-line bg-surface px-3 py-2" title={t('aIQualityPage.historyStabilityTooltip')}>
+              <span className="eyebrow">{t('aIQualityPage.historyStability')}</span>
               <span className="ml-2 font-mono text-ink">
                 {Math.round(latestHistory.exec_accuracy * 100)}%
               </span>
@@ -226,17 +223,17 @@ export function AIQualityPage() {
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <div className="rounded-2xl border border-line bg-surface p-4">
-          <p className="eyebrow mb-2">Dəqiqlik trendi</p>
+          <p className="eyebrow mb-2">{t('aIQualityPage.accuracyTrend')}</p>
           {trend.length >= 2 ? (
             <Trend values={trend} />
           ) : (
-            <p className="text-sm text-ink-faint">Trend üçün ən azı 2 eval lazımdır.</p>
+            <p className="text-sm text-ink-faint">{t('aIQualityPage.trendEmpty')}</p>
           )}
         </div>
         <div className="rounded-2xl border border-line bg-surface p-4">
-          <p className="eyebrow mb-2">Son eval-lar</p>
+          <p className="eyebrow mb-2">{t('aIQualityPage.recentEvals')}</p>
           {runs.length === 0 ? (
-            <p className="text-sm text-ink-faint">Hələ eval işlədilməyib.</p>
+            <p className="text-sm text-ink-faint">{t('aIQualityPage.recentEvalsEmpty')}</p>
           ) : (
             <ul className="space-y-1.5 text-sm">
               {runs.slice(0, 8).map((r) => (
@@ -251,7 +248,7 @@ export function AIQualityPage() {
                             : 'bg-surface-2 text-ink-faint'
                       }`}
                     >
-                      {r.mode === 'grounded' ? 'RAG' : r.mode === 'history' ? 'tarixçə' : 'bare'}
+                      {r.mode === 'grounded' ? 'RAG' : r.mode === 'history' ? t('aIQualityPage.modeHistory') : 'bare'}
                     </span>
                     <span className="font-mono text-ink-soft">{new Date(r.created_at).toLocaleString('az')}</span>
                   </span>
@@ -268,8 +265,8 @@ export function AIQualityPage() {
       {latest && latest.details.length > 0 && (
         <div className="mt-4 rounded-2xl border border-line bg-surface p-4">
           <div className="mb-2 flex items-center justify-between">
-            <p className="eyebrow">Son eval — sual üzrə nəticə</p>
-            <p className="text-xs text-ink-faint">✓ = nəticə uyğun · ⚑ = sütun adı da eyni</p>
+            <p className="eyebrow">{t('aIQualityPage.perCaseTitle')}</p>
+            <p className="text-xs text-ink-faint">{t('aIQualityPage.perCaseLegend')}</p>
           </div>
           <ul className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             {latest.details.map((d, i) => (

@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { Database, FileText, LayoutDashboard, Sparkles, Upload } from 'lucide-react'
 import { useRequirementStore } from '../store/requirementStore'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { useDashboardStore } from '../store/dashboardStore'
 
-const SAMPLE = `Biznes tələbləri:
-- Aylıq gəlir trendi izlənməlidir.
-- Ən çox satan 5 məhsul göstərilməlidir.
-- Region üzrə satış payı analiz edilməlidir.
-- Müştəri sayının aylıq dəyişməsi vacibdir.`
-
 export function RequirementsPage() {
+  const { t } = useTranslation()
+  const SAMPLE = t('requirementsPage.sampleText')
   const navigate = useNavigate()
   const { doc, extracting, building, extract, build, reset } = useRequirementStore()
   const { sources, load: loadSources } = useDatasourceStore()
@@ -39,7 +36,7 @@ export function RequirementsPage() {
       setText(await file.text())
       if (!name) setName(file.name.replace(/\.[^.]+$/, ''))
     } catch {
-      toast.error('Fayl oxunmadı.')
+      toast.error(t('requirementsPage.fileReadError'))
     }
   }
 
@@ -67,10 +64,10 @@ export function RequirementsPage() {
   return (
     <div className="mx-auto w-full max-w-5xl">
       <header className="mb-6">
-        <p className="eyebrow">Tələblər → Dashboard</p>
-        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">Tələbnamə</h1>
+        <p className="eyebrow">{t('requirementsPage.eyebrow')}</p>
+        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">{t('requirementsPage.title')}</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          BRD və ya user story yapışdır — NexusBI ölçülə bilən KPI-ları çıxarıb dashboard qurur.
+          {t('requirementsPage.subtitle')}
         </p>
       </header>
 
@@ -79,25 +76,25 @@ export function RequirementsPage() {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Sənəd adı (ixtiyari)"
+            placeholder={t('requirementsPage.namePlaceholder')}
             className="flex-1 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
           />
           <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm text-ink-soft transition hover:border-accent hover:text-ink">
-            <Upload size={14} /> Fayl (.txt/.md)
+            <Upload size={14} /> {t('requirementsPage.fileLabel')}
             <input type="file" accept=".txt,.md,.csv,text/*" className="hidden" onChange={onFile} />
           </label>
           <button
             onClick={() => setText(SAMPLE)}
             className="rounded-xl px-3 py-2 text-sm text-ink-faint transition hover:text-ink"
           >
-            Nümunə
+            {t('requirementsPage.sampleButton')}
           </button>
         </div>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={8}
-          placeholder="Tələb mətnini bura yapışdır…"
+          placeholder={t('requirementsPage.textPlaceholder')}
           className="w-full rounded-xl border border-line bg-surface-2 px-3 py-2 font-mono text-sm leading-relaxed text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         />
         <div className="mt-3 flex justify-end gap-2">
@@ -109,7 +106,7 @@ export function RequirementsPage() {
               }}
               className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink"
             >
-              Təmizlə
+              {t('requirementsPage.clear')}
             </button>
           )}
           <button
@@ -118,7 +115,7 @@ export function RequirementsPage() {
             className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
             <Sparkles size={15} className={extracting ? 'animate-pulse' : ''} />
-            {extracting ? 'Çıxarılır…' : 'KPI çıxar'}
+            {extracting ? t('requirementsPage.extracting') : t('requirementsPage.extractKpi')}
           </button>
         </div>
       </div>
@@ -128,7 +125,7 @@ export function RequirementsPage() {
           <div className="mb-3 flex items-center gap-2">
             <FileText size={16} className="text-accent" />
             <h2 className="font-display text-lg font-semibold text-ink">
-              Çıxarılan KPI-lar ({doc.kpis.length})
+              {t('requirementsPage.extractedKpis', { count: doc.kpis.length })}
             </h2>
           </div>
           <ul className="space-y-2">
@@ -172,7 +169,7 @@ export function RequirementsPage() {
                 onChange={(e) => setDatasourceId(e.target.value || null)}
                 className="bg-transparent text-ink focus:outline-none"
               >
-                <option value="">Demo data</option>
+                <option value="">{t('requirementsPage.demoData')}</option>
                 {sources.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -186,7 +183,7 @@ export function RequirementsPage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
             >
               <LayoutDashboard size={15} />
-              {building ? 'Qurulur…' : `Dashboard qur (${chosen.length})`}
+              {building ? t('requirementsPage.building') : t('requirementsPage.buildDashboard', { count: chosen.length })}
             </button>
           </div>
         </div>

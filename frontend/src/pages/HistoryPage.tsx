@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import { useQueryStore } from '../store/queryStore'
 import { HistoryDeleteUI } from '../components/query/HistoryDeleteUI'
 import { useHistoryDelete } from '../hooks/useHistoryDelete'
 
 export function HistoryPage() {
+  const { t } = useTranslation()
   const { history, loadHistory } = useQueryStore()
   const del = useHistoryDelete()
   useEffect(() => {
@@ -13,14 +15,14 @@ export function HistoryPage() {
 
   return (
     <div>
-      <p className="eyebrow">Jurnal</p>
-      <h2 className="mb-6 mt-1 font-display text-3xl font-bold text-ink">Sorğu tarixçəsi</h2>
+      <p className="eyebrow">{t('historyPage.eyebrow')}</p>
+      <h2 className="mb-6 mt-1 font-display text-3xl font-bold text-ink">{t('historyPage.title')}</h2>
 
       <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-line">
-              {['Sorğu', 'Chart', 'ms', 'Tarix', ''].map((h, i) => (
+              {[t('historyPage.colQuery'), 'Chart', 'ms', t('historyPage.colDate'), ''].map((h, i) => (
                 <th
                   key={i}
                   className="px-5 py-3 font-mono text-[11px] uppercase tracking-wider text-ink-faint"
@@ -34,7 +36,7 @@ export function HistoryPage() {
             {history.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-5 py-24 text-center text-ink-soft">
-                  Hələ sorğu yoxdur.
+                  {t('historyPage.empty')}
                 </td>
               </tr>
             ) : (
@@ -57,7 +59,7 @@ export function HistoryPage() {
                   <td className="px-3 py-3 text-right">
                     <button
                       onClick={() => del.askDelete(h.id)}
-                      aria-label="Sorğunu sil"
+                      aria-label={t('historyPage.deleteQuery')}
                       className="rounded-md p-1.5 text-ink-faint opacity-0 transition hover:bg-surface hover:text-[#D87C6B] focus:opacity-100 group-hover:opacity-100"
                     >
                       <Trash2 size={15} />
