@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { FlaskConical, Percent, Play, Plus, Sigma, Trash2, Trophy } from 'lucide-react'
@@ -25,7 +25,9 @@ export function ExperimentsPage() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">{t('experimentsPage.eyebrow')}</p>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">{t('experimentsPage.title')}</h1>
+          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
+            {t('experimentsPage.title')}
+          </h1>
           <p className="mt-1 text-sm text-ink-soft">{t('experimentsPage.subtitle')}</p>
         </div>
         <button
@@ -47,7 +49,12 @@ export function ExperimentsPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((e) => (
-            <ExperimentCard key={e.id} exp={e} onAnalyze={() => analyze(e.id)} onRemove={() => remove(e.id)} />
+            <ExperimentCard
+              key={e.id}
+              exp={e}
+              onAnalyze={() => analyze(e.id)}
+              onRemove={() => remove(e.id)}
+            />
           ))}
         </ul>
       )}
@@ -57,7 +64,15 @@ export function ExperimentsPage() {
   )
 }
 
-function ExperimentCard({ exp, onAnalyze, onRemove }: { exp: Experiment; onAnalyze: () => Promise<void>; onRemove: () => Promise<void> }) {
+function ExperimentCard({
+  exp,
+  onAnalyze,
+  onRemove,
+}: {
+  exp: Experiment
+  onAnalyze: () => Promise<void>
+  onRemove: () => Promise<void>
+}) {
   const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
   const r = exp.result
@@ -77,7 +92,9 @@ function ExperimentCard({ exp, onAnalyze, onRemove }: { exp: Experiment; onAnaly
         <div>
           <p className="font-medium text-ink">{exp.name}</p>
           <p className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-            {exp.kind === 'conversion' ? t('experimentsPage.conversion') : t('experimentsPage.mean')}
+            {exp.kind === 'conversion'
+              ? t('experimentsPage.conversion')
+              : t('experimentsPage.mean')}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -86,9 +103,14 @@ function ExperimentCard({ exp, onAnalyze, onRemove }: { exp: Experiment; onAnaly
             disabled={busy}
             className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-60"
           >
-            <Play size={13} /> {busy ? t('experimentsPage.analyzing') : t('experimentsPage.analyze')}
+            <Play size={13} />{' '}
+            {busy ? t('experimentsPage.analyzing') : t('experimentsPage.analyze')}
           </button>
-          <button onClick={onRemove} aria-label={t('experimentsPage.delete')} className="rounded-lg border border-line p-1.5 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]">
+          <button
+            onClick={onRemove}
+            aria-label={t('experimentsPage.delete')}
+            className="rounded-lg border border-line p-1.5 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+          >
             <Trash2 size={13} />
           </button>
         </div>
@@ -102,7 +124,9 @@ function ExperimentCard({ exp, onAnalyze, onRemove }: { exp: Experiment; onAnaly
                 <Trophy size={12} /> {r.winner}
               </span>
             )}
-            <p className={`text-sm font-medium ${r.significant ? 'text-ink' : 'text-ink-soft'}`}>{r.verdict}</p>
+            <p className={`text-sm font-medium ${r.significant ? 'text-ink' : 'text-ink-soft'}`}>
+              {r.verdict}
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {(['a', 'b'] as const).map((k) => {
@@ -112,7 +136,9 @@ function ExperimentCard({ exp, onAnalyze, onRemove }: { exp: Experiment; onAnaly
               return (
                 <div key={k} className="rounded-xl border border-line bg-surface-2 p-3">
                   <p className="text-xs text-ink-soft">{label}</p>
-                  <p className={`font-display text-xl font-bold ${isWinner ? 'text-accent' : 'text-ink'}`}>
+                  <p
+                    className={`font-display text-xl font-bold ${isWinner ? 'text-accent' : 'text-ink'}`}
+                  >
                     {val}
                     {r.metric.unit}
                   </p>
@@ -135,9 +161,20 @@ function ExperimentCard({ exp, onAnalyze, onRemove }: { exp: Experiment; onAnaly
 const B_COLOR = '#7C9CC4'
 const DANGER = '#D87C6B'
 
-const PLACEHOLDERS: Record<string, string> = { n: '1000', conversions: '124', mean: '42.5', sd: '5.0' }
+const PLACEHOLDERS: Record<string, string> = {
+  n: '1000',
+  conversions: '124',
+  mean: '42.5',
+  sd: '5.0',
+}
 
-function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p: import('../types').ExperimentCreate) => Promise<void> }) {
+function CreateModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void
+  onCreate: (p: import('../types').ExperimentCreate) => Promise<void>
+}) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [kind, setKind] = useState<ExperimentKind>('conversion')
@@ -170,7 +207,9 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p:
     return null
   }
   const hasErrors = [a, b].some((o) => fields.some((f) => fieldError(o, f) !== null))
-  const complete = fields.every((f) => !Number.isNaN(num(a[f] ?? '')) && !Number.isNaN(num(b[f] ?? '')))
+  const complete = fields.every(
+    (f) => !Number.isNaN(num(a[f] ?? '')) && !Number.isNaN(num(b[f] ?? '')),
+  )
   const valid = name.trim() !== '' && complete && !hasErrors
 
   // Live preview: each variant's rate (conversion) or mean, plus the B-vs-A delta.
@@ -186,14 +225,20 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p:
   const aVal = variantValue(a)
   const bVal = variantValue(b)
   const fmt = (v: number) => (kind === 'conversion' ? `${v.toFixed(1)}%` : `${v}`)
-  const delta = aVal != null && bVal != null && aVal !== 0 ? ((bVal - aVal) / Math.abs(aVal)) * 100 : null
+  const delta =
+    aVal != null && bVal != null && aVal !== 0 ? ((bVal - aVal) / Math.abs(aVal)) * 100 : null
 
   const submit = async () => {
     if (!valid || busy) return
     setBusy(true)
-    const toNums = (o: Record<string, string>) => Object.fromEntries(fields.map((f) => [f, num(o[f])]))
+    const toNums = (o: Record<string, string>) =>
+      Object.fromEntries(fields.map((f) => [f, num(o[f])]))
     try {
-      await onCreate({ name: name.trim(), kind, data: { a: toNums(a), b: toNums(b) } })
+      await onCreate({
+        name: name.trim(),
+        kind,
+        data: { a: toNums(a), b: toNums(b) },
+      })
       onClose()
     } catch {
       toast.error(t('experimentsPage.createError'))
@@ -203,129 +248,184 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p:
   }
 
   const kindCards = [
-    { key: 'conversion' as const, Icon: Percent, title: t('experimentsPage.conversionRate'), desc: t('experimentsPage.kindConversionDesc') },
-    { key: 'mean' as const, Icon: Sigma, title: t('experimentsPage.meanQuantity'), desc: t('experimentsPage.kindMeanDesc') },
+    {
+      key: 'conversion' as const,
+      Icon: Percent,
+      title: t('experimentsPage.conversionRate'),
+      desc: t('experimentsPage.kindConversionDesc'),
+    },
+    {
+      key: 'mean' as const,
+      Icon: Sigma,
+      title: t('experimentsPage.meanQuantity'),
+      desc: t('experimentsPage.kindMeanDesc'),
+    },
   ]
 
   return (
-    <ModalShell open onClose={onClose} title={t('experimentsPage.modalTitle')} subtitle={t('experimentsPage.modalSubtitle')}>
+    <ModalShell
+      wide
+      open
+      onClose={onClose}
+      title={t('experimentsPage.modalTitle')}
+      subtitle={t('experimentsPage.modalSubtitle')}
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault()
           submit()
         }}
-        className="space-y-5"
+        className="space-y-6 p-6"
       >
-        <div>
-          <label htmlFor="exp-name" className="eyebrow mb-1 block">
-            {t('experimentsPage.nameLabel')}
-          </label>
-          <input
-            id="exp-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={field}
-            placeholder={t('experimentsPage.namePlaceholder')}
-          />
-        </div>
+        <div className="gap-8 md:grid md:grid-cols-2">
+          {/* Left column: what the experiment is */}
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="exp-name" className="eyebrow mb-1 block">
+                {t('experimentsPage.nameLabel')}
+              </label>
+              <input
+                id="exp-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={field}
+                placeholder={t('experimentsPage.namePlaceholder')}
+              />
+            </div>
 
-        <div>
-          <p className="eyebrow mb-1.5" id="exp-kind-label">
-            {t('experimentsPage.metricType')}
-          </p>
-          <div role="radiogroup" aria-labelledby="exp-kind-label" className="grid grid-cols-2 gap-2">
-            {kindCards.map(({ key, Icon, title, desc }) => {
-              const selected = kind === key
-              return (
-                <button
-                  key={key}
-                  id={`exp-kind-${key}`}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  tabIndex={selected ? 0 : -1}
-                  onClick={() => setKind(key)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                      e.preventDefault()
-                      const next = key === 'conversion' ? 'mean' : 'conversion'
-                      setKind(next)
-                      document.getElementById(`exp-kind-${next}`)?.focus()
-                    }
-                  }}
-                  className={`rounded-xl border p-3 text-left transition ${
-                    selected
-                      ? 'border-accent bg-accent-soft ring-1 ring-accent'
-                      : 'border-line hover:border-ink-faint'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Icon size={15} className={selected ? 'text-accent' : 'text-ink-faint'} />
-                    <span className={`text-sm font-semibold ${selected ? 'text-accent' : 'text-ink'}`}>{title}</span>
-                  </span>
-                  <span className="mt-1 block text-[11px] leading-snug text-ink-soft">{desc}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="relative grid grid-cols-2 gap-3">
-          {(['a', 'b'] as const).map((variant) => {
-            const state = variant === 'a' ? a : b
-            const setState = variant === 'a' ? setA : setB
-            const isA = variant === 'a'
-            return (
-              <div key={variant} className="space-y-2.5 rounded-xl border border-line bg-surface-2 p-3.5">
-                <p className="flex items-center gap-2 text-xs font-semibold text-ink">
-                  <span
-                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-full font-mono text-[10px] font-bold ${
-                      isA ? 'bg-accent-soft text-accent' : ''
-                    }`}
-                    style={isA ? undefined : { backgroundColor: 'rgba(124, 156, 196, 0.16)', color: B_COLOR }}
-                  >
-                    {isA ? 'A' : 'B'}
-                  </span>
-                  {isA ? t('experimentsPage.variantA') : t('experimentsPage.variantB')}
-                </p>
-                {fields.map((f) => {
-                  const err = fieldError(state, f)
-                  const id = `exp-${variant}-${f}`
+            <div>
+              <p className="eyebrow mb-1.5" id="exp-kind-label">
+                {t('experimentsPage.metricType')}
+              </p>
+              <div
+                role="radiogroup"
+                aria-labelledby="exp-kind-label"
+                aria-orientation="vertical"
+                className="grid gap-2"
+              >
+                {kindCards.map(({ key, Icon, title, desc }) => {
+                  const selected = kind === key
                   return (
-                    <div key={f}>
-                      <label htmlFor={id} className="mb-1 block text-[11px] text-ink-soft">
-                        {labels[f]}
-                      </label>
-                      <input
-                        id={id}
-                        type="number"
-                        step="any"
-                        inputMode="decimal"
-                        placeholder={PLACEHOLDERS[f]}
-                        value={state[f] ?? ''}
-                        onChange={(e) => setState((s) => ({ ...s, [f]: e.target.value }))}
-                        aria-invalid={err !== null}
-                        aria-describedby={err ? `${id}-err` : undefined}
-                        className={field}
-                        style={err ? { borderColor: DANGER } : undefined}
-                      />
-                      {err && (
-                        <p id={`${id}-err`} className="mt-1 text-[11px]" style={{ color: DANGER }}>
-                          {err}
-                        </p>
-                      )}
-                    </div>
+                    <button
+                      key={key}
+                      id={`exp-kind-${key}`}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      tabIndex={selected ? 0 : -1}
+                      onClick={() => setKind(key)}
+                      onKeyDown={(e) => {
+                        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                          e.preventDefault()
+                          const next = key === 'conversion' ? 'mean' : 'conversion'
+                          setKind(next)
+                          document.getElementById(`exp-kind-${next}`)?.focus()
+                        }
+                      }}
+                      className={`rounded-xl border p-3 text-left transition ${
+                        selected
+                          ? 'border-accent bg-accent-soft ring-1 ring-accent'
+                          : 'border-line hover:border-ink-faint'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon size={15} className={selected ? 'text-accent' : 'text-ink-faint'} />
+                        <span
+                          className={`text-sm font-semibold ${selected ? 'text-accent' : 'text-ink'}`}
+                        >
+                          {title}
+                        </span>
+                      </span>
+                      <span className="mt-1 block text-[11px] leading-snug text-ink-soft">
+                        {desc}
+                      </span>
+                    </button>
                   )
                 })}
               </div>
-            )
-          })}
-          <span
-            aria-hidden="true"
-            className="absolute left-1/2 top-1/2 grid h-7 w-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-surface font-mono text-[10px] font-semibold text-ink-faint shadow-sm"
-          >
-            vs
-          </span>
+            </div>
+          </div>
+
+          {/* Right column: the two variants, separated by a "vs" divider */}
+          <div className="mt-6 flex flex-col md:mt-0">
+            {(['a', 'b'] as const).map((variant) => {
+              const state = variant === 'a' ? a : b
+              const setState = variant === 'a' ? setA : setB
+              const isA = variant === 'a'
+              return (
+                <Fragment key={variant}>
+                  {!isA && (
+                    <div
+                      aria-hidden="true"
+                      className="relative flex items-center justify-center py-2.5"
+                    >
+                      <span className="absolute inset-x-0 top-1/2 h-px bg-line" />
+                      <span className="relative grid h-7 w-7 place-items-center rounded-full border border-line bg-surface font-mono text-[10px] font-semibold text-ink-faint">
+                        vs
+                      </span>
+                    </div>
+                  )}
+                  <div className="space-y-3 rounded-xl border border-line bg-surface-2 p-4">
+                    <p className="flex items-center gap-2 text-xs font-semibold text-ink">
+                      <span
+                        className={`grid h-5 w-5 shrink-0 place-items-center rounded-full font-mono text-[10px] font-bold ${
+                          isA ? 'bg-accent-soft text-accent' : ''
+                        }`}
+                        style={
+                          isA
+                            ? undefined
+                            : {
+                                backgroundColor: 'rgba(124, 156, 196, 0.16)',
+                                color: B_COLOR,
+                              }
+                        }
+                      >
+                        {isA ? 'A' : 'B'}
+                      </span>
+                      {isA ? t('experimentsPage.variantA') : t('experimentsPage.variantB')}
+                    </p>
+                    <div
+                      className={`grid gap-3 ${fields.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
+                    >
+                      {fields.map((f) => {
+                        const err = fieldError(state, f)
+                        const id = `exp-${variant}-${f}`
+                        return (
+                          <div key={f}>
+                            <label htmlFor={id} className="mb-1 block text-[11px] text-ink-soft">
+                              {labels[f]}
+                            </label>
+                            <input
+                              id={id}
+                              type="number"
+                              step="any"
+                              inputMode="decimal"
+                              placeholder={PLACEHOLDERS[f]}
+                              value={state[f] ?? ''}
+                              onChange={(e) => setState((s) => ({ ...s, [f]: e.target.value }))}
+                              aria-invalid={err !== null}
+                              aria-describedby={err ? `${id}-err` : undefined}
+                              className={field}
+                              style={err ? { borderColor: DANGER } : undefined}
+                            />
+                            {err && (
+                              <p
+                                id={`${id}-err`}
+                                className="mt-1 text-[11px]"
+                                style={{ color: DANGER }}
+                              >
+                                {err}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </Fragment>
+              )
+            })}
+          </div>
         </div>
 
         {aVal != null && bVal != null && (
@@ -336,8 +436,17 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p:
               <span className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-line">
                 {aVal >= 0 && bVal >= 0 && aVal + bVal > 0 && (
                   <>
-                    <span className="h-full bg-accent" style={{ width: `${(aVal / (aVal + bVal)) * 100}%` }} />
-                    <span className="h-full" style={{ width: `${(bVal / (aVal + bVal)) * 100}%`, backgroundColor: B_COLOR }} />
+                    <span
+                      className="h-full bg-accent"
+                      style={{ width: `${(aVal / (aVal + bVal)) * 100}%` }}
+                    />
+                    <span
+                      className="h-full"
+                      style={{
+                        width: `${(bVal / (aVal + bVal)) * 100}%`,
+                        backgroundColor: B_COLOR,
+                      }}
+                    />
                   </>
                 )}
               </span>

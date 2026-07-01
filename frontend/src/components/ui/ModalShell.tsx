@@ -7,6 +7,8 @@ interface Props {
   subtitle?: string
   children: ReactNode
   footer?: ReactNode
+  /** Wide layout (multi-column forms): max-w-3xl instead of max-w-md. */
+  wide?: boolean
 }
 
 const FOCUSABLE =
@@ -15,7 +17,7 @@ const FOCUSABLE =
 /** Shared modal chrome: overlay, centered card, header, outside-click + Escape
  * close, plus a full WAI-ARIA dialog contract — focus trap, initial focus,
  * focus restoration on close, body scroll-lock, and aria-modal labelling. */
-export function ModalShell({ open, onClose, title, subtitle, children, footer }: Props) {
+export function ModalShell({ open, onClose, title, subtitle, children, footer, wide }: Props) {
   const cardRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
 
@@ -83,7 +85,9 @@ export function ModalShell({ open, onClose, title, subtitle, children, footer }:
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
-        className="flex max-h-[70vh] w-full max-w-md flex-col rounded-2xl border border-line bg-surface shadow-pop outline-none"
+        className={`flex w-full flex-col rounded-2xl border border-line bg-surface shadow-pop outline-none ${
+          wide ? 'max-h-[85vh] max-w-3xl' : 'max-h-[70vh] max-w-md'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
