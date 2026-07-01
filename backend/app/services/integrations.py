@@ -50,9 +50,22 @@ def _send_email(
         data, filename, mime = attachment
         maintype, _, subtype = mime.partition("/")
         msg.add_attachment(data, maintype=maintype or "application", subtype=subtype or "octet-stream", filename=filename)
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
-        server.starttls()
+
+    # Port 465 = implicit SSL; 587/25 = plain + opportunistic STARTTLS. STARTTLS is
+    # applied only when the server advertises it (so a relay/sink without it still
+    # works), but credentials are NEVER sent over an unencrypted channel.
+    implicit_ssl = settings.SMTP_PORT == 465
+    factory = smtplib.SMTP_SSL if implicit_ssl else smtplib.SMTP
+    with factory(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+        server.ehlo()
+        secured = implicit_ssl
+        if not implicit_ssl and server.has_extn("starttls"):
+            server.starttls()
+            server.ehlo()
+            secured = True
         if settings.SMTP_USERNAME:
+            if not secured:
+                raise RuntimeError("SMTP kredensialı yalnız TLS/SSL üzərində göndərilə bilər.")
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
         server.send_message(msg)
     return True
