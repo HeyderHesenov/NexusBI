@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { GitBranch, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useMetricTreeStore } from '../store/metricTreeStore'
 import { ModalShell } from '../components/ui/ModalShell'
+import { Field, Select } from '../components/ui/form'
 import type { EvaluatedNode, TreeOperator } from '../types'
 
 const OP_SYMBOL: Record<string, string> = { add: '+', sub: '−', mul: '×', div: '÷' }
@@ -183,25 +184,42 @@ function NodeModal({
       title={editing ? t('metricTreePage.editNode') : state.mode === 'add-root' ? t('metricTreePage.rootMetric') : t('metricTreePage.childNode')}
       subtitle={t('metricTreePage.modalSubtitle')}
     >
-      <div className="space-y-4">
-        <div>
-          <p className="eyebrow mb-1">{t('metricTreePage.nameLabel')}</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} className={field} placeholder={t('metricTreePage.namePlaceholder')} />
-        </div>
+      <div className="space-y-4 p-5">
+        <Field id="tree-name" label={t('metricTreePage.nameLabel')}>
+          <input
+            id="tree-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={field}
+            placeholder={t('metricTreePage.namePlaceholder')}
+          />
+        </Field>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="eyebrow mb-1">{t('metricTreePage.operatorLabel')}</p>
-            <select value={operator} onChange={(e) => setOperator(e.target.value as TreeOperator)} className={field}>
-              <option value="add">{t('metricTreePage.opAdd')}</option>
-              <option value="sub">{t('metricTreePage.opSub')}</option>
-              <option value="mul">{t('metricTreePage.opMul')}</option>
-              <option value="div">{t('metricTreePage.opDiv')}</option>
-            </select>
-          </div>
-          <div>
-            <p className="eyebrow mb-1">{t('metricTreePage.valueLabel')}</p>
-            <input type="number" value={value} onChange={(e) => setValue(e.target.value)} className={field} placeholder={t('metricTreePage.valuePlaceholder')} />
-          </div>
+          <Field id="tree-operator" label={t('metricTreePage.operatorLabel')}>
+            <Select
+              id="tree-operator"
+              value={operator}
+              onChange={(e) => setOperator(e.target.value as TreeOperator)}
+              options={[
+                { value: 'add', label: t('metricTreePage.opAdd') },
+                { value: 'sub', label: t('metricTreePage.opSub') },
+                { value: 'mul', label: t('metricTreePage.opMul') },
+                { value: 'div', label: t('metricTreePage.opDiv') },
+              ]}
+            />
+          </Field>
+          <Field id="tree-value" label={t('metricTreePage.valueLabel')}>
+            <input
+              id="tree-value"
+              type="number"
+              step="any"
+              inputMode="decimal"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className={field}
+              placeholder={t('metricTreePage.valuePlaceholder')}
+            />
+          </Field>
         </div>
         <div className="flex justify-end gap-2 pt-1">
           <button onClick={onClose} className="rounded-xl border border-line px-3 py-2 text-sm text-ink-soft hover:text-ink">{t('metricTreePage.cancel')}</button>

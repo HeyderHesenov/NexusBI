@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { Plug, Plus, Send, Trash2 } from 'lucide-react'
 import * as api from '../api/integration'
 import type { IntegrationChannel } from '../api/integration'
+import { Field, FIELD, Select } from './ui/form'
 
 const TYPES = [
   { value: 'slack', label: 'Slack', hintKey: 'integrationsPanel.hintWebhook' },
@@ -62,32 +63,38 @@ export function IntegrationsPanel() {
         {t('integrationsPanel.description')}
       </p>
 
-      <div className="mb-3 flex flex-wrap gap-2">
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="rounded-xl border border-line bg-surface-2 px-2 py-2 text-sm text-ink focus:outline-none"
-        >
-          {TYPES.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <input
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          placeholder={hint}
-          className="flex-1 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-        />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          add()
+        }}
+        className="mb-4 grid gap-3 rounded-2xl border border-line bg-surface p-4 sm:grid-cols-[9rem_1fr_auto] sm:items-end"
+      >
+        <Field id="int-type" label={t('integrationsPanel.typeLabel')}>
+          <Select
+            id="int-type"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            options={TYPES.map((opt) => ({ value: opt.value, label: opt.label }))}
+          />
+        </Field>
+        <Field id="int-target" label={t('integrationsPanel.targetLabel')}>
+          <input
+            id="int-target"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder={hint}
+            className={FIELD}
+          />
+        </Field>
         <button
-          onClick={add}
-          disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
+          type="submit"
+          disabled={busy || !target.trim()}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-50"
         >
           <Plus size={15} /> {t('integrationsPanel.add')}
         </button>
-      </div>
+      </form>
 
       {channels.length > 0 && (
         <ul className="space-y-2">

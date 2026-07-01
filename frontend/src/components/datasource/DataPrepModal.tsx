@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
-import { Database, Save, Wand2 } from 'lucide-react'
+import { Save, Wand2 } from 'lucide-react'
 import { ModalShell } from '../ui/ModalShell'
+import { Field, FIELD, Select } from '../ui/form'
 import * as api from '../../api/dataprep'
 import type { DataPrepPreview, DataSource } from '../../types'
 
@@ -93,34 +94,31 @@ export function DataPrepModal({ open, onClose, sources, onSaved }: Props) {
         </div>
       }
     >
-      <div className="space-y-3 p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
-            <Database size={14} className="text-accent" />
-            <select
-              value={datasourceId ?? ''}
-              onChange={(e) => {
-                setDatasourceId(e.target.value || null)
-                setPreview(null)
-              }}
-              className="bg-transparent text-ink focus:outline-none"
-            >
-              <option value="">{t('dataPrepModal.demoData')}</option>
-              {sources.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <textarea
-          value={instruction}
-          onChange={(e) => setInstruction(e.target.value)}
-          rows={3}
-          placeholder={t('dataPrepModal.instructionPlaceholder')}
-          className="w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-        />
+      <div className="space-y-4 p-5">
+        <Field id="prep-source" label={t('dataPrepModal.sourceLabel')}>
+          <Select
+            id="prep-source"
+            value={datasourceId ?? ''}
+            onChange={(e) => {
+              setDatasourceId(e.target.value || null)
+              setPreview(null)
+            }}
+            options={[
+              { value: '', label: t('dataPrepModal.demoData') },
+              ...sources.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          />
+        </Field>
+        <Field id="prep-instruction" label={t('dataPrepModal.instructionLabel')}>
+          <textarea
+            id="prep-instruction"
+            value={instruction}
+            onChange={(e) => setInstruction(e.target.value)}
+            rows={3}
+            placeholder={t('dataPrepModal.instructionPlaceholder')}
+            className={FIELD}
+          />
+        </Field>
         <div className="flex justify-end">
           <button
             onClick={runPreview}

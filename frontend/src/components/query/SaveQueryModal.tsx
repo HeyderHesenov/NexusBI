@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModalShell } from '../ui/ModalShell'
+import { Field, Select } from '../ui/form'
 import { useSavedQueryStore } from '../../store/savedQueryStore'
 import type { Schedule } from '../../types'
 
@@ -64,25 +65,28 @@ export function SaveQueryModal({ open, onClose, nlQuery, datasourceId }: Props) 
         </div>
       }
     >
-      <div className="space-y-3 p-5">
+      <div className="space-y-4 p-5">
         <p className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink-soft">
           “{nlQuery}”
         </p>
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder={t('saveQueryModal.namePlaceholder')}
-          className={field}
-        />
-        <select value={schedule} onChange={(e) => setSchedule(e.target.value as Schedule)} className={field}>
-          {SCHEDULES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {t(s.labelKey)}
-            </option>
-          ))}
-        </select>
+        <Field id="sq-name" label={t('saveQueryModal.nameLabel')}>
+          <input
+            id="sq-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            placeholder={t('saveQueryModal.namePlaceholder')}
+            className={field}
+          />
+        </Field>
+        <Field id="sq-schedule" label={t('saveQueryModal.scheduleLabel')}>
+          <Select
+            id="sq-schedule"
+            value={schedule}
+            onChange={(e) => setSchedule(e.target.value as Schedule)}
+            options={SCHEDULES.map((s) => ({ value: s.value, label: t(s.labelKey) }))}
+          />
+        </Field>
       </div>
     </ModalShell>
   )

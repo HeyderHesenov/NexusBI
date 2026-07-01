@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { BellPlus, Clock, Mail, Play, Trash2, BookMarked } from 'lucide-react'
 import { useSavedQueryStore } from '../store/savedQueryStore'
 import { ModalShell } from '../components/ui/ModalShell'
+import { Field, Select } from '../components/ui/form'
 import * as alertApi from '../api/alert'
 import * as subApi from '../api/reportSubscription'
 import type { ReportFormat, ReportSchedule, Subscription } from '../api/reportSubscription'
@@ -189,22 +190,46 @@ function AlertModal({
         </div>
       }
     >
-      <div className="space-y-3 p-5">
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t('reportsPage.namePlaceholder')} className={field} />
-        <input value={column} onChange={(e) => setColumn(e.target.value)} placeholder={t('reportsPage.columnPlaceholder')} className={`${field} font-mono text-sm`} />
-        <div className="flex gap-2">
-          <select value={operator} onChange={(e) => setOperator(e.target.value as AlertOperator)} className={`${field} w-24`}>
-            {OPERATORS.map((o) => (
-              <option key={o} value={o}>{o}</option>
-            ))}
-          </select>
+      <div className="space-y-4 p-5">
+        <Field id="alert-name" label={t('reportsPage.alertNameLabel')}>
           <input
-            type="number"
-            value={threshold}
-            onChange={(e) => setThreshold(e.target.value)}
-            placeholder={t('reportsPage.thresholdPlaceholder')}
-            className={`${field} font-mono`}
+            id="alert-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('reportsPage.namePlaceholder')}
+            className={field}
           />
+        </Field>
+        <Field id="alert-column" label={t('reportsPage.columnLabel')}>
+          <input
+            id="alert-column"
+            value={column}
+            onChange={(e) => setColumn(e.target.value)}
+            placeholder={t('reportsPage.columnPlaceholder')}
+            className={`${field} font-mono text-sm`}
+          />
+        </Field>
+        <div className="grid grid-cols-[7rem_1fr] gap-3">
+          <Field id="alert-operator" label={t('reportsPage.operatorLabel')}>
+            <Select
+              id="alert-operator"
+              value={operator}
+              onChange={(e) => setOperator(e.target.value as AlertOperator)}
+              options={OPERATORS.map((o) => ({ value: o, label: o }))}
+            />
+          </Field>
+          <Field id="alert-threshold" label={t('reportsPage.thresholdLabel')}>
+            <input
+              id="alert-threshold"
+              type="number"
+              step="any"
+              inputMode="decimal"
+              value={threshold}
+              onChange={(e) => setThreshold(e.target.value)}
+              placeholder={t('reportsPage.thresholdPlaceholder')}
+              className={`${field} font-mono`}
+            />
+          </Field>
         </div>
       </div>
     </ModalShell>
@@ -298,23 +323,36 @@ function DeliveryModal({
             ))}
           </ul>
         )}
-        <input
-          type="email"
-          value={recipient}
-          onChange={(e) => setRecipient(e.target.value)}
-          placeholder={t('reportsPage.emailPlaceholder')}
-          className={field}
-        />
-        <div className="flex gap-2">
-          <select value={format} onChange={(e) => setFormat(e.target.value as ReportFormat)} className={field}>
-            <option value="pdf">PDF</option>
-            <option value="xlsx">Excel</option>
-          </select>
-          <select value={schedule} onChange={(e) => setSchedule(e.target.value as ReportSchedule)} className={field}>
-            {DELIVERY_SCHEDULES.map((o) => (
-              <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
-            ))}
-          </select>
+        <Field id="del-recipient" label={t('reportsPage.recipientLabel')}>
+          <input
+            id="del-recipient"
+            type="email"
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            placeholder={t('reportsPage.emailPlaceholder')}
+            className={field}
+          />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field id="del-format" label={t('reportsPage.formatLabel')}>
+            <Select
+              id="del-format"
+              value={format}
+              onChange={(e) => setFormat(e.target.value as ReportFormat)}
+              options={[
+                { value: 'pdf', label: 'PDF' },
+                { value: 'xlsx', label: 'Excel' },
+              ]}
+            />
+          </Field>
+          <Field id="del-schedule" label={t('reportsPage.scheduleLabel')}>
+            <Select
+              id="del-schedule"
+              value={schedule}
+              onChange={(e) => setSchedule(e.target.value as ReportSchedule)}
+              options={DELIVERY_SCHEDULES.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+            />
+          </Field>
         </div>
       </div>
     </ModalShell>

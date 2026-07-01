@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { Plus, ShieldHalf, Trash2 } from 'lucide-react'
 import { ModalShell } from '../ui/ModalShell'
+import { Field, FIELD } from '../ui/form'
 import * as dsApi from '../../api/datasource'
 import type { RLSRule } from '../../api/datasource'
 
@@ -89,35 +90,51 @@ export function RlsModal({ open, onClose, datasourceId, datasourceName }: Props)
             ))}
           </ul>
         )}
-        <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-3">
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t('rlsModal.memberEmailPlaceholder')}
-            className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-          />
-          <div className="flex gap-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            add()
+          }}
+          className="space-y-3 rounded-xl border border-line bg-surface-2 p-3.5"
+        >
+          <Field id="rls-email" label={t('rlsModal.memberEmailLabel')}>
             <input
-              value={column}
-              onChange={(e) => setColumn(e.target.value)}
-              placeholder={t('rlsModal.columnPlaceholder')}
-              className="flex-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+              id="rls-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('rlsModal.memberEmailPlaceholder')}
+              className={FIELD}
             />
-            <input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={t('rlsModal.allowedValuePlaceholder')}
-              className="flex-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field id="rls-column" label={t('rlsModal.columnLabel')}>
+              <input
+                id="rls-column"
+                value={column}
+                onChange={(e) => setColumn(e.target.value)}
+                placeholder={t('rlsModal.columnPlaceholder')}
+                className={FIELD}
+              />
+            </Field>
+            <Field id="rls-value" label={t('rlsModal.allowedValueLabel')}>
+              <input
+                id="rls-value"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder={t('rlsModal.allowedValuePlaceholder')}
+                className={FIELD}
+              />
+            </Field>
           </div>
           <button
-            onClick={add}
-            disabled={busy}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
+            type="submit"
+            disabled={busy || !email.trim() || !column.trim() || !value.trim()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-50"
           >
             <Plus size={14} /> {t('rlsModal.addRule')}
           </button>
-        </div>
+        </form>
       </div>
     </ModalShell>
   )

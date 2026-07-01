@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModalShell } from '../ui/ModalShell'
+import { Field, Select } from '../ui/form'
 import { useDatasourceStore } from '../../store/datasourceStore'
 import type { DataSourceCreate } from '../../types'
 
@@ -67,29 +68,38 @@ export function ConnectSourceModal({ open, onClose }: Props) {
         </div>
       }
     >
-      <div className="space-y-3 p-5">
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t('connectSourceModal.namePlaceholder')}
-          className={field}
-        />
-        <select value={dbType} onChange={(e) => setDbType(e.target.value as DataSourceCreate['db_type'])} className={field}>
-          <option value="postgresql">PostgreSQL</option>
-          <option value="mysql">MySQL</option>
-          <option value="sqlite">SQLite</option>
-        </select>
-        <input
-          value={conn}
-          onChange={(e) => setConn(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder={PLACEHOLDER[dbType]}
-          className={`${field} font-mono text-xs`}
-        />
-        <p className="text-xs text-ink-faint">
-          {t('connectSourceModal.readOnlyNote')}
-        </p>
+      <div className="space-y-4 p-5">
+        <Field id="cs-name" label={t('connectSourceModal.nameLabel')}>
+          <input
+            id="cs-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('connectSourceModal.namePlaceholder')}
+            className={field}
+          />
+        </Field>
+        <Field id="cs-type" label={t('connectSourceModal.typeLabel')}>
+          <Select
+            id="cs-type"
+            value={dbType}
+            onChange={(e) => setDbType(e.target.value as DataSourceCreate['db_type'])}
+            options={[
+              { value: 'postgresql', label: 'PostgreSQL' },
+              { value: 'mysql', label: 'MySQL' },
+              { value: 'sqlite', label: 'SQLite' },
+            ]}
+          />
+        </Field>
+        <Field id="cs-conn" label={t('connectSourceModal.connLabel')} hint={t('connectSourceModal.readOnlyNote')}>
+          <input
+            id="cs-conn"
+            value={conn}
+            onChange={(e) => setConn(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            placeholder={PLACEHOLDER[dbType]}
+            className={`${field} font-mono text-xs`}
+          />
+        </Field>
       </div>
     </ModalShell>
   )
