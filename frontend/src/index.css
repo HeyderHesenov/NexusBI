@@ -121,6 +121,11 @@
     animation: hint-pop 0.18s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
 
+  /* Command palette entrance — single subtle slide-down+fade (transform/opacity). */
+  .palette-in {
+    animation: palette-in 0.15s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
   /* Aurora glow — soft drifting warm blobs. Only transform/opacity animate. */
   .aurora-blob {
     position: absolute;
@@ -175,6 +180,17 @@
   100% {
     opacity: 0;
     box-shadow: inset 0 0 0 2px rgb(var(--accent) / 0), 0 0 0 rgb(var(--accent) / 0);
+  }
+}
+
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
