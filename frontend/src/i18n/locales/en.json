@@ -104,6 +104,10 @@
     "table": "Table"
   },
   "chartView": {
+    "aiTools": "AI analysis",
+    "groupDiagnostics": "Diagnostics",
+    "groupExplain": "Explain & lineage",
+    "groupForecast": "Forecast",
     "anomalies": "Anomalies",
     "causal": "Cause analysis",
     "chart": "Chart",

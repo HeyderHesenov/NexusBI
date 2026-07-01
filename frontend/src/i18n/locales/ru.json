@@ -104,6 +104,10 @@
     "table": "Таблица"
   },
   "chartView": {
+    "aiTools": "AI-анализ",
+    "groupDiagnostics": "Диагностика",
+    "groupExplain": "Объяснение и происхождение",
+    "groupForecast": "Прогноз",
     "anomalies": "Аномалии",
     "causal": "Анализ причин",
     "chart": "График",

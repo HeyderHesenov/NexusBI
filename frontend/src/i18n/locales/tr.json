@@ -104,6 +104,10 @@
     "table": "Tablo"
   },
   "chartView": {
+    "aiTools": "AI analizi",
+    "groupDiagnostics": "Tanılama",
+    "groupExplain": "Açıklama & köken",
+    "groupForecast": "Tahmin",
     "anomalies": "Anomaliler",
     "causal": "Neden analizi",
     "chart": "Grafik",
