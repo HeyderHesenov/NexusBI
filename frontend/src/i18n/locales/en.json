@@ -105,6 +105,7 @@
   },
   "chartView": {
     "tools": "Tools",
+    "closePanel": "Close panel",
     "groupDiagnostics": "Diagnostics",
     "groupExplain": "Explain & lineage",
     "groupForecast": "Forecast",

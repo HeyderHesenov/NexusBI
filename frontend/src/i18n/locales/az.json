@@ -105,6 +105,7 @@
   },
   "chartView": {
     "tools": "Alətlər",
+    "closePanel": "Paneli bağla",
     "anomalies": "Anomaliyalar",
     "causal": "Səbəb analizi",
     "chart": "Qrafik",
