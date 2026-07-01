@@ -29,6 +29,7 @@ const CausalPanel = lazy(() => import('./CausalPanel').then((m) => ({ default: m
 const ScenarioPanel = lazy(() =>
   import('./ScenarioPanel').then((m) => ({ default: m.ScenarioPanel })),
 )
+import { ActionMenu } from '../ui/ActionMenu'
 import { ErrorBoundary } from '../ui/ErrorBoundary'
 import { ChartRenderer } from './LazyChartRenderer'
 import { ChartZoom } from './ChartZoom'
@@ -216,6 +217,18 @@ export function ChartView({
     [data, filters],
   )
 
+  // Badge on the AI-tools trigger: how many analysis panels are currently open.
+  const openPanelCount = [
+    !!forecast,
+    !!anomalies,
+    !!explanation,
+    !!rootCause,
+    !!lineage,
+    !!significance,
+    !!causal,
+    scenario,
+  ].filter(Boolean).length
+
   const activeConfig: ChartConfig = { ...config, chart_type: type }
 
   // Many-point line/area charts get cluttered x-axis labels; wheel/drag zoom
@@ -260,82 +273,93 @@ export function ChartView({
             </button>
           )}
           {queryLogId && (
-            <>
-              <button
-                onClick={runForecast}
-                disabled={forecasting}
-                className={`${CHART_BTN} border ${
-                  forecast ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
-                }`}
-              >
-                <TrendingUp size={14} /> {forecasting ? t('chartView.forecasting') : t('chartView.forecast')}
-              </button>
-              <button
-                onClick={runAnomalies}
-                disabled={detecting}
-                className={`${CHART_BTN} border ${
-                  anomalies ? 'border-amber-500/50 text-amber-300' : 'border-line text-ink-soft hover:text-ink'
-                }`}
-              >
-                <AlertTriangle size={14} /> {detecting ? t('chartView.detecting') : t('chartView.anomalies')}
-              </button>
-              <button
-                onClick={runExplain}
-                disabled={explaining}
-                className={`${CHART_BTN} border ${
-                  explanation ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
-                }`}
-              >
-                <Sparkles size={14} /> {explaining ? t('chartView.explaining') : t('chartView.explain')}
-              </button>
-              <button
-                onClick={runRootCause}
-                disabled={rooting}
-                className={`${CHART_BTN} border ${
-                  rootCause ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
-                }`}
-              >
-                <GitBranch size={14} /> {rooting ? t('chartView.rooting') : t('chartView.why')}
-              </button>
-              <button
-                onClick={runLineage}
-                disabled={tracing}
-                className={`${CHART_BTN} border ${
-                  lineage ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
-                }`}
-              >
-                <GitFork size={14} /> {tracing ? t('chartView.tracing') : t('chartView.lineage')}
-              </button>
-              <button
-                onClick={runSignificance}
-                disabled={checking}
-                className={`${CHART_BTN} border ${
-                  significance ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
-                }`}
-              >
-                <ShieldCheck size={14} /> {checking ? t('chartView.checking') : t('chartView.significance')}
-              </button>
-              <button
-                onClick={runCausal}
-                disabled={findingDrivers}
-                className={`${CHART_BTN} border ${
-                  causal ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
-                }`}
-              >
-                <Workflow size={14} /> {findingDrivers ? t('chartView.findingDrivers') : t('chartView.causal')}
-              </button>
-            </>
-          )}
-          {valueCol && (
-            <button
-              onClick={() => setScenario((v) => !v)}
-              aria-pressed={scenario}
-              className={`${CHART_BTN} border ${
-                scenario ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
-              }`}
-            >
-              <SlidersHorizontal size={14} /> {t('chartView.scenario')}
-            </button>
+            <ActionMenu
+              ariaLabel={t('chartView.aiTools')}
+              triggerLabel={t('chartView.aiTools')}
+              triggerIcon={Sparkles}
+              count={openPanelCount}
+              sections={[
+                {
+                  header: t('chartView.groupForecast'),
+                  items: [
+                    {
+                      key: 'forecast',
+                      Icon: TrendingUp,
+                      label: forecasting ? t('chartView.forecasting') : t('chartView.forecast'),
+                      onSelect: runForecast,
+                      active: !!forecast,
+                      disabled: forecasting,
+                    },
+                    {
+                      key: 'scenario',
+                      Icon: SlidersHorizontal,
+                      label: t('chartView.scenario'),
+                      onSelect: () => setScenario((v) => !v),
+                      active: scenario,
+                      disabled: !valueCol,
+                    },
+                  ],
+                },
+                {
+                  header: t('chartView.groupDiagnostics'),
+                  items: [
+                    {
+                      key: 'anomalies',
+                      Icon: AlertTriangle,
+                      label: detecting ? t('chartView.detecting') : t('chartView.anomalies'),
+                      onSelect: runAnomalies,
+                      active: !!anomalies,
+                      disabled: detecting,
+                    },
+                    {
+                      key: 'why',
+                      Icon: GitBranch,
+                      label: rooting ? t('chartView.rooting') : t('chartView.why'),
+                      onSelect: runRootCause,
+                      active: !!rootCause,
+                      disabled: rooting,
+                    },
+                    {
+                      key: 'causal',
+                      Icon: Workflow,
+                      label: findingDrivers ? t('chartView.findingDrivers') : t('chartView.causal'),
+                      onSelect: runCausal,
+                      active: !!causal,
+                      disabled: findingDrivers,
+                    },
+                    {
+                      key: 'significance',
+                      Icon: ShieldCheck,
+                      label: checking ? t('chartView.checking') : t('chartView.significance'),
+                      onSelect: runSignificance,
+                      active: !!significance,
+                      disabled: checking,
+                    },
+                  ],
+                },
+                {
+                  header: t('chartView.groupExplain'),
+                  items: [
+                    {
+                      key: 'explain',
+                      Icon: Sparkles,
+                      label: explaining ? t('chartView.explaining') : t('chartView.explain'),
+                      onSelect: runExplain,
+                      active: !!explanation,
+                      disabled: explaining,
+                    },
+                    {
+                      key: 'lineage',
+                      Icon: GitFork,
+                      label: tracing ? t('chartView.tracing') : t('chartView.lineage'),
+                      onSelect: runLineage,
+                      active: !!lineage,
+                      disabled: tracing,
+                    },
+                  ],
+                },
+              ]}
+            />
           )}
           <button
             onClick={() => downloadCsv(filtered, `${exportName}.csv`)}

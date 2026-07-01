@@ -104,6 +104,7 @@
     "table": "Cədvəl"
   },
   "chartView": {
+    "aiTools": "AI Təhlil",
     "anomalies": "Anomaliyalar",
     "causal": "Səbəb analizi",
     "chart": "Qrafik",
@@ -115,6 +116,9 @@
     "findingDrivers": "Axtarılır…",
     "forecast": "Proqnoz",
     "forecasting": "Proqnoz…",
+    "groupDiagnostics": "Diaqnostika",
+    "groupExplain": "İzah & Mənşə",
+    "groupForecast": "Proqnoz",
     "legend": "Açıqlama",
     "lineage": "Mənşə",
     "rooting": "Parçalanır…",
