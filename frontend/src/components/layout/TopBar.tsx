@@ -41,7 +41,7 @@ export function TopBar() {
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-line bg-bg/70 px-8 py-3.5 backdrop-blur">
-      <h2 className="truncate font-display text-base font-semibold tracking-tight text-ink">
+      <h2 className="min-w-0 truncate font-display text-base font-semibold tracking-tight text-ink">
         {titleFor(pathname)}
       </h2>
       <div className="flex items-center gap-4">
@@ -49,10 +49,13 @@ export function TopBar() {
         onClick={() => openSearch(true)}
         aria-label="Axtar"
         title="Axtar (⌘K)"
-        className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-ink-faint transition-colors hover:border-line-strong hover:text-ink"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-faint transition-colors hover:border-line-strong hover:text-ink-soft focus-visible:border-accent focus-visible:outline-none md:w-64 md:justify-start md:gap-2 md:bg-surface md:px-3"
       >
-        <Search size={14} />
-        <kbd className="hidden font-mono text-[10px] sm:inline">⌘K</kbd>
+        <Search size={14} className="shrink-0" />
+        <span className="hidden flex-1 text-left text-sm md:inline">Axtar…</span>
+        <kbd className="hidden shrink-0 rounded border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] md:inline">
+          ⌘K
+        </kbd>
       </button>
       <Link
         to="/notifications"
