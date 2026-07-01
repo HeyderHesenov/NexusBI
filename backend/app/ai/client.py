@@ -8,7 +8,7 @@ from typing import Any
 from openai import APIError, AsyncOpenAI, OpenAIError
 
 from app.config import settings
-from app.core import metrics
+from app.core import i18n, metrics
 from app.core.exceptions import AIGenerationError
 from app.core.logging import get_logger
 
@@ -32,8 +32,16 @@ async def chat_json(
     user: str,
     *,
     temperature: float = 0.0,
+    localize: bool = False,
 ) -> dict[str, Any]:
-    """Call the model and parse a JSON object response."""
+    """Call the model and parse a JSON object response.
+
+    ``localize=True`` appends a language directive so natural-language text in the
+    response follows the request language (JSON keys/SQL stay unchanged). Leave it
+    False for structured generators (Text2SQL/DAX/chart) whose output is not prose.
+    """
+    if localize:
+        system = system + i18n.lang_directive()
     started = time.perf_counter()
     try:
         resp = await get_client().chat.completions.create(
@@ -57,8 +65,11 @@ async def chat_text(
     user: str,
     *,
     temperature: float = 0.3,
+    localize: bool = True,
 ) -> str:
-    """Call the model and return plain text."""
+    """Call the model and return plain text. Prose by nature → localizes by default."""
+    if localize:
+        system = system + i18n.lang_directive()
     started = time.perf_counter()
     try:
         resp = await get_client().chat.completions.create(
@@ -80,6 +91,7 @@ async def chat_tools(
     tools: list[dict[str, Any]],
     *,
     temperature: float = 0.0,
+    localize: bool = False,
 ) -> Any:
     """Call the model with tool definitions; return the raw response message.
 
@@ -87,6 +99,10 @@ async def chat_tools(
     them, append results to ``messages``, and call again until the model replies
     with plain ``.content``. ``messages`` must already include the system prompt.
     """
+    if localize:
+        directive = i18n.lang_directive()
+        if directive:
+            messages = [*messages, {"role": "system", "content": directive.strip()}]
     started = time.perf_counter()
     try:
         resp = await get_client().chat.completions.create(

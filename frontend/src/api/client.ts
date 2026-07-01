@@ -24,6 +24,9 @@ export const client = axios.create({ baseURL })
 client.interceptors.request.use((config) => {
   const token = tokenStore.access()
   if (token) config.headers.Authorization = `Bearer ${token}`
+  // Carry the active UI language so the backend localizes messages and NEW AI
+  // prose (insights, stories, copilot) is generated in the same language.
+  config.headers['X-Lang'] = localStorage.getItem('nexusbi_lang') || 'az'
   return config
 })
 

@@ -44,7 +44,7 @@ async def detect_anomalies(
         data=json.dumps(rows[:_MAX_ROWS], ensure_ascii=False, default=str),
     )
     try:
-        raw = await chat_json(ANOMALY_DETECTOR_PROMPT, user)
+        raw = await chat_json(ANOMALY_DETECTOR_PROMPT, user, localize=True)
     except AIGenerationError:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -70,7 +70,7 @@ async def forecast(
         data=json.dumps(rows[:_MAX_ROWS], ensure_ascii=False, default=str),
     )
     try:
-        raw = await chat_json(FORECAST_PROMPT.format(periods=periods), user)
+        raw = await chat_json(FORECAST_PROMPT.format(periods=periods), user, localize=True)
     except AIGenerationError:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -95,7 +95,7 @@ async def explain(
         data=json.dumps(rows[:_MAX_ROWS], ensure_ascii=False, default=str),
     )
     try:
-        raw = await chat_json(EXPLAIN_PROMPT, user)
+        raw = await chat_json(EXPLAIN_PROMPT, user, localize=True)
     except AIGenerationError:
         raise
     except Exception as exc:  # noqa: BLE001

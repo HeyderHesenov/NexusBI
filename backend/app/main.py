@@ -15,6 +15,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from app.api.v1.router import api_router
 from app.config import settings
 from app.core import metrics
+from app.core import i18n
 from app.core.exceptions import NexusBIException
 from app.core.logging import configure_logging, get_logger
 from app.services.cache_service import build_cache_service
@@ -165,13 +166,16 @@ def create_app() -> FastAPI:
         # Bearer-token auth (no cookies) — credentials not needed; scope methods/headers.
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "X-Lang"],
     )
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
+        # Per-request UI language (frontend sends X-Lang) → localizes error messages
+        # and drives the AI "respond in language" directive.
+        i18n.set_request_lang(request.headers.get("X-Lang"))
         structlog.contextvars.bind_contextvars(request_id=request_id)
         started = time.perf_counter()
         status_code = 500
@@ -208,7 +212,7 @@ def create_app() -> FastAPI:
             status_code=exc.status_code,
             content={
                 "error": exc.__class__.__name__,
-                "message": exc.message,
+                "message": i18n.localize(exc.message),
                 "detail": exc.detail,
                 "sql": getattr(exc, "sql", None) if settings.DEMO_MODE else None,
                 "request_id": request_id,
@@ -225,7 +229,7 @@ def create_app() -> FastAPI:
             status_code=500,
             content={
                 "error": "InternalServerError",
-                "message": "Daxili xəta baş verdi.",
+                "message": i18n.localize("Daxili xəta baş verdi."),
                 "detail": None,
                 "request_id": request_id,
             },

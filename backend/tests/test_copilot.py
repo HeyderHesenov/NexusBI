@@ -32,7 +32,7 @@ def _queue_messages(monkeypatch, messages: list):
 
     state = {"i": 0}
 
-    async def fake_chat_tools(msgs, tools, *, temperature=0.0):
+    async def fake_chat_tools(msgs, tools, *, temperature=0.0, localize=False):
         i = min(state["i"], len(messages) - 1)
         state["i"] += 1
         return messages[i]

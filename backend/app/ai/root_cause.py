@@ -83,7 +83,7 @@ async def decompose(
             value_col=value_col,
             data=json.dumps(rows[:_MAX_ROWS], ensure_ascii=False, default=str),
         )
-        raw = await chat_json(ROOT_CAUSE_PROMPT, user)
+        raw = await chat_json(ROOT_CAUSE_PROMPT, user, localize=True)
         drivers = raw.get("drivers")
         if isinstance(drivers, list) and drivers:
             candidate = {

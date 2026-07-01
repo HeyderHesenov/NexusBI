@@ -50,7 +50,7 @@ async def test_story_uses_ai(client: AsyncClient, auth: dict, monkeypatch):
 
     from app.ai import data_story
 
-    async def fake_chat_json(system, user, *, temperature=0.0):
+    async def fake_chat_json(system, user, *, temperature=0.0, localize=False):
         return {
             "title": "Satış hekayəsi",
             "overview": "Panel regional gəliri göstərir.",
