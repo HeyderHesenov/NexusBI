@@ -11,6 +11,7 @@ export type ChartType =
   | 'scatter'
   | 'table'
   | 'kpi_card'
+  | 'pivot'
 
 export interface ChartConfig {
   chart_type: ChartType

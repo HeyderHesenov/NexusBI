@@ -5,6 +5,7 @@ import {
   PieChart as PieIcon,
   ScatterChart as ScatterIcon,
   Table as TableIcon,
+  Grid3x3 as PivotIcon,
 } from 'lucide-react'
 import type { ChartType } from '../../types'
 
@@ -15,6 +16,7 @@ const OPTIONS: { type: ChartType; label: string; Icon: typeof BarChart3 }[] = [
   { type: 'pie', label: 'Dairə', Icon: PieIcon },
   { type: 'scatter', label: 'Səpələnmə', Icon: ScatterIcon },
   { type: 'table', label: 'Cədvəl', Icon: TableIcon },
+  { type: 'pivot', label: 'Pivot', Icon: PivotIcon },
 ]
 
 /** Shared base for small chart control buttons (toolbar + ChartView actions). */

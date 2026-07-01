@@ -4,6 +4,7 @@ import { BarChartWidget } from './BarChartWidget'
 import { KPICard } from './KPICard'
 import { LineChartWidget } from './LineChartWidget'
 import { PieChartWidget } from './PieChartWidget'
+import { PivotWidget } from './PivotWidget'
 import { ScatterChartWidget } from './ScatterChartWidget'
 import { TableWidget } from './TableWidget'
 
@@ -63,6 +64,8 @@ export function ChartRenderer({
       return <ScatterChartWidget data={data} config={config} height={height} onPointClick={onPointClick} />
     case 'kpi_card':
       return <KPICard data={data} config={config} />
+    case 'pivot':
+      return <PivotWidget data={data} />
     case 'table':
     default:
       return <TableWidget data={data} />
