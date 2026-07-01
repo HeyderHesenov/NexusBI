@@ -12,6 +12,7 @@ email-validator==2.2.0
 sqlalchemy==2.0.36
 asyncpg==0.30.0
 aiosqlite==0.20.0
+aiomysql==0.3.2  # mysql+aiomysql:// async driver (DBType.mysql)
 alembic==1.14.0
 greenlet==3.1.1
 

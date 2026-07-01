@@ -66,7 +66,7 @@ export interface DataSource {
 
 export interface DataSourceCreate {
   name: string
-  db_type: 'postgresql' | 'sqlite'
+  db_type: 'postgresql' | 'mysql' | 'sqlite'
   connection_string: string
 }
 

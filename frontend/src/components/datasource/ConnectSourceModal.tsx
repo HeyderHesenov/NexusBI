@@ -13,6 +13,7 @@ const field =
 
 const PLACEHOLDER: Record<string, string> = {
   postgresql: 'postgresql+asyncpg://user:pass@host:5432/db',
+  mysql: 'mysql+aiomysql://user:pass@host:3306/db',
   sqlite: 'sqlite+aiosqlite:///absolute/path.db',
 }
 
@@ -74,6 +75,7 @@ export function ConnectSourceModal({ open, onClose }: Props) {
         />
         <select value={dbType} onChange={(e) => setDbType(e.target.value as DataSourceCreate['db_type'])} className={field}>
           <option value="postgresql">PostgreSQL</option>
+          <option value="mysql">MySQL</option>
           <option value="sqlite">SQLite</option>
         </select>
         <input
