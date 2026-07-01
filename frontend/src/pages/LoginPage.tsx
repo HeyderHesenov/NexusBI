@@ -1,5 +1,6 @@
 import { ArrowRight, Lock, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { GoogleButton } from '../components/auth/GoogleButton'
@@ -14,6 +15,7 @@ const field =
   'w-full rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-ink placeholder:text-ink-faint transition focus:border-accent focus:outline-none'
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const { login, register, googleLogin } = useAuthStore()
   const navigate = useNavigate()
   const [mode, setMode] = useState<'login' | 'register'>('login')
@@ -45,7 +47,7 @@ export function LoginPage() {
       navigate('/')
     } catch (err: unknown) {
       const fallback =
-        mode === 'login' ? 'Email və ya şifrə yanlışdır.' : 'Qeydiyyat alınmadı.'
+        mode === 'login' ? t('loginPage.errorLogin') : t('loginPage.errorRegister')
       const e = err as { response?: { data?: { message?: string; detail?: string } } }
       setError(e.response?.data?.message ?? e.response?.data?.detail ?? fallback)
     } finally {
@@ -104,12 +106,11 @@ export function LoginPage() {
             words → SQL → plot
           </p>
           <h1 className="mt-4 font-display text-5xl font-bold leading-[1.04] text-ink">
-            <span className="reveal reveal-d2 block">Sual ver.</span>
-            <span className="reveal reveal-d3 block">Cavabı gör.</span>
+            <span className="reveal reveal-d2 block">{t('loginPage.heroLine1')}</span>
+            <span className="reveal reveal-d3 block">{t('loginPage.heroLine2')}</span>
           </h1>
           <p className="reveal reveal-d4 mt-5 text-ink-soft">
-            SQL bilmədən datanla danış. NexusBI sualını sorğuya çevirir, icra edir
-            və ən uyğun chart-la cavablandırır.
+            {t('loginPage.heroDescription')}
           </p>
         </div>
 
@@ -121,9 +122,9 @@ export function LoginPage() {
       {/* Form side */}
       <div className="relative z-10 flex items-center justify-center px-6 py-12">
         <div className="reveal reveal-d2 w-full max-w-sm rounded-2xl border border-line bg-surface p-8 shadow-card">
-          <p className="eyebrow">{mode === 'login' ? 'Yenidən xoş gəldin' : 'Başla'}</p>
+          <p className="eyebrow">{mode === 'login' ? t('loginPage.eyebrowLogin') : t('loginPage.eyebrowRegister')}</p>
           <h2 className="mt-1 font-display text-3xl font-bold text-ink">
-            {mode === 'login' ? 'Daxil ol' : 'Hesab yarat'}
+            {mode === 'login' ? t('loginPage.titleLogin') : t('loginPage.titleRegister')}
           </h2>
 
           {/* Google */}
@@ -136,11 +137,11 @@ export function LoginPage() {
             ) : (
               <button
                 onClick={() =>
-                  toast('Google girişi hələ konfiqurasiya olunmayıb.', { icon: 'ℹ️' })
+                  toast(t('loginPage.googleNotConfigured'), { icon: 'ℹ️' })
                 }
                 className="flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-surface-2 py-2.5 text-sm font-medium text-ink transition hover:border-ink-faint"
               >
-                <GoogleGlyph /> Google ilə davam et
+                <GoogleGlyph /> {t('loginPage.googleContinue')}
               </button>
             )}
           </div>
@@ -148,7 +149,7 @@ export function LoginPage() {
           <div className="my-6 flex items-center gap-3">
             <span className="h-px flex-1 bg-line" />
             <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-              və ya email
+              {t('loginPage.orEmail')}
             </span>
             <span className="h-px flex-1 bg-line" />
           </div>
@@ -160,7 +161,7 @@ export function LoginPage() {
                 onChange={(e) => setFullName(e.target.value)}
                 name="name"
                 autoComplete="name"
-                placeholder="Ad Soyad"
+                placeholder={t('loginPage.fullNamePlaceholder')}
                 className={field}
               />
             )}
@@ -174,17 +175,17 @@ export function LoginPage() {
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="Email"
+                placeholder={t('loginPage.emailPlaceholder')}
                 className={field}
               />
               {mode === 'login' && showHint && hint && (
                 <div
                   role="listbox"
-                  aria-label="Son giriş təklifi"
+                  aria-label={t('loginPage.recentLoginSuggestion')}
                   className="hint-pop absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-line bg-surface shadow-card"
                 >
                   <p className="border-b border-line/70 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-                    Son giriş
+                    {t('loginPage.recentLogin')}
                   </p>
                   <div className="flex items-center gap-1.5 p-1.5">
                     <button
@@ -214,7 +215,7 @@ export function LoginPage() {
                     </button>
                     <button
                       type="button"
-                      aria-label="Təklifi sil"
+                      aria-label={t('loginPage.dismissSuggestion')}
                       onMouseDown={(e) => {
                         e.preventDefault()
                         dismissHint()
@@ -233,7 +234,7 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               name="password"
               autoComplete="current-password"
-              placeholder="Şifrə"
+              placeholder={t('loginPage.passwordPlaceholder')}
               className={field}
             />
 
@@ -251,7 +252,7 @@ export function LoginPage() {
               disabled={busy}
               className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {busy ? 'Gözləyin…' : mode === 'login' ? 'Daxil ol' : 'Qeydiyyatdan keç'}
+              {busy ? t('loginPage.busy') : mode === 'login' ? t('loginPage.submitLogin') : t('loginPage.submitRegister')}
               {!busy && <ArrowRight size={16} strokeWidth={2.5} />}
             </button>
           </form>
@@ -260,7 +261,7 @@ export function LoginPage() {
             onClick={switchMode}
             className="mt-4 w-full text-sm text-ink-soft transition hover:text-ink"
           >
-            {mode === 'login' ? 'Hesabın yoxdur? Qeydiyyat' : 'Hesabın var? Daxil ol'}
+            {mode === 'login' ? t('loginPage.switchToRegister') : t('loginPage.switchToLogin')}
           </button>
         </div>
       </div>

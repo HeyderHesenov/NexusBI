@@ -1,5 +1,6 @@
 import { AlertTriangle, Bookmark, Clock, Code2, Database, Lightbulb, LayoutGrid, Maximize2, MessageSquarePlus, Pencil, RefreshCw, Sparkles, Target, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChartView } from '../components/charts/ChartView'
 import { HistoryDeleteUI } from '../components/query/HistoryDeleteUI'
 import { useHistoryDelete } from '../hooks/useHistoryDelete'
@@ -19,6 +20,7 @@ import { isSqlLabel, stripSqlLabel } from '../lib/sqlLabel'
 import type { DataSourceSchema } from '../types'
 
 export function QueryPage() {
+  const { t } = useTranslation()
   const { thread, loading, error, ask, runSql, retry, newChat, history, loadHistory, datasourceId } =
     useQueryStore()
   const { schemas, loadSchema } = useDatasourceStore()
@@ -51,11 +53,11 @@ export function QueryPage() {
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_240px]">
         <div className="min-w-0 space-y-6">
           <header>
-            <p className="eyebrow">Sorğu konsolu</p>
+            <p className="eyebrow">{t('queryPage.eyebrow')}</p>
             <h1 className="mt-1 font-display text-4xl font-bold leading-[1.05] tracking-tight text-ink">
-              Datanla danış,
+              {t('queryPage.headingLine1')}
               <br />
-              cavabı plotda gör.
+              {t('queryPage.headingLine2')}
             </h1>
           </header>
 
@@ -68,7 +70,7 @@ export function QueryPage() {
                   onClick={newChat}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink"
                 >
-                  <MessageSquarePlus size={14} /> Yeni söhbət
+                  <MessageSquarePlus size={14} /> {t('queryPage.newChat')}
                 </button>
               )}
             </div>
@@ -83,13 +85,13 @@ export function QueryPage() {
               editorKey={`sql-${datasourceId ?? 'demo'}-${schema ? 'ready' : 'pending'}`}
               schema={schema}
               onRun={(sql) => runSql(sql)}
-              runLabel="Sorğunu işlət"
-              subtitle="— öz sorğunu yaz, AI-siz işlət"
+              runLabel={t('queryPage.runQuery')}
+              subtitle={t('queryPage.sqlSubtitle')}
             />
           )}
           {mode === 'nl' && thread.length > 0 && (
             <p className="text-xs text-ink-faint">
-              İpucu: davam sualı ver — “bunu aya görə böl”, “yalnız 2024”.
+              {t('queryPage.followUpHint')}
             </p>
           )}
 
@@ -111,7 +113,7 @@ export function QueryPage() {
                 onClick={() => retry().catch(() => undefined)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink"
               >
-                <RefreshCw size={13} /> Yenidən cəhd et
+                <RefreshCw size={13} /> {t('queryPage.retry')}
               </button>
             </div>
           )}
@@ -143,7 +145,7 @@ export function QueryPage() {
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <Database size={14} className="text-ink-faint" />
-                <span className="eyebrow">Cədvəllər</span>
+                <span className="eyebrow">{t('queryPage.tables')}</span>
               </div>
               <SchemaBrowser datasourceId={datasourceId} />
             </div>
@@ -152,10 +154,10 @@ export function QueryPage() {
           <div>
             <div className="mb-3 flex items-center gap-2">
               <Clock size={14} className="text-ink-faint" />
-              <span className="eyebrow">Son sorğular</span>
+              <span className="eyebrow">{t('queryPage.recentQueries')}</span>
             </div>
             {history.length === 0 ? (
-              <p className="text-sm text-ink-faint">Hələ sorğu yoxdur.</p>
+              <p className="text-sm text-ink-faint">{t('queryPage.noQueriesYet')}</p>
             ) : (
               <ul className="space-y-1">
                 {history.slice(0, 12).map((item) => (
@@ -175,7 +177,7 @@ export function QueryPage() {
                     </button>
                     <button
                       onClick={() => del.askDelete(item.id)}
-                      aria-label="Sorğunu sil"
+                      aria-label={t('queryPage.deleteQuery')}
                       className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-faint opacity-0 transition hover:bg-surface-2 hover:text-[#D87C6B] focus:opacity-100 group-hover:opacity-100"
                     >
                       <Trash2 size={14} />
@@ -237,6 +239,7 @@ function TurnCard({
   onSaveQuery: () => void
   onMakeDecision: () => void
 }) {
+  const { t } = useTranslation()
   const { result, q } = turn
   const [fs, setFs] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -255,7 +258,7 @@ function TurnCard({
         <div className="flex gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-5 py-4">
           <Lightbulb size={18} className="mt-0.5 shrink-0 text-accent" />
           <div>
-            <p className="eyebrow mb-1 text-accent">İnsight</p>
+            <p className="eyebrow mb-1 text-accent">{t('queryPage.insight')}</p>
             <TypewriterText
               key={result.query_log_id ?? result.insight}
               text={result.insight}
@@ -269,16 +272,16 @@ function TurnCard({
         <div className="mb-3 flex items-center justify-end gap-2">
           {result.from_cache && (
             <span className="rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent">
-              keşdən
+              {t('queryPage.fromCache')}
             </span>
           )}
           <span className="font-mono text-[11px] text-ink-faint">
-            {result.data.length} sətir · {result.execution_time_ms} ms
+            {t('queryPage.rowsMs', { n: result.data.length, ms: result.execution_time_ms })}
           </span>
           <button
             onClick={() => setFs(true)}
-            aria-label="Tam ekran"
-            title="Tam ekran"
+            aria-label={t('queryPage.fullscreen')}
+            title={t('queryPage.fullscreen')}
             className="rounded-md p-1 text-ink-faint transition hover:bg-surface-2 hover:text-accent"
           >
             <Maximize2 size={15} />
@@ -302,7 +305,7 @@ function TurnCard({
           onClick={() => setEditing(true)}
           className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft transition hover:text-accent"
         >
-          <Pencil size={13} /> SQL-i redaktə et
+          <Pencil size={13} /> {t('queryPage.editSql')}
         </button>
       )}
       {canEdit && editing && (
@@ -317,7 +320,7 @@ function TurnCard({
             return err
           }}
           onCancel={() => setEditing(false)}
-          runLabel="Redaktə edilmiş SQL-i işlət"
+          runLabel={t('queryPage.runEditedSql')}
         />
       )}
 
@@ -326,19 +329,19 @@ function TurnCard({
           onClick={onSaveDashboard}
           className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
         >
-          <LayoutGrid size={15} /> Dashboard-a saxla
+          <LayoutGrid size={15} /> {t('queryPage.saveToDashboard')}
         </button>
         <button
           onClick={onSaveQuery}
           className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
         >
-          <Bookmark size={15} /> Sorğunu saxla
+          <Bookmark size={15} /> {t('queryPage.saveQuery')}
         </button>
         <button
           onClick={onMakeDecision}
           className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
         >
-          <Target size={15} /> Qərara çevir
+          <Target size={15} /> {t('queryPage.makeDecision')}
         </button>
       </div>
     </div>
@@ -364,13 +367,14 @@ function SqlEditorCard({
   subtitle?: string
   emphasized?: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <div
       className={`rounded-2xl border ${emphasized ? 'border-accent/30' : 'border-line'} bg-surface p-4 shadow-card`}
     >
       <div className="mb-3 flex items-center gap-2">
         <Code2 size={14} className="text-accent" />
-        <span className="eyebrow text-accent">SQL redaktoru</span>
+        <span className="eyebrow text-accent">{t('queryPage.sqlEditor')}</span>
         {subtitle && <span className="text-xs text-ink-faint">{subtitle}</span>}
       </div>
       <SQLEditor
@@ -386,6 +390,7 @@ function SqlEditorCard({
 }
 
 function ModeToggle({ mode, onChange }: { mode: 'nl' | 'sql'; onChange: (m: 'nl' | 'sql') => void }) {
+  const { t } = useTranslation()
   const base =
     'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition'
   return (
@@ -395,7 +400,7 @@ function ModeToggle({ mode, onChange }: { mode: 'nl' | 'sql'; onChange: (m: 'nl'
         aria-pressed={mode === 'nl'}
         className={`${base} ${mode === 'nl' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink'}`}
       >
-        <Sparkles size={13} /> Təbii dil
+        <Sparkles size={13} /> {t('queryPage.naturalLanguage')}
       </button>
       <button
         onClick={() => onChange('sql')}
@@ -409,11 +414,12 @@ function ModeToggle({ mode, onChange }: { mode: 'nl' | 'sql'; onChange: (m: 'nl'
 }
 
 function LoadingState() {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm text-ink-soft">
         <span className="h-2 w-2 animate-ping rounded-full bg-accent" />
-        Data plota çevrilir…
+        {t('queryPage.loadingData')}
       </div>
       <div className="h-72 animate-pulse rounded-2xl border border-line bg-surface" />
     </div>
@@ -421,11 +427,12 @@ function LoadingState() {
 }
 
 function EmptyState() {
+  const { t } = useTranslation()
   return (
     <div className="plot-grid grid min-h-[50vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-      <p className="font-display text-lg text-ink">Nəticə burada plot olunacaq</p>
+      <p className="font-display text-lg text-ink">{t('queryPage.emptyTitle')}</p>
       <p className="mt-1 text-sm text-ink-soft">
-        Yuxarıdakı nümunələrdən birinə toxun və ya öz sualını yaz.
+        {t('queryPage.emptySubtitle')}
       </p>
     </div>
   )

@@ -1,27 +1,29 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Plus, Play, ShieldCheck, Trash2, X, XCircle } from 'lucide-react'
 import { useDataContractStore } from '../store/dataContractStore'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { ModalShell } from '../components/ui/ModalShell'
 import type { ContractRule, DataContract, Expectation } from '../types'
 
-const RULES: { value: ContractRule; label: string; needsColumn: boolean; needsRange: boolean }[] = [
-  { value: 'not_null', label: 'Boş deyil', needsColumn: true, needsRange: false },
-  { value: 'unique', label: 'Unikal', needsColumn: true, needsRange: false },
-  { value: 'range', label: 'Diapazon', needsColumn: true, needsRange: true },
-  { value: 'freshness', label: 'Təzəlik (SLA)', needsColumn: false, needsRange: false },
-  { value: 'schema', label: 'Sxem sabitliyi', needsColumn: false, needsRange: false },
+const RULES: { value: ContractRule; labelKey: string; needsColumn: boolean; needsRange: boolean }[] = [
+  { value: 'not_null', labelKey: 'dataContractsPage.ruleNotNull', needsColumn: true, needsRange: false },
+  { value: 'unique', labelKey: 'dataContractsPage.ruleUnique', needsColumn: true, needsRange: false },
+  { value: 'range', labelKey: 'dataContractsPage.ruleRange', needsColumn: true, needsRange: true },
+  { value: 'freshness', labelKey: 'dataContractsPage.ruleFreshness', needsColumn: false, needsRange: false },
+  { value: 'schema', labelKey: 'dataContractsPage.ruleSchema', needsColumn: false, needsRange: false },
 ]
 
 const field = 'w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none'
 
-const STATUS: Record<string, { cls: string; label: string }> = {
-  pass: { cls: 'bg-accent-soft text-accent', label: 'Keçdi' },
-  fail: { cls: 'bg-[#D87C6B]/15 text-[#D87C6B]', label: 'Pozuldu' },
-  unknown: { cls: 'bg-surface-2 text-ink-faint', label: 'Yoxlanmayıb' },
+const STATUS: Record<string, { cls: string; labelKey: string }> = {
+  pass: { cls: 'bg-accent-soft text-accent', labelKey: 'dataContractsPage.statusPass' },
+  fail: { cls: 'bg-[#D87C6B]/15 text-[#D87C6B]', labelKey: 'dataContractsPage.statusFail' },
+  unknown: { cls: 'bg-surface-2 text-ink-faint', labelKey: 'dataContractsPage.statusUnknown' },
 }
 
 export function DataContractsPage() {
+  const { t } = useTranslation()
   const { items, runsById, load, add, run, loadRuns, remove } = useDataContractStore()
   const { sources, load: loadSources } = useDatasourceStore()
   const [open, setOpen] = useState(false)
@@ -35,16 +37,16 @@ export function DataContractsPage() {
     <div className="mx-auto w-full max-w-3xl">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow">Məlumat</p>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">Data müqavilələri</h1>
-          <p className="mt-1 text-sm text-ink-soft">Mənbə cədvəllərinə keyfiyyət zəmanəti — boşluq, unikallıq, diapazon, sxem, təzəlik.</p>
+          <p className="eyebrow">{t('dataContractsPage.eyebrow')}</p>
+          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">{t('dataContractsPage.title')}</h1>
+          <p className="mt-1 text-sm text-ink-soft">{t('dataContractsPage.subtitle')}</p>
         </div>
         <button
           onClick={() => setOpen(true)}
           disabled={sources.length === 0}
           className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-50"
         >
-          <Plus size={15} /> Yeni müqavilə
+          <Plus size={15} /> {t('dataContractsPage.newContract')}
         </button>
       </header>
 
@@ -52,9 +54,9 @@ export function DataContractsPage() {
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <div>
             <ShieldCheck size={22} className="mx-auto text-ink-faint" />
-            <p className="mt-2 font-display text-lg text-ink">Müqavilə yoxdur</p>
+            <p className="mt-2 font-display text-lg text-ink">{t('dataContractsPage.emptyTitle')}</p>
             <p className="mt-1 text-sm text-ink-soft">
-              {sources.length === 0 ? 'Əvvəlcə bir mənbə əlavə et (Mənbələr).' : 'Cədvələ keyfiyyət qaydaları təyin et.'}
+              {sources.length === 0 ? t('dataContractsPage.emptyNoSource') : t('dataContractsPage.emptyHasSource')}
             </p>
           </div>
         </div>
@@ -103,6 +105,7 @@ function ContractCard({
   onToggleRuns: () => Promise<void>
   onRemove: () => Promise<void>
 }) {
+  const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const st = STATUS[contract.last_status] ?? STATUS.unknown
@@ -126,15 +129,15 @@ function ContractCard({
         <div className="min-w-0">
           <p className="font-medium text-ink">{contract.name}</p>
           <p className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-            {dsName} · {contract.table_name} · {contract.expectations.length} qayda
+            {dsName} · {contract.table_name} · {t('dataContractsPage.ruleCount', { n: contract.expectations.length })}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${st.cls}`}>{st.label}</span>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${st.cls}`}>{t(st.labelKey)}</span>
           <button onClick={doRun} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-60">
-            <Play size={13} /> {busy ? 'Yoxlanır…' : 'Yoxla'}
+            <Play size={13} /> {busy ? t('dataContractsPage.checking') : t('dataContractsPage.check')}
           </button>
-          <button onClick={onRemove} aria-label="Sil" className="rounded-lg border border-line p-1.5 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]">
+          <button onClick={onRemove} aria-label={t('dataContractsPage.delete')} className="rounded-lg border border-line p-1.5 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]">
             <Trash2 size={13} />
           </button>
         </div>
@@ -157,7 +160,7 @@ function ContractCard({
         </ul>
       )}
       {contract.last_status !== 'unknown' && !runs && (
-        <button onClick={onToggleRuns} className="mt-2 text-xs text-accent hover:underline">Nəticələri göstər</button>
+        <button onClick={onToggleRuns} className="mt-2 text-xs text-accent hover:underline">{t('dataContractsPage.showResults')}</button>
       )}
     </li>
   )
@@ -174,6 +177,7 @@ function CreateModal({
   onClose: () => void
   onCreate: (p: import('../types').DataContractCreate) => Promise<void>
 }) {
+  const { t } = useTranslation()
   const [datasourceId, setDatasourceId] = useState(sources[0]?.id ?? '')
   const [table, setTable] = useState('')
   const [name, setName] = useState('')
@@ -203,11 +207,11 @@ function CreateModal({
   }
 
   return (
-    <ModalShell open onClose={onClose} title="Yeni data müqaviləsi" subtitle="Cədvələ keyfiyyət qaydaları">
+    <ModalShell open onClose={onClose} title={t('dataContractsPage.modalTitle')} subtitle={t('dataContractsPage.modalSubtitle')}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <p className="eyebrow mb-1">Mənbə</p>
+            <p className="eyebrow mb-1">{t('dataContractsPage.source')}</p>
             <select value={datasourceId} onChange={(e) => setDatasourceId(e.target.value)} className={field}>
               {sources.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
@@ -215,20 +219,20 @@ function CreateModal({
             </select>
           </div>
           <div>
-            <p className="eyebrow mb-1">Cədvəl</p>
-            <input value={table} onChange={(e) => setTable(e.target.value)} className={field} placeholder="cədvəl adı" />
+            <p className="eyebrow mb-1">{t('dataContractsPage.table')}</p>
+            <input value={table} onChange={(e) => setTable(e.target.value)} className={field} placeholder={t('dataContractsPage.tablePlaceholder')} />
           </div>
         </div>
         <div>
-          <p className="eyebrow mb-1">Ad</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} className={field} placeholder="məs. Satış keyfiyyəti" />
+          <p className="eyebrow mb-1">{t('dataContractsPage.name')}</p>
+          <input value={name} onChange={(e) => setName(e.target.value)} className={field} placeholder={t('dataContractsPage.namePlaceholder')} />
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="eyebrow">Qaydalar</p>
+            <p className="eyebrow">{t('dataContractsPage.rules')}</p>
             <button onClick={() => setExps((c) => [...c, { rule: 'not_null', column: '' }])} className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
-              <Plus size={12} /> Qayda
+              <Plus size={12} /> {t('dataContractsPage.rule')}
             </button>
           </div>
           {exps.map((e, i) => {
@@ -237,11 +241,11 @@ function CreateModal({
               <div key={i} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-2 p-2">
                 <select value={e.rule} onChange={(ev) => setExp(i, { rule: ev.target.value as ContractRule })} className="rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:outline-none">
                   {RULES.map((r) => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
+                    <option key={r.value} value={r.value}>{t(r.labelKey)}</option>
                   ))}
                 </select>
                 {meta.needsColumn && (
-                  <input value={e.column ?? ''} onChange={(ev) => setExp(i, { column: ev.target.value })} placeholder="sütun" className="w-24 rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:outline-none" />
+                  <input value={e.column ?? ''} onChange={(ev) => setExp(i, { column: ev.target.value })} placeholder={t('dataContractsPage.column')} className="w-24 rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:outline-none" />
                 )}
                 {meta.needsRange && (
                   <>
@@ -249,7 +253,7 @@ function CreateModal({
                     <input type="number" value={e.params?.max ?? ''} onChange={(ev) => setExp(i, { params: { ...e.params, max: Number(ev.target.value) } as Record<string, number> })} placeholder="max" className="w-16 rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:outline-none" />
                   </>
                 )}
-                <button onClick={() => setExps((c) => c.filter((_, idx) => idx !== i))} aria-label="Sil" className="ml-auto rounded-md p-1 text-ink-faint hover:text-[#D87C6B]">
+                <button onClick={() => setExps((c) => c.filter((_, idx) => idx !== i))} aria-label={t('dataContractsPage.delete')} className="ml-auto rounded-md p-1 text-ink-faint hover:text-[#D87C6B]">
                   <X size={13} />
                 </button>
               </div>
@@ -258,9 +262,9 @@ function CreateModal({
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
-          <button onClick={onClose} className="rounded-xl border border-line px-3 py-2 text-sm text-ink-soft hover:text-ink">Ləğv et</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-3 py-2 text-sm text-ink-soft hover:text-ink">{t('dataContractsPage.cancel')}</button>
           <button onClick={submit} disabled={!valid || busy} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press disabled:opacity-50">
-            {busy ? 'Yaradılır…' : 'Yarat'}
+            {busy ? t('dataContractsPage.creating') : t('dataContractsPage.create')}
           </button>
         </div>
       </div>

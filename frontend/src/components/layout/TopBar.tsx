@@ -46,7 +46,7 @@ export function TopBar() {
   }, [load])
 
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-line bg-bg/70 px-8 py-3.5 backdrop-blur">
+    <header className="relative z-30 flex items-center justify-between gap-4 border-b border-line bg-bg/70 px-8 py-3.5 backdrop-blur">
       <h2 className="min-w-0 truncate font-display text-base font-semibold tracking-tight text-ink">
         {t(titleKeyFor(pathname))}
       </h2>

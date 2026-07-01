@@ -1,5 +1,6 @@
 import { LayoutGrid, MessageCircle, Plus, Presentation, Radio, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import type { Layouts } from 'react-grid-layout'
 import type { DataStory } from '../types'
@@ -17,6 +18,7 @@ import { useCollabStore } from '../store/collabStore'
 import { useDashboardStore } from '../store/dashboardStore'
 
 export function DashboardPage() {
+  const { t } = useTranslation()
   const {
     list, current, refreshing, loadList, open, create, generate, remove,
     addWidget, removeWidget, refreshWidget, refreshAll, saveLayout, toggleLive,
@@ -83,16 +85,16 @@ export function DashboardPage() {
     <div>
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Kolleksiyalar</p>
+          <p className="eyebrow">{t('dashboardPage.collections')}</p>
           <div className="mt-1 flex items-center gap-3">
-            <h2 className="font-display text-3xl font-bold text-ink">Dashboard-lar</h2>
+            <h2 className="font-display text-3xl font-bold text-ink">{t('dashboardPage.dashboards')}</h2>
             {live && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-accent">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
                 </span>
-                Canlı
+                {t('dashboardPage.live')}
               </span>
             )}
           </div>
@@ -108,7 +110,7 @@ export function DashboardPage() {
               }`}
             >
               <Radio size={16} className={live ? 'animate-pulse' : ''} />
-              {live ? 'Canlı' : 'Canlı rejim'}
+              {live ? t('dashboardPage.live') : t('dashboardPage.liveMode')}
             </button>
           )}
           {current && current.widgets.length > 0 && (
@@ -118,7 +120,7 @@ export function DashboardPage() {
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-50"
             >
               <Presentation size={16} className={storyLoading ? 'animate-pulse' : ''} />
-              {storyLoading ? 'Hazırlanır…' : 'Hekayə'}
+              {storyLoading ? t('dashboardPage.preparing') : t('dashboardPage.story')}
             </button>
           )}
           {current && current.widgets.length > 0 && (
@@ -127,7 +129,7 @@ export function DashboardPage() {
               disabled={refreshing}
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-50"
             >
-              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> Hamısını yenilə
+              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> {t('dashboardPage.refreshAll')}
             </button>
           )}
           {current && (
@@ -135,7 +137,7 @@ export function DashboardPage() {
               onClick={() => setAddOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
             >
-              <Plus size={16} /> Widget
+              <Plus size={16} /> {t('dashboardPage.widget')}
             </button>
           )}
           {current && (
@@ -143,7 +145,7 @@ export function DashboardPage() {
               onClick={() => setChatOpen((v) => !v)}
               className="relative flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
             >
-              <MessageCircle size={16} /> Komanda
+              <MessageCircle size={16} /> {t('dashboardPage.team')}
               {participants.length > 1 && (
                 <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg">
                   {participants.length}
@@ -156,7 +158,7 @@ export function DashboardPage() {
               onClick={() => setShareOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
             >
-              <Share2 size={16} /> Paylaş
+              <Share2 size={16} /> {t('dashboardPage.share')}
             </button>
           )}
           {current && (
@@ -164,20 +166,20 @@ export function DashboardPage() {
               onClick={() => setDeleteOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
             >
-              <Trash2 size={16} /> Sil
+              <Trash2 size={16} /> {t('dashboardPage.delete')}
             </button>
           )}
           <button
             onClick={() => setGenerateOpen(true)}
             className="flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent active:translate-y-px"
           >
-            <Sparkles size={16} strokeWidth={2.5} /> AI ilə qur
+            <Sparkles size={16} strokeWidth={2.5} /> {t('dashboardPage.buildWithAi')}
           </button>
           <button
             onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
           >
-            <Plus size={16} strokeWidth={2.5} /> Yeni
+            <Plus size={16} strokeWidth={2.5} /> {t('dashboardPage.new')}
           </button>
         </div>
       </div>
@@ -240,7 +242,7 @@ export function DashboardPage() {
           try {
             const dash = await generate(goal, null)
             setGenerateOpen(false)
-            toast.success(`“${dash.name}” hazırdır — ${dash.widgets.length} widget.`)
+            toast.success(t('dashboardPage.generatedToast', { name: dash.name, count: dash.widgets.length }))
           } catch {
             /* interceptor toast */
           }
@@ -260,8 +262,8 @@ export function DashboardPage() {
           open={deleteOpen}
           onClose={() => setDeleteOpen(false)}
           onConfirm={() => remove(current.id)}
-          title="Dashboard-u sil"
-          message={`“${current.name}” paneli və bütün widgetləri həmişəlik silinəcək. Bu əməliyyat geri qaytarıla bilməz.`}
+          title={t('dashboardPage.deleteTitle')}
+          message={t('dashboardPage.deleteMessage', { name: current.name })}
         />
       )}
 
@@ -271,7 +273,7 @@ export function DashboardPage() {
           onClose={() => setAddOpen(false)}
           onPick={async (item) => {
             await addWidget(current.id, item.id, item.natural_language)
-            toast.success('Widget əlavə olundu.')
+            toast.success(t('dashboardPage.widgetAdded'))
             setAddOpen(false)
           }}
         />
@@ -281,25 +283,27 @@ export function DashboardPage() {
 }
 
 function EmptyState() {
+  const { t } = useTranslation()
   return (
     <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
       <LayoutGrid size={28} className="mx-auto text-ink-faint" />
-      <p className="mt-3 font-display text-lg text-ink">Dashboard seç və ya yarat</p>
-      <p className="mt-1 text-sm text-ink-soft">Sorğularını bir yerə yığıb canlı panel düzəlt.</p>
+      <p className="mt-3 font-display text-lg text-ink">{t('dashboardPage.emptySelectTitle')}</p>
+      <p className="mt-1 text-sm text-ink-soft">{t('dashboardPage.emptySelectDesc')}</p>
     </div>
   )
 }
 
 function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
+  const { t } = useTranslation()
   return (
     <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-      <p className="font-display text-lg text-ink">Bu panel boşdur</p>
-      <p className="mt-1 text-sm text-ink-soft">Tarixçədən sorğu seçib widget əlavə et.</p>
+      <p className="font-display text-lg text-ink">{t('dashboardPage.emptyPanelTitle')}</p>
+      <p className="mt-1 text-sm text-ink-soft">{t('dashboardPage.emptyPanelDesc')}</p>
       <button
         onClick={onAdd}
         className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press"
       >
-        <Plus size={16} strokeWidth={2.5} /> Widget əlavə et
+        <Plus size={16} strokeWidth={2.5} /> {t('dashboardPage.addWidget')}
       </button>
     </div>
   )

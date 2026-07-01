@@ -1,5 +1,6 @@
 import { MessageCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { ChartRenderer } from '../components/charts/LazyChartRenderer'
 import { CollabPanel } from '../components/dashboard/CollabPanel'
@@ -10,6 +11,7 @@ import { useCollabStore } from '../store/collabStore'
 import type { Dashboard } from '../types'
 
 export function PublicDashboardPage() {
+  const { t } = useTranslation()
   const { token } = useParams<{ token: string }>()
   const [dash, setDash] = useState<Dashboard | null>(null)
   const [error, setError] = useState(false)
@@ -53,7 +55,7 @@ export function PublicDashboardPage() {
                 onClick={() => setChatOpen((v) => !v)}
                 className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink"
               >
-                <MessageCircle size={14} /> Komanda
+                <MessageCircle size={14} /> {t('publicDashboardPage.team')}
                 {participants.length > 1 && (
                   <span className="grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg">
                     {participants.length}
@@ -70,11 +72,11 @@ export function PublicDashboardPage() {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         {error ? (
-          <p className="py-20 text-center text-ink-soft">Paylaşılan dashboard tapılmadı.</p>
+          <p className="py-20 text-center text-ink-soft">{t('publicDashboardPage.notFound')}</p>
         ) : !dash ? (
-          <p className="py-20 text-center text-ink-faint">Yüklənir…</p>
+          <p className="py-20 text-center text-ink-faint">{t('publicDashboardPage.loading')}</p>
         ) : dash.widgets.length === 0 ? (
-          <p className="py-20 text-center text-ink-soft">Bu panel boşdur.</p>
+          <p className="py-20 text-center text-ink-soft">{t('publicDashboardPage.emptyPanel')}</p>
         ) : (
           <CollabSurface>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -82,7 +84,7 @@ export function PublicDashboardPage() {
                 <div key={w.id} className="flex h-80 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
                   <div className="border-b border-line px-4 py-2.5">
                     <span className="truncate text-sm font-medium text-ink">
-                      {w.title || w.chart?.natural_language || 'Widget'}
+                      {w.title || w.chart?.natural_language || t('publicDashboardPage.widget')}
                     </span>
                   </div>
                   <div className="min-h-0 flex-1 p-3">
@@ -90,7 +92,7 @@ export function PublicDashboardPage() {
                       <ChartRenderer data={w.chart.data} config={w.chart.chart_config} height="100%" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-sm text-ink-faint">
-                        Nəticə yoxdur.
+                        {t('publicDashboardPage.noResult')}
                       </div>
                     )}
                   </div>

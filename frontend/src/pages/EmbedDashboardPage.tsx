@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChartRenderer } from '../components/charts/LazyChartRenderer'
 import * as branding from '../api/branding'
 import type { EmbeddedDashboardView } from '../api/branding'
@@ -7,6 +8,7 @@ import { deriveAccentVariants, hexToTriplet } from '../lib/color'
 
 /** Layout-less, white-label, read-only embedded dashboard for external apps. */
 export function EmbedDashboardPage() {
+  const { t } = useTranslation()
   const { token } = useParams<{ token: string }>()
   const [view, setView] = useState<EmbeddedDashboardView | null>(null)
   const [error, setError] = useState(false)
@@ -49,12 +51,12 @@ export function EmbedDashboardPage() {
   if (error) {
     return (
       <div className="grid min-h-screen place-items-center bg-bg text-ink-soft">
-        Embed tapılmadı və ya söndürülüb.
+        {t('embedDashboardPage.notFoundOrDisabled')}
       </div>
     )
   }
   if (!view) {
-    return <div className="grid min-h-screen place-items-center bg-bg text-ink-faint">Yüklənir…</div>
+    return <div className="grid min-h-screen place-items-center bg-bg text-ink-faint">{t('embedDashboardPage.loading')}</div>
   }
 
   const { dashboard, brand } = view
@@ -82,7 +84,7 @@ export function EmbedDashboardPage() {
 
       <main className="mx-auto max-w-6xl px-5 py-6">
         {dashboard.widgets.length === 0 ? (
-          <p className="py-20 text-center text-ink-soft">Bu panel boşdur.</p>
+          <p className="py-20 text-center text-ink-soft">{t('embedDashboardPage.emptyDashboard')}</p>
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {dashboard.widgets.map((w) => (
@@ -100,7 +102,7 @@ export function EmbedDashboardPage() {
                     <ChartRenderer data={w.chart.data} config={w.chart.chart_config} height="100%" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-sm text-ink-faint">
-                      Nəticə yoxdur.
+                      {t('embedDashboardPage.noResults')}
                     </div>
                   )}
                 </div>
