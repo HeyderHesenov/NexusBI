@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { History, Plus, Shield, Trash2, UserPlus, Users } from 'lucide-react'
 import { useWorkspaceStore } from '../store/workspaceStore'
+import { Field, FIELD, Select } from '../components/ui/form'
 
 function fmt(ts: string): string {
   const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(ts)
@@ -44,25 +45,38 @@ export function WorkspacePage() {
         </p>
       </header>
 
-      <div className="mb-5 flex gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t('workspacePage.newWorkspacePlaceholder')}
-          className="flex-1 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-        />
-        <button
-          onClick={() => {
-            if (name.trim()) {
-              create(name.trim()).catch(() => undefined)
-              setName('')
-            }
-          }}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
-        >
-          <Plus size={15} /> {t('workspacePage.create')}
-        </button>
-      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (name.trim()) {
+            create(name.trim()).catch(() => undefined)
+            setName('')
+          }
+        }}
+        className="mb-6 rounded-2xl border border-line bg-surface p-5"
+      >
+        <p className="eyebrow mb-4">{t('workspacePage.newWorkspace')}</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-56 flex-1">
+            <Field id="ws-name" label={t('workspacePage.nameLabel')}>
+              <input
+                id="ws-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('workspacePage.newWorkspacePlaceholder')}
+                className={FIELD}
+              />
+            </Field>
+          </div>
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-50"
+          >
+            <Plus size={15} /> {t('workspacePage.create')}
+          </button>
+        </div>
+      </form>
 
       {workspaces.length === 0 ? (
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-12 text-center">
@@ -78,7 +92,7 @@ export function WorkspacePage() {
                   <Users size={16} className="text-accent" /> {w.name}
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-                  {w.role}
+                  {t(`workspacePage.role_${w.role}`, w.role ?? '')}
                 </span>
               </button>
 
@@ -89,7 +103,7 @@ export function WorkspacePage() {
                       <span className="text-ink">{m.email}</span>
                       <span className="flex items-center gap-2">
                         <span className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-[10px] uppercase text-ink-soft">
-                          {m.role}
+                          {t(`workspacePage.role_${m.role}`, m.role ?? '')}
                         </span>
                         {w.role === 'owner' && m.user_id !== w.owner_id && (
                           <button
@@ -103,36 +117,45 @@ export function WorkspacePage() {
                     </div>
                   ))}
                   {w.role === 'owner' && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <input
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder={t('workspacePage.memberEmailPlaceholder')}
-                        className="flex-1 rounded-lg border border-line bg-surface-2 px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-                      />
-                      <select
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        className="rounded-lg border border-line bg-surface-2 px-2 py-1.5 text-sm text-ink focus:outline-none"
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
-                          </option>
-                        ))}
-                      </select>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        if (email.trim()) {
+                          addMember(w.id, email.trim(), role).catch(() => undefined)
+                          setEmail('')
+                        }
+                      }}
+                      className="grid gap-3 pt-2 sm:grid-cols-[1fr_11rem_auto] sm:items-end"
+                    >
+                      <Field id={`ws-email-${w.id}`} label={t('workspacePage.memberEmailLabel')}>
+                        <input
+                          id={`ws-email-${w.id}`}
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder={t('workspacePage.memberEmailPlaceholder')}
+                          className={FIELD}
+                        />
+                      </Field>
+                      <Field id={`ws-role-${w.id}`} label={t('workspacePage.roleLabel')}>
+                        <Select
+                          id={`ws-role-${w.id}`}
+                          value={role}
+                          onChange={(e) => setRole(e.target.value)}
+                          options={ROLES.map((r) => ({
+                            value: r,
+                            label: t(`workspacePage.role_${r}`, r),
+                          }))}
+                        />
+                      </Field>
                       <button
-                        onClick={() => {
-                          if (email.trim()) {
-                            addMember(w.id, email.trim(), role).catch(() => undefined)
-                            setEmail('')
-                          }
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent transition hover:border-accent"
+                        type="submit"
+                        disabled={!email.trim()}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3.5 py-2 text-sm font-semibold text-accent transition hover:border-accent disabled:opacity-50"
                       >
                         <UserPlus size={14} /> {t('workspacePage.addMember')}
                       </button>
-                    </div>
+                    </form>
                   )}
                 </div>
               )}

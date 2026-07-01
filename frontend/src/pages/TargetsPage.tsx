@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Gauge, Plus, Trash2 } from 'lucide-react'
 import { useTargetStore } from '../store/targetStore'
+import { Field, FIELD, Select } from '../components/ui/form'
 import type { KPITarget } from '../api/scenario'
 
 const PERIODS = ['month', 'quarter', 'year']
@@ -65,47 +66,69 @@ export function TargetsPage() {
         </p>
       </header>
 
-      <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t('targetsPage.namePlaceholder')}
-          className="col-span-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-        />
-        <input
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          type="number"
-          placeholder={t('targetsPage.targetPlaceholder')}
-          className="rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-        />
-        <input
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-          type="number"
-          placeholder={t('targetsPage.currentPlaceholder')}
-          className="rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-        />
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          className="rounded-xl border border-line bg-surface-2 px-2 py-2 text-sm text-ink focus:outline-none"
-        >
-          {PERIODS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="mb-6 flex justify-end">
-        <button
-          onClick={submit}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
-        >
-          <Plus size={15} /> {t('targetsPage.addTarget')}
-        </button>
-      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+        className="mb-6 rounded-2xl border border-line bg-surface p-5"
+      >
+        <p className="eyebrow mb-4">{t('targetsPage.newTarget')}</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="lg:col-span-2">
+            <Field id="kpi-name" label={t('targetsPage.nameLabel')}>
+              <input
+                id="kpi-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('targetsPage.namePlaceholder')}
+                className={FIELD}
+              />
+            </Field>
+          </div>
+          <Field id="kpi-target" label={t('targetsPage.targetLabel')}>
+            <input
+              id="kpi-target"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              type="number"
+              step="any"
+              inputMode="decimal"
+              placeholder={t('targetsPage.targetPlaceholder')}
+              className={FIELD}
+            />
+          </Field>
+          <Field id="kpi-current" label={t('targetsPage.currentLabel')}>
+            <input
+              id="kpi-current"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              type="number"
+              step="any"
+              inputMode="decimal"
+              placeholder={t('targetsPage.currentPlaceholder')}
+              className={FIELD}
+            />
+          </Field>
+          <Field id="kpi-period" label={t('targetsPage.periodLabel')}>
+            <Select
+              id="kpi-period"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              options={PERIODS.map((p) => ({ value: p, label: t(`targetsPage.period_${p}`) }))}
+            />
+          </Field>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="submit"
+            disabled={!name.trim() || !target}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-50"
+          >
+            <Plus size={15} /> {t('targetsPage.addTarget')}
+          </button>
+        </div>
+      </form>
 
       {items.length === 0 ? (
         <div className="plot-grid grid min-h-[50vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-12 text-center">
@@ -120,7 +143,8 @@ export function TargetsPage() {
                 <div className="min-w-0">
                   <p className="font-medium text-ink">{kpi.name}</p>
                   <p className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">
-                    {kpi.current_value.toLocaleString('az-AZ')} / {kpi.target_value.toLocaleString('az-AZ')} · {kpi.period}
+                    {kpi.current_value.toLocaleString('az-AZ')} / {kpi.target_value.toLocaleString('az-AZ')} ·{' '}
+                    {t(`targetsPage.period_${kpi.period}`, kpi.period)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

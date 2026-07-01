@@ -4,6 +4,7 @@ import { BadgeCheck, Plus, ShieldCheck, Tag, Trash2 } from 'lucide-react'
 import { useMetricStore } from '../store/metricStore'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { ModalShell } from '../components/ui/ModalShell'
+import { Field, Select } from '../components/ui/form'
 import type { MetricCreate } from '../types'
 
 const field =
@@ -173,19 +174,54 @@ function AddMetricModal({
         </div>
       }
     >
-      <div className="space-y-3 p-5">
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t('metricsPage.namePlaceholder')} className={field} />
-        <input value={expression} onChange={(e) => setExpression(e.target.value)} placeholder={t('metricsPage.expressionPlaceholder')} className={`${field} font-mono text-sm`} />
-        <input value={synonyms} onChange={(e) => setSynonyms(e.target.value)} placeholder={t('metricsPage.synonymsPlaceholder')} className={field} />
-        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('metricsPage.descriptionPlaceholder')} className={field} />
-        <select value={datasourceId} onChange={(e) => setDatasourceId(e.target.value)} className={field}>
-          <option value="">{t('metricsPage.demoGlobal')}</option>
-          {sources.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+      <div className="space-y-4 p-5">
+        <Field id="met-name" label={t('metricsPage.nameLabel')}>
+          <input
+            id="met-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('metricsPage.namePlaceholder')}
+            className={field}
+          />
+        </Field>
+        <Field id="met-expression" label={t('metricsPage.expressionLabel')} hint={t('metricsPage.expressionHint')}>
+          <input
+            id="met-expression"
+            value={expression}
+            onChange={(e) => setExpression(e.target.value)}
+            placeholder={t('metricsPage.expressionPlaceholder')}
+            className={`${field} font-mono text-sm`}
+          />
+        </Field>
+        <Field id="met-synonyms" label={t('metricsPage.synonymsLabel')}>
+          <input
+            id="met-synonyms"
+            value={synonyms}
+            onChange={(e) => setSynonyms(e.target.value)}
+            placeholder={t('metricsPage.synonymsPlaceholder')}
+            className={field}
+          />
+        </Field>
+        <Field id="met-description" label={t('metricsPage.descriptionLabel')}>
+          <input
+            id="met-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={t('metricsPage.descriptionPlaceholder')}
+            className={field}
+          />
+        </Field>
+        <Field id="met-source" label={t('metricsPage.sourceLabel')}>
+          <Select
+            id="met-source"
+            value={datasourceId}
+            onChange={(e) => setDatasourceId(e.target.value)}
+            options={[
+              { value: '', label: t('metricsPage.demoGlobal') },
+              ...sources.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          />
+        </Field>
       </div>
     </ModalShell>
   )

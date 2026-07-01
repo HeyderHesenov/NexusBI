@@ -4,6 +4,7 @@ import { CheckCircle2, Plus, Play, ShieldCheck, Trash2, X, XCircle } from 'lucid
 import { useDataContractStore } from '../store/dataContractStore'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { ModalShell } from '../components/ui/ModalShell'
+import { Field, Select } from '../components/ui/form'
 import type { ContractRule, DataContract, Expectation } from '../types'
 
 const RULES: { value: ContractRule; labelKey: string; needsColumn: boolean; needsRange: boolean }[] = [
@@ -208,25 +209,35 @@ function CreateModal({
 
   return (
     <ModalShell open onClose={onClose} title={t('dataContractsPage.modalTitle')} subtitle={t('dataContractsPage.modalSubtitle')}>
-      <div className="space-y-4">
+      <div className="space-y-4 p-5">
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="eyebrow mb-1">{t('dataContractsPage.source')}</p>
-            <select value={datasourceId} onChange={(e) => setDatasourceId(e.target.value)} className={field}>
-              {sources.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <p className="eyebrow mb-1">{t('dataContractsPage.table')}</p>
-            <input value={table} onChange={(e) => setTable(e.target.value)} className={field} placeholder={t('dataContractsPage.tablePlaceholder')} />
-          </div>
+          <Field id="dc-source" label={t('dataContractsPage.source')}>
+            <Select
+              id="dc-source"
+              value={datasourceId}
+              onChange={(e) => setDatasourceId(e.target.value)}
+              options={sources.map((s) => ({ value: s.id, label: s.name }))}
+            />
+          </Field>
+          <Field id="dc-table" label={t('dataContractsPage.table')}>
+            <input
+              id="dc-table"
+              value={table}
+              onChange={(e) => setTable(e.target.value)}
+              className={field}
+              placeholder={t('dataContractsPage.tablePlaceholder')}
+            />
+          </Field>
         </div>
-        <div>
-          <p className="eyebrow mb-1">{t('dataContractsPage.name')}</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} className={field} placeholder={t('dataContractsPage.namePlaceholder')} />
-        </div>
+        <Field id="dc-name" label={t('dataContractsPage.name')}>
+          <input
+            id="dc-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={field}
+            placeholder={t('dataContractsPage.namePlaceholder')}
+          />
+        </Field>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -238,24 +249,58 @@ function CreateModal({
           {exps.map((e, i) => {
             const meta = RULES.find((r) => r.value === e.rule)!
             return (
-              <div key={i} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-2 p-2">
-                <select value={e.rule} onChange={(ev) => setExp(i, { rule: ev.target.value as ContractRule })} className="rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:outline-none">
-                  {RULES.map((r) => (
-                    <option key={r.value} value={r.value}>{t(r.labelKey)}</option>
-                  ))}
-                </select>
-                {meta.needsColumn && (
-                  <input value={e.column ?? ''} onChange={(ev) => setExp(i, { column: ev.target.value })} placeholder={t('dataContractsPage.column')} className="w-24 rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:outline-none" />
+              <div key={i} className="space-y-2 rounded-xl border border-line bg-surface-2 p-3">
+                <div className="flex items-center gap-2">
+                  <Select
+                    aria-label={t('dataContractsPage.rule')}
+                    value={e.rule}
+                    onChange={(ev) => setExp(i, { rule: ev.target.value as ContractRule })}
+                    options={RULES.map((r) => ({ value: r.value, label: t(r.labelKey) }))}
+                    className="flex-1"
+                  />
+                  <button
+                    onClick={() => setExps((c) => c.filter((_, idx) => idx !== i))}
+                    aria-label={t('dataContractsPage.delete')}
+                    className="rounded-md p-1.5 text-ink-faint transition hover:text-[#D87C6B]"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                {(meta.needsColumn || meta.needsRange) && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {meta.needsColumn && (
+                      <input
+                        value={e.column ?? ''}
+                        onChange={(ev) => setExp(i, { column: ev.target.value })}
+                        placeholder={t('dataContractsPage.column')}
+                        aria-label={t('dataContractsPage.column')}
+                        className={`${field} col-span-3 ${meta.needsRange ? 'sm:col-span-1' : ''}`}
+                      />
+                    )}
+                    {meta.needsRange && (
+                      <>
+                        <input
+                          type="number"
+                          step="any"
+                          value={e.params?.min ?? ''}
+                          onChange={(ev) => setExp(i, { params: { ...e.params, min: Number(ev.target.value) } as Record<string, number> })}
+                          placeholder="min"
+                          aria-label="min"
+                          className={field}
+                        />
+                        <input
+                          type="number"
+                          step="any"
+                          value={e.params?.max ?? ''}
+                          onChange={(ev) => setExp(i, { params: { ...e.params, max: Number(ev.target.value) } as Record<string, number> })}
+                          placeholder="max"
+                          aria-label="max"
+                          className={field}
+                        />
+                      </>
+                    )}
+                  </div>
                 )}
-                {meta.needsRange && (
-                  <>
-                    <input type="number" value={e.params?.min ?? ''} onChange={(ev) => setExp(i, { params: { ...e.params, min: Number(ev.target.value) } as Record<string, number> })} placeholder="min" className="w-16 rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:outline-none" />
-                    <input type="number" value={e.params?.max ?? ''} onChange={(ev) => setExp(i, { params: { ...e.params, max: Number(ev.target.value) } as Record<string, number> })} placeholder="max" className="w-16 rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:outline-none" />
-                  </>
-                )}
-                <button onClick={() => setExps((c) => c.filter((_, idx) => idx !== i))} aria-label={t('dataContractsPage.delete')} className="ml-auto rounded-md p-1 text-ink-faint hover:text-[#D87C6B]">
-                  <X size={13} />
-                </button>
               </div>
             )
           })}

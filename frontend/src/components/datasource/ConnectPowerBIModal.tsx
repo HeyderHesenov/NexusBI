@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModalShell } from '../ui/ModalShell'
+import { Field, Select } from '../ui/form'
 import { useDatasourceStore } from '../../store/datasourceStore'
 import * as dsApi from '../../api/datasource'
 import type { PowerBIDataset } from '../../types'
@@ -69,36 +70,39 @@ export function ConnectPowerBIModal({ open, onClose }: Props) {
         </div>
       }
     >
-      <div className="space-y-3 p-5">
-        <label className="block text-xs font-medium uppercase tracking-wider text-ink-faint">
-          Dataset
-        </label>
-        <select
-          value={datasetId}
-          onChange={(e) => {
-            setDatasetId(e.target.value)
-            const ds = datasets.find((d) => d.id === e.target.value)
-            if (ds) setName(ds.name)
-          }}
-          className={field}
+      <div className="space-y-4 p-5">
+        <Field id="pbi-dataset" label="Dataset">
+          <Select
+            id="pbi-dataset"
+            value={datasetId}
+            onChange={(e) => {
+              setDatasetId(e.target.value)
+              const ds = datasets.find((d) => d.id === e.target.value)
+              if (ds) setName(ds.name)
+            }}
+            options={[
+              ...(datasets.length === 0 ? [{ value: '', label: t('connectPowerBIModal.noDataset') }] : []),
+              ...datasets.map((d) => ({
+                value: d.id,
+                label: d.workspace ? `${d.workspace} / ${d.name}` : d.name,
+              })),
+            ]}
+          />
+        </Field>
+        <Field
+          id="pbi-name"
+          label={t('connectPowerBIModal.sourceNameLabel')}
+          hint={t('connectPowerBIModal.hint')}
         >
-          {datasets.length === 0 && <option value="">{t('connectPowerBIModal.noDataset')}</option>}
-          {datasets.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.workspace ? `${d.workspace} / ${d.name}` : d.name}
-            </option>
-          ))}
-        </select>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder={t('connectPowerBIModal.sourceNamePlaceholder')}
-          className={field}
-        />
-        <p className="text-xs text-ink-faint">
-          {t('connectPowerBIModal.hint')}
-        </p>
+          <input
+            id="pbi-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            placeholder={t('connectPowerBIModal.sourceNamePlaceholder')}
+            className={field}
+          />
+        </Field>
       </div>
     </ModalShell>
   )
