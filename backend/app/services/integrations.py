@@ -31,7 +31,13 @@ async def _post_webhook(url: str, text: str) -> bool:
         return 200 <= resp.status_code < 300
 
 
-def _send_email(to_addr: str, subject: str, body: str) -> bool:
+def _send_email(
+    to_addr: str,
+    subject: str,
+    body: str,
+    attachment: tuple[bytes, str, str] | None = None,
+) -> bool:
+    """Send an email, optionally with one attachment (bytes, filename, mime)."""
     import smtplib
     from email.message import EmailMessage
 
@@ -40,12 +46,30 @@ def _send_email(to_addr: str, subject: str, body: str) -> bool:
     msg["To"] = to_addr
     msg["Subject"] = subject
     msg.set_content(body)
+    if attachment is not None:
+        data, filename, mime = attachment
+        maintype, _, subtype = mime.partition("/")
+        msg.add_attachment(data, maintype=maintype or "application", subtype=subtype or "octet-stream", filename=filename)
     with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
         server.starttls()
         if settings.SMTP_USERNAME:
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
         server.send_message(msg)
     return True
+
+
+async def deliver_report(
+    recipient: str, subject: str, body: str, attachment: tuple[bytes, str, str]
+) -> bool:
+    """Email a rendered report as an attachment. Best-effort; mock-gated like deliver()."""
+    if not settings.INTEGRATIONS_LIVE:
+        _log.info("report_mock_delivery", to=recipient[:60], file=attachment[1], subject=subject[:80])
+        return True
+    try:
+        return await asyncio.to_thread(_send_email, recipient, subject, body, attachment)
+    except Exception as exc:  # noqa: BLE001 — delivery is best-effort
+        _log.warning("report_delivery_failed", error=str(exc)[:200])
+        return False
 
 
 async def deliver(channel_type: str, target: str, title: str, body: str) -> bool:

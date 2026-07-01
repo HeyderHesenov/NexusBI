@@ -18,6 +18,7 @@ from app.models.metric_node import MetricNode
 from app.models.query_log import QueryLog
 from app.models.refresh_token import RefreshToken
 from app.models.requirement import RequirementDoc
+from app.models.report_subscription import ReportSubscription
 from app.models.saved_query import SavedQuery
 from app.models.user import User
 from app.models.workspace import AuditLog, RLSRule, Workspace, WorkspaceMember
@@ -32,6 +33,7 @@ __all__ = [
     "Dashboard",
     "Widget",
     "SavedQuery",
+    "ReportSubscription",
     "Metric",
     "MetricNode",
     "Alert",
