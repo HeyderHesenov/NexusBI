@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
-import { FlaskConical, Play, Plus, Trash2, Trophy } from 'lucide-react'
+import { FlaskConical, Percent, Play, Plus, Sigma, Trash2, Trophy } from 'lucide-react'
 import { useExperimentStore } from '../store/experimentStore'
 import { ModalShell } from '../components/ui/ModalShell'
 import type { Experiment, ExperimentKind } from '../types'
@@ -131,6 +131,12 @@ function ExperimentCard({ exp, onAnalyze, onRemove }: { exp: Experiment; onAnaly
   )
 }
 
+// Variant B color: dusty blue from the chart SERIES palette (A stays emerald).
+const B_COLOR = '#7C9CC4'
+const DANGER = '#D87C6B'
+
+const PLACEHOLDERS: Record<string, string> = { n: '1000', conversions: '124', mean: '42.5', sd: '5.0' }
+
 function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p: import('../types').ExperimentCreate) => Promise<void> }) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
@@ -147,8 +153,40 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p:
     sd: t('experimentsPage.fieldSd'),
   }
 
-  const valid =
-    name.trim() !== '' && fields.every((f) => !Number.isNaN(num(a[f] ?? '')) && !Number.isNaN(num(b[f] ?? '')))
+  // Inline errors only for filled-in fields; empty fields just gate `valid`.
+  const fieldError = (o: Record<string, string>, f: string): string | null => {
+    const v = o[f] ?? ''
+    if (v === '') return null
+    const x = Number(v)
+    if (Number.isNaN(x)) return null
+    if (f === 'n' && x < 1) return t('experimentsPage.errN')
+    // A mean can legitimately be negative (profit delta, temperature) —
+    // negativity is only invalid for counts and spread.
+    if (f !== 'mean' && x < 0) return t('experimentsPage.errNegative')
+    if (f === 'conversions') {
+      const n = num(o.n ?? '')
+      if (!Number.isNaN(n) && x > n) return t('experimentsPage.errConversions')
+    }
+    return null
+  }
+  const hasErrors = [a, b].some((o) => fields.some((f) => fieldError(o, f) !== null))
+  const complete = fields.every((f) => !Number.isNaN(num(a[f] ?? '')) && !Number.isNaN(num(b[f] ?? '')))
+  const valid = name.trim() !== '' && complete && !hasErrors
+
+  // Live preview: each variant's rate (conversion) or mean, plus the B-vs-A delta.
+  const variantValue = (o: Record<string, string>): number | null => {
+    if (kind === 'conversion') {
+      const n = num(o.n ?? '')
+      const c = num(o.conversions ?? '')
+      return n > 0 && c >= 0 && c <= n ? (c / n) * 100 : null
+    }
+    const m = num(o.mean ?? '')
+    return Number.isNaN(m) ? null : m
+  }
+  const aVal = variantValue(a)
+  const bVal = variantValue(b)
+  const fmt = (v: number) => (kind === 'conversion' ? `${v.toFixed(1)}%` : `${v}`)
+  const delta = aVal != null && bVal != null && aVal !== 0 ? ((bVal - aVal) / Math.abs(aVal)) * 100 : null
 
   const submit = async () => {
     if (!valid || busy) return
@@ -164,64 +202,175 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p:
     }
   }
 
+  const kindCards = [
+    { key: 'conversion' as const, Icon: Percent, title: t('experimentsPage.conversionRate'), desc: t('experimentsPage.kindConversionDesc') },
+    { key: 'mean' as const, Icon: Sigma, title: t('experimentsPage.meanQuantity'), desc: t('experimentsPage.kindMeanDesc') },
+  ]
+
   return (
     <ModalShell open onClose={onClose} title={t('experimentsPage.modalTitle')} subtitle={t('experimentsPage.modalSubtitle')}>
-      <div className="space-y-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+        className="space-y-5"
+      >
         <div>
-          <p className="eyebrow mb-1">{t('experimentsPage.nameLabel')}</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} className={field} placeholder={t('experimentsPage.namePlaceholder')} />
+          <label htmlFor="exp-name" className="eyebrow mb-1 block">
+            {t('experimentsPage.nameLabel')}
+          </label>
+          <input
+            id="exp-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={field}
+            placeholder={t('experimentsPage.namePlaceholder')}
+          />
         </div>
+
         <div>
-          <p className="eyebrow mb-1">{t('experimentsPage.metricType')}</p>
-          <div className="flex gap-2">
-            {(['conversion', 'mean'] as const).map((k) => (
-              <button
-                key={k}
-                onClick={() => setKind(k)}
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
-                  kind === k ? 'border-accent bg-accent text-bg' : 'border-line text-ink-soft hover:text-ink'
-                }`}
-              >
-                {k === 'conversion' ? t('experimentsPage.conversionRate') : t('experimentsPage.meanQuantity')}
-              </button>
-            ))}
+          <p className="eyebrow mb-1.5" id="exp-kind-label">
+            {t('experimentsPage.metricType')}
+          </p>
+          <div role="radiogroup" aria-labelledby="exp-kind-label" className="grid grid-cols-2 gap-2">
+            {kindCards.map(({ key, Icon, title, desc }) => {
+              const selected = kind === key
+              return (
+                <button
+                  key={key}
+                  id={`exp-kind-${key}`}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setKind(key)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                      e.preventDefault()
+                      const next = key === 'conversion' ? 'mean' : 'conversion'
+                      setKind(next)
+                      document.getElementById(`exp-kind-${next}`)?.focus()
+                    }
+                  }}
+                  className={`rounded-xl border p-3 text-left transition ${
+                    selected
+                      ? 'border-accent bg-accent-soft ring-1 ring-accent'
+                      : 'border-line hover:border-ink-faint'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon size={15} className={selected ? 'text-accent' : 'text-ink-faint'} />
+                    <span className={`text-sm font-semibold ${selected ? 'text-accent' : 'text-ink'}`}>{title}</span>
+                  </span>
+                  <span className="mt-1 block text-[11px] leading-snug text-ink-soft">{desc}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+
+        <div className="relative grid grid-cols-2 gap-3">
           {(['a', 'b'] as const).map((variant) => {
             const state = variant === 'a' ? a : b
             const setState = variant === 'a' ? setA : setB
+            const isA = variant === 'a'
             return (
-              <div key={variant} className="space-y-2 rounded-xl border border-line bg-surface-2 p-3">
-                <p className="text-xs font-semibold text-ink">{variant === 'a' ? t('experimentsPage.variantA') : t('experimentsPage.variantB')}</p>
-                {fields.map((f) => (
-                  <div key={f}>
-                    <p className="mb-1 text-[11px] text-ink-soft">{labels[f]}</p>
-                    <input
-                      type="number"
-                      value={state[f] ?? ''}
-                      onChange={(e) => setState((s) => ({ ...s, [f]: e.target.value }))}
-                      className={field}
-                    />
-                  </div>
-                ))}
+              <div key={variant} className="space-y-2.5 rounded-xl border border-line bg-surface-2 p-3.5">
+                <p className="flex items-center gap-2 text-xs font-semibold text-ink">
+                  <span
+                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-full font-mono text-[10px] font-bold ${
+                      isA ? 'bg-accent-soft text-accent' : ''
+                    }`}
+                    style={isA ? undefined : { backgroundColor: 'rgba(124, 156, 196, 0.16)', color: B_COLOR }}
+                  >
+                    {isA ? 'A' : 'B'}
+                  </span>
+                  {isA ? t('experimentsPage.variantA') : t('experimentsPage.variantB')}
+                </p>
+                {fields.map((f) => {
+                  const err = fieldError(state, f)
+                  const id = `exp-${variant}-${f}`
+                  return (
+                    <div key={f}>
+                      <label htmlFor={id} className="mb-1 block text-[11px] text-ink-soft">
+                        {labels[f]}
+                      </label>
+                      <input
+                        id={id}
+                        type="number"
+                        step="any"
+                        inputMode="decimal"
+                        placeholder={PLACEHOLDERS[f]}
+                        value={state[f] ?? ''}
+                        onChange={(e) => setState((s) => ({ ...s, [f]: e.target.value }))}
+                        aria-invalid={err !== null}
+                        aria-describedby={err ? `${id}-err` : undefined}
+                        className={field}
+                        style={err ? { borderColor: DANGER } : undefined}
+                      />
+                      {err && (
+                        <p id={`${id}-err`} className="mt-1 text-[11px]" style={{ color: DANGER }}>
+                          {err}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
+          <span
+            aria-hidden="true"
+            className="absolute left-1/2 top-1/2 grid h-7 w-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-surface font-mono text-[10px] font-semibold text-ink-faint shadow-sm"
+          >
+            vs
+          </span>
         </div>
+
+        {aVal != null && bVal != null && (
+          <div className="rounded-xl border border-line bg-surface-2 px-3.5 py-3">
+            <p className="eyebrow mb-2 text-[10px]">{t('experimentsPage.previewTitle')}</p>
+            <div className="flex items-center gap-3 font-mono text-xs">
+              <span className="shrink-0 font-semibold text-accent">A&ensp;{fmt(aVal)}</span>
+              <span className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-line">
+                {aVal >= 0 && bVal >= 0 && aVal + bVal > 0 && (
+                  <>
+                    <span className="h-full bg-accent" style={{ width: `${(aVal / (aVal + bVal)) * 100}%` }} />
+                    <span className="h-full" style={{ width: `${(bVal / (aVal + bVal)) * 100}%`, backgroundColor: B_COLOR }} />
+                  </>
+                )}
+              </span>
+              <span className="shrink-0 font-semibold" style={{ color: B_COLOR }}>
+                B&ensp;{fmt(bVal)}
+              </span>
+              {delta != null && (
+                <span className="shrink-0 text-ink-soft">
+                  Δ {delta > 0 ? '+' : ''}
+                  {delta.toFixed(1)}%
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 pt-1">
-          <button onClick={onClose} className="rounded-xl border border-line px-3 py-2 text-sm text-ink-soft hover:text-ink">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-line px-3 py-2 text-sm text-ink-soft hover:text-ink"
+          >
             {t('experimentsPage.cancel')}
           </button>
           <button
-            onClick={submit}
+            type="submit"
             disabled={!valid || busy}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press disabled:opacity-50"
           >
             {busy ? t('experimentsPage.creating') : t('experimentsPage.create')}
           </button>
         </div>
-      </div>
+      </form>
     </ModalShell>
   )
 }
