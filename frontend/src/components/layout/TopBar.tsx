@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
-import { Bell, LogOut, Moon, Sun } from 'lucide-react'
+import { Bell, LogOut, Moon, Search, Sun } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useThemeStore } from '../../store/themeStore'
 import { useNotificationStore } from '../../store/notificationStore'
+import { useSearchStore } from '../../store/searchStore'
 import { UsageMeter } from '../billing/UsageMeter'
 
 // Route → başlıq: header solunu doldurur, naviqasiya kontekstini göstərir.
@@ -31,6 +32,7 @@ export function TopBar() {
   const { user, logout } = useAuthStore()
   const { mode, toggle } = useThemeStore()
   const { unread, load } = useNotificationStore()
+  const openSearch = useSearchStore((s) => s.setOpen)
   const { pathname } = useLocation()
   const initial = (user?.full_name || user?.email || '?').charAt(0).toUpperCase()
 
@@ -47,6 +49,15 @@ export function TopBar() {
         {titleFor(pathname)}
       </h2>
       <div className="flex items-center gap-4">
+      <button
+        onClick={() => openSearch(true)}
+        aria-label="Axtar"
+        title="Axtar (⌘K)"
+        className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-ink-faint transition-colors hover:border-line-strong hover:text-ink"
+      >
+        <Search size={14} />
+        <kbd className="hidden font-mono text-[10px] sm:inline">⌘K</kbd>
+      </button>
       <UsageMeter />
       <Link
         to="/notifications"
