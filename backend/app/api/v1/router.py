@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    ai_quality, alert, auth, ba, billing, branding, cohort, copilot, dashboard, data_contract,
+    ai_quality, alert, auth, automl, ba, billing, branding, cohort, copilot, dashboard, data_contract,
     dataprep, datasource, decision, experiment, graph, insight, integration, metric,
     metric_tree, public, query, requirement, saved_query, scenario, search, snapshot,
     workspace,
@@ -31,6 +31,7 @@ api_router.include_router(integration.router)
 api_router.include_router(copilot.router)
 api_router.include_router(requirement.router)
 api_router.include_router(ba.router)
+api_router.include_router(automl.router)
 api_router.include_router(scenario.router)
 api_router.include_router(workspace.router)
 api_router.include_router(cohort.router)

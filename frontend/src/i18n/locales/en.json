@@ -580,7 +580,8 @@
     "cohort": "Cohorts",
     "graph": "Knowledge graph",
     "twin": "Digital Twin",
-    "baStudio": "BA Studio"
+    "baStudio": "BA Studio",
+    "automl": "AutoML"
   },
   "notificationsPage": {
     "analyzing": "Analyzing…",
@@ -1045,5 +1046,33 @@
     "axisShare": "Revenue share, %",
     "axisGrowth": "Growth (H2 vs H1), %",
     "mermaidError": "Could not render the diagram — raw code is shown below."
+  },
+  "automl": {
+    "eyebrow": "Analytics",
+    "title": "AutoML Studio",
+    "subtitle": "Pick a table, point at a target column — a model trains automatically, then predict.",
+    "sourceLabel": "Source table",
+    "sourceHint": "Trains on the demo model's tables.",
+    "pickTable": "Pick a table…",
+    "targetLabel": "Target column",
+    "pickTarget": "Pick a column…",
+    "nameLabel": "Model name",
+    "train": "Train model",
+    "training": "Training — comparing Linear vs RandomForest…",
+    "trained": "Model trained.",
+    "type_regression": "Regression",
+    "type_classification": "Classification",
+    "rows": "{{count}} rows",
+    "metric_r2": "R² (holdout)",
+    "metric_accuracy": "Accuracy",
+    "metric_f1_macro": "F1 (macro)",
+    "importance": "Feature importance",
+    "predictTitle": "Make a prediction",
+    "predict": "Predict",
+    "savedModels": "Saved models",
+    "delete": "Delete",
+    "deleted": "Model deleted.",
+    "emptyTitle": "No model yet",
+    "emptyBody": "Pick a table and target column on the left and train — the result shows up here."
   }
 }

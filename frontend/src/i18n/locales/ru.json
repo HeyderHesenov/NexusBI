@@ -580,7 +580,8 @@
     "cohort": "Когорты",
     "graph": "Граф знаний",
     "twin": "Цифровой двойник",
-    "baStudio": "BA Studio"
+    "baStudio": "BA Studio",
+    "automl": "AutoML"
   },
   "notificationsPage": {
     "analyzing": "Анализ…",
@@ -1045,5 +1046,33 @@
     "axisShare": "Доля выручки, %",
     "axisGrowth": "Рост (H2 к H1), %",
     "mermaidError": "Не удалось отрисовать диаграмму — ниже показан исходный код."
+  },
+  "automl": {
+    "eyebrow": "Анализ",
+    "title": "AutoML-студия",
+    "subtitle": "Выберите таблицу, укажите целевой столбец — модель обучится автоматически, затем прогнозируйте.",
+    "sourceLabel": "Исходная таблица",
+    "sourceHint": "Обучается на таблицах демо-модели.",
+    "pickTable": "Выберите таблицу…",
+    "targetLabel": "Целевой столбец",
+    "pickTarget": "Выберите столбец…",
+    "nameLabel": "Название модели",
+    "train": "Обучить модель",
+    "training": "Обучение — сравниваем Linear и RandomForest…",
+    "trained": "Модель обучена.",
+    "type_regression": "Регрессия",
+    "type_classification": "Классификация",
+    "rows": "{{count}} строк",
+    "metric_r2": "R² (holdout)",
+    "metric_accuracy": "Точность",
+    "metric_f1_macro": "F1 (macro)",
+    "importance": "Важность признаков",
+    "predictTitle": "Сделать прогноз",
+    "predict": "Прогноз",
+    "savedModels": "Сохранённые модели",
+    "delete": "Удалить",
+    "deleted": "Модель удалена.",
+    "emptyTitle": "Модели пока нет",
+    "emptyBody": "Выберите слева таблицу и целевой столбец и обучите модель — результат появится здесь."
   }
 }

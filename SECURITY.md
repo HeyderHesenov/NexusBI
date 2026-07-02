@@ -38,6 +38,10 @@ Dependabot alerts + security updates, and CodeQL code scanning.
   token; interactive API docs disabled outside demo — `app/main.py`.
 - Datasource connection strings encrypted at rest (Fernet); strong-secret startup
   checks in production.
+- AutoML model blobs (`ml_models.model_blob`) are pickles of estimators trained
+  by the server itself; they are written only by `automl_service.train`, read back
+  only from our own database, never accepted from a client, and excluded from every
+  API schema/response — `app/services/automl_service.py`.
 
 ## Reporting a vulnerability
 Open a private security advisory on GitHub or email the maintainer. Please do not

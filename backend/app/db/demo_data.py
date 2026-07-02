@@ -186,6 +186,11 @@ def demo_table_names() -> list[str]:
     return list(_DEMO_COLUMN_META.keys())
 
 
+def demo_column_meta() -> dict[str, list[tuple[str, str, list[str]]]]:
+    """Per-table (column, type, samples). Treat as read-only — module-level state."""
+    return _DEMO_COLUMN_META
+
+
 def format_demo_schema() -> str:
     """Schema text for the Text2SQL prompt — real types + sample values."""
     schema = {

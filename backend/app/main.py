@@ -214,6 +214,7 @@ def create_app() -> FastAPI:
                 "error": exc.__class__.__name__,
                 "message": i18n.localize(exc.message),
                 "detail": exc.detail,
+                "code": getattr(exc, "code", None),
                 "sql": getattr(exc, "sql", None) if settings.DEMO_MODE else None,
                 "request_id": request_id,
             },

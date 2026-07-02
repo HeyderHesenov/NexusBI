@@ -16,6 +16,7 @@ from app.models.integration import IntegrationChannel
 from app.models.query_embedding import QueryEmbedding
 from app.models.kpi_target import KPITarget
 from app.models.metric import Metric
+from app.models.ml_model import MLModel
 from app.models.metric_node import MetricNode
 from app.models.query_log import QueryLog
 from app.models.refresh_token import RefreshToken
@@ -59,4 +60,5 @@ __all__ = [
     "DataContract",
     "ContractRun",
     "BAArtifact",
+    "MLModel",
 ]

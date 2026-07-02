@@ -38,6 +38,7 @@ async def check_and_consume(db: AsyncSession, user: User) -> None:
         raise RateLimitError(
             "Aylıq AI sorğu limitiniz doldu.",
             detail="Daha çox sorğu üçün planınızı yüksəldin.",
+            code="ai_quota",
         )
     user.ai_calls_used += 1
     await db.flush()

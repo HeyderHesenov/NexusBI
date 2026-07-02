@@ -691,3 +691,29 @@ export interface BAArtifact {
   content: BAContent
   created_at: string
 }
+
+export interface AutoMLTableColumn {
+  name: string
+  dtype: string
+}
+
+export interface AutoMLTable {
+  name: string
+  columns: AutoMLTableColumn[]
+}
+
+export interface MLModelInfo {
+  id: string
+  name: string
+  source_table: string
+  datasource_id: string | null
+  target_column: string
+  feature_columns: string[]
+  problem_type: 'regression' | 'classification'
+  best_algo: string
+  metrics: Record<string, number>
+  importances: { feature: string; weight: number }[]
+  sklearn_version: string
+  row_count: number
+  created_at: string
+}

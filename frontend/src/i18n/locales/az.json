@@ -580,7 +580,8 @@
     "cohort": "Kohortlar",
     "graph": "Biliklər qrafı",
     "twin": "Digital Twin",
-    "baStudio": "BA Studio"
+    "baStudio": "BA Studio",
+    "automl": "AutoML"
   },
   "notificationsPage": {
     "analyzing": "Təhlil…",
@@ -1045,5 +1046,33 @@
     "axisShare": "Gəlir payı, %",
     "axisGrowth": "Artım (H2 vs H1), %",
     "mermaidError": "Diaqram göstərilə bilmədi — xam kod aşağıdadır."
+  },
+  "automl": {
+    "eyebrow": "Analiz",
+    "title": "AutoML Studiyası",
+    "subtitle": "Cədvəl seç, hədəf sütunu göstər — model avtomatik öyrədilir, proqnoz ver.",
+    "sourceLabel": "Mənbə cədvəli",
+    "sourceHint": "Demo modelinin cədvəlləri üzərində öyrədilir.",
+    "pickTable": "Cədvəl seç…",
+    "targetLabel": "Hədəf sütunu",
+    "pickTarget": "Sütun seç…",
+    "nameLabel": "Model adı",
+    "train": "Modeli öyrət",
+    "training": "Model öyrədilir — Linear/RandomForest müqayisə olunur…",
+    "trained": "Model öyrədildi.",
+    "type_regression": "Reqressiya",
+    "type_classification": "Klassifikasiya",
+    "rows": "{{count}} sətir",
+    "metric_r2": "R² (holdout)",
+    "metric_accuracy": "Dəqiqlik",
+    "metric_f1_macro": "F1 (macro)",
+    "importance": "Feature əhəmiyyəti",
+    "predictTitle": "Proqnoz et",
+    "predict": "Proqnoz",
+    "savedModels": "Saxlanmış modellər",
+    "delete": "Sil",
+    "deleted": "Model silindi.",
+    "emptyTitle": "Hələ model yoxdur",
+    "emptyBody": "Solda cədvəl və hədəf sütunu seçib modeli öyrədin — nəticə burada görünəcək."
   }
 }

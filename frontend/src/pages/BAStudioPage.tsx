@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
-import {
-  Compass, Grid2x2, Loader2, Shield, Sparkles, Trash2, Workflow,
-} from 'lucide-react'
+import { Compass, Grid2x2, Loader2, Shield, Sparkles, Workflow } from 'lucide-react'
+import { SavedCard } from '../components/ui/SavedCard'
 import { BCGMatrix } from '../components/ba/BCGMatrix'
 import { MermaidDiagram } from '../components/ba/MermaidDiagram'
 import { PorterForces } from '../components/ba/PorterForces'
@@ -192,33 +191,16 @@ export function BAStudioPage() {
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((a) => (
               <li key={a.id} className="group">
-                <div
-                  className={`flex items-center justify-between gap-2 rounded-xl border p-3 transition ${
-                    current?.id === a.id ? 'border-accent bg-accent-soft' : 'border-line bg-surface hover:border-ink-faint'
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => select(a.id)}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <p className="truncate text-sm font-medium text-ink">{a.title}</p>
-                    <p className="text-xs text-ink-faint">
-                      {t(`baStudio.fw_${a.framework}`)} ·{' '}
-                      {new Date(a.created_at).toLocaleDateString()}
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      remove(a.id).then(() => toast.success(t('baStudio.deleted'))).catch(() => undefined)
-                    }
-                    aria-label={t('baStudio.delete')}
-                    className="rounded-md p-1 text-ink-faint opacity-0 transition hover:text-[#D87C6B] focus-visible:opacity-100 group-hover:opacity-100"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                <SavedCard
+                  active={current?.id === a.id}
+                  title={a.title}
+                  subtitle={`${t(`baStudio.fw_${a.framework}`)} · ${new Date(a.created_at).toLocaleDateString()}`}
+                  deleteLabel={t('baStudio.delete')}
+                  onSelect={() => select(a.id)}
+                  onDelete={() =>
+                    remove(a.id).then(() => toast.success(t('baStudio.deleted'))).catch(() => undefined)
+                  }
+                />
               </li>
             ))}
           </ul>

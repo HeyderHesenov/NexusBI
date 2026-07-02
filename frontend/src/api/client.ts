@@ -79,7 +79,10 @@ client.interceptors.response.use(
 
     if (status === 401 && !noRefresh) {
       forceLogout()
-    } else if (status === 429) {
+    } else if (status === 429 && error.response?.data?.code === 'ai_quota') {
+      // Only the MONTHLY AI QUOTA sends users to pricing — transient per-IP
+      // throttles (SQL runs, AutoML train/predict) fall through to the plain
+      // error toast below; an upgrade wouldn't fix those.
       toast.error('Aylıq AI limitiniz doldu. Planınızı yüksəldin.')
       if (!window.location.pathname.includes('/pricing')) window.location.href = '/pricing'
     } else if (!noRefresh && !isInlineError) {
