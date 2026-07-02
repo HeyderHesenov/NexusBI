@@ -47,8 +47,8 @@ def _assert_production_secrets() -> None:
         raise RuntimeError("SECRET_KEY must be set to a strong value (>=32 chars) in production.")
     if not settings.FERNET_KEY:
         raise RuntimeError("FERNET_KEY must be set in production.")
-    if not settings.OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY must be set in production.")
+    if not settings.AI_API_KEY:
+        raise RuntimeError("AI_API_KEY must be set in production.")
 
 
 def _harden_demo_secrets() -> None:
@@ -114,12 +114,12 @@ async def _seed_rag_examples() -> None:
 async def lifespan(app: FastAPI):
     _assert_production_secrets()
     _harden_demo_secrets()
-    if not settings.OPENAI_API_KEY:
+    if not settings.AI_API_KEY:
         # Demo mode still works via the rule-based SQL fallback, but warn loudly
         # so a misconfigured key is obvious in the logs instead of silent 401s.
         log.warning(
             "ai_key_missing",
-            msg="OPENAI_API_KEY boşdur — demo qayda-əsaslı fallback ilə işləyəcək.",
+            msg="AI mühərriki açarı boşdur — demo qayda-əsaslı fallback ilə işləyəcək.",
         )
     app.state.cache = await build_cache_service()
     if settings.DEMO_MODE:

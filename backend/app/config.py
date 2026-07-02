@@ -18,11 +18,11 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # ─── AI provider ───
-    # Engine identity is configured via .env only — no model name is committed.
-    OPENAI_API_KEY: str = Field(default="")
-    OPENAI_MODEL: str = Field(default="")
-    EMBEDDING_MODEL: str = Field(default="text-embedding-3-small")
+    # ─── AI engine ───
+    # Engine identity is configured via .env only — no key or model name is committed.
+    AI_API_KEY: str = Field(default="")
+    AI_MODEL: str = Field(default="")
+    EMBEDDING_MODEL: str = Field(default="")
 
     # ─── RAG / vector grounding (portable: SQLite + numpy cosine) ───
     RAG_ENABLED: bool = Field(default=True)

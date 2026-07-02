@@ -130,7 +130,7 @@ async def run_history_regression(db: AsyncSession, user_id: str) -> EvalRun:
         note += f" · {skipped} keçildi (köhnə SQL)"
 
     run = EvalRun(
-        model=settings.OPENAI_MODEL or "rule_based",
+        model=settings.AI_MODEL or "rule_based",
         mode="history",
         total=total,
         passed=passed,

@@ -216,7 +216,7 @@ keyfiyyəti** golden-set eval + AI observability ilə ölçülür (`/ai/eval`, `
 ```bash
 # 1. Konfiqurasiya
 cp .env.example .env
-#   OPENAI_API_KEY + OPENAI_MODEL — AI mühərriki üçün (real AI; demo offline fallback işlədir)
+#   AI_API_KEY + AI_MODEL — AI mühərriki üçün (opsional; boşdursa tam offline demo işləyir)
 #   SECRET_KEY:  python -c "import secrets; print(secrets.token_urlsafe(48))"
 #   FERNET_KEY:  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
@@ -246,7 +246,8 @@ Aç: **http://localhost:5173**  ·  API docs: **http://localhost:8000/docs**
 
 > ⚠️ Brauzerdə **`localhost`** işlət, `127.0.0.1` yox — CORS yalnız `localhost`-a icazə verir.
 
-Demo rejimində (`DEMO_MODE=true`) yalnız `OPENAI_API_KEY` kifayətdir; `DATABASE_URL`
+Demo rejimində (`DEMO_MODE=true`) əlavə konfiqurasiya tələb olunmur — AI mühərriki
+açarı boş olsa da tətbiq determinik offline rule-based mühərriklə işləyir; `DATABASE_URL`
 avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olunur:
 `demo@nexusbi.io` / `demo1234`.
 
@@ -302,8 +303,8 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 
 | Dəyişən | Təsvir |
 |---------|--------|
-| `OPENAI_API_KEY` / `OPENAI_MODEL` | AI mühərriki açarı + mühərrik identifikatoru (.env-dən, məcburi) |
-| `EMBEDDING_MODEL` | RAG embedding modeli (açar boşdursa determinik offline hash fallback) |
+| `AI_API_KEY` / `AI_MODEL` | AI mühərriki üçün giriş açarı + mühərrik identifikatoru (.env-dən; boşdursa offline rule-based) |
+| `EMBEDDING_MODEL` | RAG embedding mühərriki (boşdursa determinik offline hash fallback) |
 | `RAG_ENABLED` / `RAG_TOP_K` / `RAG_MAX_CANDIDATES` / `RAG_HASH_DIM` / `RAG_INDEX_ON_WRITE` | RAG grounding: aktiv · inject olunan nümunə sayı · skan limiti · offline embed ölçüsü · hər NL→SQL-i indeksləmə |
 | `AI_TRACE_ENABLED` / `EVAL_MIN_ACCURACY` | AI çağırış izi (token/latency müşahidə) · eval "aşağı hədd" işarəsi |
 | `EVAL_RULE_BASED_FLOOR` / `EVAL_ALERT_THRESHOLD` | CI gate: determinist rule-based eval floor (default 0.25) · dəqiqlik bu həddən aşağı düşəndə alert (default 0.7) |
@@ -350,7 +351,7 @@ A/B əhəmiyyət · insight mühərriki (kəşf+reytinq) · metrik ağacı (roll
 (profiling-əsaslı keyfiyyət)** · **kohort/funnel (test_cohort) · dashboard snapshotları
 (test_snapshots) · biliklər qrafı (test_graph) · BA frameworks + mermaid sanitizer (test_ba) ·
 AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
-`OPENAI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
+`AI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
 
 **Frontend Vitest (202 test):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·

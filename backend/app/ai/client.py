@@ -23,7 +23,7 @@ def get_client() -> AsyncOpenAI:
         # Bound each request so a hung AI call can't stall the pipeline.
         # max_retries lets the SDK ride out transient 429/5xx with backoff;
         # auth errors (401) are not retried by the SDK, so they still fail fast.
-        _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=30.0, max_retries=2)
+        _client = AsyncOpenAI(api_key=settings.AI_API_KEY, timeout=30.0, max_retries=2)
     return _client
 
 
@@ -45,7 +45,7 @@ async def chat_json(
     started = time.perf_counter()
     try:
         resp = await get_client().chat.completions.create(
-            model=settings.OPENAI_MODEL,
+            model=settings.AI_MODEL,
             temperature=temperature,
             response_format={"type": "json_object"},
             messages=[
@@ -54,7 +54,7 @@ async def chat_json(
             ],
         )
     except (APIError, OpenAIError) as exc:
-        raise _map_openai_error(exc) from exc
+        raise _map_ai_error(exc) from exc
     _record_call(resp, started, "json")
     content = resp.choices[0].message.content or "{}"
     return json.loads(content)
@@ -73,7 +73,7 @@ async def chat_text(
     started = time.perf_counter()
     try:
         resp = await get_client().chat.completions.create(
-            model=settings.OPENAI_MODEL,
+            model=settings.AI_MODEL,
             temperature=temperature,
             messages=[
                 {"role": "system", "content": system},
@@ -81,7 +81,7 @@ async def chat_text(
             ],
         )
     except (APIError, OpenAIError) as exc:
-        raise _map_openai_error(exc) from exc
+        raise _map_ai_error(exc) from exc
     _record_call(resp, started, "text")
     return (resp.choices[0].message.content or "").strip()
 
@@ -106,14 +106,14 @@ async def chat_tools(
     started = time.perf_counter()
     try:
         resp = await get_client().chat.completions.create(
-            model=settings.OPENAI_MODEL,
+            model=settings.AI_MODEL,
             temperature=temperature,
             messages=messages,
             tools=tools,
             tool_choice="auto",
         )
     except (APIError, OpenAIError) as exc:
-        raise _map_openai_error(exc) from exc
+        raise _map_ai_error(exc) from exc
     _record_call(resp, started, "tools")
     return resp.choices[0].message
 
@@ -127,7 +127,7 @@ async def embed(texts: list[str]) -> list[list[float]]:
     """
     if not texts:
         return []
-    if not settings.OPENAI_API_KEY:
+    if not settings.AI_API_KEY or not settings.EMBEDDING_MODEL:
         return [_hash_embed(t) for t in texts]
     started = time.perf_counter()
     try:
@@ -160,7 +160,7 @@ def hash_token(tok: str) -> int:
     return int.from_bytes(hashlib.sha1(tok.encode()).digest()[:8], "big")
 
 
-def _map_openai_error(exc: Exception) -> AIGenerationError:
+def _map_ai_error(exc: Exception) -> AIGenerationError:
     """Convert a raw AI-SDK error into a domain error with a safe detail.
 
     Keeps the upstream message short so the client gets an actionable 502 instead
@@ -179,7 +179,7 @@ def _record_call(resp: Any, started: float, kind: str) -> None:
     tokens = getattr(getattr(resp, "usage", None), "total_tokens", None)
     log.info(
         "ai_call",
-        model=settings.OPENAI_MODEL,
+        model=settings.AI_MODEL,
         tokens_used=tokens,
         latency_ms=int(elapsed * 1000),
         kind=kind,

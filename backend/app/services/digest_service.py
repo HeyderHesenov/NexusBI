@@ -8,7 +8,7 @@ Design notes:
 - Reuses ``insight_service.scan_recent_distinct`` (shared history scan) and
   ``insight_digest.summarize_change`` (AI, notable-or-null) per highlight.
 - Falls back to a deterministic rule-based highlight so the brief still works
-  offline / without an API key (same philosophy as the rest of the app).
+  fully offline (same philosophy as the rest of the app).
 - One brief = one Notification (title "🌅 Səhər brifi", body = bullet list).
 """
 from __future__ import annotations

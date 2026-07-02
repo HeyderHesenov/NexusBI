@@ -1,10 +1,10 @@
 # Security Policy
 
-## Secrets & API keys
+## Secrets & credentials
 
 - **Never commit secrets.** `.env`, `*.env`, keys and credentials are gitignored;
   only `.env.example` (empty placeholders) is tracked. The repository history has
-  been scanned and contains **no** API keys or credentials.
+  been scanned and contains **no** secrets or credentials.
 - Real values live only in a local, untracked `.env`. Generate fresh secrets:
   - `SECRET_KEY`: `python -c "import secrets; print(secrets.token_urlsafe(48))"`
   - `FERNET_KEY`: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`

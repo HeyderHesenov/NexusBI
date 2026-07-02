@@ -7,7 +7,7 @@ from app.db.session import AsyncSessionLocal
 
 
 async def test_hash_embed_deterministic():
-    # No OPENAI_API_KEY in tests → deterministic offline hash embedding.
+    # No AI_API_KEY in tests → deterministic offline hash embedding.
     a = await client.embed(["region üzrə gəlir"])
     b = await client.embed(["region üzrə gəlir"])
     assert a == b

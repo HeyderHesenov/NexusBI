@@ -206,7 +206,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
 - **Testing:** backend pytest (391) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
-  sets `OPENAI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
+  sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
   deterministic, no cost — identical to CI; new suites: test_cohort, test_snapshots, test_graph,
   test_ba, test_automl). Frontend Vitest (202) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, AI-quality eval, the advanced-analytics
@@ -354,7 +354,7 @@ cohort/funnel analytics; `format_demo_schema` sends real column types + sample v
   SQLite/CI), not pgvector. RAG context is applied to the **generation prompt only** — the result
   cache key stays on the stable `extra_context`, so index-on-write never busts a repeat-question
   hit. `client.embed` degrades to a deterministic hash embedding when keyless.
-- **Hermetic tests:** `conftest` now sets `OPENAI_API_KEY=""`, so the whole suite runs offline
+- **Hermetic tests:** `conftest` now sets `AI_API_KEY=""`, so the whole suite runs offline
   (embeddings → hash, Text2SQL → rule-based) — identical to CI, no network/cost, deterministic.
 - **AI quality is measured, not assumed:** a tiered, value-based golden-set eval (`ai/eval`), a
   bare→grounded RAG-delta, a **history regression** over the user's own trusted queries (AI drift,

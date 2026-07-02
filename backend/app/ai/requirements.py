@@ -1,7 +1,7 @@
 """Extract measurable KPIs from a requirements document (BRD / user story).
 
 AI-first with a deterministic rule-based fallback so the requirements→dashboard
-flow still works offline / without an API key.
+flow still works fully offline.
 """
 from __future__ import annotations
 

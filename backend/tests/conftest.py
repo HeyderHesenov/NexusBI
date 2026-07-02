@@ -16,7 +16,7 @@ os.environ["SECRET_KEY"] = "test-secret"
 os.environ["FERNET_KEY"] = "PqQ8m3Vz3yQv8r9Xk2pYwLp1cQv4nF7sJ0aB6dE9gH0="
 # Hermetic tests: no real AI/network. Empties the key so embeddings use the
 # deterministic offline fallback and Text2SQL uses rule-based — identical to CI.
-os.environ["OPENAI_API_KEY"] = ""
+os.environ["AI_API_KEY"] = ""
 
 from app.db.base import Base  # noqa: E402
 from app.db.session import get_db  # noqa: E402
