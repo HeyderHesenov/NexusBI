@@ -7,6 +7,11 @@ export interface CopilotAction {
   query_log_id?: string | null
   saved_query_id?: string | null
   metric_id?: string | null
+  ml_model_id?: string | null
+  ba_artifact_id?: string | null
+  experiment_id?: string | null
+  decision_id?: string | null
+  contract_id?: string | null
 }
 
 export interface CopilotPlanStep {

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { BrainCircuit, Loader2, Sparkles } from 'lucide-react'
 import { Field, FIELD, Select } from '../components/ui/form'
 import { SavedCard } from '../components/ui/SavedCard'
+import { useOpenParam } from '../hooks/useOpenParam'
 import { useAutoMLStore } from '../store/automlStore'
 import { formatMetricValue as fmt } from '../lib/format'
 import type { AutoMLTable, MLModelInfo } from '../types'
@@ -120,10 +121,8 @@ export function AutoMLPage() {
     load, pickSource, pickTarget, train, select, remove,
   } = useAutoMLStore()
   const [name, setName] = useState('')
-
-  useEffect(() => {
-    load().catch(() => undefined)
-  }, [load])
+  // Deep-link from the copilot chip: /automl?open=<model_id>
+  useOpenParam(load, select)
 
   const table = tables.find((tb) => tb.name === sourceTable)
   const currentTable = tables.find((tb) => tb.name === current?.source_table)

@@ -29,12 +29,20 @@ class CopilotRequest(BaseModel):
 
 
 class CopilotAction(BaseModel):
-    type: str  # query | dashboard | widget | share | saved_query | metric | digest
+    # query | dashboard | widget | share | saved_query | metric | digest |
+    # ml_model | ba_artifact | experiment | decision | contract | insight |
+    # cohort | metric_tree | snapshot | alert
+    type: str
     label: str
     dashboard_id: str | None = None
     query_log_id: str | None = None
     saved_query_id: str | None = None
     metric_id: str | None = None
+    ml_model_id: str | None = None
+    ba_artifact_id: str | None = None
+    experiment_id: str | None = None
+    decision_id: str | None = None
+    contract_id: str | None = None
 
     # Tolerate extra id keys future tools may emit.
     model_config = {"extra": "ignore"}

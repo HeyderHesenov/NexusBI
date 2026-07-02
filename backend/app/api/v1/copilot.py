@@ -1,10 +1,11 @@
 """Agentic copilot endpoint."""
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from app.ai import copilot
 from app.billing import usage_service
+from app.core.rate_limit import _client_ip
 from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.schemas.copilot import CopilotRequest, CopilotResponse
 
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/copilot", tags=["copilot"])
 
 @router.post("/chat", response_model=CopilotResponse)
 async def chat(
-    payload: CopilotRequest, user: CurrentUser, db: DbDep, cache: CacheDep
+    payload: CopilotRequest, user: CurrentUser, db: DbDep, cache: CacheDep, request: Request
 ) -> CopilotResponse:
     """One copilot turn.
 
@@ -29,5 +30,7 @@ async def chat(
     # Execute consumes quota and runs the tools.
     await usage_service.check_and_consume(db, user)
     plan = [s.model_dump() for s in payload.plan] or None
-    result = await copilot.run(payload.message, history, db, cache, user.id, plan)
+    result = await copilot.run(
+        payload.message, history, db, cache, user.id, plan, client_ip=_client_ip(request)
+    )
     return CopilotResponse.from_result(result)

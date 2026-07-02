@@ -124,3 +124,50 @@ async def evaluate(db: AsyncSession, user_id: str) -> list[dict]:
         children.setdefault(n.parent_id, []).append(n)
     roots = children.get(None, [])
     return [_eval(r, children, 0) for r in roots]
+
+
+def _simulate_node(node: dict, pct_by_name: dict[str, float], applied: set[str]) -> float:
+    kids = node.get("children") or []
+    if not kids:
+        base = float(node.get("manual_value") or 0)
+        pct = pct_by_name.get(str(node.get("name") or "").strip().lower())
+        if pct is not None:
+            applied.add(node["name"])
+            return base * (1 + pct / 100)
+        return base
+    return _combine(node["operator"], [_simulate_node(k, pct_by_name, applied) for k in kids])
+
+
+async def simulate(
+    db: AsyncSession, user_id: str, changes: list[dict]
+) -> dict:
+    """Digital-twin scenario over the evaluated forest: scale leaves BY NAME
+    (case-insensitive) by ±pct and re-roll every root with ``_combine`` — the
+    single backend home of the twin value semantics (the frontend port in
+    ``lib/metricTreeMath.ts`` mirrors it).
+
+    A name matching several leaves applies to all of them; leaves below
+    MAX_DEPTH are invisible to evaluate() and therefore unmatchable.
+    """
+    pct_by_name: dict[str, float] = {}
+    for c in changes:
+        if isinstance(c, dict) and c.get("leaf_name") is not None and c.get("pct") is not None:
+            try:
+                pct_by_name[str(c["leaf_name"]).strip().lower()] = float(c["pct"])
+            except (TypeError, ValueError):
+                continue
+    forest = await evaluate(db, user_id)
+    applied: set[str] = set()
+    results = [
+        {
+            "root": r["name"],
+            "baseline": round(float(r["value"]), 2),
+            "simulated": round(_simulate_node(r, pct_by_name, applied), 2),
+        }
+        for r in forest
+    ]
+    applied_lower = {a.lower() for a in applied}
+    unknown = sorted(
+        {name for name in pct_by_name if name not in applied_lower}
+    )
+    return {"results": results, "applied": sorted(applied), "unknown_leaves": unknown}

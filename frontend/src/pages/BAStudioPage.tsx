@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { Compass, Grid2x2, Loader2, Shield, Sparkles, Workflow } from 'lucide-react'
 import { SavedCard } from '../components/ui/SavedCard'
+import { useOpenParam } from '../hooks/useOpenParam'
 import { BCGMatrix } from '../components/ba/BCGMatrix'
 import { MermaidDiagram } from '../components/ba/MermaidDiagram'
 import { PorterForces } from '../components/ba/PorterForces'
@@ -55,10 +56,8 @@ export function BAStudioPage() {
   const [framework, setFramework] = useState<BAFramework>('swot')
   const [title, setTitle] = useState('')
   const [context, setContext] = useState('')
-
-  useEffect(() => {
-    load().catch(() => undefined)
-  }, [load])
+  // Deep-link from the copilot chip: /ba-studio?open=<artifact_id>
+  useOpenParam(load, select)
 
   const contextMissing = CONTEXT_REQUIRED[framework] && !context.trim()
 

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import type { CopilotAction } from '../../api/copilot'
+import { copilotNavTarget } from '../../lib/copilotNav'
 import { useCopilotStore } from '../../store/copilotStore'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { TypewriterText } from '../charts/TypewriterText'
@@ -36,16 +37,8 @@ export function CopilotWidget() {
     send(q)
   }
 
-  const navTarget = (a: CopilotAction): string | null => {
-    if (a.dashboard_id) return '/dashboards'
-    if (a.query_log_id) return '/history'
-    if (a.saved_query_id) return '/reports'
-    if (a.metric_id) return '/metrics'
-    return null
-  }
-
   const runAction = async (a: CopilotAction) => {
-    const target = navTarget(a)
+    const target = copilotNavTarget(a)
     if (!target) return
     if (a.dashboard_id) {
       await useDashboardStore.getState().loadList().catch(() => undefined)
@@ -152,7 +145,7 @@ export function CopilotWidget() {
                         className="flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-2.5 py-1.5 text-xs font-medium text-accent transition hover:border-accent"
                       >
                         <span>✓ {a.label}</span>
-                        {navTarget(a) && <ArrowRight size={12} />}
+                        {copilotNavTarget(a) && <ArrowRight size={12} />}
                       </button>
                     ))}
                   </div>

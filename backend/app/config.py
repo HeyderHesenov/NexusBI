@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     LIVE_DEMO_FEED: bool = Field(default=True)  # nudge demo data so numbers visibly move
 
     # ─── Agentic copilot ───
-    COPILOT_MAX_STEPS: int = Field(default=8)  # hard cap on tool-calling loop iterations
+    COPILOT_MAX_STEPS: int = Field(default=10)  # hard cap on tool-calling loop iterations
 
     # ─── Stripe billing (config-gated; empty = mock upgrade only) ───
     STRIPE_SECRET_KEY: str = Field(default="")
