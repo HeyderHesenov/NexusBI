@@ -578,7 +578,8 @@
     "targets": "Hedefler",
     "workspaces": "Takım",
     "cohort": "Kohortlar",
-    "graph": "Bilgi grafiği"
+    "graph": "Bilgi grafiği",
+    "twin": "Dijital İkiz"
   },
   "notificationsPage": {
     "analyzing": "Analiz…",
@@ -974,5 +975,24 @@
       "squery": "Rapor",
       "decision": "Karar"
     }
+  },
+  "twinPage": {
+    "eyebrow": "Planlama",
+    "title": "Dijital İkiz simülatörü",
+    "subtitle": "Metrik ağacının dijital ikizi — kolları oynat, KPI'nın tepkisini canlı izle.",
+    "pickRoot": "KPI seç",
+    "levers": "Kollar (yaprak metrikler)",
+    "reset": "Sıfırla",
+    "baseline": "Taban",
+    "result": "Senaryo sonucu",
+    "waterfall": "Şelale — değişikliklerin toplamı",
+    "tornado": "Tornado — ±{{pct}}% duyarlılık",
+    "saveScenario": "Senaryoyu kaydet",
+    "scenarioName": "Senaryo adı",
+    "save": "Kaydet",
+    "deleteScenario": "Senaryoyu sil",
+    "emptyTitle": "Henüz metrik ağacı yok",
+    "emptyBody": "Dijital İkiz metrik ağacının üzerinde çalışır — önce bir KPI ayrıştırması oluştur.",
+    "goToTree": "Metrik ağacına git"
   }
 }

@@ -2,6 +2,9 @@ import { useThemeStore } from '../../store/themeStore'
 
 type Mode = 'light' | 'dark'
 
+// App-wide danger/negative color (same hex the rest of the UI uses inline).
+export const DANGER = '#D87C6B'
+
 // Emerald-led categorical palette — reads well on both themes.
 export const SERIES = [
   '#0E9F6E', // emerald (accent)

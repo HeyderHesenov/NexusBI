@@ -578,7 +578,8 @@
     "targets": "Targets",
     "workspaces": "Team",
     "cohort": "Cohorts",
-    "graph": "Knowledge graph"
+    "graph": "Knowledge graph",
+    "twin": "Digital Twin"
   },
   "notificationsPage": {
     "analyzing": "Analyzing…",
@@ -974,5 +975,24 @@
       "squery": "Report",
       "decision": "Decision"
     }
+  },
+  "twinPage": {
+    "eyebrow": "Planning",
+    "title": "Digital Twin simulator",
+    "subtitle": "A digital twin of your metric tree — move the levers, watch the KPI respond live.",
+    "pickRoot": "Pick a KPI",
+    "levers": "Levers (leaf metrics)",
+    "reset": "Reset",
+    "baseline": "Baseline",
+    "result": "Scenario result",
+    "waterfall": "Waterfall — how the changes add up",
+    "tornado": "Tornado — ±{{pct}}% sensitivity",
+    "saveScenario": "Save scenario",
+    "scenarioName": "Scenario name",
+    "save": "Save",
+    "deleteScenario": "Delete scenario",
+    "emptyTitle": "No metric tree yet",
+    "emptyBody": "The Digital Twin runs on your metric tree — build a KPI decomposition first.",
+    "goToTree": "Go to metric tree"
   }
 }

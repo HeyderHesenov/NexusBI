@@ -578,7 +578,8 @@
     "targets": "Hədəflər",
     "workspaces": "Komanda",
     "cohort": "Kohortlar",
-    "graph": "Biliklər qrafı"
+    "graph": "Biliklər qrafı",
+    "twin": "Digital Twin"
   },
   "notificationsPage": {
     "analyzing": "Təhlil…",
@@ -974,5 +975,24 @@
       "squery": "Hesabat",
       "decision": "Qərar"
     }
+  },
+  "twinPage": {
+    "eyebrow": "Planlama",
+    "title": "Digital Twin simulyatoru",
+    "subtitle": "Metrik ağacının rəqəmsal əkizi — qolları tərpət, KPI-ya təsirini canlı gör.",
+    "pickRoot": "KPI seç",
+    "levers": "Qollar (leaf metriklər)",
+    "reset": "Sıfırla",
+    "baseline": "Baza",
+    "result": "Ssenari nəticəsi",
+    "waterfall": "Waterfall — dəyişikliklərin toplanması",
+    "tornado": "Tornado — ±{{pct}}% həssaslıq",
+    "saveScenario": "Ssenarini saxla",
+    "scenarioName": "Ssenari adı",
+    "save": "Saxla",
+    "deleteScenario": "Ssenarini sil",
+    "emptyTitle": "Metrik ağacı hələ qurulmayıb",
+    "emptyBody": "Digital Twin metrik ağacının üstündə işləyir — əvvəlcə KPI dekompozisiyası yarat.",
+    "goToTree": "Metrik ağacına keç"
   }
 }

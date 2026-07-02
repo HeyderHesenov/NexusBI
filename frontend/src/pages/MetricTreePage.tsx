@@ -4,12 +4,10 @@ import { GitBranch, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useMetricTreeStore } from '../store/metricTreeStore'
 import { ModalShell } from '../components/ui/ModalShell'
 import { Field, Select } from '../components/ui/form'
+import { formatMetricValue as fmt } from '../lib/format'
 import type { EvaluatedNode, TreeOperator } from '../types'
 
 const OP_SYMBOL: Record<string, string> = { add: '+', sub: '−', mul: '×', div: '÷' }
-
-const fmt = (n: number) =>
-  Math.abs(n) >= 1000 ? n.toLocaleString('az-AZ', { maximumFractionDigits: 1 }) : String(Math.round(n * 100) / 100)
 
 type ModalState =
   | { mode: 'add-root' }

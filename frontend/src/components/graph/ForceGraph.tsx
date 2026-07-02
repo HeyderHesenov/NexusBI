@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { truncateLabel } from '../../lib/format'
 import type { GraphData, GraphNodeType } from '../../types'
 import { SERIES, useChartTheme } from '../charts/theme'
 import { LAYOUT_H, LAYOUT_W, useForceLayout } from './useForceLayout'
@@ -159,7 +160,7 @@ export function ForceGraph({ data, selectedId, highlight, onSelect }: Props) {
               fill={theme.AXIS}
               style={{ pointerEvents: 'none' }}
             >
-              {n.label.length > 18 ? `${n.label.slice(0, 17)}…` : n.label}
+              {truncateLabel(n.label)}
             </text>
           </g>
         )
