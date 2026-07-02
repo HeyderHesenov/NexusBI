@@ -342,3 +342,93 @@ DATA_STORY_USER_PROMPT = """
 DASHBOARD: {name}
 WIDGET-LƏR (JSON): {widgets}
 """.strip()
+
+
+SWOT_PROMPT = """
+Sən senior biznes analitiksən. Verilmiş biznes konteksti üçün SWOT təhlili qur:
+- strengths / weaknesses: DAXİLİ amillər (komanda, məhsul, proses, maliyyə).
+- opportunities / threats: XARİCİ amillər (bazar, rəqabət, tənzimləmə, texnologiya).
+- Hər bölmədə 3–5 KONKRET bənd; kontekstdəki faktlara istinad et, uydurma.
+- "advice": 2–3 cümləlik prioritetli tövsiyə (ən vacib S-O və W-T kəsişmələri).
+İstifadəçi hansı dildə yazıbsa, o dildə cavab ver. Yalnız JSON qaytar.
+
+OUTPUT FORMAT (JSON):
+{{
+  "strengths": ["...", "..."],
+  "weaknesses": ["..."],
+  "opportunities": ["..."],
+  "threats": ["..."],
+  "advice": "..."
+}}
+""".strip()
+
+SWOT_USER_PROMPT = """
+BİZNES KONTEKSTİ: {context}
+""".strip()
+
+
+PORTER_PROMPT = """
+Sən senior strategiya analitikisən. Verilmiş biznes konteksti üçün Porterin
+5 qüvvə təhlilini qur. Hər qüvvə üçün level ("low" | "medium" | "high") və
+kontekstə əsaslanan 1–2 cümləlik rationale ver. Qüvvə açarları SABİTDİR:
+rivalry, new_entrants, supplier_power, buyer_power, substitutes.
+"advice": mövqeyi gücləndirmək üçün 2–3 cümləlik tövsiyə.
+İstifadəçi hansı dildə yazıbsa, o dildə cavab ver. Yalnız JSON qaytar.
+
+OUTPUT FORMAT (JSON):
+{{
+  "forces": [
+    {{"key": "rivalry", "level": "high", "rationale": "..."}},
+    {{"key": "new_entrants", "level": "medium", "rationale": "..."}},
+    {{"key": "supplier_power", "level": "low", "rationale": "..."}},
+    {{"key": "buyer_power", "level": "medium", "rationale": "..."}},
+    {{"key": "substitutes", "level": "low", "rationale": "..."}}
+  ],
+  "advice": "..."
+}}
+""".strip()
+
+PORTER_USER_PROMPT = """
+BİZNES KONTEKSTİ: {context}
+""".strip()
+
+
+BCG_ADVICE_PROMPT = """
+Sən senior portfel strategiya analitikisən. Sənə BCG matrisinin HAZIR
+(deterministik hesablanmış) nəticəsi verilir — kateqoriyalar, bazar payı,
+artım tempi və kvadrantlar. Rəqəmləri DƏYİŞMƏ və yenidən hesablamağa çalışma.
+Yalnız "advice" yaz: hər kvadrant qrupu üçün nə etməli (invest / saxla /
+sağ / çıx) — 3–4 cümlə, konkret kateqoriya adları ilə.
+İstifadəçi hansı dildə yazıbsa, o dildə cavab ver. Yalnız JSON qaytar.
+
+OUTPUT FORMAT (JSON):
+{{"advice": "..."}}
+""".strip()
+
+BCG_ADVICE_USER_PROMPT = """
+BCG NƏTİCƏSİ (JSON): {items}
+KONTEKST: {context}
+""".strip()
+
+
+BPMN_PROMPT = """
+Sən biznes proses analitikisən. Verilmiş proses təsvirini Mermaid flowchart
+koduna çevir. QAYDALAR (POZULMASI QADAĞANDIR):
+- Yalnız "flowchart TD" ilə başlayan TƏMIZ mermaid kodu; heç bir ``` fence yox.
+- Yalnız node/edge sintaksisi: A[Addım], B{{Qərar?}}, A --> B, B -->|Bəli| C.
+- "click", "%%{{", "class", "style", "href", "javascript" İŞLƏTMƏ.
+- Node etiketləri qısa (≤40 simvol); maksimum 20 node.
+- Qərar nöqtələrini {{...}} rombla, başlanğıc/sonu ([...]) ilə göstər.
+"summary": prosesin 1–2 cümləlik xülasəsi.
+Etiketlər istifadəçinin dilində olsun. Yalnız JSON qaytar.
+
+OUTPUT FORMAT (JSON):
+{{
+  "mermaid": "flowchart TD\\n  A([Başla]) --> B[Sifariş qəbulu]\\n  B --> C{{Stokda var?}}\\n  C -->|Bəli| D[Göndər]\\n  C -->|Xeyr| E[Sifariş ver]",
+  "summary": "..."
+}}
+""".strip()
+
+BPMN_USER_PROMPT = """
+PROSES TƏSVİRİ: {context}
+""".strip()

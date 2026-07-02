@@ -653,3 +653,41 @@ export interface GraphData {
   nodes: GraphNode[]
   edges: GraphEdge[]
 }
+
+export type BAFramework = 'swot' | 'porter' | 'bcg' | 'bpmn'
+
+export interface BAPorterForce {
+  key: 'rivalry' | 'new_entrants' | 'supplier_power' | 'buyer_power' | 'substitutes'
+  level: 'low' | 'medium' | 'high'
+  rationale: string
+}
+
+export interface BABcgItem {
+  label: string
+  share_pct: number
+  growth_pct: number
+  quadrant: 'star' | 'cash_cow' | 'question' | 'dog'
+}
+
+/** Shape depends on framework — see backend ai/ba_frameworks. */
+export interface BAContent {
+  strengths?: string[]
+  weaknesses?: string[]
+  opportunities?: string[]
+  threats?: string[]
+  forces?: BAPorterForce[]
+  items?: BABcgItem[]
+  thresholds?: { share_pct: number; growth_pct: number }
+  mermaid?: string
+  summary?: string
+  advice?: string
+}
+
+export interface BAArtifact {
+  id: string
+  framework: BAFramework
+  title: string
+  context: string
+  content: BAContent
+  created_at: string
+}

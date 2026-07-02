@@ -1,6 +1,7 @@
 """SQLAlchemy models. Importing registers them on the Base metadata."""
 from app.db.base import Base
 from app.models.alert import Alert, Notification
+from app.models.ba_artifact import BAArtifact
 from app.models.brand import BrandConfig
 from app.models.comment import DashboardComment
 from app.models.dashboard import Dashboard, Widget
@@ -57,4 +58,5 @@ __all__ = [
     "AuditLog",
     "DataContract",
     "ContractRun",
+    "BAArtifact",
 ]

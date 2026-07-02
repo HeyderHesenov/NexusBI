@@ -61,6 +61,9 @@ const GraphPage = lazy(() =>
 const TwinPage = lazy(() =>
   import('./pages/TwinPage').then((m) => ({ default: m.TwinPage })),
 )
+const BAStudioPage = lazy(() =>
+  import('./pages/BAStudioPage').then((m) => ({ default: m.BAStudioPage })),
+)
 const MetricTreePage = lazy(() =>
   import('./pages/MetricTreePage').then((m) => ({ default: m.MetricTreePage })),
 )
@@ -136,6 +139,7 @@ export default function App() {
               <Route path="/cohort" element={<CohortPage />} />
               <Route path="/graph" element={<GraphPage />} />
               <Route path="/twin" element={<TwinPage />} />
+              <Route path="/ba-studio" element={<BAStudioPage />} />
               <Route path="/metric-tree" element={<MetricTreePage />} />
               <Route path="/contracts" element={<DataContractsPage />} />
               <Route path="/metrics" element={<MetricsPage />} />
