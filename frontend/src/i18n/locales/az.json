@@ -148,7 +148,8 @@
   },
   "common": {
     "demoMode": "Demo rejimi",
-    "loading": "Yüklənir…"
+    "loading": "Yüklənir…",
+    "retry": "Yenidən yoxla"
   },
   "confirmDialog": {
     "cancel": "Ləğv et",
@@ -576,7 +577,8 @@
     "sources": "Mənbələr",
     "targets": "Hədəflər",
     "workspaces": "Komanda",
-    "cohort": "Kohortlar"
+    "cohort": "Kohortlar",
+    "graph": "Biliklər qrafı"
   },
   "notificationsPage": {
     "analyzing": "Təhlil…",
@@ -934,8 +936,7 @@
       "trial": "Sınaq",
       "purchase": "Alış"
     },
-    "error": "Məlumatı yükləmək alınmadı.",
-    "retry": "Yenidən yoxla"
+    "error": "Məlumatı yükləmək alınmadı."
   },
   "timeMachine": {
     "title": "Zaman maşını",
@@ -951,5 +952,27 @@
     "newSince": "O vaxtdan əlavə olunub",
     "noData": "Bu snapshotda məlumat yoxdur.",
     "changed": "Dəyişib"
+  },
+  "graphPage": {
+    "eyebrow": "Məlumat",
+    "title": "Biznes biliklər qrafı",
+    "subtitle": "Cədvəllər, metriklər, dashboardlar və qərarlar arasındakı əlaqələr.",
+    "impactMode": "Təsir rejimi",
+    "impactCount": "Aşağı axında {{count}} aktiv təsirlənir",
+    "open": "Aç",
+    "hint": "Sürüklə = pan · təkər = zoom · klik = seç",
+    "error": "Qrafı yükləmək alınmadı.",
+    "emptyTitle": "Qraf hələ boşdur",
+    "emptyBody": "Sorğu ver, dashboard qur — əlaqələr burada görünəcək.",
+    "type": {
+      "ds": "Mənbə",
+      "table": "Cədvəl",
+      "metric": "Metrik",
+      "mnode": "KPI düyünü",
+      "widget": "Widget",
+      "dash": "Dashboard",
+      "squery": "Hesabat",
+      "decision": "Qərar"
+    }
   }
 }

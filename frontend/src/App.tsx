@@ -55,6 +55,9 @@ const InsightsPage = lazy(() =>
 const CohortPage = lazy(() =>
   import('./pages/CohortPage').then((m) => ({ default: m.CohortPage })),
 )
+const GraphPage = lazy(() =>
+  import('./pages/GraphPage').then((m) => ({ default: m.GraphPage })),
+)
 const MetricTreePage = lazy(() =>
   import('./pages/MetricTreePage').then((m) => ({ default: m.MetricTreePage })),
 )
@@ -128,6 +131,7 @@ export default function App() {
               <Route path="/experiments" element={<ExperimentsPage />} />
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/cohort" element={<CohortPage />} />
+              <Route path="/graph" element={<GraphPage />} />
               <Route path="/metric-tree" element={<MetricTreePage />} />
               <Route path="/contracts" element={<DataContractsPage />} />
               <Route path="/metrics" element={<MetricsPage />} />

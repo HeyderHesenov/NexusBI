@@ -625,3 +625,31 @@ export interface SnapshotFull {
   created_at: string
   widgets: SnapshotWidget[]
 }
+
+export type GraphNodeType =
+  | 'table'
+  | 'metric'
+  | 'mnode'
+  | 'dash'
+  | 'widget'
+  | 'squery'
+  | 'decision'
+  | 'ds'
+
+export interface GraphNode {
+  id: string
+  type: GraphNodeType
+  label: string
+  ref_id: string | null
+}
+
+export interface GraphEdge {
+  source: string
+  target: string
+  kind: string
+}
+
+export interface GraphData {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+}

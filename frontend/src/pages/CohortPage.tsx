@@ -69,7 +69,7 @@ export function CohortPage() {
                 className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-line px-3.5 py-2 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
               >
                 <RefreshCw size={14} />
-                {t('cohortPage.retry')}
+                {t('common.retry')}
               </button>
             </div>
           </div>
