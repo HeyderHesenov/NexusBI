@@ -50,6 +50,10 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 ### BA workflow
 - 📝 **Tələbnamədən dashboard** — BRD / user story yapışdır və ya yüklə → AI ölçülə bilən
   KPI çıxarır → təsdiqlədikdən sonra tam dashboard qurur (tələb→KPI izlənilirlik).
+- 🧰 **BA Framework Studio** — bir kliklə **SWOT · Porter 5 qüvvə · BCG matrisi · BPMN proses
+  xəritəsi** (AI-first + deterministik fallback; BCG nüvəsi tam deterministik — bazar payı =
+  gəlir payı, artım H2-vs-H1, AI yalnız tövsiyə verir); BPMN mermaid diaqramı server-side
+  **fail-closed sanitizer**-dən keçir. `/ba-studio` (SWOT 2×2 grid · Porter · BCG SVG · mermaid).
 
 ### Qərarlar & izləmə
 - 🎯 **Qərar İntellekti Döngüsü (closed-loop ROI)** — qərarı **ölçülə bilən metrikə bağla**,
@@ -79,6 +83,12 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - 🧩 **İnteraktiv dashboard** — widget-ləri sürüklə/ölç (react-grid-layout), auto-save,
   per-widget mənbə nişanı + yenilə, **cross-filter** (bir widget-də klik → bütün panel filtrlənir).
 - 🔴 **Canlı (real-time) dashboard** + 🎬 **AI Data Story** (kinematik təqdimat) + 🤖 **Copilot**.
+- ⏳ **Zaman Maşını (dashboard snapshotları)** — dashboardın vəziyyəti snapshot kimi saxlanılır
+  (əl ilə + canlı dashboardlar üçün scheduler-də saatlıq avtomatik; widget başına ≤200 sətir,
+  50 snapshot retention); timeline üzrə keçmişə qayıt + indiki ilə müqayisədə **diff badge**-lər.
+- 🕸️ **Biznes biliklər qrafı** — cədvəl · metrik · metrik-node · dashboard · widget · saxlanan
+  sorğu · qərar · mənbə aktivlərinin interaktiv əlaqə xəritəsi (hand-rolled SVG force layout);
+  **impact rejimi** seçilən node-dan təsirlənənləri BFS ilə işıqlandırır. `/graph`.
 - 🔖 **Saxlanan sorğular + cədvəlli (cron) avto-yeniləmə** ("Hesabatlar").
 - 📧 **Planlı PDF/Excel hesabat çatdırılması** — saxlanan sorğunu cədvəl üzrə (saatlıq/gündəlik/
   həftəlik) **email-ə PDF (reportlab) və ya Excel (openpyxl) əlavəsi** kimi göndər (mock-first,
@@ -121,7 +131,8 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - ✅ **Keyfiyyət darvazası** — backend pytest, frontend Vitest, **bloklayıcı Playwright E2E smoke** (CI).
 
 ### Qabaqcıl analitika & statistik etibar (differensiator)
-Determinist statistik təməl (**scipy + numpy**) — saf riyaziyyat, AI yox:
+Determinist statistik təməl (**scipy + numpy**; AutoML üçün **scikit-learn**) — saf riyaziyyat /
+klassik ML, LLM yox:
 - 🛡️ **Statistik mühafiz** — sorğu nəticəsinə etibar yoxlamaları (nümunə həcmi, dəyər yayılması,
   saxta korrelyasiya). `POST /query/{id}/significance` → ChartView "Statistik yoxlama" paneli.
 - 🔗 **Kauzal nəticə** — hədəf metriklə ən güclü əlaqəli sütunlar (Pearson r + p-dəyər + **BH-FDR**
@@ -134,6 +145,17 @@ Determinist statistik təməl (**scipy + numpy**) — saf riyaziyyat, AI yox:
   toplanır + valideynə töhfə %. `/metric-tree` · **Məlumat → Metrik ağacı**.
 - 📋 **Data müqavilələri** — mənbə cədvəllərinə keyfiyyət zəmanəti (boş-deyil, unikal, diapazon,
   sxem-sabitliyi, təzəlik SLA); pozulmada bildiriş. `/contracts` · **Məlumat → Data müqavilələri**.
+- 📈 **Kohort & Funnel analitikası** — retention heatmap (kohort × həftə) + visit→signup→trial→
+  purchase konversiya hunisi (demo `events` cədvəli üzərində, determinist SQL). `/cohort`
+  (CohortHeatmap + FunnelChart, hand-rolled SVG).
+- 🎛️ **Digital Twin simulyatoru** — metrik ağacının tam **client-side** "rəqəmsal əkizi"
+  (`lib/metricTreeMath.ts` — backend `_combine` semantikasının dəqiq portu): leaf-lərə ±% slider,
+  kumulyativ-ardıcıl waterfall, ±10% tornado həssaslıq analizi; ssenarilər lokal saxlanılır
+  (backend dəyişikliyi yox). `/twin`.
+- 🤖 **AutoML Studiyası** — cədvəldən bir kliklə model öyrət (**scikit-learn**: Linear/LogReg vs
+  RandomForest, holdout üzrə yaxşısı seçilir), feature əhəmiyyəti + interaktiv proqnoz;
+  datasource yolu `/query` ilə **eyni guard zəncirindən** keçir (cədvəl allowlist + per-viewer
+  RLS); ≤5000 sətir öyrətmə, fit ayrı thread-də. `/automl` wizard.
 
 ---
 
@@ -259,6 +281,11 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | GET/POST | `/api/v1/insights/...` (+ `/generate` · `/{id}/dismiss`) | Insight mühərriki — avtomatik kəşf + təsir reytinqi |
 | GET/POST/PATCH/DELETE | `/api/v1/metric-tree/...` (+ `/evaluate`) | Metrik ağacı — KPI dekompozisiya + roll-up |
 | POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
+| GET | `/api/v1/cohort/retention` · `/funnel` | Kohort retention heatmap · konversiya hunisi (demo `events`) |
+| POST/GET/DELETE | `/api/v1/dashboard/{id}/snapshots` (+ `/{sid}`) | Zaman Maşını — snapshot çək · siyahı · bax · sil |
+| GET | `/api/v1/graph` | Biznes biliklər qrafı — aktivlərin əlaqə xəritəsi (lineage reuse) |
+| POST/GET/DELETE | `/api/v1/ba/generate` · `/ba` · `/ba/{id}` | BA Framework Studio — SWOT/Porter/BCG/BPMN artefaktları (AI kvota) |
+| GET/POST/DELETE | `/api/v1/automl/tables` · `/train` · `/models` (+ `/{id}/predict`) | AutoML — cədvəllər · model öyrət · siyahı · proqnoz · sil (per-IP limit) |
 | GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` · `/checkout` | Planlar · istifadə · mock upgrade · Stripe (gated) |
 | GET/POST | `/api/v1/search` · `/search/reindex` | Qlobal semantik axtarış (asset) · indeks yenilə |
 | POST/GET/DELETE | `/api/v1/saved/{id}/subscriptions` | Planlı PDF/Excel hesabat çatdırılması (email) |
@@ -301,7 +328,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 293 test
+cd backend && pytest        # 382 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -315,14 +342,19 @@ offline embed determinizmi, dedup) · Text2SQL eval (dəyər-əsaslı execution-
 rule-based CI floor, bare/grounded) · tarixçə-reqressiyası (drift) · eval alert** ·
 **qabaqcıl analitika: statistik mühafiz (t-test/z-test/Pearson/BH-FDR/MAD) · kauzal driver ·
 A/B əhəmiyyət · insight mühərriki (kəşf+reytinq) · metrik ağacı (roll-up) · data müqavilələri
-(profiling-əsaslı keyfiyyət)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
+(profiling-əsaslı keyfiyyət)** · **kohort/funnel (test_cohort) · dashboard snapshotları
+(test_snapshots) · biliklər qrafı (test_graph) · BA frameworks + mermaid sanitizer (test_ba) ·
+AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
 `OPENAI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
 
-**Frontend Vitest (96 test):** lib (CSV formula-injection escape · sample queries · login hint ·
-**color/contrast · notification kateqoriyaları**) · hook-lar (chart zoom · history delete · typewriter) ·
+**Frontend Vitest (198 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
+hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
 collab epoch-guard · decision measure · AI-quality eval · **experiment · insight · metric-tree ·
-data-contract**) · **UI primitivləri (ModalShell a11y · ErrorBoundary · Dropdown · StatsGuard/Causal panel)**.
+data-contract · cohort · snapshot · graph · twinStore · baStore · automlStore**) ·
+**UI primitivləri (ModalShell a11y · ErrorBoundary · Dropdown · StatsGuard/Causal panel ·
+CohortHeatmap/FunnelChart · BCGMatrix)**.
 `cd frontend && npm run test`.
 
 **E2E (Playwright):** `frontend/e2e/smoke.spec.ts` — login → NL sorğu (demo SQLite + rule-based
@@ -338,9 +370,9 @@ Bundle analizi: `cd frontend && npm run analyze` → `stats.html`.
 
 **Backend:** FastAPI · SQLAlchemy 2.0 async · Pydantic v2 · Alembic · AI mühərriki (async client) ·
 sqlglot (SQL guard/RLS) · JWT (python-jose) · Fernet · Redis · pandas/openpyxl/numpy/**scipy**
-(statistik analitika) · WebSockets (canlı/collab) · prometheus-client · structlog · google-auth · httpx
+(statistik analitika) · **scikit-learn (AutoML)** · WebSockets (canlı/collab) · prometheus-client · structlog · google-auth · httpx
 **Frontend:** React 18 · TypeScript · Vite · TailwindCSS (CSS-var light/dark) · Recharts (lazy) ·
-react-grid-layout · Zustand · React Router · react-hot-toast · Vitest · Playwright (E2E)
+**mermaid (lazy chunk, BPMN)** · react-grid-layout · Zustand · React Router · react-hot-toast · Vitest · Playwright (E2E)
 
 ---
 
@@ -371,6 +403,8 @@ react-grid-layout · Zustand · React Router · react-hot-toast · Vitest · Pla
 - **Embed brand validasiyası** — `app_name` tag-injection-dan, `logo_url` yalnız http(s),
   `primary_color` strict hex (unauth embed host-a verbatik verildiyi üçün).
 - **Per-user rate limiting** — aylıq AI kvotası (tier-ə görə), 429.
+- **AutoML pickle təhlükəsizliyi** — model blob-u yalnız serverin öz öyrətdiyi estimatordur;
+  client-dən serialized bayt qəbul edilmir və blob heç bir API cavabında qaytarılmır.
 - Connection string-lər və inteqrasiya sirləri **Fernet** ilə şifrəli; JWT bütün qorunan endpoint-lərdə.
 - Prod-da `SECRET_KEY`/`FERNET_KEY` təyin olunmasa start fail edir; CORS Bearer-only.
 - CSV upload validasiyası (tip/ölçü/ad sanitizasiyası); export-da formula-injection mühafizəsi.

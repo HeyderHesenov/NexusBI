@@ -26,10 +26,10 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 
 | Layer | Path | Responsibility |
 |-------|------|----------------|
-| API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, metric, saved_query, billing, branding, decision, integration, copilot, requirement, scenario, workspace, **ai_quality (eval/observability/reindex)**, public, ws |
+| API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, **snapshot**, metric, saved_query, billing, branding, decision, integration, copilot, requirement, **ba**, **automl**, scenario, workspace, **cohort**, **graph**, **ai_quality (eval/observability/reindex)**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
-| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service** |
-| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding), eval/* (tiered golden set, value-based execution-match, bare/grounded/history runner + regression)**, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **client (chat + embed + rolling AI trace)** |
+| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **cohort_service, snapshot_service, graph_service, ba_service, automl_service** |
+| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding), eval/* (tiered golden set, value-based execution-match, bare/grounded/history runner + regression)**, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed + rolling AI trace)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit |
 | Realtime | `realtime/*` | hub (collab WS pub/sub), live_refresh (canlı dashboard loop) |
@@ -194,13 +194,15 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
   background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
   `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (293) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (382) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `OPENAI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
-  deterministic, no cost — identical to CI). Frontend Vitest (96) covers `lib/*`, hooks, and Zustand
-  store reducers (`src/**/*.test.*`, incl. decision-measure, AI-quality eval, and the advanced-analytics
-  stores/panels — experiment/insight/metric-tree/data-contract/Dropdown/color; e2e specs belong to
+  deterministic, no cost — identical to CI; new suites: test_cohort, test_snapshots, test_graph,
+  test_ba, test_automl). Frontend Vitest (198) covers `lib/*`, hooks, and Zustand
+  store reducers (`src/**/*.test.*`, incl. decision-measure, AI-quality eval, the advanced-analytics
+  stores/panels — experiment/insight/metric-tree/data-contract/Dropdown/color — and the studio round:
+  twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
   Playwright). E2E: `frontend/e2e/smoke.spec.ts` over login → query → dashboards against the preview.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus
   `ai_latency_seconds`, `rag_retrievals_total` (hit/miss), and the `text2sql_eval_accuracy` gauge at
@@ -213,8 +215,9 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
 `alerts`, `notifications`, `decisions`, **`requirement_docs`, `kpi_targets`,
 `integration_channels`, `workspaces`, `workspace_members`, `rls_rules`, `audit_logs`,
 `brand_configs` (1:1), `refresh_tokens`, `query_embeddings`, `eval_runs` (global, no FK),
-**`experiments`, `insights`, `metric_nodes` (self-FK tree), `data_contracts`**; `dashboards`
-(1)─<(N) `widgets` and `dashboard_comments`; `data_contracts` (1)─<(N) `contract_runs`;
+**`experiments`, `insights`, `metric_nodes` (self-FK tree), `data_contracts`**,
+**`ba_artifacts`, `ml_models`**; `dashboards`
+(1)─<(N) `widgets`, `dashboard_comments` and **`dashboard_snapshots`**; `data_contracts` (1)─<(N) `contract_runs`;
 `decisions` (1)─<(N) `decision_measurements`; `alerts` → `saved_queries`; `widgets.query_log_id`
 → `query_logs`; `rls_rules` → `datasources` (+ owner/member → `users`); `workspace_members` →
 `workspaces`; `query_logs.datasource_id` / `metrics.datasource_id` / `saved_queries.datasource_id`
@@ -226,13 +229,51 @@ RAG vector store + `eval_runs`); **`b0c1d2e3f4a5`** — `eval_runs.details` (per
 **`c1d2e3f4a5b6`** — `eval_runs.mode` (bare/grounded/history); **`d2e3f4a5b6c7`** —
 `notifications.category`. Advanced-analytics round (6 features): **`e3f4a5b6c7d8`** (`experiments`),
 **`f4a5b6c7d8e9`** (`insights`), **`a5b6c7d8e9f0`** (`metric_nodes`), **`b6c7d8e9f0a1`**
-(`data_contracts` + `contract_runs`). Migrations are Alembic, chained under
-`db/migrations/versions`; current head = **`b6c7d8e9f0a1`**. NOTE: the **demo** schema is seeded
+(`data_contracts` + `contract_runs`). Studio round: **`e9f0a1b2c3d4`** (`dashboard_snapshots` —
+Time Machine), **`f0a1b2c3d4e5`** (`ba_artifacts` — BA Framework Studio), **`a2b3c4d5e6f7`**
+(`ml_models` — AutoML). Migrations are Alembic, chained under
+`db/migrations/versions`; current head = **`a2b3c4d5e6f7`**. NOTE: the **demo** schema is seeded
 in-memory (`db/demo_data._seed`, no migration) — `sales.customer_id` was added there to enable realistic
-customer↔sales joins; `format_demo_schema` sends real column types + sample values to the prompt.
+customer↔sales joins, and an `events` table (visit→signup→trial→purchase) was added for
+cohort/funnel analytics; `format_demo_schema` sends real column types + sample values to the prompt.
 
 ## Notable architecture deltas (this round)
 
+- **Studio round (6 features).** (1) **Cohort & funnel** — `cohort_service` computes weekly
+  retention + a visit→signup→trial→purchase funnel with deterministic SQL over the demo `events`
+  table; `GET /cohort/retention` + `/funnel`; FE `/cohort` renders hand-rolled SVG
+  (CohortHeatmap + FunnelChart). (2) **Time Machine** — `DashboardSnapshot` (migration
+  `e9f0a1b2c3d4`) + `snapshot_service` (capture caps ≤200 rows/widget, 50-snapshot retention;
+  the scheduler adds an hourly scheduled capture for live dashboards);
+  `POST/GET /dashboard/{id}/snapshots`, `GET/DELETE .../snapshots/{sid}`; FE toggle + snapshot
+  timeline + diff badges (`lib/snapshotDiff`). (3) **Knowledge graph** — `graph_service.build`
+  assembles namespaced nodes (table/metric/mnode/dash/widget/squery/decision/ds) reusing the
+  lineage parser; `GET /graph`; FE `/graph` is a hand-rolled SVG force layout with an
+  impact-mode BFS highlight. (4) **Digital Twin** — frontend-ONLY `/twin`:
+  `lib/metricTreeMath.ts` is an exact port of the backend metric-tree `_combine` semantics;
+  leaf ±% sliders, cumulative-sequential waterfall, ±10% tornado sensitivity; scenarios persist
+  via zustand (`nexusbi-twin`, scenarios only). No backend change. (5) **BA Framework Studio** —
+  `ai/ba_frameworks.py` (SWOT/Porter/BCG/BPMN; AI-first with deterministic fallbacks; the BCG
+  core is deterministic over a single demo snapshot — share = revenue share, growth = H2-vs-H1,
+  AI only advises; BPMN mermaid passes a server-side **fail-closed sanitizer**); `BAArtifact`
+  (migration `f0a1b2c3d4e5`); `POST /ba/generate` (AI quota) + `GET /ba` + `GET/DELETE /ba/{id}`;
+  shared `ai/textparse.py`. FE `/ba-studio` (SWOTGrid 2×2, PorterForces, BCGMatrix SVG,
+  MermaidDiagram as a lazy ~1MB chunk, `securityLevel: strict`). (6) **AutoML Studio** —
+  `scikit-learn==1.6.1`; `MLModel` (migration `a2b3c4d5e6f7` = new head; the pickle blob is only
+  ever the server's own estimator and never appears in any response); `automl_service`
+  (Linear/LogReg vs RandomForest holdout selection, sklearn imports kept function-local, fit in
+  `asyncio.to_thread`, ≤5000 training rows, blob ≤5MB); `GET /automl/tables`,
+  `POST /automl/train` (per-IP 5/min), `GET /automl/models`, `POST /automl/models/{id}/predict`
+  (per-IP 30/min), `DELETE /automl/models/{id}`; FE `/automl` wizard.
+- **Guard-chain reuse, again:** the AutoML datasource path runs through the SAME
+  `query_service._guarded_execute` chain as `/query` (table allowlist → per-viewer RLS →
+  pooled execute) — training data can't see rows the viewer couldn't query.
+- **`NexusBIException` now carries an optional machine-readable `code`** — the 429 quota error
+  sets `code="ai_quota"`, and the client redirects to `/pricing` ONLY on that code (other 429s,
+  e.g. per-IP train/predict limits, no longer mis-route).
+- **Mermaid is rendered fail-closed:** BPMN diagram text is sanitized server-side (dangerous
+  directives/HTML rejected, not stripped-and-hoped) and the FE renders with mermaid
+  `securityLevel: strict` in an isolated lazy chunk.
 - **BA-magnet features (4).** (1) **Pivot explorer** — pure client-side (`lib/pivot.ts` +
   `PivotWidget`), slots into the ChartView type switcher; no backend. (2) **Global semantic
   search** — reuses the `query_embeddings` vector store + `client.embed` cosine via a parallel
