@@ -16,6 +16,7 @@ from app.services import (
     digest_service,
     report_delivery_service,
     saved_query_service,
+    snapshot_service,
 )
 from app.services.cache_service import CacheService
 
@@ -66,6 +67,15 @@ async def _tick(cache: CacheService) -> bool:
         except Exception as exc:  # noqa: BLE001
             await db.rollback()
             log.error("scheduler_report_delivery_failed", error=str(exc))
+            return False
+        # Time machine: hourly snapshots of LIVE dashboards, own transaction.
+        try:
+            captured = await snapshot_service.run_scheduled_captures(db)
+            if captured:
+                log.info("scheduler_captured_snapshots", count=captured)
+        except Exception as exc:  # noqa: BLE001
+            await db.rollback()
+            log.error("scheduler_snapshot_failed", error=str(exc))
             return False
         return True
 

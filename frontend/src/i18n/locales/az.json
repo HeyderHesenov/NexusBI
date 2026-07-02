@@ -936,5 +936,20 @@
     },
     "error": "Məlumatı yükləmək alınmadı.",
     "retry": "Yenidən yoxla"
+  },
+  "timeMachine": {
+    "title": "Zaman maşını",
+    "capture": "Anı çək",
+    "captured": "Snapshot yadda saxlanıldı.",
+    "backToNow": "İndiyə qayıt",
+    "empty": "Hələ snapshot yoxdur — \"Anı çək\" ilə başla.",
+    "auto": "avto",
+    "delete": "Snapshotu sil",
+    "missingNow": "İndi silinib",
+    "unchanged": "Dəyişməyib",
+    "sinceThen": "o vaxtdan",
+    "newSince": "O vaxtdan əlavə olunub",
+    "noData": "Bu snapshotda məlumat yoxdur.",
+    "changed": "Dəyişib"
   }
 }

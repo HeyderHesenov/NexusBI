@@ -201,23 +201,29 @@ def _widget_chart(log: QueryLog | None, ds_names: dict[str, str]) -> WidgetChart
     )
 
 
+async def load_widget_query_logs(
+    db: AsyncSession, widgets: list[Widget], user_id: str
+) -> dict[str, QueryLog]:
+    """Batch-load the query logs behind widgets, SCOPED to ``user_id``.
+
+    The user_id filter is security-relevant: a widget must never surface
+    another user's data even if it references a foreign query_log_id. Every
+    consumer of widget data (dashboard render, snapshots) must go through here.
+    """
+    log_ids = {w.query_log_id for w in widgets if w.query_log_id}
+    if not log_ids:
+        return {}
+    rows = await db.execute(
+        select(QueryLog).where(QueryLog.id.in_(log_ids), QueryLog.user_id == user_id)
+    )
+    return {q.id: q for q in rows.scalars().all()}
+
+
 async def widgets_to_response(
     db: AsyncSession, widgets: list[Widget], user_id: str
 ) -> list[WidgetResponse]:
-    """Serialize widgets, batch-loading query logs + datasources (no N+1).
-
-    Query logs are scoped to ``user_id`` so a widget can never surface another
-    user's data even if it references a foreign query_log_id.
-    """
-    log_ids = {w.query_log_id for w in widgets if w.query_log_id}
-    by_id: dict[str, QueryLog] = {}
-    if log_ids:
-        rows = await db.execute(
-            select(QueryLog).where(
-                QueryLog.id.in_(log_ids), QueryLog.user_id == user_id
-            )
-        )
-        by_id = {q.id: q for q in rows.scalars().all()}
+    """Serialize widgets, batch-loading query logs + datasources (no N+1)."""
+    by_id = await load_widget_query_logs(db, widgets, user_id)
 
     ds_ids = {q.datasource_id for q in by_id.values() if q.datasource_id}
     ds_names: dict[str, str] = {}

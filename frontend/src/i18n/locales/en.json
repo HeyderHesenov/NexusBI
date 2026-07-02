@@ -936,5 +936,20 @@
     },
     "error": "Failed to load the data.",
     "retry": "Try again"
+  },
+  "timeMachine": {
+    "title": "Time machine",
+    "capture": "Capture",
+    "captured": "Snapshot saved.",
+    "backToNow": "Back to now",
+    "empty": "No snapshots yet — start with \"Capture\".",
+    "auto": "auto",
+    "delete": "Delete snapshot",
+    "missingNow": "Deleted since",
+    "unchanged": "Unchanged",
+    "sinceThen": "since then",
+    "newSince": "Added since then",
+    "noData": "No data in this snapshot.",
+    "changed": "Changed"
   }
 }

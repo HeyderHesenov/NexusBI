@@ -4,6 +4,7 @@ from app.models.alert import Alert, Notification
 from app.models.brand import BrandConfig
 from app.models.comment import DashboardComment
 from app.models.dashboard import Dashboard, Widget
+from app.models.dashboard_snapshot import DashboardSnapshot
 from app.models.data_contract import ContractRun, DataContract
 from app.models.datasource import DataSource, DBType
 from app.models.decision import Decision, DecisionMeasurement
@@ -31,6 +32,7 @@ __all__ = [
     "QueryLog",
     "RefreshToken",
     "Dashboard",
+    "DashboardSnapshot",
     "Widget",
     "SavedQuery",
     "ReportSubscription",

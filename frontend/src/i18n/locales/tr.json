@@ -936,5 +936,20 @@
     },
     "error": "Veriler yüklenemedi.",
     "retry": "Tekrar dene"
+  },
+  "timeMachine": {
+    "title": "Zaman makinesi",
+    "capture": "Anı yakala",
+    "captured": "Anlık görüntü kaydedildi.",
+    "backToNow": "Şimdiye dön",
+    "empty": "Henüz anlık görüntü yok — \"Anı yakala\" ile başla.",
+    "auto": "oto",
+    "delete": "Anlık görüntüyü sil",
+    "missingNow": "O zamandan beri silindi",
+    "unchanged": "Değişmedi",
+    "sinceThen": "o zamandan beri",
+    "newSince": "O zamandan beri eklendi",
+    "noData": "Bu anlık görüntüde veri yok.",
+    "changed": "Değişti"
   }
 }

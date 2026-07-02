@@ -1,4 +1,4 @@
-import { LayoutGrid, MessageCircle, Plus, Presentation, Radio, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { History, LayoutGrid, MessageCircle, Plus, Presentation, Radio, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -12,10 +12,13 @@ import { DashboardGrid } from '../components/dashboard/DashboardGrid'
 import { GenerateDashboardModal } from '../components/dashboard/GenerateDashboardModal'
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
 import { ShareDashboardModal } from '../components/dashboard/ShareDashboardModal'
+import { SnapshotTimeline } from '../components/dashboard/SnapshotTimeline'
+import { SnapshotView } from '../components/dashboard/SnapshotView'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { buildStory, getComments, getWsTicket } from '../api/dashboard'
 import { useCollabStore } from '../store/collabStore'
 import { useDashboardStore } from '../store/dashboardStore'
+import { useSnapshotStore } from '../store/snapshotStore'
 
 export function DashboardPage() {
   const { t } = useTranslation()
@@ -32,8 +35,10 @@ export function DashboardPage() {
   const [chatOpen, setChatOpen] = useState(false)
   const [story, setStory] = useState<DataStory | null>(null)
   const [storyLoading, setStoryLoading] = useState(false)
+  const [timeMachineOpen, setTimeMachineOpen] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const { participants, connect, disconnect } = useCollabStore()
+  const snapshots = useSnapshotStore()
 
   useEffect(() => {
     loadList().catch(() => undefined)
@@ -41,6 +46,13 @@ export function DashboardPage() {
 
   // Join the live collaboration room for whichever dashboard is open.
   const currentId = current?.id
+
+  // Reset the time machine when switching dashboards.
+  const snapshotsReset = snapshots.reset
+  useEffect(() => {
+    setTimeMachineOpen(false)
+    snapshotsReset()
+  }, [currentId, snapshotsReset])
   useEffect(() => {
     if (!currentId) return
     let cancelled = false
@@ -111,6 +123,23 @@ export function DashboardPage() {
             >
               <Radio size={16} className={live ? 'animate-pulse' : ''} />
               {live ? t('dashboardPage.live') : t('dashboardPage.liveMode')}
+            </button>
+          )}
+          {current && current.widgets.length > 0 && (
+            <button
+              onClick={() => {
+                const next = !timeMachineOpen
+                setTimeMachineOpen(next)
+                if (next) snapshots.load(current.id).catch(() => undefined)
+                else snapshots.clearSelection()
+              }}
+              className={`flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                timeMachineOpen
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-ink-soft hover:border-accent hover:text-ink'
+              }`}
+            >
+              <History size={16} /> {t('timeMachine.title')}
             </button>
           )}
           {current && current.widgets.length > 0 && (
@@ -202,8 +231,23 @@ export function DashboardPage() {
         </div>
       )}
 
+      {current && timeMachineOpen && (
+        <SnapshotTimeline
+          items={snapshots.items}
+          selectedId={snapshots.selected?.id ?? null}
+          capturing={snapshots.capturing}
+          loading={snapshots.loading}
+          onCapture={() => snapshots.capture(current.id).catch(() => undefined)}
+          onSelect={(sid) => snapshots.select(current.id, sid).catch(() => undefined)}
+          onClear={snapshots.clearSelection}
+          onDelete={(sid) => snapshots.remove(current.id, sid).catch(() => undefined)}
+        />
+      )}
+
       {current ? (
-        current.widgets.length ? (
+        timeMachineOpen && snapshots.selected ? (
+          <SnapshotView snapshot={snapshots.selected} dashboard={current} />
+        ) : current.widgets.length ? (
           <CollabSurface>
             <DashboardGrid
               dashboard={current}

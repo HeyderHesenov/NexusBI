@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     ai_quality, alert, auth, billing, branding, cohort, copilot, dashboard, data_contract,
     dataprep, datasource, decision, experiment, insight, integration, metric, metric_tree,
-    public, query, requirement, saved_query, scenario, search, workspace,
+    public, query, requirement, saved_query, scenario, search, snapshot, workspace,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -15,6 +15,7 @@ api_router.include_router(datasource.router)
 api_router.include_router(dataprep.router)
 api_router.include_router(query.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(snapshot.router)
 api_router.include_router(billing.router)
 api_router.include_router(branding.router)
 api_router.include_router(saved_query.router)

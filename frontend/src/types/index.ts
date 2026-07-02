@@ -601,3 +601,27 @@ export interface FunnelStep {
   pct_of_first: number
   drop_pct: number
 }
+
+export interface SnapshotMeta {
+  id: string
+  label: string
+  origin: 'manual' | 'scheduled'
+  created_at: string
+}
+
+export interface SnapshotWidget {
+  widget_id: string
+  title: string
+  chart_type: string
+  chart_config: ChartConfig
+  columns: string[]
+  rows: Record<string, unknown>[]
+}
+
+export interface SnapshotFull {
+  id: string
+  label: string
+  origin: 'manual' | 'scheduled'
+  created_at: string
+  widgets: SnapshotWidget[]
+}
