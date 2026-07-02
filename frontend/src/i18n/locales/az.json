@@ -147,7 +147,8 @@
     "team": "Komanda"
   },
   "common": {
-    "demoMode": "Demo rejimi"
+    "demoMode": "Demo rejimi",
+    "loading": "Yüklənir…"
   },
   "confirmDialog": {
     "cancel": "Ləğv et",
@@ -574,7 +575,8 @@
     "requirements": "Tələblər",
     "sources": "Mənbələr",
     "targets": "Hədəflər",
-    "workspaces": "Komanda"
+    "workspaces": "Komanda",
+    "cohort": "Kohortlar"
   },
   "notificationsPage": {
     "analyzing": "Təhlil…",
@@ -913,5 +915,26 @@
     "role_viewer": "Baxan",
     "subtitle": "Komanda üzvlərini rolla idarə et (owner / editor / viewer) və audit jurnalını izlə.",
     "title": "İş sahələri"
+  },
+  "cohortPage": {
+    "eyebrow": "Analitika",
+    "title": "Kohort və Hunı",
+    "subtitle": "Müştəri retensiyası və mərhələlər üzrə itki analizi.",
+    "tabRetention": "Retensiya",
+    "tabFunnel": "Hunı",
+    "retentionHint": "Hər sətir bir kohortdur (ilk aktivlik ayı), sütunlar ay fərqidir. Faiz — həmin ayda hələ aktiv olan müştərilərin payı.",
+    "funnelHint": "Mərhələlər üzrə unikal müştəri sayı və mərhələlər arasındakı itki.",
+    "empty": "Məlumat yoxdur.",
+    "cohortCol": "Kohort",
+    "sizeCol": "Say",
+    "cellTitle": "{{count}} / {{size}} müştəri",
+    "step": {
+      "visit": "Ziyarət",
+      "signup": "Qeydiyyat",
+      "trial": "Sınaq",
+      "purchase": "Alış"
+    },
+    "error": "Məlumatı yükləmək alınmadı.",
+    "retry": "Yenidən yoxla"
   }
 }

@@ -147,7 +147,8 @@
     "team": "Team"
   },
   "common": {
-    "demoMode": "Demo mode"
+    "demoMode": "Demo mode",
+    "loading": "Loading…"
   },
   "confirmDialog": {
     "cancel": "Cancel",
@@ -574,7 +575,8 @@
     "requirements": "Requirements",
     "sources": "Sources",
     "targets": "Targets",
-    "workspaces": "Team"
+    "workspaces": "Team",
+    "cohort": "Cohorts"
   },
   "notificationsPage": {
     "analyzing": "Analyzing…",
@@ -913,5 +915,26 @@
     "role_viewer": "Viewer",
     "subtitle": "Manage team members by role (owner / editor / viewer) and track the audit log.",
     "title": "Workspaces"
+  },
+  "cohortPage": {
+    "eyebrow": "Analytics",
+    "title": "Cohorts & Funnel",
+    "subtitle": "Customer retention and stage drop-off analysis.",
+    "tabRetention": "Retention",
+    "tabFunnel": "Funnel",
+    "retentionHint": "Each row is a cohort (month of first activity), columns are month offsets. The percentage is the share of customers still active that month.",
+    "funnelHint": "Unique customers per stage and the drop-off between stages.",
+    "empty": "No data.",
+    "cohortCol": "Cohort",
+    "sizeCol": "Size",
+    "cellTitle": "{{count}} / {{size}} customers",
+    "step": {
+      "visit": "Visit",
+      "signup": "Signup",
+      "trial": "Trial",
+      "purchase": "Purchase"
+    },
+    "error": "Failed to load the data.",
+    "retry": "Try again"
   }
 }

@@ -34,6 +34,15 @@ export function readableTextColor(hex: string): string {
   return relativeLuminance(rgb) > 0.5 ? '#1F1E1D' : '#FFFFFF'
 }
 
+/**
+ * The higher-contrast of white / app ink against `hex` (WCAG ratio, not a
+ * luminance threshold) — for data surfaces like heatmap cells and chart bands
+ * where mid-tone fills defeat `readableTextColor`'s 0.5 cut-off.
+ */
+export function bestTextOn(hex: string): string {
+  return contrastRatio(hex, '#FFFFFF') >= contrastRatio(hex, '#1F1E1D') ? '#FFFFFF' : '#1F1E1D'
+}
+
 /** WCAG contrast ratio between two hex colors, in [1, 21]. 0 if either is malformed. */
 export function contrastRatio(hexA: string, hexB: string): number {
   const a = hexToRgb(hexA)
@@ -48,6 +57,14 @@ export function contrastRatio(hexA: string, hexB: string): number {
 const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)))
 const mix = (rgb: Rgb, target: number, t: number): Rgb =>
   rgb.map((c) => clamp(c * (1 - t) + target * t)) as Rgb
+
+/** Blend `hexB` over `hexA` by `t` in [0,1] — e.g. the effective color of an alpha overlay. */
+export function mixHex(hexA: string, hexB: string, t: number): string {
+  const a = hexToRgb(hexA)
+  const b = hexToRgb(hexB)
+  if (!a || !b) return hexA
+  return `#${a.map((v, i) => clamp(v * (1 - t) + b[i] * t).toString(16).padStart(2, '0')).join('')}`
+}
 
 /**
  * Derive the `--accent-press` (hover) and `--accent-soft` (faint surface) CSS-var

@@ -147,7 +147,8 @@
     "team": "Ekip"
   },
   "common": {
-    "demoMode": "Demo modu"
+    "demoMode": "Demo modu",
+    "loading": "Yükleniyor…"
   },
   "confirmDialog": {
     "cancel": "İptal",
@@ -574,7 +575,8 @@
     "requirements": "Gereksinimler",
     "sources": "Kaynaklar",
     "targets": "Hedefler",
-    "workspaces": "Takım"
+    "workspaces": "Takım",
+    "cohort": "Kohortlar"
   },
   "notificationsPage": {
     "analyzing": "Analiz…",
@@ -913,5 +915,26 @@
     "role_viewer": "İzleyici",
     "subtitle": "Ekip üyelerini role göre yönetin (owner / editor / viewer) ve denetim günlüğünü izleyin.",
     "title": "Çalışma alanları"
+  },
+  "cohortPage": {
+    "eyebrow": "Analitik",
+    "title": "Kohortlar ve Huni",
+    "subtitle": "Müşteri tutundurma ve aşama bazlı kayıp analizi.",
+    "tabRetention": "Tutundurma",
+    "tabFunnel": "Huni",
+    "retentionHint": "Her satır bir kohorttur (ilk etkinlik ayı), sütunlar ay farkıdır. Yüzde — o ay hâlâ aktif olan müşterilerin payı.",
+    "funnelHint": "Aşama başına benzersiz müşteri sayısı ve aşamalar arası kayıp.",
+    "empty": "Veri yok.",
+    "cohortCol": "Kohort",
+    "sizeCol": "Boyut",
+    "cellTitle": "{{count}} / {{size}} müşteri",
+    "step": {
+      "visit": "Ziyaret",
+      "signup": "Kayıt",
+      "trial": "Deneme",
+      "purchase": "Satın alma"
+    },
+    "error": "Veriler yüklenemedi.",
+    "retry": "Tekrar dene"
   }
 }

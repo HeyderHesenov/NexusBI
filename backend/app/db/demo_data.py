@@ -19,12 +19,17 @@ DEMO_SCHEMA: dict[str, list[str]] = {
     ],
     "customers": ["id", "name", "email", "country", "signup_date", "total_spent"],
     "products": ["id", "name", "category", "price", "stock_quantity"],
+    "events": ["id", "customer_id", "event_type", "event_date"],
 }
 
 _CATEGORIES = ["Electronics", "Clothing", "Home", "Sports", "Books"]
 _REGIONS = ["North", "South", "East", "West", "Central"]
 _COUNTRIES = ["Azerbaijan", "Turkey", "Georgia", "Germany", "USA"]
 _MONTHS = [f"2024-{m:02d}" for m in range(1, 13)]
+
+# Single source of truth for the funnel stage vocabulary — the seed below, the
+# cohort service and the frontend step labels all key off these names.
+FUNNEL_EVENT_STEPS = ["visit", "signup", "trial", "purchase"]
 
 # Live-feed multipliers per category (1.0 = baseline). The "live dashboard"
 # simulator (services.demo_feed) random-walks these so that re-running the same
@@ -108,6 +113,32 @@ def _seed(conn: sqlite3.Connection) -> None:
             )
         )
     cur.executemany("INSERT INTO customers VALUES (?,?,?,?,?,?)", customers)
+
+    cur.execute(
+        "CREATE TABLE events (id INTEGER, customer_id INTEGER,"
+        " event_type TEXT, event_date TEXT)"
+    )
+    # Deterministic product-usage events powering the cohort/funnel analytics.
+    # Funnel (distinct customers per step): 60 visit → 45 signup → 30 trial →
+    # 20 purchase (nested prefixes of customer id). Retention: customer i stays
+    # active for (i % 5) extra months after its first month, so every 5-customer
+    # monthly cohort retains exactly 5/4/3/2/1 customers at offsets 0..4
+    # (100/80/60/40/20%) — capped at 2024-12.
+    visit, signup, trial, purchase = FUNNEL_EVENT_STEPS
+    events = []
+    eid = 1
+    for i in range(1, 61):
+        m0 = (i - 1) % 12  # first-activity month index, matches signup_date
+        for k in range(0, (i % 5) + 1):
+            if m0 + k > 11:
+                break
+            events.append((eid, i, visit, _MONTHS[m0 + k] + "-02"))
+            eid += 1
+        for step, cutoff, day in ((signup, 45, "-05"), (trial, 30, "-08"), (purchase, 20, "-12")):
+            if i <= cutoff:
+                events.append((eid, i, step, _MONTHS[m0] + day))
+                eid += 1
+    cur.executemany("INSERT INTO events VALUES (?,?,?,?)", events)
     conn.commit()
 
 
@@ -140,6 +171,12 @@ _DEMO_COLUMN_META: dict[str, list[tuple[str, str, list[str]]]] = {
         ("category", "TEXT", _CATEGORIES[:3]),
         ("price", "NUMERIC", ["15.0", "55.0"]),
         ("stock_quantity", "INTEGER", ["50", "150"]),
+    ],
+    "events": [
+        ("id", "INTEGER", []),
+        ("customer_id", "INTEGER", ["1", "2"]),  # → customers.id
+        ("event_type", "TEXT", ["visit", "signup", "trial", "purchase"]),
+        ("event_date", "DATE", ["2024-03-02", "2024-07-05"]),
     ],
 }
 

@@ -20,6 +20,11 @@ _PRODUCT_WORDS = ("product", "məhsul", "mehsul", "stock", "anbar", "inventory")
 # Sales metrics live only on the sales table — "products by revenue" is really a
 # sales aggregation, so these win over the bare word "product".
 _SALES_METRIC_WORDS = ("revenue", "gəlir", "gelir", "sales", "satış", "satis", "sold", "sale")
+# Product-usage events (funnel stages) route to the events table.
+_EVENT_WORDS = (
+    "event", "hadisə", "hadise", "visit", "ziyarət", "ziyaret", "signup",
+    "qeydiyyat", "trial", "sınaq", "sinaq", "funnel", "hunı", "huni",
+)
 
 _DIMENSIONS: list[tuple[tuple[str, ...], str, str]] = [
     # (keywords, column expression, output label)
@@ -29,6 +34,7 @@ _DIMENSIONS: list[tuple[tuple[str, ...], str, str]] = [
     (("month", "ay ", "aylıq", "ayliq"), "substr(sale_date, 1, 7)", "month"),
     (("date", "gün", "tarix"), "sale_date", "sale_date"),
     (("product", "məhsul", "mehsul"), "product_name", "product_name"),
+    (("type", "növ", "nov", "mərhələ", "merhele", "step"), "event_type", "event_type"),
 ]
 
 _DESC_WORDS = ("top", "ən çox", "en cox", "highest", "most", "biggest", "ən böyük")
@@ -37,6 +43,9 @@ _COUNT_WORDS = ("count", "say", "neçə", "nece", "number of", "how many")
 
 
 def _pick_table(q: str) -> str:
+    # Event vocabulary is the most specific — check before the generic tables.
+    if any(w in q for w in _EVENT_WORDS):
+        return "events"
     if any(w in q for w in _CUSTOMER_WORDS):
         return "customers"
     # A sales metric (revenue/satış) routes to sales even if "product" appears.
@@ -64,6 +73,17 @@ def _pick_dimension(q: str, table: str) -> tuple[str, str] | None:
     """Return (expression, label) for a GROUP BY dimension, or None."""
     for words, expr, label in _DIMENSIONS:
         if any(w in q for w in words):
+            # The events table has its own date column; remap the time dims.
+            if table == "events":
+                if label == "month":
+                    return "substr(event_date, 1, 7)", "month"
+                if label == "sale_date":
+                    return "event_date", "event_date"
+                if expr == "event_type":
+                    return expr, label
+                continue
+            if expr == "event_type":
+                continue
             # product_name / sale_date / region only exist on the sales table.
             if expr in ("product_name", "substr(sale_date, 1, 7)", "sale_date", "region") and table != "sales":
                 continue
@@ -81,6 +101,8 @@ def _metric(table: str) -> tuple[str, str]:
         return "SUM(revenue)", "total_revenue"
     if table == "customers":
         return "SUM(total_spent)", "total_spent"
+    if table == "events":
+        return "COUNT(*)", "count"  # events carry no numeric measure
     return "SUM(stock_quantity)", "total_stock"
 
 

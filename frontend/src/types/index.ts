@@ -582,3 +582,22 @@ export interface DataProfile {
   row_sample: number
   columns: ColumnProfile[]
 }
+
+export interface CohortCell {
+  count: number
+  pct: number
+}
+
+export interface CohortData {
+  cohorts: string[]
+  offsets: number[]
+  sizes: number[]
+  cells: (CohortCell | null)[][]
+}
+
+export interface FunnelStep {
+  name: string
+  count: number
+  pct_of_first: number
+  drop_pct: number
+}
