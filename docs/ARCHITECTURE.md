@@ -99,11 +99,20 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   (`insight_service.scan_recent_distinct`, shared helper) and rolls notable changes — with a
   driver/reason — into ONE "🌅 Səhər brifi" notification. The scheduler runs it once/day past
   `DIGEST_HOUR_UTC`; also on-demand via `POST /notifications/digest`. Rule-based fallback offline.
-- **Agentic copilot:** `ai/copilot` is a bounded tool-calling loop (`COPILOT_MAX_STEPS`); tools
-  are owner-scoped (user_id injected, never from the model) and delegate to existing services
-  (run_query, create/generate dashboard, add_widget, share, save query, define metric, digest).
-  Two modes: `plan` (propose steps, no execution, no quota) and `execute` (run; 1 quota unit,
-  the approved plan is injected so execution follows it).
+- **Agentic copilot (universal executor):** `ai/copilot` is a bounded tool-calling loop
+  (`COPILOT_MAX_STEPS`) with a **29-tool registry that drives every product feature**: discovery
+  tools (`search_assets` + `list_*` so the model finds ids instead of inventing them), queries/
+  dashboards, AutoML train+predict, BA Studio generate, cohort funnel/retention, snapshots,
+  A/B create+analyze, decisions create/measure, insight scan, data-contract run, metric-tree
+  evaluate + twin `simulate` (single backend home: `metric_tree_service.simulate`), alerts.
+  Tools are owner-scoped (user_id injected, never from the model) and delegate to existing
+  services. Two modes: `plan` (propose steps, no execution, no quota) and `execute` (run;
+  1 quota unit, the approved plan is injected so execution follows it). Guardrails: dispatch
+  allowlist (only TOOLS names reach `getattr`), NO delete tools, per-tool heavy cap
+  (`_HEAVY_TOOLS`, 2/turn), and tools mirroring per-IP-guarded endpoints share those endpoints'
+  rate buckets (`_IP_BUCKETS` + client ip) so the agent path can't bypass limits. Action chips
+  carry typed ids (`CopilotAction`); the frontend maps them to routes in `lib/copilotNav.ts`,
+  with `?open=` deep-links consumed by `hooks/useOpenParam` on the BA/AutoML pages.
 - **Requirements → dashboard:** `ai/requirements.extract_kpis` turns a BRD/user-story into
   measurable KPIs (AI + rule-based fallback); `requirement_service.build` runs them through the
   shared `dashboard_service.assemble_dashboard`. `requirement_docs` table links the doc→dashboard.
@@ -194,12 +203,12 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
   background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
   `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (382) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (391) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `OPENAI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
   deterministic, no cost — identical to CI; new suites: test_cohort, test_snapshots, test_graph,
-  test_ba, test_automl). Frontend Vitest (198) covers `lib/*`, hooks, and Zustand
+  test_ba, test_automl). Frontend Vitest (202) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, AI-quality eval, the advanced-analytics
   stores/panels — experiment/insight/metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to

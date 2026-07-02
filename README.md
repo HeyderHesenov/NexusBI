@@ -39,7 +39,12 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   səbəbi ilə bir bildirişdə toplayır (planlı + on-demand).
 - ✨ **Smart insight bildirişləri** — saxlanan sorğu nəticələrindəki diqqətəlayiq dəyişikliklər.
 - 🤖 **Agentik Copilot (plan → təsdiq → icra)** — köməkçi əvvəl addım planı göstərir, sən
-  təsdiqləyirsən, sonra icra edir (sorğu işlət · dashboard qur/paylaş · metrik/alert/sorğu yarat).
+  təsdiqləyirsən, sonra icra edir. **29 alətlə platformanın HƏR funksiyasını çatdan idarə edir:**
+  sorğu · dashboard qur/paylaş · **AutoML modeli öyrət/proqnoz** · **SWOT/Porter/BCG/BPMN** ·
+  kohort/funnel · snapshot · **A/B test yarat+analiz** · qərar yaz/ölç · kəşf skanı · data
+  müqaviləsi yoxla · **Digital Twin ssenarisi** · metrik/alert/sorğu yarat. Nəticə çipləri
+  yaradılan obyekti birbaşa açır (`?open=` deep-link). Silmə əməliyyatları qəsdən çatdan kənardır;
+  ağır alətlər (train/generate) alət başına 2/söhbət ilə məhdudlaşır.
 
 ### Ssenari & FP&A
 - 🎯 **KPI hədəf + pacing** — hədəfə çatma sürəti (tempo markeri ilə gauge).
@@ -328,7 +333,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 382 test
+cd backend && pytest        # 391 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -347,7 +352,7 @@ A/B əhəmiyyət · insight mühərriki (kəşf+reytinq) · metrik ağacı (roll
 AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
 `OPENAI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
 
-**Frontend Vitest (198 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (202 test):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
