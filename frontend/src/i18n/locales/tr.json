@@ -963,7 +963,7 @@
     "impactMode": "Etki modu",
     "impactCount": "Aşağı akışta {{count}} varlık etkileniyor",
     "open": "Aç",
-    "hint": "Sürükle = kaydır · tekerlek = yakınlaştır · tıkla = seç",
+    "hint": "Sürükle = kaydır · tekerlek = yakınlaştır · üzerine gel = bağlantılar · tıkla = seç",
     "error": "Grafik yüklenemedi.",
     "emptyTitle": "Grafik henüz boş",
     "emptyBody": "Bir soru sor, bir pano oluştur — bağlantılar burada görünecek.",
@@ -976,6 +976,18 @@
       "dash": "Pano",
       "squery": "Rapor",
       "decision": "Karar"
+    },
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır",
+    "fit": "Sığdır",
+    "search": "Varlık ara…",
+    "searchEmpty": "Eşleşme yok",
+    "kind": {
+      "hosts": "barındırır",
+      "feeds": "besler",
+      "informs": "bilgilendirir",
+      "contains": "içerir",
+      "rolls_up": "toplanır"
     }
   },
   "twinPage": {

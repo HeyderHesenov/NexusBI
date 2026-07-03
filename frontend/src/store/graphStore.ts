@@ -55,6 +55,16 @@ export function impactSet(data: GraphData, startId: string): Set<string> {
   return seen
 }
 
+/** Undirected direct neighbors of a node (both edge directions), self included. */
+export function neighborSet(data: GraphData, id: string): Set<string> {
+  const set = new Set<string>([id])
+  for (const e of data.edges) {
+    if (e.source === id) set.add(e.target)
+    else if (e.target === id) set.add(e.source)
+  }
+  return set
+}
+
 export function selectedNode(data: GraphData | null, id: string | null): GraphNode | null {
   if (!data || !id) return null
   return data.nodes.find((n) => n.id === id) ?? null

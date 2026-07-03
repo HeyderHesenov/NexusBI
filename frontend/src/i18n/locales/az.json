@@ -963,7 +963,7 @@
     "impactMode": "Təsir rejimi",
     "impactCount": "Aşağı axında {{count}} aktiv təsirlənir",
     "open": "Aç",
-    "hint": "Sürüklə = pan · təkər = zoom · klik = seç",
+    "hint": "Sürüklə = pan · təkər = zoom · üstünə gəl = əlaqələr · klik = seç",
     "error": "Qrafı yükləmək alınmadı.",
     "emptyTitle": "Qraf hələ boşdur",
     "emptyBody": "Sorğu ver, dashboard qur — əlaqələr burada görünəcək.",
@@ -976,6 +976,18 @@
       "dash": "Dashboard",
       "squery": "Hesabat",
       "decision": "Qərar"
+    },
+    "zoomIn": "Yaxınlaşdır",
+    "zoomOut": "Uzaqlaşdır",
+    "fit": "Sığdır",
+    "search": "Aktiv axtar…",
+    "searchEmpty": "Tapılmadı",
+    "kind": {
+      "hosts": "saxlayır",
+      "feeds": "qidalandırır",
+      "informs": "məlumat verir",
+      "contains": "daxildir",
+      "rolls_up": "yığılır"
     }
   },
   "twinPage": {

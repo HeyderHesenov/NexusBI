@@ -963,7 +963,7 @@
     "impactMode": "Impact mode",
     "impactCount": "{{count}} downstream assets affected",
     "open": "Open",
-    "hint": "Drag = pan · wheel = zoom · click = select",
+    "hint": "Drag = pan · wheel = zoom · hover = links · click = select",
     "error": "Failed to load the graph.",
     "emptyTitle": "The graph is still empty",
     "emptyBody": "Ask a question, build a dashboard — connections will appear here.",
@@ -976,6 +976,18 @@
       "dash": "Dashboard",
       "squery": "Report",
       "decision": "Decision"
+    },
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit",
+    "search": "Search assets…",
+    "searchEmpty": "No match",
+    "kind": {
+      "hosts": "hosts",
+      "feeds": "feeds",
+      "informs": "informs",
+      "contains": "contains",
+      "rolls_up": "rolls up"
     }
   },
   "twinPage": {

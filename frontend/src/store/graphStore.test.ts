@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../api/graph', () => ({ getGraph: vi.fn() }))
 
-import { impactSet, selectedNode, useGraphStore } from './graphStore'
+import { impactSet, neighborSet, selectedNode, useGraphStore } from './graphStore'
 import * as api from '../api/graph'
 import type { GraphData } from '../types'
 
@@ -52,6 +52,19 @@ describe('impactSet (downstream BFS)', () => {
 
   it('a leaf node impacts only itself', () => {
     expect(impactSet(FIXTURE, 'dash:d1')).toEqual(new Set(['dash:d1']))
+  })
+})
+
+describe('neighborSet (undirected)', () => {
+  it('includes neighbors on both edge directions plus self', () => {
+    // widget:w1 is fed by table:sales & metric:m1 (incoming) and contained in dash:d1 (outgoing)
+    expect(neighborSet(FIXTURE, 'widget:w1')).toEqual(
+      new Set(['widget:w1', 'table:sales', 'metric:m1', 'dash:d1']),
+    )
+  })
+
+  it('a node with no edges is alone', () => {
+    expect(neighborSet(FIXTURE, 'ghost')).toEqual(new Set(['ghost']))
   })
 })
 
