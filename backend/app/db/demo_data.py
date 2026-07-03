@@ -6,6 +6,7 @@ against this throwaway database so the full pipeline works without a real DB.
 from __future__ import annotations
 
 import sqlite3
+import time
 from typing import Any
 
 from app.ai.schema_introspector import format_schema_for_prompt
@@ -206,6 +207,12 @@ def format_demo_schema() -> str:
 # Upper bound on rows returned from a single demo query — matches the live
 # path's MAX_RESULT_ROWS so a crafted CROSS JOIN can't exhaust worker memory.
 _DEMO_MAX_ROWS = 10000
+# Wall-clock budget for a single demo query. The in-memory engine has no
+# statement_timeout (unlike the live Postgres/MySQL path), so a crafted heavy
+# CROSS JOIN / aggregate could otherwise pin a worker indefinitely. The progress
+# handler aborts execution past this deadline.
+_DEMO_MAX_SECONDS = 5.0
+_DEMO_PROGRESS_OPS = 100_000  # handler fires roughly every N VM instructions
 
 
 def execute_demo_sql(sql: str) -> tuple[list[str], list[dict[str, Any]]]:
@@ -220,6 +227,12 @@ def execute_demo_sql(sql: str) -> tuple[list[str], list[dict[str, Any]]]:
             pass
         _seed(conn)
         conn.row_factory = sqlite3.Row
+        # Abort (non-zero return) once the wall-clock budget is exceeded so no
+        # single query can hang the worker thread.
+        deadline = time.monotonic() + _DEMO_MAX_SECONDS
+        conn.set_progress_handler(
+            lambda: 1 if time.monotonic() > deadline else 0, _DEMO_PROGRESS_OPS
+        )
         cur = conn.execute(sql)
         # Bound the fetch: a power-user CROSS JOIN over the demo tables could
         # otherwise materialize unbounded rows (the live path caps at MAX_RESULT_ROWS).

@@ -21,6 +21,23 @@ from app.services.cache_service import CacheService
 
 _log = get_logger("nexusbi.decision")
 
+
+async def _owned_query_log(db: AsyncSession, query_log_id: str, user_id: str):
+    """Fetch a QueryLog only if it belongs to ``user_id`` (else None).
+
+    Decisions reference a spawning query by id; that id can be client-supplied,
+    so every lookup must be owner-scoped to avoid reading another user's result.
+    """
+    from app.models.query_log import QueryLog
+
+    return (
+        await db.execute(
+            select(QueryLog).where(
+                QueryLog.id == query_log_id, QueryLog.user_id == user_id
+            )
+        )
+    ).scalar_one_or_none()
+
 # Editable fields a DecisionUpdate may patch.
 _EDITABLE = (
     "title", "action", "status", "outcome",
@@ -131,11 +148,10 @@ async def _measure(
     ``allow_ai_fallback`` is set — scheduled re-measures pass False so a transient
     re-run failure can never silently escalate to paid inference on every tick.
     """
-    from app.models.query_log import QueryLog
     from app.services import query_service
 
     if d.last_query_log_id:
-        log = await db.get(QueryLog, d.last_query_log_id)
+        log = await _owned_query_log(db, d.last_query_log_id, d.user_id)
         if log is not None and log.generated_sql:
             try:
                 _cols, rows = await query_service.reexecute_logged_query(log, db, d.user_id, cache)
@@ -153,13 +169,14 @@ async def _measure(
 async def _capture_baseline(db: AsyncSession, cache: CacheService, d: Decision) -> None:
     """Set the baseline at decision time. Reuses the spawning query's result if
     present (no re-run / no quota), else runs the metric query once."""
-    from app.models.query_log import QueryLog
     from app.services import query_service
 
     value: float | None = None
     log_id: str | None = None
     if d.query_log_id:
-        log = await db.get(QueryLog, d.query_log_id)
+        # Scope by owner: query_log_id is client-supplied at create time, so an
+        # unscoped db.get would read another user's cached result (IDOR).
+        log = await _owned_query_log(db, d.query_log_id, d.user_id)
         if log is not None and log.result_data:
             value = extract_scalar(log.result_data.get("rows", []), d.metric_column)
             log_id = log.id

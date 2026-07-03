@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
@@ -204,6 +205,27 @@ def create_app() -> FastAPI:
         _apply_security_headers(response)
         return response
 
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+        # FastAPI's default 422 echoes the submitted `input` (and `ctx`) back — that
+        # reflects secrets like a rejected password. Return only the location + reason.
+        request_id = getattr(request.state, "request_id", None)
+        errors = [
+            {"loc": e.get("loc"), "msg": e.get("msg"), "type": e.get("type")}
+            for e in exc.errors()
+        ]
+        resp = JSONResponse(
+            status_code=422,
+            content={
+                "error": "ValidationError",
+                "message": i18n.localize("Daxil edilən məlumat düzgün deyil."),
+                "detail": errors,
+                "request_id": request_id,
+            },
+        )
+        _apply_security_headers(resp)
+        return resp
+
     @app.exception_handler(NexusBIException)
     async def _domain_error(request: Request, exc: NexusBIException) -> JSONResponse:
         request_id = getattr(request.state, "request_id", None)
@@ -213,7 +235,9 @@ def create_app() -> FastAPI:
             content={
                 "error": exc.__class__.__name__,
                 "message": i18n.localize(exc.message),
-                "detail": exc.detail,
+                # detail often carries raw upstream/driver text (host, port, engine
+                # internals) — expose it only in demo, like the generated SQL below.
+                "detail": exc.detail if settings.DEMO_MODE else None,
                 "code": getattr(exc, "code", None),
                 "sql": getattr(exc, "sql", None) if settings.DEMO_MODE else None,
                 "request_id": request_id,

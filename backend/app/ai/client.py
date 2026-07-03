@@ -161,16 +161,17 @@ def hash_token(tok: str) -> int:
 
 
 def _map_ai_error(exc: Exception) -> AIGenerationError:
-    """Convert a raw AI-SDK error into a domain error with a safe detail.
+    """Convert a raw AI-engine error into a domain error.
 
-    Keeps the upstream message short so the client gets an actionable 502 instead
-    of a generic 500, without leaking keys or full payloads.
+    The upstream message can embed the engine/model identity, org id, or a masked
+    key fragment, so it is kept to server logs only and never surfaced to the
+    client — the caller gets a generic 502 with no ``detail``.
     """
     detail = str(exc)
     if len(detail) > 200:
         detail = detail[:200] + "…"
     log.warning("ai_error", error=type(exc).__name__, detail=detail)
-    return AIGenerationError("AI xidməti əlçatmazdır.", detail=detail)
+    return AIGenerationError("AI xidməti əlçatmazdır.")
 
 
 def _record_call(resp: Any, started: float, kind: str) -> None:

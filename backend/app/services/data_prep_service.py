@@ -80,4 +80,6 @@ async def materialize(
     conn_str, _table, _n = await asyncio.to_thread(
         upload_service.materialize_rows, columns, rows, name
     )
-    return await datasource_service.add_datasource(db, user_id, name, "sqlite", conn_str)
+    return await datasource_service.add_datasource(
+        db, user_id, name, "sqlite", conn_str, internal=True
+    )

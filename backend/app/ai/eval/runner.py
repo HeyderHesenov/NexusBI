@@ -188,7 +188,7 @@ async def run_eval(
     avg_latency = sum(d["latency_ms"] for d in details) / total if total else 0.0
 
     run = EvalRun(
-        model=settings.AI_MODEL or "rule_based",
+        model="ai-engine" if settings.AI_MODEL else "rule_based",
         mode="grounded" if grounded else "bare",
         total=total,
         passed=passed,

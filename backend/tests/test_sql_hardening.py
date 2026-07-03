@@ -40,6 +40,24 @@ def test_ordinary_select_passes_guard():
     assert sql_guard.validate_select_only("SELECT * FROM sales") == "SELECT * FROM sales"
 
 
+def test_recursive_cte_is_allowed():
+    # WITH RECURSIVE is a legitimate BI read (hierarchical roll-ups); it must not
+    # be blocked. Unbounded recursion is bounded by statement_timeout / the demo
+    # wall-clock handler, not by rejecting the keyword.
+    sql = (
+        "WITH RECURSIVE tree(id, parent) AS ("
+        "SELECT id, parent FROM orders UNION ALL "
+        "SELECT o.id, o.parent FROM orders o JOIN tree t ON o.parent = t.id"
+        ") SELECT * FROM tree"
+    )
+    assert sql_guard.validate_select_only(sql) == sql
+
+
+def test_identifier_named_recursive_is_allowed():
+    # A column literally named `recursive` on a live source must not false-reject.
+    assert sql_guard.validate_select_only("SELECT recursive FROM sales")
+
+
 # ─── Positive schema allowlist ───
 def test_allowlist_rejects_unknown_table():
     with pytest.raises(InvalidSQLError):

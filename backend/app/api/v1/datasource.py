@@ -46,7 +46,7 @@ async def upload(
         upload_service.ingest_file, file.filename or "data.csv", content
     )
     label = name.strip() or (file.filename or "Yüklənmiş fayl")
-    ds = await svc.add_datasource(db, user.id, label, "sqlite", conn_str)
+    ds = await svc.add_datasource(db, user.id, label, "sqlite", conn_str, internal=True)
     return DataSourceResponse.model_validate(ds)
 
 

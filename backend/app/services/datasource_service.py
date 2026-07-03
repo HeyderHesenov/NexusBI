@@ -7,7 +7,11 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
+from pathlib import Path
+
 from sqlalchemy import select, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.schema_introspector import format_schema_for_prompt, get_schema
@@ -30,12 +34,50 @@ async def _guard_conn_str(conn_str: str) -> None:
     await asyncio.to_thread(net_guard.assert_safe_connection_string, conn_str)
 
 
+def _assert_sqlite_confined(url) -> None:
+    """A SQLite datasource may only point at a file inside UPLOAD_DIR.
+
+    Internal callers (upload / data-prep) mint UUID paths there; this blocks an
+    internal bug from ever attaching the app's own DB or an arbitrary local file.
+    """
+    upload_root = Path(settings.UPLOAD_DIR).resolve()
+    try:
+        target = Path(url.database or "").resolve()
+        target.relative_to(upload_root)
+    except (ValueError, OSError) as exc:
+        raise DataSourceConnectionError(
+            "SQLite yolu icazəli qovluqdan kənardır."
+        ) from exc
+
+
 async def add_datasource(
-    db: AsyncSession, user_id: str, name: str, db_type: str, connection_string: str
+    db: AsyncSession,
+    user_id: str,
+    name: str,
+    db_type: str,
+    connection_string: str,
+    *,
+    internal: bool = False,
 ) -> DataSource:
     dtype = DBType(db_type)
     if dtype != DBType.powerbi:  # powerbi stores a JSON config, not a SQLAlchemy URL
-        await _guard_conn_str(connection_string)
+        try:
+            url = make_url(connection_string)
+        except ArgumentError as exc:
+            raise DataSourceConnectionError(
+                "Bağlantı sətri etibarsızdır."
+            ) from exc
+        # A SQLite/file DSN would let a user attach the app's own DB (every tenant's
+        # rows) or read arbitrary local files. File-backed sources are minted only by
+        # the trusted upload/data-prep pipeline (internal=True), confined to UPLOAD_DIR.
+        if url.get_backend_name() == "sqlite":
+            if not internal:
+                raise DataSourceConnectionError(
+                    "SQLite mənbələr birbaşa əlavə edilə bilməz — fayl yükləmə istifadə edin."
+                )
+            _assert_sqlite_confined(url)
+        else:
+            await _guard_conn_str(connection_string)
     ds = DataSource(
         user_id=user_id,
         name=name,

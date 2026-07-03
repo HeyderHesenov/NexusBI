@@ -82,6 +82,10 @@ def validate_select_only(sql: str) -> str:
     lowered = scrubbed.lstrip().lower()
     if not (lowered.startswith("select") or lowered.startswith("with")):
         raise InvalidSQLError("Only SELECT queries are permitted.")
+    # NOTE: no keyword block on `RECURSIVE` — WITH RECURSIVE is a legitimate BI
+    # read (hierarchical roll-ups, BOM expansion). Unbounded recursion is bounded
+    # by the live path's statement_timeout and, on the timeout-less in-memory demo
+    # engine, by the wall-clock progress handler in demo_data.execute_demo_sql.
     if _INTO_CLAUSE.search(scrubbed):
         raise InvalidSQLError("SELECT … INTO is not permitted.")
     if _FORBIDDEN_FUNCTIONS.search(scrubbed):

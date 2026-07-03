@@ -86,22 +86,22 @@ async def test_query_lineage_endpoint(client, auth):
 
 
 async def test_datasource_sla_update(client, auth):
-    ds = (
-        await client.post(
-            "/api/v1/datasource/",
-            json={
-                "name": "Test PG",
-                "db_type": "sqlite",
-                "connection_string": "sqlite+aiosqlite:///./_sla_test.db",
-            },
-            headers=auth,
-        )
-    ).json()
+    from tests.conftest import seed_internal_datasource, seed_sqlite_file
+
+    # Raw sqlite DSNs are blocked over the public API, so seed via the trusted
+    # internal path (upload/data-prep pipeline), then fetch the created row.
+    conn_str = seed_sqlite_file()
+    ds_id = await seed_internal_datasource("test@nexusbi.io", "Test PG", conn_str)
+    ds = next(
+        d
+        for d in (await client.get("/api/v1/datasource/", headers=auth)).json()
+        if d["id"] == ds_id
+    )
     assert ds["last_refreshed_at"]  # stamped at creation
 
     upd = (
         await client.patch(
-            f"/api/v1/datasource/{ds['id']}/sla",
+            f"/api/v1/datasource/{ds_id}/sla",
             json={"freshness_sla_hours": 24},
             headers=auth,
         )

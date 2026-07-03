@@ -240,7 +240,7 @@ async def reexecute_logged_query(
     if log.datasource_id is None:
         from app.db import demo_data
 
-        return demo_data.execute_demo_sql(log.generated_sql)
+        return await asyncio.to_thread(demo_data.execute_demo_sql, log.generated_sql)
     ds = await ds_service.get_datasource(db, user_id, log.datasource_id)
     if ds.db_type == DBType.powerbi:
         raise ValueError("live refresh unsupported for Power BI")
@@ -320,7 +320,7 @@ async def run_user_sql(
 
         sql_guard.assert_tables_in_schema(clean_sql, demo_data.demo_table_names(), "sqlite")
         try:
-            columns, rows = demo_data.execute_demo_sql(clean_sql)
+            columns, rows = await asyncio.to_thread(demo_data.execute_demo_sql, clean_sql)
         except NexusBIException as exc:
             exc.sql = clean_sql  # surface the user's SQL in the error card
             raise
@@ -483,5 +483,5 @@ async def _demo_pipeline(
         # with a deterministic, schema-aware SQL fallback.
         _log.warning("demo_ai_fallback", error=exc.message, detail=exc.detail)
         sql_result = rule_based_sql.generate_sql_fallback(nl_query)
-    columns, rows = demo_data.execute_demo_sql(sql_result.sql)
+    columns, rows = await asyncio.to_thread(demo_data.execute_demo_sql, sql_result.sql)
     return sql_result.sql, columns, rows

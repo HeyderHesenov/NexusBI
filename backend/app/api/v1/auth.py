@@ -28,6 +28,10 @@ from app.services import auth_token_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Precomputed once so a login for a non-existent email still pays the bcrypt cost
+# (constant-time-ish), closing the user-enumeration timing side channel.
+_DUMMY_PW_HASH = hash_password(secrets.token_urlsafe(16))
+
 
 @router.post(
     "/register",
@@ -63,7 +67,11 @@ async def register(payload: RegisterRequest, db: DbDep) -> TokenResponse:
 async def login(payload: LoginRequest, db: DbDep) -> TokenResponse:
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
-    if user is None or not verify_password(payload.password, user.hashed_password):
+    # Always run one bcrypt verify — against the real hash if the user exists,
+    # else a dummy — so response time doesn't reveal whether the email is registered.
+    hashed = user.hashed_password if user is not None else _DUMMY_PW_HASH
+    valid = verify_password(payload.password, hashed)
+    if user is None or not valid:
         raise AuthError("Email və ya şifrə yanlışdır.")
     return TokenResponse(**await auth_token_service.issue_pair(db, user.id))
 
