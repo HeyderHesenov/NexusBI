@@ -988,7 +988,9 @@
       "informs": "информирует",
       "contains": "содержит",
       "rolls_up": "сворачивается"
-    }
+    },
+    "fullscreen": "На весь экран",
+    "exitFullscreen": "Выйти из полноэкранного"
   },
   "twinPage": {
     "eyebrow": "Планирование",

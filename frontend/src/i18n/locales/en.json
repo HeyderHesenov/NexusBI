@@ -988,7 +988,9 @@
       "informs": "informs",
       "contains": "contains",
       "rolls_up": "rolls up"
-    }
+    },
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen"
   },
   "twinPage": {
     "eyebrow": "Planning",

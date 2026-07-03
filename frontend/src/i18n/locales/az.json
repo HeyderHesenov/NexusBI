@@ -988,7 +988,9 @@
       "informs": "məlumat verir",
       "contains": "daxildir",
       "rolls_up": "yığılır"
-    }
+    },
+    "fullscreen": "Tam ekran",
+    "exitFullscreen": "Tam ekrandan çıx"
   },
   "twinPage": {
     "eyebrow": "Planlama",

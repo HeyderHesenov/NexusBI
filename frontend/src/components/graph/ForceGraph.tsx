@@ -33,6 +33,8 @@ interface Props {
   /** Types the user filtered out via the legend — hidden from the canvas. */
   hiddenTypes: Set<GraphNodeType>
   onSelect: (id: string | null) => void
+  /** Sizing utility for the <svg> (height); default is the inline card height. */
+  className?: string
 }
 
 /** Imperative controls the toolbar drives (zoom buttons, fit, search-to-focus). */
@@ -77,7 +79,7 @@ const clampW = (w: number) => Math.min(Math.max(w, LAYOUT_W / MAX_ZOOM), LAYOUT_
  * hover neighbor-emphasis + tooltip, directional curved edges, type filtering.
  */
 export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
-  { data, selectedId, highlight, hiddenTypes, onSelect },
+  { data, selectedId, highlight, hiddenTypes, onSelect, className = 'h-[560px]' },
   ref,
 ) {
   const { t } = useTranslation()
@@ -241,7 +243,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
     <svg
       ref={svgRef}
       viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-      className="h-[560px] w-full cursor-grab touch-none select-none rounded-2xl border border-line bg-surface shadow-[0_16px_50px_-24px_rgba(40,32,24,0.45)] active:cursor-grabbing"
+      className={`${className} w-full cursor-grab touch-none select-none rounded-2xl border border-line bg-surface shadow-[0_16px_50px_-24px_rgba(40,32,24,0.45)] active:cursor-grabbing`}
       data-testid="force-graph"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
