@@ -118,7 +118,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       setView((v) => {
-        const factor = e.deltaY > 0 ? 1.12 : 1 / 1.12
+        const factor = e.deltaY > 0 ? 1.096 : 1 / 1.096
         const w = clampW(v.w * factor)
         const h = (w / LAYOUT_W) * LAYOUT_H
         const rect = svg.getBoundingClientRect()
