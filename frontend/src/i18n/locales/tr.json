@@ -1009,7 +1009,46 @@
     "deleteScenario": "Senaryoyu sil",
     "emptyTitle": "Henüz metrik ağacı yok",
     "emptyBody": "Dijital İkiz metrik ağacının üzerinde çalışır — önce bir KPI ayrıştırması oluştur.",
-    "goToTree": "Metrik ağacına git"
+    "goToTree": "Metrik ağacına git",
+    "tabs": {
+      "simulate": "Simülasyon",
+      "goal": "Hedef bul",
+      "compare": "Karşılaştır",
+      "monte": "Monte Carlo"
+    },
+    "goalSeek": {
+      "title": "Hedef bul",
+      "help": "Bir hedef KPI girin — bir kaldıracın yüzde kaç değişmesi gerektiğini çözelim.",
+      "targetLabel": "Hedef KPI değeri",
+      "fromTargets": "Hedeflerden:",
+      "leverLabel": "Hangi kaldıraç değişsin?",
+      "solve": "Çöz",
+      "result": "Sonuç",
+      "moveLever": "“{{lever}}” kaldıracını değiştir:",
+      "apply": "Simülasyona uygula",
+      "empty": "Bir hedef girin ve çözün.",
+      "unreachable": "Bu hedef bu kaldıraçla ulaşılamaz."
+    },
+    "compare": {
+      "chart": "Senaryolar — KPI değeri",
+      "table": "Delta tablosu",
+      "scenario": "Senaryo",
+      "vsBaseline": "tabana göre",
+      "emptyTitle": "Henüz senaryo yok",
+      "emptyBody": "Önce Simülasyon sekmesinde bir senaryo kaydedin."
+    },
+    "monteCarlo": {
+      "ranges": "Kaldıraç aralıkları (min…maks %)",
+      "help": "Her kaldıraca bir aralık verin — {{n}} rastgele çekiliş KPI dağılımı verir.",
+      "min": "minimum",
+      "max": "maksimum",
+      "run": "{{n}} çekiliş çalıştır",
+      "empty": "Bir aralık belirleyin ve çalıştırın.",
+      "distribution": "KPI dağılımı",
+      "p10": "P10",
+      "p50": "Medyan",
+      "p90": "P90"
+    }
   },
   "baStudio": {
     "eyebrow": "Planlama",

@@ -1009,7 +1009,46 @@
     "deleteScenario": "Delete scenario",
     "emptyTitle": "No metric tree yet",
     "emptyBody": "The Digital Twin runs on your metric tree — build a KPI decomposition first.",
-    "goToTree": "Go to metric tree"
+    "goToTree": "Go to metric tree",
+    "tabs": {
+      "simulate": "Simulate",
+      "goal": "Goal seek",
+      "compare": "Compare",
+      "monte": "Monte Carlo"
+    },
+    "goalSeek": {
+      "title": "Goal seek",
+      "help": "Enter a target KPI — we solve for the percent change a lever needs.",
+      "targetLabel": "Target KPI value",
+      "fromTargets": "From targets:",
+      "leverLabel": "Which lever to move?",
+      "solve": "Solve",
+      "result": "Result",
+      "moveLever": "Move the “{{lever}}” lever:",
+      "apply": "Apply to simulation",
+      "empty": "Enter a target and solve.",
+      "unreachable": "That target is out of this lever’s reach."
+    },
+    "compare": {
+      "chart": "Scenarios — KPI value",
+      "table": "Delta table",
+      "scenario": "Scenario",
+      "vsBaseline": "vs baseline",
+      "emptyTitle": "No scenarios yet",
+      "emptyBody": "Save a scenario on the Simulate tab first."
+    },
+    "monteCarlo": {
+      "ranges": "Lever ranges (min…max %)",
+      "help": "Give each lever a range — we run {{n}} random draws into a KPI distribution.",
+      "min": "minimum",
+      "max": "maximum",
+      "run": "Run {{n}} draws",
+      "empty": "Set a range and run.",
+      "distribution": "KPI distribution",
+      "p10": "P10",
+      "p50": "Median",
+      "p90": "P90"
+    }
   },
   "baStudio": {
     "eyebrow": "Planning",

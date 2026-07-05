@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Adjustments } from '../lib/metricTreeMath'
+import type { LeverRanges } from '../lib/twinAnalysis'
 
 export interface TwinScenario {
   id: string
@@ -12,7 +13,13 @@ export interface TwinScenario {
 interface TwinState {
   adjustments: Adjustments
   scenarios: TwinScenario[]
+  /** Monte Carlo per-leaf sampling ranges (transient, like adjustments). */
+  ranges: LeverRanges
   setAdjustment: (leafId: string, pct: number) => void
+  /** Set a leaf's Monte Carlo min/max range. */
+  setRange: (leafId: string, range: { min: number; max: number }) => void
+  /** Clear only the given leaves' ranges; no arg = all. */
+  clearRanges: (leafIds?: Set<string>) => void
   /** Clear only the given leaves' adjustments (other roots' work survives); no arg = all. */
   clearAdjustments: (leafIds?: Set<string>) => void
   /** Snapshot ONLY the given root's leaf adjustments (cross-root state must not leak). */
@@ -34,6 +41,7 @@ export const useTwinStore = create<TwinState>()(
     (set, get) => ({
       adjustments: {},
       scenarios: [],
+      ranges: {},
       setAdjustment: (leafId, pct) =>
         set((s) => {
           const next = { ...s.adjustments }
@@ -41,6 +49,19 @@ export const useTwinStore = create<TwinState>()(
           else next[leafId] = pct
           return { adjustments: next }
         }),
+      setRange: (leafId, range) =>
+        set((s) => {
+          const next = { ...s.ranges }
+          if (range.min === 0 && range.max === 0) delete next[leafId]
+          else next[leafId] = range
+          return { ranges: next }
+        }),
+      clearRanges: (leafIds) =>
+        set((s) => ({
+          ranges: leafIds
+            ? Object.fromEntries(Object.entries(s.ranges).filter(([id]) => !leafIds.has(id)))
+            : {},
+        })),
       clearAdjustments: (leafIds) =>
         set((s) => ({
           adjustments: leafIds

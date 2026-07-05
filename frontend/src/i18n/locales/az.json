@@ -1009,7 +1009,46 @@
     "deleteScenario": "Ssenarini sil",
     "emptyTitle": "Metrik ağacı hələ qurulmayıb",
     "emptyBody": "Digital Twin metrik ağacının üstündə işləyir — əvvəlcə KPI dekompozisiyası yarat.",
-    "goToTree": "Metrik ağacına keç"
+    "goToTree": "Metrik ağacına keç",
+    "tabs": {
+      "simulate": "Simulyasiya",
+      "goal": "Hədəf axtar",
+      "compare": "Müqayisə",
+      "monte": "Monte Karlo"
+    },
+    "goalSeek": {
+      "title": "Hədəf axtar",
+      "help": "Hədəf KPI dəyəri ver — leverin neçə faiz dəyişməli olduğunu hesablayaq.",
+      "targetLabel": "Hədəf KPI dəyəri",
+      "fromTargets": "Hədəflərdən:",
+      "leverLabel": "Hansı leveri dəyişək?",
+      "solve": "Həll et",
+      "result": "Nəticə",
+      "moveLever": "«{{lever}}» leverini dəyiş:",
+      "apply": "Simulyasiyaya tətbiq et",
+      "empty": "Hədəf ver və həll et.",
+      "unreachable": "Bu hədəf bu leverlə əlçatmazdır."
+    },
+    "compare": {
+      "chart": "Ssenarilər — KPI dəyəri",
+      "table": "Delta cədvəli",
+      "scenario": "Ssenari",
+      "vsBaseline": "Baza ilə fərq",
+      "emptyTitle": "Ssenari yoxdur",
+      "emptyBody": "Əvvəlcə Simulyasiya tabında ssenari saxla."
+    },
+    "monteCarlo": {
+      "ranges": "Lever aralıqları (min…maks %)",
+      "help": "Hər leverə aralıq ver — {{n}} təsadüfi buraxılışda KPI paylanmasını görək.",
+      "min": "minimum",
+      "max": "maksimum",
+      "run": "{{n}} buraxılış işlət",
+      "empty": "Aralıq ver və işlət.",
+      "distribution": "KPI paylanması",
+      "p10": "P10",
+      "p50": "Median",
+      "p90": "P90"
+    }
   },
   "baStudio": {
     "eyebrow": "Planlama",
