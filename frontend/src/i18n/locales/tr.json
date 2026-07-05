@@ -939,7 +939,21 @@
       "trial": "Deneme",
       "purchase": "Satın alma"
     },
-    "error": "Veriler yüklenemedi."
+    "error": "Veriler yüklenemedi.",
+    "dataSource": "Veri kaynağı",
+    "demoData": "Demo veri",
+    "table": "Tablo",
+    "pickTable": "Tablo seç…",
+    "pickColumn": "Sütun seç…",
+    "entityCol": "Müşteri/varlık sütunu",
+    "entityHint": "Tekrarlanan kullanıcı ID’si",
+    "dateCol": "Tarih sütunu",
+    "dateHint": "Retention için olay tarihi",
+    "stageCol": "Aşama sütunu",
+    "stageHint": "Huni için adım/olay tipi",
+    "demoHint": "Örnek veri gösteriliyor — gerçek analiz için kendi kaynağını seç.",
+    "run": "Analizi çalıştır",
+    "mapPrompt": "Sütunları eşleştir ve analizi çalıştır."
   },
   "timeMachine": {
     "title": "Zaman makinesi",

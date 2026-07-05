@@ -939,7 +939,21 @@
       "trial": "Sınaq",
       "purchase": "Alış"
     },
-    "error": "Məlumatı yükləmək alınmadı."
+    "error": "Məlumatı yükləmək alınmadı.",
+    "dataSource": "Məlumat mənbəsi",
+    "demoData": "Demo data",
+    "table": "Cədvəl",
+    "pickTable": "Cədvəl seç…",
+    "pickColumn": "Sütun seç…",
+    "entityCol": "Müştəri/entity sütunu",
+    "entityHint": "Təkrarlanan istifadəçi ID-si",
+    "dateCol": "Tarix sütunu",
+    "dateHint": "Retention üçün hadisə tarixi",
+    "stageCol": "Mərhələ sütunu",
+    "stageHint": "Funnel üçün addım/hadisə tipi",
+    "demoHint": "Nümunə data göstərilir — real analiz üçün öz mənbəni seç.",
+    "run": "Analizi işlət",
+    "mapPrompt": "Sütunları xəritələ və analizi işlət."
   },
   "timeMachine": {
     "title": "Zaman maşını",

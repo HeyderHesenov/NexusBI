@@ -939,7 +939,21 @@
       "trial": "Trial",
       "purchase": "Purchase"
     },
-    "error": "Failed to load the data."
+    "error": "Failed to load the data.",
+    "dataSource": "Data source",
+    "demoData": "Demo data",
+    "table": "Table",
+    "pickTable": "Pick a table…",
+    "pickColumn": "Pick a column…",
+    "entityCol": "Customer / entity column",
+    "entityHint": "The repeating user ID",
+    "dateCol": "Date column",
+    "dateHint": "Event date, for retention",
+    "stageCol": "Stage column",
+    "stageHint": "Step / event type, for funnel",
+    "demoHint": "Showing example data — pick your own source for real analysis.",
+    "run": "Run analysis",
+    "mapPrompt": "Map the columns and run the analysis."
   },
   "timeMachine": {
     "title": "Time machine",

@@ -4,6 +4,17 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 
+class CohortQuery(BaseModel):
+    """Column mapping for real-data cohort analysis. All-optional: an empty
+    body (or any missing field) falls back to the deterministic demo snapshot."""
+
+    datasource_id: str | None = None
+    table: str | None = None
+    entity_col: str | None = None
+    date_col: str | None = None  # retention: the event timestamp column
+    stage_col: str | None = None  # funnel: the stage/event-type column
+
+
 class CohortCell(BaseModel):
     count: int
     pct: float

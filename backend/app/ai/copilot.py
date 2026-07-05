@@ -712,7 +712,7 @@ class _ToolContext:
 
         from app.services import cohort_service
 
-        data = await asyncio.to_thread(cohort_service.funnel)
+        data = await asyncio.to_thread(cohort_service.funnel_demo)
         self.actions.append({"type": "cohort", "label": "Funnel hesablandı"})
         return data
 
@@ -721,7 +721,7 @@ class _ToolContext:
 
         from app.services import cohort_service
 
-        data = await asyncio.to_thread(cohort_service.retention)
+        data = await asyncio.to_thread(cohort_service.retention_demo)
         # Summarise: full matrix is big; the model only needs the headline.
         cohorts = data.get("cohorts") or []
         self.actions.append({"type": "cohort", "label": "Retensiya hesablandı"})
