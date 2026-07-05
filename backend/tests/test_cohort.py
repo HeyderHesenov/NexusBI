@@ -135,6 +135,53 @@ async def test_retention_live_rejects_unmapped_column(monkeypatch):
         )
 
 
+def test_month_expr_per_dialect():
+    assert cohort_service._month_expr("sqlite", "d") == 'substr(cast("d" as text), 1, 7)'
+    assert cohort_service._month_expr("postgresql", "d") == 'left(cast("d" as text), 7)'
+    assert cohort_service._month_expr("mysql", "d") == 'left(cast("d" as char), 7)'
+    # unknown dialect falls back to the sqlite form
+    assert cohort_service._month_expr("weird", "d").startswith("substr(")
+
+
+async def test_retention_live_buckets_date_to_month(monkeypatch):
+    """The live retention query must bucket the date to a month in SQL (so a
+    full-timestamp table can't blow the row cap) and still build a matrix."""
+    from types import SimpleNamespace
+
+    from app.services import query_service
+
+    captured = {}
+
+    async def fake_guarded(ds, sql, schema, db, user_id):
+        captured["sql"] = sql
+        return [], [
+            {"entity_v": "a", "date_v": "2024-01"},
+            {"entity_v": "a", "date_v": "2024-02"},
+            {"entity_v": "b", "date_v": "2024-01"},
+        ]
+
+    monkeypatch.setattr(
+        "app.services.cohort_service.datasource_service.get_datasource",
+        lambda *a, **k: _async(SimpleNamespace(db_type=SimpleNamespace(value="sqlite"))),
+    )
+    monkeypatch.setattr(
+        "app.services.cohort_service.datasource_service.get_schema_cached",
+        lambda *a, **k: _async({"invoices": [{"name": "cust", "type": "TEXT"},
+                                             {"name": "ts", "type": "DATETIME"}]}),
+    )
+    monkeypatch.setattr(query_service, "_guarded_execute", fake_guarded)
+
+    data = await cohort_service.retention(
+        None, None, "u1", "ds1", "invoices", entity_col="cust", date_col="ts"
+    )
+    assert "substr(cast(\"ts\" as text), 1, 7)" in captured["sql"]  # month-bucketed
+    assert "DISTINCT" in captured["sql"]
+    # a and b both first appear in Jan → one cohort of 2; a is also active at +1.
+    assert data["cohorts"] == ["2024-01"]
+    assert data["sizes"] == [2]
+    assert data["cells"][0][1]["count"] == 1  # only a retained at +1
+
+
 async def test_retention_demo_when_no_datasource():
     data = await cohort_service.retention(None, None, "u1", None, None, None, None)
     assert len(data["cohorts"]) == 12  # demo matrix

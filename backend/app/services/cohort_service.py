@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -159,10 +160,24 @@ def _safe_columns(
             raise NexusBIException(f"Sütun tapılmadı: {col!r}.")
 
 
+def _month_expr(dialect: str, col: str) -> str:
+    """First 7 chars ('YYYY-MM') of a date column's ISO text form — bucket the
+    date to a month IN SQL so DISTINCT rows scale with (entity × month), not raw
+    events. `cast` makes it work whether the column is a date type or text."""
+    q = f'"{col}"'
+    if dialect == "postgresql":
+        return f"left(cast({q} as text), 7)"
+    if dialect == "mysql":
+        return f"left(cast({q} as char), 7)"
+    return f"substr(cast({q} as text), 1, 7)"  # sqlite (uploads, default)
+
+
 async def _fetch_live(
     db: AsyncSession, cache: Any, user_id: str, datasource_id: str, table: str,
-    wanted: list[str], sql: str,
+    wanted: list[str], build_sql: Callable[[str], str],
 ) -> list[dict[str, Any]]:
+    """Resolve the datasource, validate the mapped columns against its schema,
+    then run the dialect-aware SQL through the shared /query guard chain."""
     from app.services import query_service
 
     ds = await datasource_service.get_datasource(db, user_id, datasource_id)
@@ -171,6 +186,7 @@ async def _fetch_live(
     if cols is None:
         raise NexusBIException(f"Cədvəl tapılmadı: {table!r}.")
     _safe_columns(table, wanted, {c["name"] for c in cols})
+    sql = build_sql(ds.db_type.value)
     _, rows = await query_service._guarded_execute(ds, sql, schema, db, user_id)
     return rows
 
@@ -188,16 +204,21 @@ async def retention(
         return await asyncio.to_thread(retention_demo)
     if not (table and entity_col and date_col):
         return dict(_EMPTY_RETENTION)
-    # DISTINCT (entity, date) mirrors the demo's pre-aggregation so we stay well
-    # under the row cap; without it a raw LIMIT would truncate an entity's
-    # earliest event and mis-assign its cohort.
-    sql = (
-        f'SELECT DISTINCT "{entity_col}" AS entity_v, "{date_col}" AS date_v'
-        f' FROM "{table}" LIMIT {MAX_COHORT_ROWS}'
-    )
-    rows = await _fetch_live(db, cache, user_id, datasource_id, table, [entity_col, date_col], sql)
+    # Bucket the date to a month IN SQL and DISTINCT, so the fetched row count
+    # scales with (distinct entities × months) — a few hundred — instead of raw
+    # event rows. Retention only needs each entity's set of active months, so a
+    # full-timestamp DISTINCT (one row per invoice) would needlessly blow the cap.
+    def build(dialect: str) -> str:
+        return (
+            f'SELECT DISTINCT "{entity_col}" AS entity_v, {_month_expr(dialect, date_col)} AS date_v'
+            f' FROM "{table}" LIMIT {MAX_COHORT_ROWS}'
+        )
+
+    rows = await _fetch_live(db, cache, user_id, datasource_id, table, [entity_col, date_col], build)
     if len(rows) >= MAX_COHORT_ROWS:
-        raise NexusBIException("Cədvəl kohort analizi üçün çox böyükdür — əvvəlcə aqreqasiya edin.")
+        raise NexusBIException(
+            "Çox sayda fərqli müştəri×ay — kohort analizi üçün cədvəli əvvəlcə aqreqasiya edin."
+        )
     data = retention_from_rows(rows, "entity_v", "date_v")
     if rows and not data["cohorts"]:
         raise NexusBIException("Tarix sütunu tanınmadı — YYYY-MM-DD formatlı sütun seçin.")
@@ -214,11 +235,14 @@ async def funnel(
         return await asyncio.to_thread(funnel_demo)
     if not (table and entity_col and stage_col):
         return {"steps": []}
-    sql = (
-        f'SELECT "{stage_col}" AS stage, COUNT(DISTINCT "{entity_col}") AS c'
-        f' FROM "{table}" GROUP BY "{stage_col}" LIMIT {MAX_COHORT_ROWS}'
-    )
-    rows = await _fetch_live(db, cache, user_id, datasource_id, table, [entity_col, stage_col], sql)
+    # Already aggregated (one row per stage) — dialect-independent.
+    def build(_dialect: str) -> str:
+        return (
+            f'SELECT "{stage_col}" AS stage, COUNT(DISTINCT "{entity_col}") AS c'
+            f' FROM "{table}" GROUP BY "{stage_col}" LIMIT {MAX_COHORT_ROWS}'
+        )
+
+    rows = await _fetch_live(db, cache, user_id, datasource_id, table, [entity_col, stage_col], build)
     counts = {str(row["stage"]): int(row["c"]) for row in rows if row.get("stage") is not None}
     order = sorted(counts, key=lambda k: counts[k], reverse=True)
     return funnel_from_counts(counts, order)
