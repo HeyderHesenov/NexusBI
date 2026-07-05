@@ -179,3 +179,53 @@ def test_rule_based_fallback_covers_events():
 
     sales = generate_sql_fallback("kateqoriya üzrə gəlir").sql.lower()
     assert "from sales" in sales
+
+
+# ── Relocated-upload self-heal (project-move path fix) ───────────────────── #
+def test_resolve_conn_str_remaps_relocated_sqlite(tmp_path):
+    """A stale absolute path (project moved) self-heals to the file now living
+    in UPLOAD_DIR under the same basename."""
+    import os
+
+    from app.core.security import encrypt_secret
+    from app.models.datasource import DataSource, DBType
+    from app.services import datasource_service as ds_svc
+    from tests.conftest import seed_sqlite_file
+
+    real = seed_sqlite_file("CREATE TABLE t (x INTEGER)")  # sqlite+aiosqlite:///<UPLOAD_DIR>/<uuid>.db
+    basename = os.path.basename(real.split("///")[-1])
+    stale = f"sqlite+aiosqlite:////nonexistent/old/project/{basename}"
+    ds = DataSource(db_type=DBType.sqlite, connection_string_encrypted=encrypt_secret(stale))
+
+    resolved = ds_svc._resolve_conn_str(ds)
+    assert resolved == real  # remapped into the current UPLOAD_DIR
+    assert os.path.exists(resolved.split("///")[-1])
+
+
+def test_resolve_conn_str_missing_file_raises():
+    from app.core.exceptions import DataSourceConnectionError
+    from app.core.security import encrypt_secret
+    from app.models.datasource import DataSource, DBType
+    from app.services import datasource_service as ds_svc
+
+    import pytest as _pytest
+
+    stale = "sqlite+aiosqlite:////nonexistent/old/gone-a1b2c3.db"
+    ds = DataSource(db_type=DBType.sqlite, connection_string_encrypted=encrypt_secret(stale))
+    with _pytest.raises(DataSourceConnectionError):
+        ds_svc._resolve_conn_str(ds)
+
+
+def test_resolve_conn_str_leaves_existing_and_nonsqlite_untouched():
+    from app.core.security import encrypt_secret
+    from app.models.datasource import DataSource, DBType
+    from app.services import datasource_service as ds_svc
+    from tests.conftest import seed_sqlite_file
+
+    real = seed_sqlite_file("CREATE TABLE t (x INTEGER)")
+    ds = DataSource(db_type=DBType.sqlite, connection_string_encrypted=encrypt_secret(real))
+    assert ds_svc._resolve_conn_str(ds) == real  # present → unchanged
+
+    pg = "postgresql+asyncpg://u:p@db.example.com:5432/app"
+    ds2 = DataSource(db_type=DBType.postgresql, connection_string_encrypted=encrypt_secret(pg))
+    assert ds_svc._resolve_conn_str(ds2) == pg  # non-sqlite → untouched

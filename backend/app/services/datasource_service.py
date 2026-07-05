@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -48,6 +49,33 @@ def _assert_sqlite_confined(url) -> None:
         raise DataSourceConnectionError(
             "SQLite yolu icazəli qovluqdan kənardır."
         ) from exc
+
+
+def _resolve_conn_str(ds: DataSource) -> str:
+    """Decrypt the DSN, self-healing a relocated upload.
+
+    Uploaded SQLite files are stored with an ABSOLUTE path (upload_service).
+    If the project directory is moved, that path goes stale even though the
+    file travelled along with it. When the stored file is missing, remap it by
+    basename into the current UPLOAD_DIR (still confined there); if it's truly
+    gone, surface a clean error instead of a raw driver 500."""
+    conn_str = decrypt_secret(ds.connection_string_encrypted)
+    if ds.db_type == DBType.powerbi:
+        return conn_str
+    try:
+        url = make_url(conn_str)
+    except ArgumentError:
+        return conn_str
+    if url.get_backend_name() != "sqlite" or not url.database:
+        return conn_str
+    if os.path.exists(url.database):
+        return conn_str
+    candidate = Path(settings.UPLOAD_DIR).resolve() / Path(url.database).name
+    if candidate.exists():
+        remapped = url.set(database=str(candidate))
+        _assert_sqlite_confined(remapped)  # symlink/escape guard, same as add-time
+        return str(remapped)
+    raise DataSourceConnectionError("Mənbə faylı tapılmadı — faylı yenidən yükləyin.")
 
 
 async def add_datasource(
@@ -140,7 +168,7 @@ async def test_connection(ds: DataSource) -> bool:
             return bool(datasets)
         except Exception as exc:
             raise DataSourceConnectionError("Power BI bağlantısı uğursuz.", detail=str(exc)) from exc
-    conn_str = decrypt_secret(ds.connection_string_encrypted)
+    conn_str = _resolve_conn_str(ds)
     await _guard_conn_str(conn_str)  # re-check at connect time (DNS-rebind window)
     engine = await engine_pool.get_engine(conn_str)
     try:
@@ -164,7 +192,7 @@ async def get_schema_cached(
         cfg = powerbi_config(ds)
         schema = await get_provider().get_model_schema(cfg["dataset_id"])
     else:
-        conn_str = decrypt_secret(ds.connection_string_encrypted)
+        conn_str = _resolve_conn_str(ds)
         await _guard_conn_str(conn_str)
         schema = await get_schema(conn_str)
     await cache.set(f"schema:{ds.id}", schema, ttl=3600)
@@ -194,7 +222,7 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
     names (common in joins) are made unique so no column is silently dropped.
     """
     sql = validate_select_only(sql)
-    conn_str = decrypt_secret(ds.connection_string_encrypted)
+    conn_str = _resolve_conn_str(ds)
     await _guard_conn_str(conn_str)
     engine = await engine_pool.get_engine(conn_str)
     started = time.perf_counter()
