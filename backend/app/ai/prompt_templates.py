@@ -39,6 +39,41 @@ NATURAL LANGUAGE SORĞU:
 {nl_query}
 """.strip()
 
+SQL_REPAIR_SYSTEM_PROMPT = """
+Sen expert SQL analystsən. Əvvəlki SQL sorğusu verilənlər bazasında İCRA XƏTASI
+verdi. Xəta mesajını və schema-nı oxu, SƏBƏBİ tap və DÜZƏLDİLMİŞ SQL yaz.
+
+QAYDALAR:
+- Yalnız SELECT (INSERT/UPDATE/DELETE QADAĞAN).
+- Xətanın konkret səbəbini düzəlt: mövcud olmayan sütun/cədvəl adı, səhv JOIN şərti,
+  tip uyğunsuzluğu, yanlış aqreqat/GROUP BY. Schema-dakı DƏQİQ ad və tiplərə istinad et.
+- İstifadəçinin əsl sualını (aşağıda) qoru — məqsədi dəyişmə, yalnız işləyən SQL yaz.
+- Schema-da olmayan heç bir cədvəl/sütuna istinad etmə. Hədəf dialekt: {dialect}
+- Cavabı YALNIZ JSON formatında ver.
+
+OUTPUT FORMAT (JSON):
+{{
+  "sql": "SELECT ...",
+  "explanation": "Xəta ... idi, düzəliş ...",
+  "confidence": 0.9,
+  "warnings": []
+}}
+""".strip()
+
+SQL_REPAIR_USER_PROMPT = """
+DATABASE SCHEMA:
+{schema}
+{context}
+İSTİFADƏÇİNİN SUALI:
+{nl_query}
+
+UĞURSUZ SQL:
+{failed_sql}
+
+VERİLƏNLƏR BAZASI XƏTASI:
+{db_error}
+""".strip()
+
 TEXT2DAX_SYSTEM_PROMPT = """
 Sen Power BI üzrə expert analyst və DAX mütəxəssisisən.
 Verilmiş tabular model və natural language sorğu əsasında DƏQİQ bir DAX query yaz.

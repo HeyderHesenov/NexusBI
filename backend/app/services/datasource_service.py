@@ -19,7 +19,11 @@ from app.ai.schema_introspector import format_schema_for_prompt, get_schema
 from app.ai.sql_guard import validate_select_only
 from app.config import settings
 from app.core import metrics, net_guard
-from app.core.exceptions import DataSourceConnectionError, SchemaNotFoundError
+from app.core.exceptions import (
+    DataSourceConnectionError,
+    QueryExecutionError,
+    SchemaNotFoundError,
+)
 from app.db import engine_pool
 from app.core.logging import get_logger
 from app.core.security import decrypt_secret, encrypt_secret
@@ -237,7 +241,16 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
                 await conn.execute(text(f"SET statement_timeout = {timeout * 1000}"))
             elif ds.db_type == DBType.mysql:
                 await conn.execute(text(f"SET max_execution_time = {timeout * 1000}"))
-            result = await asyncio.wait_for(conn.execute(text(sql)), timeout=timeout + 2)
+            try:
+                result = await asyncio.wait_for(conn.execute(text(sql)), timeout=timeout + 2)
+            except (TimeoutError, asyncio.TimeoutError) as exc:
+                metrics.sql_executions_total.labels("error").inc()
+                # A timeout is NOT repairable — the SQL is fine, the source is slow.
+                raise DataSourceConnectionError("Sorğu vaxt aşımına uğradı.", detail=str(exc)) from exc
+            except Exception as exc:
+                metrics.sql_executions_total.labels("error").inc()
+                # The DB rejected the query (bad column/join/type/syntax) → repairable.
+                raise QueryExecutionError("Sorğu icra olunmadı.", detail=str(exc)) from exc
             columns = _dedupe_columns(list(result.keys()))
             raw = result.fetchmany(MAX_RESULT_ROWS)
             rows = [dict(zip(columns, r)) for r in raw]
@@ -249,9 +262,12 @@ async def execute_select(ds: DataSource, sql: str) -> tuple[list[str], list[dict
         )
         metrics.sql_executions_total.labels("success").inc()
         return columns, rows
+    except DataSourceConnectionError:
+        raise  # already classified (timeout / query error) — don't re-wrap
     except Exception as exc:
+        # Failure to connect/open the source (not the query itself) → not repairable.
         metrics.sql_executions_total.labels("error").inc()
-        raise DataSourceConnectionError("Sorğu icra olunmadı.", detail=str(exc)) from exc
+        raise DataSourceConnectionError("Bağlantı uğursuz.", detail=str(exc)) from exc
 
 
 def schema_as_prompt(schema: dict[str, Any]) -> str:

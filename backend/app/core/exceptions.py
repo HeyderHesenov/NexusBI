@@ -32,6 +32,13 @@ class DataSourceConnectionError(NexusBIException):
     status_code = 502
 
 
+class QueryExecutionError(DataSourceConnectionError):
+    """The SQL ran but the DB rejected it (bad column/join/type/syntax). Distinct
+    from a connection/timeout failure so callers can REPAIR it (feed the error back
+    to the model) rather than pointlessly retrying an unreachable/slow source.
+    Subclasses DataSourceConnectionError so existing handlers still catch it."""
+
+
 class AIGenerationError(NexusBIException):
     status_code = 502
 

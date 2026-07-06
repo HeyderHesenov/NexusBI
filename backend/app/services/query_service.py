@@ -17,7 +17,7 @@ from app.ai.text2dax import Text2DAXEngine
 from app.ai.text2sql import Text2SQLEngine
 from app.ai.types import ChartConfig, Text2SQLResult
 from app.config import settings
-from app.core.exceptions import AIGenerationError, NexusBIException
+from app.core.exceptions import AIGenerationError, NexusBIException, QueryExecutionError
 from app.core.logging import get_logger
 from app.models.datasource import DBType
 from app.models.query_log import QueryLog
@@ -429,16 +429,47 @@ async def _live_pipeline(
     sql_result = await _generate_sql_cached(
         nl_query, schema_text, ds.db_type.value, extra_context, cache
     )
-    # Guard chain (allowlist + per-viewer RLS). The original (unconstrained) SQL is
-    # what we persist/show — RLS is per-viewer and re-applied on every execution,
-    # not baked into the stored query.
-    try:
-        columns, rows = await _guarded_execute(ds, sql_result.sql, schema, db, user_id)
-    except NexusBIException as exc:
-        # Surface the AI-generated SQL so the user can see what failed.
-        exc.sql = sql_result.sql
-        raise
-    return sql_result.sql, columns, rows, "sql"
+    # Guard chain (allowlist + per-viewer RLS) + self-repair. The original
+    # (unconstrained) SQL is what we persist/show — RLS is per-viewer and re-applied
+    # on every execution, not baked into the stored query. On an EXECUTION error (bad
+    # column/join/type), feed the DB error back to the model and retry the corrected SQL.
+    sql = sql_result.sql
+    did_repair = False
+    for attempt in range(settings.SQL_REPAIR_MAX_ATTEMPTS + 1):
+        try:
+            columns, rows = await _guarded_execute(ds, sql, schema, db, user_id)
+            break
+        except QueryExecutionError as exc:
+            # The DB rejected the SQL (bad column/join/type) — repairable. (A timeout or
+            # connection failure is a plain DataSourceConnectionError → falls through below.)
+            if attempt >= settings.SQL_REPAIR_MAX_ATTEMPTS:
+                exc.sql = sql  # surface the last failing SQL to the user
+                raise
+            _log.info(
+                "sql_repair_attempt", attempt=attempt + 1,
+                error=str(exc.detail or exc.message)[:200],
+            )
+            try:
+                sql_result = await _engine.repair_sql(
+                    nl_query, sql, exc.detail or exc.message,
+                    schema_text, ds.db_type.value, extra_context,
+                )
+            except AIGenerationError as rexc:
+                _log.warning("sql_repair_failed", error=str(rexc.detail or rexc.message)[:200])
+                exc.sql = sql
+                raise exc
+            sql = sql_result.sql
+            did_repair = True
+        except NexusBIException as exc:
+            # Allowlist/RLS/connection/timeout failure — not a repairable execution error.
+            exc.sql = sql
+            raise
+    # A repair produced working SQL → overwrite the generation cache so the next
+    # identical question uses it directly instead of repairing again.
+    if did_repair:
+        key = _sqlgen_key(schema_text, ds.db_type.value, extra_context, nl_query)
+        await cache.set(key, sql_result.model_dump(), ttl=settings.SQLGEN_CACHE_TTL_SECONDS)
+    return sql, columns, rows, "sql"
 
 
 def _dax_schema_text(schema: dict[str, Any]) -> str:

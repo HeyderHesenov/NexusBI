@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     CACHE_TTL_SECONDS: int = Field(default=300)  # query result cache TTL
     SQLGEN_CACHE_TTL_SECONDS: int = Field(default=900)  # NL→SQL generation cache TTL
     QUERY_TIMEOUT_SECONDS: int = Field(default=15)  # hard cap on a single SELECT
+    SQL_REPAIR_MAX_ATTEMPTS: int = Field(default=2, ge=0)  # LLM self-repairs after a DB exec error
 
     # ─── Datasource connection pooling ───
     DATASOURCE_POOL_SIZE: int = Field(default=5)
