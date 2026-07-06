@@ -52,9 +52,6 @@ const ExperimentsPage = lazy(() =>
 const InsightsPage = lazy(() =>
   import('./pages/InsightsPage').then((m) => ({ default: m.InsightsPage })),
 )
-const CohortPage = lazy(() =>
-  import('./pages/CohortPage').then((m) => ({ default: m.CohortPage })),
-)
 const GraphPage = lazy(() =>
   import('./pages/GraphPage').then((m) => ({ default: m.GraphPage })),
 )
@@ -139,7 +136,6 @@ export default function App() {
               <Route path="/decisions" element={<DecisionsPage />} />
               <Route path="/experiments" element={<ExperimentsPage />} />
               <Route path="/insights" element={<InsightsPage />} />
-              <Route path="/cohort" element={<CohortPage />} />
               <Route path="/graph" element={<GraphPage />} />
               <Route path="/twin" element={<TwinPage />} />
               <Route path="/ba-studio" element={<BAStudioPage />} />

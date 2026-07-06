@@ -187,7 +187,7 @@ def test_all_new_tools_registered_with_handlers():
     expected = {
         "search_assets", "list_ml_models", "list_experiments", "list_decisions",
         "list_contracts", "list_saved_queries", "train_ml_model", "predict_ml",
-        "generate_ba_artifact", "cohort_funnel", "cohort_retention",
+        "generate_ba_artifact",
         "capture_snapshot", "create_experiment", "create_decision",
         "measure_decision", "scan_insights", "run_data_contract",
         "evaluate_metric_tree", "simulate_metric_tree", "create_alert",
@@ -257,22 +257,6 @@ async def test_simulate_metric_tree_pct_zero_is_applied_not_unknown(client: Asyn
         )
     assert out["applied"] == ["Satış"]  # explicit no-op is a MATCH, not unknown
     assert out["unknown_leaves"] == []
-
-
-async def test_copilot_runs_cohort_funnel_tool(client: AsyncClient, auth: dict, monkeypatch):
-    _queue_messages(monkeypatch, [
-        _FakeMsg(tool_calls=[_FakeToolCall("c1", "cohort_funnel", "{}")]),
-        _FakeMsg(content="Huni hazırdır."),
-    ])
-    resp = await client.post(
-        "/api/v1/copilot/chat",
-        json={"message": "funnel göstər", "history": [], "mode": "execute"},
-        headers=auth,
-    )
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert body["reply"] == "Huni hazırdır."
-    assert any(a["type"] == "cohort" for a in body["actions"])
 
 
 async def test_copilot_trains_ml_model_and_surfaces_chip(client: AsyncClient, auth: dict, monkeypatch):

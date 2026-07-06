@@ -1,7 +1,7 @@
 """Agentic BI copilot: a bounded tool-calling loop over existing services.
 
 The model can drive every product feature — queries, dashboards, AutoML,
-BA Studio, cohort analytics, snapshots, A/B tests, decisions, insights, data
+BA Studio, snapshots, A/B tests, decisions, insights, data
 contracts, the metric tree / twin simulation, alerts. Every tool is owner-scoped
 (the user_id is injected by the loop, never taken from the model) and the loop
 is hard-capped at COPILOT_MAX_STEPS so it always terminates. Tools add no new
@@ -271,23 +271,6 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "required": ["framework"],
             },
-        },
-    },
-    # ── Kohort & Funnel ──
-    {
-        "type": "function",
-        "function": {
-            "name": "cohort_funnel",
-            "description": "Müştəri hunisini qaytarır (visit→signup→trial→purchase, drop%-lə).",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "cohort_retention",
-            "description": "Aylıq kohort retensiya xülasəsini qaytarır.",
-            "parameters": {"type": "object", "properties": {}},
         },
     },
     # ── Snapshot / Zaman maşını ──
@@ -704,28 +687,6 @@ class _ToolContext:
             mermaid = str(c.get("mermaid") or "")
             summary["edge_count"] = mermaid.count("-->")
         return summary
-
-    # ── Kohort ──
-
-    async def cohort_funnel(self, _args: dict[str, Any]) -> dict[str, Any]:
-        import asyncio
-
-        from app.services import cohort_service
-
-        data = await asyncio.to_thread(cohort_service.funnel_demo)
-        self.actions.append({"type": "cohort", "label": "Funnel hesablandı"})
-        return data
-
-    async def cohort_retention(self, _args: dict[str, Any]) -> dict[str, Any]:
-        import asyncio
-
-        from app.services import cohort_service
-
-        data = await asyncio.to_thread(cohort_service.retention_demo)
-        # Summarise: full matrix is big; the model only needs the headline.
-        cohorts = data.get("cohorts") or []
-        self.actions.append({"type": "cohort", "label": "Retensiya hesablandı"})
-        return {"cohort_count": len(cohorts), "first_cohorts": cohorts[:3]}
 
     # ── Snapshot ──
 

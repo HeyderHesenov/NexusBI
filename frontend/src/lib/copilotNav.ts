@@ -1,7 +1,7 @@
 import type { CopilotAction } from '../api/copilot'
 
 /** Copilot action chip → route. Id-keyed entries win; type-keyed entries cover
- * chips without their own page object (digest, cohort, twin, insights).
+ * chips without their own page object (digest, twin, insights).
  * BA/AutoML deep-open the created object via ?open= (their pages read it). */
 export function copilotNavTarget(a: CopilotAction): string | null {
   if (a.ml_model_id) return `/automl?open=${a.ml_model_id}`
@@ -16,8 +16,6 @@ export function copilotNavTarget(a: CopilotAction): string | null {
   switch (a.type) {
     case 'insight':
       return '/insights'
-    case 'cohort':
-      return '/cohort'
     case 'metric_tree':
       return '/metric-tree' // a plain evaluate is a read of the tree, not a scenario
     case 'twin':

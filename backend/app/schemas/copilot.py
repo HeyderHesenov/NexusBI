@@ -31,7 +31,7 @@ class CopilotRequest(BaseModel):
 class CopilotAction(BaseModel):
     # query | dashboard | widget | share | saved_query | metric | digest |
     # ml_model | ba_artifact | experiment | decision | contract | insight |
-    # cohort | metric_tree | snapshot | alert
+    # metric_tree | snapshot | alert
     type: str
     label: str
     dashboard_id: str | None = None
