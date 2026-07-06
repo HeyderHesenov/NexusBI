@@ -117,51 +117,8 @@ CHART TİPİ: {chart_type}
 DATA: {data}
 """.strip()
 
-ANOMALY_DETECTOR_PROMPT = """
-Sen data analyst kimi data seriyasında anomaliyaları (qeyri-adi yüksək/aşağı
-dəyərlər, kəskin sıçrayış, qırılma) aşkar edirsən.
-Hər anomaliya üçün label (sətrin etiketi), value (dəyər), severity
-(low | medium | high) və qısa səbəb yaz. Anomaliya yoxdursa boş siyahı qaytar.
-Sorğu hansı dildədirsə, explanation da o dildə olsun.
-
-OUTPUT FORMAT (JSON):
-{{
-  "anomalies": [
-    {{"label": "Mart", "value": 980, "severity": "high", "explanation": "Aylıq ortadan 3x yüksək"}}
-  ],
-  "summary": "1 yüksək anomaliya tapıldı."
-}}
-""".strip()
-
-ANOMALY_DETECTOR_USER_PROMPT = """
-SORĞU: {nl_query}
-ETİKET SÜTUNU: {label_col}
-DƏYƏR SÜTUNU: {value_col}
-DATA: {data}
-""".strip()
-
-FORECAST_PROMPT = """
-Sen time-series forecasting expertisən. Verilmiş tarixi seriyaya əsasən növbəti
-{periods} dövrü proqnozlaşdır. Hər proqnoz nöqtəsi üçün label, value və 80%
-güvən intervalı (lower, upper) ver. Trend və mövsümiliyi nəzərə al.
-Sorğu hansı dildədirsə, narrative da o dildə olsun.
-
-OUTPUT FORMAT (JSON):
-{{
-  "forecast": [
-    {{"label": "İyul", "value": 1200, "lower": 1050, "upper": 1350}}
-  ],
-  "narrative": "Artım trendi davam edir; növbəti dövrdə ~1200 gözlənilir."
-}}
-""".strip()
-
-FORECAST_USER_PROMPT = """
-SORĞU: {nl_query}
-ETİKET SÜTUNU: {label_col}
-DƏYƏR SÜTUNU: {value_col}
-DÖVR SAYI: {periods}
-TARİXİ DATA: {data}
-""".strip()
+# NOTE: anomaly detection and forecasting are now deterministic statistics
+# (see app/ai/analysis.py + app/services/stats.py) — no LLM prompts here.
 
 EXPLAIN_PROMPT = """
 Sen senior biznes analitiksən. Verilmiş nəticə üçün KÖK-SƏBƏB analizi apar:

@@ -36,6 +36,7 @@ class ForecastResponse(BaseModel):
     narrative: str = ""
     label_col: str
     value_col: str
+    method: str = ""  # "trend" | "trend+seasonalN" | "naive"
     history: list[dict[str, Any]] = Field(default_factory=list)
 
 

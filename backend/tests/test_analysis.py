@@ -1,4 +1,5 @@
-"""Anomaly + forecast endpoint tests — AI mocked, quota counted."""
+"""Anomaly + forecast + explain endpoint tests. Anomaly/forecast are now
+deterministic statistics (no AI); only explain still mocks the LLM."""
 from __future__ import annotations
 
 import pytest
@@ -38,22 +39,17 @@ async def _make_query(client: AsyncClient, auth: dict) -> str:
     return resp.json()["query_log_id"]
 
 
-async def test_anomalies_endpoint(client, auth, monkeypatch):
-    async def fake_chat_json(system, user, **kw):
-        return {
-            "anomalies": [
-                {"label": "Laptop", "value": 9999, "severity": "high", "explanation": "ortadan yüksək"}
-            ],
-            "summary": "1 anomaliya tapıldı.",
-        }
-
-    monkeypatch.setattr(analysis, "chat_json", fake_chat_json)
+async def test_anomalies_endpoint(client, auth):
+    """No AI mock — anomaly flagging is a deterministic MAD z-score."""
     qid = await _make_query(client, auth)
     resp = await client.post(f"/api/v1/query/{qid}/anomalies", headers=auth)
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["anomalies"][0]["severity"] == "high"
     assert body["value_col"] == "total"
+    assert isinstance(body["anomalies"], list)
+    assert body["summary"]  # always an honest summary, even when none found
+    for a in body["anomalies"]:
+        assert a["severity"] in {"high", "medium", "low"}
 
 
 async def test_explain_endpoint(client, auth, monkeypatch):
@@ -74,19 +70,16 @@ async def test_explain_endpoint(client, auth, monkeypatch):
     assert body["summary"]
 
 
-async def test_forecast_endpoint(client, auth, monkeypatch):
-    async def fake_chat_json(system, user, **kw):
-        return {
-            "forecast": [{"label": "Next", "value": 1200, "lower": 1000, "upper": 1400}],
-            "narrative": "Artım gözlənilir.",
-        }
-
-    monkeypatch.setattr(analysis, "chat_json", fake_chat_json)
+async def test_forecast_endpoint(client, auth):
+    """No AI mock — forecast is a deterministic trend model with an interval."""
     qid = await _make_query(client, auth)
     resp = await client.post(
         f"/api/v1/query/{qid}/forecast", json={"periods": 3}, headers=auth
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["forecast"][0]["value"] == 1200
+    assert len(body["forecast"]) == 3
     assert len(body["history"]) == 5
+    assert body["method"]
+    for p in body["forecast"]:
+        assert p["lower"] <= p["value"] <= p["upper"]  # value sits inside its interval

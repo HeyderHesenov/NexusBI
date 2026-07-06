@@ -124,22 +124,110 @@ def bh_fdr(p_values: list[float], q: float = 0.05) -> list[bool]:
     return [bool(a < q) for a in adjusted]
 
 
-def zscore_outliers(values: list[float], threshold: float = 3.5) -> list[int]:
-    """Indices flagged as outliers by the MAD-based MODIFIED z-score. Robust to
-    the masking effect (a classic mean/std z-score caps at (n-1)/sqrt(n), so it
-    can't flag a lone outlier when n<=8 — the modified z-score has no such ceiling).
-    Empty if the sample is too small or has no spread."""
+def modified_zscores(values: list[float]) -> list[float]:
+    """Per-point MAD-based modified z-score (robust). Falls back to a mean/std
+    z-score when >half the values are identical (MAD=0). Empty for empty input.
+    Shared by `zscore_outliers` (flagging) and the anomaly detail (severity),
+    so the two can never disagree on the same series."""
     arr = np.asarray(values, dtype=float)
-    if arr.size < 4:
+    if arr.size == 0:
         return []
-    median = np.median(arr)
-    mad = np.median(np.abs(arr - median))
+    median = float(np.median(arr))
+    mad = float(np.median(np.abs(arr - median)))
     if mad > 0:
-        mz = 0.6745 * np.abs(arr - median) / mad
-        return [int(i) for i in np.where(mz > threshold)[0]]
-    # >half the values are identical → fall back to std-based if any spread remains.
-    sd = arr.std()
+        return (0.6745 * np.abs(arr - median) / mad).tolist()
+    sd = float(arr.std())
     if sd == 0:
+        return [0.0] * int(arr.size)
+    return (np.abs(arr - arr.mean()) / sd).tolist()
+
+
+def _autocorr(y: np.ndarray, lag: int) -> float:
+    """Lag-`lag` autocorrelation of a mean-centred series (0 if degenerate)."""
+    yc = y - y.mean()
+    denom = float(np.sum(yc * yc))
+    if denom == 0 or lag >= yc.size:
+        return 0.0
+    return float(np.sum(yc[lag:] * yc[:-lag]) / denom)
+
+
+def _detect_period(residual: np.ndarray, candidates: tuple[int, ...] = (12, 7, 4)) -> int | None:
+    """Pick a seasonal period whose autocorrelation on the detrended series is
+    strong (>0.3) and needs ≥2 full cycles of data. None → no seasonality."""
+    n = residual.size
+    best, best_ac = None, 0.3
+    for m in candidates:
+        if n >= 2 * m:
+            ac = _autocorr(residual, m)
+            if ac > best_ac:
+                best, best_ac = m, ac
+    return best
+
+
+# 80% two-sided prediction interval (matches the "80% band" the UI renders).
+_Z80 = 1.2815515594457831
+
+
+def forecast_series(values: list[float], periods: int, z: float = _Z80) -> dict:
+    """Deterministic statistical forecast — linear trend + optional additive
+    seasonality (classical decomposition), with residual-based prediction
+    intervals. No AI, reproducible. Returns
+    ``{"points": [{"yhat","lower","upper"}], "method", "resid_std"}``.
+
+    Small samples degrade gracefully: n<3 → naive (last value) with a spread-based
+    band. The interval widens with horizon (√(1+h/n)) to reflect extrapolation risk.
+    """
+    y = np.asarray([v for v in values if v is not None], dtype=float)
+    y = y[np.isfinite(y)]
+    n = int(y.size)
+    if n == 0:
+        return {"points": [], "method": "empty", "resid_std": 0.0, "z": z}
+    if n < 3:
+        last = float(y[-1])
+        spread = float(np.std(y)) if n > 1 else abs(last) * 0.1
+        if spread == 0:
+            spread = abs(last) * 0.1 + 1.0
+        band = z * spread
+        pts = [{"yhat": last, "lower": last - band, "upper": last + band} for _ in range(periods)]
+        return {"points": pts, "method": "naive", "resid_std": float(spread), "z": z}
+
+    x = np.arange(n, dtype=float)
+    slope, intercept = np.polyfit(x, y, 1)
+    trend = intercept + slope * x
+    m = _detect_period(y - trend)
+    seasonal_idx = None
+    method = "trend"
+    if m:
+        detr = y - trend
+        seasonal_idx = np.array([detr[j::m].mean() for j in range(m)], dtype=float)
+        seasonal_idx = seasonal_idx - seasonal_idx.mean()
+        fitted = trend + seasonal_idx[(x % m).astype(int)]
+        method = f"trend+seasonal{m}"
+    else:
+        fitted = trend
+
+    resid = y - fitted
+    resid_std = float(np.std(resid, ddof=1)) if n > 2 else float(np.std(resid))
+    if resid_std == 0:
+        resid_std = abs(float(y.mean())) * 0.02 + 1e-9  # avoid a zero-width band
+
+    pts = []
+    for h in range(1, periods + 1):
+        t = n - 1 + h
+        yhat = float(intercept + slope * t)
+        if seasonal_idx is not None:
+            yhat += float(seasonal_idx[t % m])
+        band = z * resid_std * (1.0 + h / n) ** 0.5
+        pts.append({"yhat": yhat, "lower": yhat - band, "upper": yhat + band})
+    return {"points": pts, "method": method, "resid_std": resid_std, "z": z}
+
+
+def zscore_outliers(values: list[float], threshold: float = 3.5) -> list[int]:
+    """Indices flagged as outliers by the MAD-based MODIFIED z-score (delegates to
+    `modified_zscores`, so flagging and severity can't drift). Robust to the masking
+    effect (a classic mean/std z-score caps at (n-1)/sqrt(n), so it can't flag a lone
+    outlier when n<=8 — the modified z-score has no such ceiling). Empty if the sample
+    is too small (<4) or has no spread."""
+    if len(values) < 4:
         return []
-    z = np.abs((arr - arr.mean()) / sd)
-    return [int(i) for i in np.where(z > threshold)[0]]
+    return [i for i, mz in enumerate(modified_zscores(values)) if mz > threshold]
