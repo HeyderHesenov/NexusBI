@@ -1106,5 +1106,10 @@
     "deleted": "Model silindi.",
     "emptyTitle": "Henüz model yok",
     "emptyBody": "Soldan tablo ve hedef sütunu seçip modeli eğitin — sonuç burada görünecek."
+  },
+  "statFacts": {
+    "total": "Toplam",
+    "trend": "Dönem Δ",
+    "anomaly": "Anomali"
   }
 }

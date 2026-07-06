@@ -1106,5 +1106,10 @@
     "deleted": "Model deleted.",
     "emptyTitle": "No model yet",
     "emptyBody": "Pick a table and target column on the left and train — the result shows up here."
+  },
+  "statFacts": {
+    "total": "Total",
+    "trend": "Period Δ",
+    "anomaly": "Anomalies"
   }
 }

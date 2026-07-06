@@ -8,7 +8,6 @@ can't be reproduced; real BI needs math it can stand behind.
 from __future__ import annotations
 
 import json
-import math
 import re
 from typing import Any
 
@@ -36,33 +35,6 @@ def pick_series(columns: list[str], rows: list[dict[str, Any]]) -> tuple[str, st
     return label_col, value_col
 
 
-def _to_float(v: Any) -> float | None:
-    """Coerce to a FINITE float, else None. Rejecting nan/inf here is the single
-    guard that keeps them out of both the forecast and anomaly series (a lone NaN
-    would otherwise poison the median and silently disable anomaly detection)."""
-    if isinstance(v, bool):
-        return None
-    try:
-        f = float(v) if isinstance(v, _NUMERIC) else float(str(v).replace(",", ""))
-    except (TypeError, ValueError):
-        return None
-    return f if math.isfinite(f) else None
-
-
-def _fmt(v: float) -> str:
-    """Compact human number for narrative text (no locale dependency)."""
-    if not math.isfinite(v):
-        return "—"
-    a = abs(v)
-    if a >= 1_000_000:
-        return f"{v / 1_000_000:.1f}M"
-    if a >= 1_000:
-        return f"{v / 1_000:.1f}K"
-    if a == int(a):
-        return str(int(v))
-    return f"{v:.2f}"
-
-
 def _future_labels(existing: list[str], periods: int) -> list[str]:
     """Continue the x-axis: increment YYYY-MM month labels, else '+1..+N'."""
     last = existing[-1] if existing else ""
@@ -84,7 +56,7 @@ async def detect_anomalies(
 ) -> dict[str, Any]:
     """Flag anomalous points via the MAD-based modified z-score (robust, no AI)."""
     label_col, value_col = pick_series(columns, rows)
-    coerced = [_to_float(r.get(value_col)) for r in rows]
+    coerced = [stats.to_float(r.get(value_col)) for r in rows]
     idx = [i for i, v in enumerate(coerced) if v is not None]
     series = [coerced[i] for i in idx]
 
@@ -105,7 +77,7 @@ async def detect_anomalies(
             "value": value,
             "severity": severity,
             "explanation": (
-                f"Median {_fmt(median)} — bu nöqtə {direction} {score:.1f} modifikasiyalı-z "
+                f"Median {stats.compact_number(median)} — bu nöqtə {direction} {score:.1f} modifikasiyalı-z "
                 f"(robust MAD) ilə kənardır."
             ),
         })
@@ -131,7 +103,7 @@ async def forecast(
     """Project the next `periods` points statistically (trend + seasonality) with
     an 80% prediction interval — deterministic, no AI."""
     label_col, value_col = pick_series(columns, rows)
-    values = [v for v in (_to_float(r.get(value_col)) for r in rows) if v is not None]
+    values = [v for v in (stats.to_float(r.get(value_col)) for r in rows) if v is not None]
     if not values:
         raise AIGenerationError("Proqnoz üçün ədədi data yoxdur.")
 
@@ -166,10 +138,10 @@ def _forecast_narrative(values: list[float], fc: dict, periods: int) -> str:
     parts = [f"{periods} dövrlük {method_label} proqnozu."]
     if last:
         step = (nxt - last) / abs(last) * 100
-        parts.append(f"Növbəti dövr ≈ {_fmt(nxt)} ({step:+.1f}%).")
+        parts.append(f"Növbəti dövr ≈ {stats.compact_number(nxt)} ({step:+.1f}%).")
     horizon = (end - last) / abs(last) * 100 if last else 0.0
-    parts.append(f"Dövr sonuna ≈ {_fmt(end)} ({horizon:+.1f}%).")
-    parts.append(f"±{_fmt(fc['resid_std'] * fc['z'])} 80% interval (qalıq əsaslı).")
+    parts.append(f"Dövr sonuna ≈ {stats.compact_number(end)} ({horizon:+.1f}%).")
+    parts.append(f"±{stats.compact_number(fc['resid_std'] * fc['z'])} 80% interval (qalıq əsaslı).")
     return " ".join(parts)
 
 

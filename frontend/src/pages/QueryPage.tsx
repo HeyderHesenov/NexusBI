@@ -5,6 +5,7 @@ import { ChartView } from '../components/charts/ChartView'
 import { HistoryDeleteUI } from '../components/query/HistoryDeleteUI'
 import { useHistoryDelete } from '../hooks/useHistoryDelete'
 import { TypewriterText } from '../components/charts/TypewriterText'
+import { StatFactChips } from '../components/charts/StatFactChips'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
 import { CreateDecisionModal } from '../components/query/CreateDecisionModal'
 import { DatasourcePicker } from '../components/query/DatasourcePicker'
@@ -254,16 +255,19 @@ function TurnCard({
         <p className="pt-0.5 text-sm font-medium text-ink">{q}</p>
       </div>
 
-      {result.insight && (
+      {(result.insight || (result.stats_facts?.length ?? 0) > 0) && (
         <div className="flex gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-5 py-4">
           <Lightbulb size={18} className="mt-0.5 shrink-0 text-accent" />
-          <div>
+          <div className="min-w-0">
             <p className="eyebrow mb-1 text-accent">{t('queryPage.insight')}</p>
-            <TypewriterText
-              key={result.query_log_id ?? result.insight}
-              text={result.insight}
-              className="text-sm leading-relaxed text-ink"
-            />
+            {result.insight && (
+              <TypewriterText
+                key={result.query_log_id ?? result.insight}
+                text={result.insight}
+                className="text-sm leading-relaxed text-ink"
+              />
+            )}
+            <StatFactChips facts={result.stats_facts ?? []} />
           </div>
         </div>
       )}

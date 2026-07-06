@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.chart_selector import rule_based_chart, select_chart_type
 from app.ai.insight_generator import generate_insight
+from app.services.insight_facts import compute_facts
 from app.ai import sql_guard
 from app.ai.text2dax import Text2DAXEngine
 from app.ai.text2sql import Text2SQLEngine
@@ -20,7 +21,7 @@ from app.core.exceptions import AIGenerationError, NexusBIException
 from app.core.logging import get_logger
 from app.models.datasource import DBType
 from app.models.query_log import QueryLog
-from app.schemas.query import ColumnInfo, QueryResult
+from app.schemas.query import ColumnInfo, QueryResult, StatFact
 from app.services import datasource_service as ds_service
 from app.services import metric_service
 from app.services.cache_service import CacheService, build_cache_service
@@ -393,6 +394,11 @@ async def _finalize(
     await db.flush()
     await db.refresh(log)
 
+    # Deterministic computed facts (total / top / period Δ / anomalies), computed from
+    # the response `rows` so they always match the data the chart shows (full result on a
+    # miss, snapshot on a hit — same rows the response carries in each case).
+    stats_facts = [StatFact(**f) for f in compute_facts(columns, rows)]
+
     return QueryResult(
         sql=sql,
         query_language=query_language,
@@ -400,6 +406,7 @@ async def _finalize(
         columns=[ColumnInfo(name=c, type="unknown") for c in columns],
         chart_config=chart_config,
         insight=insight,
+        stats_facts=stats_facts,
         execution_time_ms=elapsed_ms,
         query_log_id=log.id,
         from_cache=from_cache,

@@ -1106,5 +1106,10 @@
     "deleted": "Model silindi.",
     "emptyTitle": "Hələ model yoxdur",
     "emptyBody": "Solda cədvəl və hədəf sütunu seçib modeli öyrədin — nəticə burada görünəcək."
+  },
+  "statFacts": {
+    "total": "Cəmi",
+    "trend": "Dövr Δ",
+    "anomaly": "Anomaliya"
   }
 }

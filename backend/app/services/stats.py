@@ -15,6 +15,34 @@ from scipy import stats as _sp
 MIN_SAMPLE = 20  # below this, a result is "directional, not conclusive"
 
 
+def to_float(v: object) -> float | None:
+    """Coerce to a FINITE float, else None. Rejecting nan/inf here is the single
+    guard that keeps them out of every downstream series (a lone NaN would poison a
+    median; an inf would leak a non-JSON value). Shared by forecast/anomaly/insight."""
+    if isinstance(v, bool):
+        return None
+    try:
+        f = float(v) if isinstance(v, (int, float)) else float(str(v).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+    return f if np.isfinite(f) else None
+
+
+def compact_number(v: float) -> str:
+    """Compact human number (5.5K / 1.2M) for narratives and stat chips — no locale
+    dependency. Non-finite → '—'."""
+    if not np.isfinite(v):
+        return "—"
+    a = abs(v)
+    if a >= 1_000_000:
+        return f"{v / 1_000_000:.1f}M"
+    if a >= 1_000:
+        return f"{v / 1_000:.1f}K"
+    if a == int(a):
+        return str(int(v))
+    return f"{v:.2f}"
+
+
 @dataclass(frozen=True)
 class TestResult:
     statistic: float

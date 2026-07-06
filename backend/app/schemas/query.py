@@ -29,6 +29,12 @@ class RawSQLRequest(BaseModel):
     label: str | None = Field(default=None, max_length=200)
 
 
+class StatFact(BaseModel):
+    kind: str  # total | top | trend | anomaly
+    label: str
+    value: str
+
+
 class QueryResult(BaseModel):
     sql: str
     # "sql" for database sources, "dax" for Power BI sources (UI labels it).
@@ -37,6 +43,8 @@ class QueryResult(BaseModel):
     columns: list[ColumnInfo]
     chart_config: ChartConfig
     insight: str = ""
+    # Deterministic computed facts (math, not LLM) shown as chips under the insight.
+    stats_facts: list[StatFact] = Field(default_factory=list)
     execution_time_ms: int = 0
     query_log_id: str | None = None
     from_cache: bool = False

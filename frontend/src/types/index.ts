@@ -21,6 +21,12 @@ export interface ChartConfig {
   reasoning?: string
 }
 
+export interface StatFact {
+  kind: 'total' | 'top' | 'trend' | 'anomaly'
+  label: string
+  value: string
+}
+
 export interface QueryResult {
   sql: string
   query_language?: 'sql' | 'dax'
@@ -28,6 +34,7 @@ export interface QueryResult {
   columns: ColumnInfo[]
   chart_config: ChartConfig
   insight: string
+  stats_facts?: StatFact[]
   execution_time_ms: number
   query_log_id: string | null
   from_cache?: boolean
