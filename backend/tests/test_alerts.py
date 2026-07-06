@@ -32,10 +32,28 @@ def test_evaluate_logic():
     from app.models.alert import Alert
     from app.services import alert_service
 
-    a = Alert(column="total", operator=">", threshold=100)
+    a = Alert(column="total", operator=">", threshold=100, condition_type="static")
     assert alert_service.evaluate(a, [{"total": 50}, {"total": 200}]) is True
     assert alert_service.evaluate(a, [{"total": 50}, {"total": 80}]) is False
     assert alert_service.evaluate(a, [{"other": 999}]) is False  # missing column
+
+
+def test_evaluate_anomaly_fires_on_outlier_last_point():
+    from app.models.alert import Alert
+    from app.services import alert_service
+
+    a = Alert(column="total", condition_type="anomaly")
+    # Stable series that ENDS in a spike → fires.
+    spike = [{"total": v} for v in [100, 102, 98, 101, 99, 103, 500]]
+    assert alert_service.evaluate(a, spike) is True
+    # Same values but the spike is NOT the last point → does not fire (latest is normal).
+    mid = [{"total": v} for v in [100, 500, 98, 101, 99, 103, 100]]
+    assert alert_service.evaluate(a, mid) is False
+    # Smooth series → no anomaly.
+    smooth = [{"total": v} for v in [100, 101, 102, 103, 104, 105]]
+    assert alert_service.evaluate(a, smooth) is False
+    # Too few points → never fires.
+    assert alert_service.evaluate(a, [{"total": 1}, {"total": 999}]) is False
 
 
 async def test_alert_fires_notification(client: AsyncClient, auth: dict):

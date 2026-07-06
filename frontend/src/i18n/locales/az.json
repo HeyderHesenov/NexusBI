@@ -707,7 +707,11 @@
     "subtitle": "Sorğunu bir kliklə yenidən işlət və ya avto-yeniləmə cədvəli təyin et.",
     "thresholdLabel": "Hədd",
     "thresholdPlaceholder": "Hədd",
-    "title": "Saxlanan sorğular"
+    "title": "Saxlanan sorğular",
+    "conditionLabel": "Şərt tipi",
+    "conditionStatic": "Statik astana",
+    "conditionAnomaly": "Anomaliya (z-score)",
+    "anomalyHint": "Sütun seriyasının son nöqtəsi statistik anomaliya (MAD z-score) olduqda alert işə düşür — sabit astana lazım deyil."
   },
   "requirementsPage": {
     "buildDashboard": "Dashboard qur ({{count}})",

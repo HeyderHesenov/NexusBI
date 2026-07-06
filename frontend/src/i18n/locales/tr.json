@@ -707,7 +707,11 @@
     "subtitle": "Sorguyu tek tıkla yeniden çalıştırın veya otomatik yenileme zamanlaması ayarlayın.",
     "thresholdLabel": "Eşik",
     "thresholdPlaceholder": "Eşik",
-    "title": "Kayıtlı sorgular"
+    "title": "Kayıtlı sorgular",
+    "conditionLabel": "Koşul tipi",
+    "conditionStatic": "Statik eşik",
+    "conditionAnomaly": "Anomali (z-score)",
+    "anomalyHint": "Sütun serisinin son noktası istatistiksel anomali (MAD z-score) olduğunda tetiklenir — sabit eşik gerekmez."
   },
   "requirementsPage": {
     "buildDashboard": "Dashboard oluştur ({{count}})",

@@ -27,7 +27,11 @@ class Alert(Base, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     column: Mapped[str] = mapped_column(String(255), nullable=False)
-    operator: Mapped[str] = mapped_column(String(2), nullable=False)  # > < >= <= == !=
+    # "static" = column operator threshold; "anomaly" = latest point is a MAD z-score outlier.
+    condition_type: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="static", server_default="static"
+    )
+    operator: Mapped[str] = mapped_column(String(2), nullable=False)  # > < >= <= == != (static only)
     threshold: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_triggered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

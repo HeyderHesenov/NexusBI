@@ -108,12 +108,14 @@ export interface MetricCreate {
 }
 
 export type AlertOperator = '>' | '<' | '>=' | '<=' | '==' | '!='
+export type AlertConditionType = 'static' | 'anomaly'
 
 export interface Alert {
   id: string
   saved_query_id: string
   name: string
   column: string
+  condition_type: AlertConditionType
   operator: string
   threshold: number
   active: boolean
@@ -125,6 +127,7 @@ export interface AlertCreate {
   saved_query_id: string
   name: string
   column: string
+  condition_type: AlertConditionType
   operator: AlertOperator
   threshold: number
 }

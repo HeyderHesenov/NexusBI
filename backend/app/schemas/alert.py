@@ -7,13 +7,16 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 Operator = Literal[">", "<", ">=", "<=", "==", "!="]
+ConditionType = Literal["static", "anomaly"]
 
 
 class AlertCreate(BaseModel):
     saved_query_id: str
     name: str = Field(min_length=1, max_length=255)
     column: str = Field(min_length=1, max_length=255)
-    operator: Operator
+    # "anomaly" alerts ignore operator/threshold (they fire on a statistical outlier).
+    condition_type: ConditionType = "static"
+    operator: Operator = ">"
     threshold: float = 0.0
 
 
@@ -22,6 +25,7 @@ class AlertResponse(BaseModel):
     saved_query_id: str
     name: str
     column: str
+    condition_type: str
     operator: str
     threshold: float
     active: bool

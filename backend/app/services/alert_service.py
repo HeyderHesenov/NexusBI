@@ -33,6 +33,7 @@ async def create(db: AsyncSession, user_id: str, payload) -> Alert:
         saved_query_id=payload.saved_query_id,
         name=payload.name,
         column=payload.column,
+        condition_type=payload.condition_type,
         operator=payload.operator,
         threshold=payload.threshold,
     )
@@ -61,11 +62,15 @@ async def delete(db: AsyncSession, user_id: str, alert_id: str) -> None:
 
 
 def evaluate(alert: Alert, rows: list[dict[str, Any]]) -> bool:
-    """True if any row's column value satisfies the alert condition.
+    """True if the alert condition fires on the current result.
 
-    Linear scan over rows; result sets are already snapshot-bounded
-    (<=1000 rows) upstream, so this stays cheap. Short-circuits on first match.
+    "static" → any row's column satisfies operator/threshold. "anomaly" → the LATEST
+    point of the column series is a MAD z-score outlier (dynamic threshold, no constant).
+    Result sets are snapshot-bounded (<=1000 rows) upstream, so this stays cheap.
     """
+    if alert.condition_type == "anomaly":
+        return _evaluate_anomaly(alert, rows)
+
     fn = _OPS.get(alert.operator)
     if fn is None or not rows:
         return False
@@ -81,6 +86,16 @@ def evaluate(alert: Alert, rows: list[dict[str, Any]]) -> bool:
     return False
 
 
+def _evaluate_anomaly(alert: Alert, rows: list[dict[str, Any]]) -> bool:
+    """Fire when the most recent point of the column series is a statistical outlier."""
+    from app.services import stats
+
+    series = [v for r in rows if (v := stats.to_float(r.get(alert.column))) is not None]
+    if len(series) < 4:
+        return False
+    return (len(series) - 1) in set(stats.zscore_outliers(series))
+
+
 async def check_saved_query(db: AsyncSession, sq: SavedQuery, result: QueryResult) -> int:
     """Evaluate active alerts on a saved query; create notifications on breach."""
     rows = result.data
@@ -94,10 +109,16 @@ async def check_saved_query(db: AsyncSession, sq: SavedQuery, result: QueryResul
         if evaluate(alert, rows):
             alert.last_triggered_at = datetime.now(timezone.utc)
             title = f"Alert: {alert.name}"
-            body = (
-                f"“{sq.name}” sorğusunda {alert.column} {alert.operator} "
-                f"{alert.threshold} şərti pozuldu."
-            )
+            if alert.condition_type == "anomaly":
+                body = (
+                    f"“{sq.name}” sorğusunda “{alert.column}” sütununun son nöqtəsi "
+                    f"statistik anomaliyadır (MAD z-score)."
+                )
+            else:
+                body = (
+                    f"“{sq.name}” sorğusunda {alert.column} {alert.operator} "
+                    f"{alert.threshold} şərti pozuldu."
+                )
             db.add(Notification(
                 user_id=alert.user_id, alert_id=alert.id, title=title, body=body,
                 category=NotificationCategory.KPI_ALERT,

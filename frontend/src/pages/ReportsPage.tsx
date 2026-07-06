@@ -8,7 +8,7 @@ import { Field, Select } from '../components/ui/form'
 import * as alertApi from '../api/alert'
 import * as subApi from '../api/reportSubscription'
 import type { ReportFormat, ReportSchedule, Subscription } from '../api/reportSubscription'
-import type { AlertOperator, Schedule } from '../types'
+import type { AlertConditionType, AlertOperator, Schedule } from '../types'
 
 const SCHEDULES: { value: Schedule; labelKey: string }[] = [
   { value: 'off', labelKey: 'reportsPage.scheduleOff' },
@@ -145,6 +145,7 @@ function AlertModal({
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [column, setColumn] = useState('')
+  const [conditionType, setConditionType] = useState<AlertConditionType>('static')
   const [operator, setOperator] = useState<AlertOperator>('>')
   const [threshold, setThreshold] = useState('0')
   const [busy, setBusy] = useState(false)
@@ -157,6 +158,7 @@ function AlertModal({
         saved_query_id: savedQueryId,
         name: name.trim(),
         column: column.trim(),
+        condition_type: conditionType,
         operator,
         threshold: Number(threshold) || 0,
       })
@@ -209,28 +211,45 @@ function AlertModal({
             className={`${field} font-mono text-sm`}
           />
         </Field>
-        <div className="grid grid-cols-[7rem_1fr] gap-3">
-          <Field id="alert-operator" label={t('reportsPage.operatorLabel')}>
-            <Select
-              id="alert-operator"
-              value={operator}
-              onChange={(e) => setOperator(e.target.value as AlertOperator)}
-              options={OPERATORS.map((o) => ({ value: o, label: o }))}
-            />
-          </Field>
-          <Field id="alert-threshold" label={t('reportsPage.thresholdLabel')}>
-            <input
-              id="alert-threshold"
-              type="number"
-              step="any"
-              inputMode="decimal"
-              value={threshold}
-              onChange={(e) => setThreshold(e.target.value)}
-              placeholder={t('reportsPage.thresholdPlaceholder')}
-              className={`${field} font-mono`}
-            />
-          </Field>
-        </div>
+        <Field id="alert-condition" label={t('reportsPage.conditionLabel')}>
+          <Select
+            id="alert-condition"
+            value={conditionType}
+            onChange={(e) => setConditionType(e.target.value as AlertConditionType)}
+            options={[
+              { value: 'static', label: t('reportsPage.conditionStatic') },
+              { value: 'anomaly', label: t('reportsPage.conditionAnomaly') },
+            ]}
+          />
+        </Field>
+        {conditionType === 'static' ? (
+          <div className="grid grid-cols-[7rem_1fr] gap-3">
+            <Field id="alert-operator" label={t('reportsPage.operatorLabel')}>
+              <Select
+                id="alert-operator"
+                value={operator}
+                onChange={(e) => setOperator(e.target.value as AlertOperator)}
+                options={OPERATORS.map((o) => ({ value: o, label: o }))}
+              />
+            </Field>
+            <Field id="alert-threshold" label={t('reportsPage.thresholdLabel')}>
+              <input
+                id="alert-threshold"
+                type="number"
+                step="any"
+                inputMode="decimal"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+                placeholder={t('reportsPage.thresholdPlaceholder')}
+                className={`${field} font-mono`}
+              />
+            </Field>
+          </div>
+        ) : (
+          <p className="rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs text-ink-soft">
+            {t('reportsPage.anomalyHint')}
+          </p>
+        )}
       </div>
     </ModalShell>
   )

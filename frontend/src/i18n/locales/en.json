@@ -707,7 +707,11 @@
     "subtitle": "Re-run a query with one click or set an auto-refresh schedule.",
     "thresholdLabel": "Threshold",
     "thresholdPlaceholder": "Threshold",
-    "title": "Saved queries"
+    "title": "Saved queries",
+    "conditionLabel": "Condition type",
+    "conditionStatic": "Static threshold",
+    "conditionAnomaly": "Anomaly (z-score)",
+    "anomalyHint": "Fires when the latest point of the column series is a statistical outlier (MAD z-score) — no fixed threshold needed."
   },
   "requirementsPage": {
     "buildDashboard": "Build dashboard ({{count}})",

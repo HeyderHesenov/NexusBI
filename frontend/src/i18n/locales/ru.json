@@ -707,7 +707,11 @@
     "subtitle": "Перезапустите запрос одним кликом или задайте расписание автообновления.",
     "thresholdLabel": "Порог",
     "thresholdPlaceholder": "Порог",
-    "title": "Сохранённые запросы"
+    "title": "Сохранённые запросы",
+    "conditionLabel": "Тип условия",
+    "conditionStatic": "Статический порог",
+    "conditionAnomaly": "Аномалия (z-score)",
+    "anomalyHint": "Срабатывает, когда последняя точка ряда столбца — статистический выброс (MAD z-score); фиксированный порог не нужен."
   },
   "requirementsPage": {
     "buildDashboard": "Построить дашборд ({{count}})",
