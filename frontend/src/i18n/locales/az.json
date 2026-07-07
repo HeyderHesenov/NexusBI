@@ -422,20 +422,6 @@
     "eyebrow": "Jurnal",
     "title": "Sorğu tarixçəsi"
   },
-  "insightsPage": {
-    "discover": "Kəşf et",
-    "dismiss": "Rədd et",
-    "emptyBody": "Bir neçə sorğu et, sonra «Kəşf et» düyməsinə bas.",
-    "emptyTitle": "Kəşf yoxdur",
-    "eyebrow": "Analiz",
-    "impact": "təsir {{score}}",
-    "kindConcentration": "Konsentrasiya",
-    "kindDominance": "Dominantlıq",
-    "kindOutlier": "Anomaliya",
-    "scanning": "Taranır…",
-    "subtitle": "Mühərrik son nəticələrini avtomatik tarayır — təsirə görə sıralanmış tapıntılar.",
-    "title": "Kəşflər"
-  },
   "integrationsPanel": {
     "add": "Əlavə et",
     "deleteTooltip": "Sil",
@@ -561,7 +547,6 @@
       "viz": "Vizuallaşdırma"
     },
     "history": "Tarixçə",
-    "insights": "Kəşflər",
     "metricTree": "Metrik ağacı",
     "metrics": "Metriklər",
     "pricing": "Planlar",

@@ -422,20 +422,6 @@
     "eyebrow": "Günlük",
     "title": "Sorgu geçmişi"
   },
-  "insightsPage": {
-    "discover": "Keşfet",
-    "dismiss": "Kapat",
-    "emptyBody": "Birkaç sorgu çalıştırın, ardından “Keşfet”e basın.",
-    "emptyTitle": "İçgörü yok",
-    "eyebrow": "Analiz",
-    "impact": "etki {{score}}",
-    "kindConcentration": "Yoğunlaşma",
-    "kindDominance": "Baskınlık",
-    "kindOutlier": "Anomali",
-    "scanning": "Taranıyor…",
-    "subtitle": "Motor son sonuçları otomatik tarar — etkiye göre sıralanmış bulgular.",
-    "title": "İçgörüler"
-  },
   "integrationsPanel": {
     "add": "Ekle",
     "deleteTooltip": "Sil",
@@ -561,7 +547,6 @@
       "viz": "Görselleştirme"
     },
     "history": "Geçmiş",
-    "insights": "Keşifler",
     "metricTree": "Metrik ağacı",
     "metrics": "Metrikler",
     "pricing": "Planlar",

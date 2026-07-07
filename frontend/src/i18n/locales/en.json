@@ -422,20 +422,6 @@
     "eyebrow": "Journal",
     "title": "Query history"
   },
-  "insightsPage": {
-    "discover": "Discover",
-    "dismiss": "Dismiss",
-    "emptyBody": "Run a few queries, then press “Discover”.",
-    "emptyTitle": "No insights",
-    "eyebrow": "Analysis",
-    "impact": "impact {{score}}",
-    "kindConcentration": "Concentration",
-    "kindDominance": "Dominance",
-    "kindOutlier": "Anomaly",
-    "scanning": "Scanning…",
-    "subtitle": "The engine automatically scans recent results — findings ranked by impact.",
-    "title": "Insights"
-  },
   "integrationsPanel": {
     "add": "Add",
     "deleteTooltip": "Delete",
@@ -561,7 +547,6 @@
       "viz": "Visualization"
     },
     "history": "History",
-    "insights": "Discoveries",
     "metricTree": "Metric tree",
     "metrics": "Metrics",
     "pricing": "Plans",

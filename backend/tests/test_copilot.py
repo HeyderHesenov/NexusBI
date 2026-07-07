@@ -189,7 +189,7 @@ def test_all_new_tools_registered_with_handlers():
         "list_contracts", "list_saved_queries", "train_ml_model", "predict_ml",
         "generate_ba_artifact",
         "capture_snapshot", "create_experiment", "create_decision",
-        "measure_decision", "scan_insights", "run_data_contract",
+        "measure_decision", "run_data_contract",
         "evaluate_metric_tree", "simulate_metric_tree", "create_alert",
     }
     assert expected <= copilot._TOOL_NAME_SET

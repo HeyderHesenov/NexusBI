@@ -337,15 +337,7 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
-    # ── Kəşflər / Data müqaviləsi ──
-    {
-        "type": "function",
-        "function": {
-            "name": "scan_insights",
-            "description": "Son nəticələri skan edib yeni kəşflər (dominantlıq/konsentrasiya/outlier) tapır.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
+    # ── Data müqaviləsi ──
     {
         "type": "function",
         "function": {
@@ -775,17 +767,7 @@ class _ToolContext:
             "impact_status": d.impact_status,
         }
 
-    # ── Kəşflər / Data müqaviləsi ──
-
-    async def scan_insights(self, _args: dict[str, Any]) -> dict[str, Any]:
-        from app.services import insight_engine
-
-        insights = await insight_engine.scan(self.db, self.user_id)
-        self.actions.append({"type": "insight", "label": f"{len(insights)} yeni kəşf"})
-        return {
-            "new_count": len(insights),
-            "top": [{"title": i.title, "impact": i.impact_score} for i in insights[:3]],
-        }
+    # ── Data müqaviləsi ──
 
     async def run_data_contract(self, args: dict[str, Any]) -> dict[str, Any]:
         from app.services import data_contract_service

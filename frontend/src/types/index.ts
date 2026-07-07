@@ -407,17 +407,6 @@ export interface SignificanceResult {
   summary: string
 }
 
-export interface Insight {
-  id: string
-  kind: string // dominance | concentration | outlier
-  title: string
-  body: string
-  impact_score: number
-  query_log_id: string | null
-  dismissed: boolean
-  created_at: string
-}
-
 export type ContractRule = 'not_null' | 'unique' | 'min' | 'max' | 'range' | 'freshness' | 'schema'
 
 export interface Expectation {
