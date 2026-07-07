@@ -11,7 +11,7 @@ const NODE_ROUTE: Record<GraphNodeType, string> = {
   ds: '/sources',
   table: '/sources',
   metric: '/metrics',
-  mnode: '/metric-tree',
+  mnode: '/twin', // the metric-tree editor now lives inside the Digital Twin
   dash: '/dashboards',
   widget: '/dashboards',
   squery: '/reports',

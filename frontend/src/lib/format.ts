@@ -1,4 +1,4 @@
-/** Shared KPI number formatter — keep MetricTreePage and the Digital Twin
+/** Shared KPI number formatter — keep the metric-tree editor and the Digital Twin
  * showing the exact same string for the exact same value. */
 export const formatMetricValue = (n: number): string =>
   Math.abs(n) >= 1000

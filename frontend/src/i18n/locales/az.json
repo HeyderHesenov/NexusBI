@@ -547,7 +547,6 @@
       "viz": "Vizuallaşdırma"
     },
     "history": "Tarixçə",
-    "metricTree": "Metrik ağacı",
     "metrics": "Metriklər",
     "pricing": "Planlar",
     "query": "Soruş",
@@ -971,6 +970,7 @@
     "emptyBody": "Digital Twin metrik ağacının üstündə işləyir — əvvəlcə KPI dekompozisiyası yarat.",
     "goToTree": "Metrik ağacına keç",
     "tabs": {
+      "build": "Ağac",
       "simulate": "Simulyasiya",
       "goal": "Hədəf axtar",
       "compare": "Müqayisə",

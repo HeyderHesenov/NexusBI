@@ -38,7 +38,7 @@ export function collectLeaves(node: EvaluatedNode): EvaluatedNode[] {
 /** Re-evaluate a tree with leaf values scaled by the given adjustments.
  * Only `value` is maintained; `contribution_pct` is nulled everywhere (the
  * fetched percentages no longer apply and the twin never renders them —
- * MetricTreePage shows the backend-computed ones). */
+ * the metric-tree editor shows the backend-computed ones). */
 export function recompute(node: EvaluatedNode, adjustments: Adjustments): EvaluatedNode {
   if (isLeaf(node)) {
     const base = node.manual_value ?? 0

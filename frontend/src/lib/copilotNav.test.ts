@@ -21,7 +21,7 @@ describe('copilotNavTarget', () => {
   })
 
   it('routes type-keyed chips without their own object page', () => {
-    expect(copilotNavTarget(a({ type: 'metric_tree' }))).toBe('/metric-tree')
+    expect(copilotNavTarget(a({ type: 'metric_tree' }))).toBe('/twin')
     expect(copilotNavTarget(a({ type: 'twin' }))).toBe('/twin')
     expect(copilotNavTarget(a({ type: 'digest' }))).toBe('/notifications')
   })

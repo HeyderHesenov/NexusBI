@@ -547,7 +547,6 @@
       "viz": "Visualization"
     },
     "history": "History",
-    "metricTree": "Metric tree",
     "metrics": "Metrics",
     "pricing": "Plans",
     "query": "Ask",
@@ -971,6 +970,7 @@
     "emptyBody": "The Digital Twin runs on your metric tree — build a KPI decomposition first.",
     "goToTree": "Go to metric tree",
     "tabs": {
+      "build": "Tree",
       "simulate": "Simulate",
       "goal": "Goal seek",
       "compare": "Compare",

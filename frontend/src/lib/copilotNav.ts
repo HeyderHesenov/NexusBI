@@ -14,8 +14,8 @@ export function copilotNavTarget(a: CopilotAction): string | null {
   if (a.saved_query_id) return '/reports'
   if (a.metric_id) return '/metrics'
   switch (a.type) {
-    case 'metric_tree':
-      return '/metric-tree' // a plain evaluate is a read of the tree, not a scenario
+    case 'metric_tree': // the tree editor now lives inside the Twin page
+      return '/twin'
     case 'twin':
       return '/twin'
     case 'digest':

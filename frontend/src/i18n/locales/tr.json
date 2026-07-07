@@ -547,7 +547,6 @@
       "viz": "Görselleştirme"
     },
     "history": "Geçmiş",
-    "metricTree": "Metrik ağacı",
     "metrics": "Metrikler",
     "pricing": "Planlar",
     "query": "Sor",
@@ -971,6 +970,7 @@
     "emptyBody": "Dijital İkiz metrik ağacının üzerinde çalışır — önce bir KPI ayrıştırması oluştur.",
     "goToTree": "Metrik ağacına git",
     "tabs": {
+      "build": "Ağaç",
       "simulate": "Simülasyon",
       "goal": "Hedef bul",
       "compare": "Karşılaştır",

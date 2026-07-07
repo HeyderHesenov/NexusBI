@@ -1,9 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
-import { Bookmark, Dices, GitBranch, Layers, Save, SlidersHorizontal, Target, Trash2 } from 'lucide-react'
+import {
+  Bookmark,
+  Dices,
+  GitBranch,
+  Layers,
+  Save,
+  SlidersHorizontal,
+  Target,
+  Trash2,
+} from 'lucide-react'
 import { evaluate } from '../api/metricTree'
 import { GoalSeekPanel } from '../components/twin/GoalSeekPanel'
+import { MetricTreeEditor } from '../components/twin/MetricTreeEditor'
 import { MonteCarloPanel } from '../components/twin/MonteCarloPanel'
 import { ScenarioCompare } from '../components/twin/ScenarioCompare'
 import { TornadoChart } from '../components/twin/TornadoChart'
@@ -18,8 +27,9 @@ import type { EvaluatedNode } from '../types'
 
 const SENS_PCT = 10
 
-type TwinMode = 'simulate' | 'goal' | 'compare' | 'monte'
+type TwinMode = 'build' | 'simulate' | 'goal' | 'compare' | 'monte'
 const MODES: { id: TwinMode; icon: typeof Target }[] = [
+  { id: 'build', icon: GitBranch },
   { id: 'simulate', icon: SlidersHorizontal },
   { id: 'goal', icon: Target },
   { id: 'compare', icon: Layers },
@@ -34,11 +44,23 @@ export function TwinPage() {
   const [scenarioName, setScenarioName] = useState('')
   const [mode, setMode] = useState<TwinMode>('simulate')
   const {
-    adjustments, scenarios, ranges, setAdjustment, setRange, clearRanges, clearAdjustments,
-    saveScenario, loadScenario, deleteScenario, pruneToLeaves, pruneScenarios,
+    adjustments,
+    scenarios,
+    ranges,
+    setAdjustment,
+    setRange,
+    clearRanges,
+    clearAdjustments,
+    saveScenario,
+    loadScenario,
+    deleteScenario,
+    pruneToLeaves,
+    pruneScenarios,
   } = useTwinStore()
 
-  useEffect(() => {
+  // Re-evaluate the forest from the server (initial load + after tree edits in
+  // the "build" tab, so the simulator always reflects the current tree).
+  const refreshForest = useCallback(() => {
     evaluate()
       .then((f) => {
         setForest(f)
@@ -48,6 +70,10 @@ export function TwinPage() {
       })
       .catch(() => setForest([]))
   }, [pruneToLeaves, pruneScenarios])
+
+  useEffect(() => {
+    refreshForest()
+  }, [refreshForest])
 
   const root = useMemo(
     () => forest?.find((r) => r.id === rootId) ?? forest?.[0] ?? null,
@@ -72,10 +98,7 @@ export function TwinPage() {
     () => (root ? waterfall(root, adjustments, leaves, baseline) : []),
     [root, adjustments, leaves, baseline],
   )
-  const sens = useMemo(
-    () => (root ? sensitivity(root, SENS_PCT, baseline) : []),
-    [root, baseline],
-  )
+  const sens = useMemo(() => (root ? sensitivity(root, SENS_PCT, baseline) : []), [root, baseline])
   const rootScenarios = scenarios.filter((s) => s.rootId === (root?.id ?? ''))
   const deltaPct = baseline ? ((simulatedValue - baseline) / Math.abs(baseline)) * 100 : null
 
@@ -115,20 +138,6 @@ export function TwinPage() {
         <div className="grid min-h-[50vh] place-items-center text-sm text-ink-faint">
           {t('common.loading')}
         </div>
-      ) : !root || !leaves.length ? (
-        <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-          <div>
-            <GitBranch size={24} className="mx-auto text-ink-faint" />
-            <p className="mt-3 font-display text-lg text-ink">{t('twinPage.emptyTitle')}</p>
-            <p className="mt-1 text-sm text-ink-soft">{t('twinPage.emptyBody')}</p>
-            <Link
-              to="/metric-tree"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press"
-            >
-              {t('twinPage.goToTree')}
-            </Link>
-          </div>
-        </div>
       ) : (
         <>
           <div
@@ -152,101 +161,124 @@ export function TwinPage() {
             ))}
           </div>
 
-          {mode === 'simulate' && (
+          {mode === 'build' ? (
+            <MetricTreeEditor onChange={refreshForest} />
+          ) : !root || !leaves.length ? (
+            <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+              <div>
+                <GitBranch size={24} className="mx-auto text-ink-faint" />
+                <p className="mt-3 font-display text-lg text-ink">{t('twinPage.emptyTitle')}</p>
+                <p className="mt-1 text-sm text-ink-soft">{t('twinPage.emptyBody')}</p>
+                <button
+                  type="button"
+                  onClick={() => setMode('build')}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press"
+                >
+                  {t('twinPage.goToTree')}
+                </button>
+              </div>
+            </div>
+          ) : (
             <>
-              <div className="mb-4 flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface p-4">
-                <div>
-                  <p className="text-xs text-ink-faint">{t('twinPage.baseline')}</p>
-                  <p className="font-mono text-2xl font-bold text-ink">{fmt(baseline)}</p>
-                </div>
-                <span className="text-2xl text-ink-faint">→</span>
-                <div>
-                  <p className="text-xs text-ink-faint">{t('twinPage.result')}</p>
-                  <p
-                    className={`font-mono text-2xl font-bold ${
-                      simulatedValue >= baseline ? 'text-accent' : 'text-[#D87C6B]'
-                    }`}
-                  >
-                    {fmt(simulatedValue)}
-                    {deltaPct !== null && activeCount > 0 && (
-                      <span className="ml-2 text-sm font-medium">({formatSignedPct(deltaPct)})</span>
+              {mode === 'simulate' && (
+                <>
+                  <div className="mb-4 flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface p-4">
+                    <div>
+                      <p className="text-xs text-ink-faint">{t('twinPage.baseline')}</p>
+                      <p className="font-mono text-2xl font-bold text-ink">{fmt(baseline)}</p>
+                    </div>
+                    <span className="text-2xl text-ink-faint">→</span>
+                    <div>
+                      <p className="text-xs text-ink-faint">{t('twinPage.result')}</p>
+                      <p
+                        className={`font-mono text-2xl font-bold ${
+                          simulatedValue >= baseline ? 'text-accent' : 'text-[#D87C6B]'
+                        }`}
+                      >
+                        {fmt(simulatedValue)}
+                        {deltaPct !== null && activeCount > 0 && (
+                          <span className="ml-2 text-sm font-medium">
+                            ({formatSignedPct(deltaPct)})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {rootScenarios.length > 0 && (
+                      <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                        <Bookmark size={13} className="text-ink-faint" />
+                        {rootScenarios.map((sc) => (
+                          <span key={sc.id} className="group inline-flex items-center">
+                            <button
+                              type="button"
+                              onClick={() => loadScenario(sc.id, new Set(leaves.map((l) => l.id)))}
+                              className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-soft transition hover:border-accent hover:text-ink"
+                            >
+                              {sc.name}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteScenario(sc.id)}
+                              aria-label={t('twinPage.deleteScenario')}
+                              className="ml-0.5 inline-flex rounded-md p-0.5 text-ink-faint opacity-0 transition hover:text-[#D87C6B] focus-visible:opacity-100 group-hover:opacity-100"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
                     )}
-                  </p>
-                </div>
-                {rootScenarios.length > 0 && (
-                  <div className="ml-auto flex flex-wrap items-center gap-1.5">
-                    <Bookmark size={13} className="text-ink-faint" />
-                    {rootScenarios.map((sc) => (
-                      <span key={sc.id} className="group inline-flex items-center">
-                        <button
-                          type="button"
-                          onClick={() => loadScenario(sc.id, new Set(leaves.map((l) => l.id)))}
-                          className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-soft transition hover:border-accent hover:text-ink"
-                        >
-                          {sc.name}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteScenario(sc.id)}
-                          aria-label={t('twinPage.deleteScenario')}
-                          className="ml-0.5 inline-flex rounded-md p-0.5 text-ink-faint opacity-0 transition hover:text-[#D87C6B] focus-visible:opacity-100 group-hover:opacity-100"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </span>
-                    ))}
                   </div>
-                )}
-              </div>
 
-              <div className="grid gap-4 lg:grid-cols-5">
-                <section className="rounded-2xl border border-line bg-surface p-5 lg:col-span-2">
-                  <TwinSliders
-                    leaves={leaves}
-                    adjustments={adjustments}
-                    onChange={setAdjustment}
-                    onClear={() => clearAdjustments(new Set(leaves.map((l) => l.id)))}
-                  />
-                </section>
-                <div className="flex flex-col gap-4 lg:col-span-3">
-                  <section className="rounded-2xl border border-line bg-surface p-5">
-                    <p className="eyebrow mb-3">{t('twinPage.waterfall')}</p>
-                    <WaterfallChart steps={steps} />
-                  </section>
-                  <section className="rounded-2xl border border-line bg-surface p-5">
-                    <p className="eyebrow mb-3">{t('twinPage.tornado', { pct: SENS_PCT })}</p>
-                    <TornadoChart rows={sens} pct={SENS_PCT} />
-                  </section>
-                </div>
-              </div>
+                  <div className="grid gap-4 lg:grid-cols-5">
+                    <section className="rounded-2xl border border-line bg-surface p-5 lg:col-span-2">
+                      <TwinSliders
+                        leaves={leaves}
+                        adjustments={adjustments}
+                        onChange={setAdjustment}
+                        onClear={() => clearAdjustments(new Set(leaves.map((l) => l.id)))}
+                      />
+                    </section>
+                    <div className="flex flex-col gap-4 lg:col-span-3">
+                      <section className="rounded-2xl border border-line bg-surface p-5">
+                        <p className="eyebrow mb-3">{t('twinPage.waterfall')}</p>
+                        <WaterfallChart steps={steps} />
+                      </section>
+                      <section className="rounded-2xl border border-line bg-surface p-5">
+                        <p className="eyebrow mb-3">{t('twinPage.tornado', { pct: SENS_PCT })}</p>
+                        <TornadoChart rows={sens} pct={SENS_PCT} />
+                      </section>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {mode === 'goal' && (
+                <GoalSeekPanel
+                  root={root}
+                  leaves={leaves}
+                  baseline={baseline}
+                  onApply={(leafId, pct) => {
+                    setAdjustment(leafId, pct)
+                    setMode('simulate')
+                  }}
+                />
+              )}
+
+              {mode === 'compare' && (
+                <ScenarioCompare root={root} baseline={baseline} scenarios={rootScenarios} />
+              )}
+
+              {mode === 'monte' && (
+                <MonteCarloPanel
+                  root={root}
+                  leaves={leaves}
+                  baseline={baseline}
+                  ranges={ranges}
+                  onSetRange={setRange}
+                  onClear={() => clearRanges(new Set(leaves.map((l) => l.id)))}
+                />
+              )}
             </>
-          )}
-
-          {mode === 'goal' && (
-            <GoalSeekPanel
-              root={root}
-              leaves={leaves}
-              baseline={baseline}
-              onApply={(leafId, pct) => {
-                setAdjustment(leafId, pct)
-                setMode('simulate')
-              }}
-            />
-          )}
-
-          {mode === 'compare' && (
-            <ScenarioCompare root={root} baseline={baseline} scenarios={rootScenarios} />
-          )}
-
-          {mode === 'monte' && (
-            <MonteCarloPanel
-              root={root}
-              leaves={leaves}
-              baseline={baseline}
-              ranges={ranges}
-              onSetRange={setRange}
-              onClear={() => clearRanges(new Set(leaves.map((l) => l.id)))}
-            />
           )}
         </>
       )}
