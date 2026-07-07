@@ -110,16 +110,14 @@
     "tools": "Инструменты",
     "closePanel": "Закрыть панель",
     "groupDiagnostics": "Диагностика",
-    "groupExplain": "Объяснение и происхождение",
     "groupForecast": "Прогноз",
     "anomalies": "Аномалии",
     "causal": "Анализ причин",
+    "causalNeedsTwo": "Анализ причин (нужно 2+ числа)",
     "chart": "График",
     "checking": "Проверка…",
     "detecting": "Анализ…",
     "downloadCsv": "Скачать CSV",
-    "explain": "Объяснить",
-    "explaining": "Объяснение…",
     "findingDrivers": "Поиск…",
     "forecast": "Прогноз",
     "forecasting": "Прогноз…",
@@ -127,7 +125,7 @@
     "lineage": "Происхождение",
     "rooting": "Разбор…",
     "scenario": "Сценарий",
-    "significance": "Статистическая проверка",
+    "significance": "Проверка надёжности",
     "tracing": "Отслеживание…",
     "why": "Почему?"
   },
@@ -389,10 +387,6 @@
     "title": "A/B-тесты",
     "variantA": "Вариант A",
     "variantB": "Вариант B"
-  },
-  "explainPanel": {
-    "noDrivers": "Явных факторов не найдено.",
-    "rootCauseAnalysis": "Анализ первопричин"
   },
   "filterPills": {
     "clear": "Очистить",

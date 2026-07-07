@@ -40,18 +40,6 @@ class ForecastResponse(BaseModel):
     history: list[dict[str, Any]] = Field(default_factory=list)
 
 
-class ExplainDriver(BaseModel):
-    label: str | None = None
-    contribution: float | None = None
-    direction: str = ""
-    note: str = ""
-
-
-class ExplainResponse(BaseModel):
-    drivers: list[ExplainDriver] = Field(default_factory=list)
-    summary: str = ""
-
-
 class RootCauseNode(BaseModel):
     label: str
     value: float | None = None

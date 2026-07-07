@@ -339,7 +339,7 @@ async def run_user_sql(
             raise
 
     # No AI: deterministic chart, empty insight. On-demand panels (forecast/anomaly/
-    # explain) still work later off the persisted query_log_id + result_data.
+    # root-cause) still work later off the persisted query_log_id + result_data.
     chart_config = rule_based_chart(columns, rows)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     snapped = _snapshot_rows(rows)

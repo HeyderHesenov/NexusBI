@@ -110,16 +110,14 @@
     "tools": "Araçlar",
     "closePanel": "Paneli kapat",
     "groupDiagnostics": "Tanılama",
-    "groupExplain": "Açıklama & köken",
     "groupForecast": "Tahmin",
     "anomalies": "Anomaliler",
     "causal": "Neden analizi",
+    "causalNeedsTwo": "Neden analizi (2+ sayı gerekir)",
     "chart": "Grafik",
     "checking": "Kontrol…",
     "detecting": "Analiz…",
     "downloadCsv": "CSV indir",
-    "explain": "Açıkla",
-    "explaining": "Açıklama…",
     "findingDrivers": "Aranıyor…",
     "forecast": "Tahmin",
     "forecasting": "Tahmin…",
@@ -127,7 +125,7 @@
     "lineage": "Köken",
     "rooting": "Ayrıştırılıyor…",
     "scenario": "Senaryo",
-    "significance": "İstatistiksel kontrol",
+    "significance": "Güvenilirlik kontrolü",
     "tracing": "İzleniyor…",
     "why": "Neden?"
   },
@@ -389,10 +387,6 @@
     "title": "A/B testleri",
     "variantA": "Varyant A",
     "variantB": "Varyant B"
-  },
-  "explainPanel": {
-    "noDrivers": "Belirgin bir etken bulunamadı.",
-    "rootCauseAnalysis": "Kök neden analizi"
   },
   "filterPills": {
     "clear": "Temizle",

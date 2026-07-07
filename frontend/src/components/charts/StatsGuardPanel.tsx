@@ -8,7 +8,7 @@ export function StatsGuardPanel({ result }: { result: SignificanceResult }) {
     <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">
       <div className="flex items-center gap-2">
         <ShieldCheck size={15} className="text-accent" />
-        <p className="eyebrow text-ink-soft">Statistik yoxlama · {result.summary}</p>
+        <p className="eyebrow text-ink-soft">Etibarlılıq yoxlaması · {result.summary}</p>
       </div>
       <ul className="space-y-1.5">
         {result.checks.map((c, i) => (

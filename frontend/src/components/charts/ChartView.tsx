@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Sparkles, Tags, TrendingUp, Workflow, Wrench, X } from 'lucide-react'
+import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Tags, TrendingUp, Workflow, Wrench, X } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -6,7 +6,6 @@ import type {
   ChartConfig,
   ChartType,
   CausalResult,
-  ExplainResult,
   ForecastResult,
   Lineage,
   RootCauseResult,
@@ -17,7 +16,6 @@ import * as analysisApi from '../../api/analysis'
 // AI analysis panels load on demand — none render until the user clicks their
 // button, so they stay out of the query/dashboard initial chunk.
 const AnomalyPanel = lazy(() => import('./AnomalyPanel').then((m) => ({ default: m.AnomalyPanel })))
-const ExplainPanel = lazy(() => import('./ExplainPanel').then((m) => ({ default: m.ExplainPanel })))
 const RootCausePanel = lazy(() =>
   import('./RootCausePanel').then((m) => ({ default: m.RootCausePanel })),
 )
@@ -76,8 +74,6 @@ export function ChartView({
   const [detecting, setDetecting] = useState(false)
   const [forecast, setForecast] = useState<ForecastResult | null>(null)
   const [forecasting, setForecasting] = useState(false)
-  const [explanation, setExplanation] = useState<ExplainResult | null>(null)
-  const [explaining, setExplaining] = useState(false)
   const [rootCause, setRootCause] = useState<RootCauseResult | null>(null)
   const [rooting, setRooting] = useState(false)
   const [lineage, setLineage] = useState<Lineage | null>(null)
@@ -98,7 +94,6 @@ export function ChartView({
     setFilters([])
     setAnomalies(null)
     setForecast(null)
-    setExplanation(null)
     setRootCause(null)
     setLineage(null)
     setSignificance(null)
@@ -113,17 +108,13 @@ export function ChartView({
     return Object.keys(sample).find((k) => typeof sample[k] === 'number') ?? null
   }, [data, config.y_axis])
 
-  const runExplain = async () => {
-    if (!queryLogId) return
-    setExplaining(true)
-    try {
-      setExplanation(await analysisApi.explain(queryLogId))
-    } catch {
-      /* interceptor toast */
-    } finally {
-      setExplaining(false)
-    }
-  }
+  // Correlation-driver analysis needs at least two numeric columns; the typical
+  // (dimension, one measure) result can only return "no other numeric column",
+  // so gate the menu item instead of offering an apology.
+  const numericCount = useMemo(() => {
+    const sample = data[0] ?? {}
+    return Object.keys(sample).filter((k) => typeof sample[k] === 'number').length
+  }, [data])
 
   const runForecast = async () => {
     if (!queryLogId) return
@@ -222,7 +213,6 @@ export function ChartView({
   const openPanelCount = [
     !!forecast,
     !!anomalies,
-    !!explanation,
     !!rootCause,
     !!lineage,
     !!significance,
@@ -275,10 +265,14 @@ export function ChartView({
         {
           key: 'causal',
           Icon: Workflow,
-          label: findingDrivers ? t('chartView.findingDrivers') : t('chartView.causal'),
+          label: findingDrivers
+            ? t('chartView.findingDrivers')
+            : numericCount < 2
+              ? t('chartView.causalNeedsTwo')
+              : t('chartView.causal'),
           onSelect: runCausal,
           active: !!causal,
-          disabled: findingDrivers,
+          disabled: findingDrivers || numericCount < 2,
         },
         {
           key: 'significance',
@@ -287,19 +281,6 @@ export function ChartView({
           onSelect: runSignificance,
           active: !!significance,
           disabled: checking,
-        },
-      ],
-    },
-    {
-      header: t('chartView.groupExplain'),
-      items: [
-        {
-          key: 'explain',
-          Icon: Sparkles,
-          label: explaining ? t('chartView.explaining') : t('chartView.explain'),
-          onSelect: runExplain,
-          active: !!explanation,
-          disabled: explaining,
         },
         {
           key: 'lineage',
@@ -408,8 +389,6 @@ export function ChartView({
         }
       >
       {anomalies && closable(() => setAnomalies(null), <AnomalyPanel result={anomalies} />)}
-
-      {explanation && closable(() => setExplanation(null), <ExplainPanel result={explanation} />)}
 
       {rootCause && closable(() => setRootCause(null), <RootCausePanel result={rootCause} />)}
 

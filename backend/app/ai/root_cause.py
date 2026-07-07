@@ -1,8 +1,8 @@
 """Hierarchical root-cause decomposition ("Why?") over a query result.
 
-Unlike ``analysis.explain`` (a flat one-level driver summary), this builds a
-multi-level decomposition tree the UI renders interactively. AI-first with a
-deterministic rule-based fallback so it still works offline / keyless.
+Builds a multi-level decomposition tree the UI renders interactively — the single
+"Why?" driver view (the old flat one-level explain summary was folded into this).
+AI-first with a deterministic rule-based fallback so it still works offline / keyless.
 """
 from __future__ import annotations
 

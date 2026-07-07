@@ -380,18 +380,6 @@ export interface ForecastResult {
   history: Record<string, unknown>[]
 }
 
-export interface ExplainDriver {
-  label: string | null
-  contribution: number | null
-  direction: string
-  note: string
-}
-
-export interface ExplainResult {
-  drivers: ExplainDriver[]
-  summary: string
-}
-
 export interface RootCauseNode {
   label: string
   value: number | null

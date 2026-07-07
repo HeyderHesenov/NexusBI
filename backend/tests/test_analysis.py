@@ -1,11 +1,9 @@
-"""Anomaly + forecast + explain endpoint tests. Anomaly/forecast are now
-deterministic statistics (no AI); only explain still mocks the LLM."""
+"""Anomaly + forecast endpoint tests — both are deterministic statistics (no AI)."""
 from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
 
-from app.ai import analysis
 from app.ai.types import ChartConfig, Text2SQLResult
 from app.services import query_service
 
@@ -50,24 +48,6 @@ async def test_anomalies_endpoint(client, auth):
     assert body["summary"]  # always an honest summary, even when none found
     for a in body["anomalies"]:
         assert a["severity"] in {"high", "medium", "low"}
-
-
-async def test_explain_endpoint(client, auth, monkeypatch):
-    async def fake_chat_json(system, user, **kw):
-        return {
-            "drivers": [
-                {"label": "Laptop", "contribution": 62.0, "direction": "up", "note": "lider"}
-            ],
-            "summary": "Əsas töhfə Laptop-dan.",
-        }
-
-    monkeypatch.setattr(analysis, "chat_json", fake_chat_json)
-    qid = await _make_query(client, auth)
-    resp = await client.post(f"/api/v1/query/{qid}/explain", headers=auth)
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert body["drivers"][0]["label"] == "Laptop"
-    assert body["summary"]
 
 
 async def test_forecast_endpoint(client, auth):

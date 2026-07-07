@@ -1,25 +1,21 @@
 """Statistical anomaly detection and forecasting over query results.
 
 Forecast and anomaly detection are DETERMINISTIC statistics (no LLM) — reproducible,
-with honest prediction intervals. Only `explain` (root-cause narration) still uses the
-LLM. This is deliberate: an "AI forecast" that a model guesses has no confidence and
-can't be reproduced; real BI needs math it can stand behind.
+with honest prediction intervals. This is deliberate: an "AI forecast" that a model
+guesses has no confidence and can't be reproduced; real BI needs math it can stand
+behind. Driver narration lives in root_cause.decompose (the hierarchical tree).
 """
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
 import numpy as np
 
-from app.ai.client import chat_json
-from app.ai.prompt_templates import EXPLAIN_PROMPT, EXPLAIN_USER_PROMPT
 from app.core.exceptions import AIGenerationError
 from app.services import stats
 
 _NUMERIC = (int, float)
-_MAX_ROWS = 200
 
 
 def pick_series(columns: list[str], rows: list[dict[str, Any]]) -> tuple[str, str]:
@@ -145,21 +141,3 @@ def _forecast_narrative(values: list[float], fc: dict, periods: int) -> str:
     return " ".join(parts)
 
 
-async def explain(
-    columns: list[str], rows: list[dict[str, Any]], nl_query: str
-) -> dict[str, Any]:
-    """Root-cause: decompose the result into the biggest drivers via the LLM."""
-    if not rows or not columns:
-        raise AIGenerationError("Təhlil üçün data yoxdur.")
-    user = EXPLAIN_USER_PROMPT.format(
-        nl_query=nl_query,
-        columns=json.dumps(columns, ensure_ascii=False),
-        data=json.dumps(rows[:_MAX_ROWS], ensure_ascii=False, default=str),
-    )
-    try:
-        raw = await chat_json(EXPLAIN_PROMPT, user, localize=True)
-    except AIGenerationError:
-        raise
-    except Exception as exc:  # noqa: BLE001
-        raise AIGenerationError("İzah alınmadı.", detail=str(exc)[:200]) from exc
-    return {"drivers": raw.get("drivers", []), "summary": raw.get("summary", "")}

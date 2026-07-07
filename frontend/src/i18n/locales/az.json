@@ -111,23 +111,21 @@
     "closePanel": "Paneli bağla",
     "anomalies": "Anomaliyalar",
     "causal": "Səbəb analizi",
+    "causalNeedsTwo": "Səbəb analizi (2+ ədəd lazımdır)",
     "chart": "Qrafik",
     "checking": "Yoxlanır…",
     "detecting": "Təhlil…",
     "downloadCsv": "CSV yüklə",
-    "explain": "İzah et",
-    "explaining": "İzah…",
     "findingDrivers": "Axtarılır…",
     "forecast": "Proqnoz",
     "forecasting": "Proqnoz…",
     "groupDiagnostics": "Diaqnostika",
-    "groupExplain": "İzah & Mənşə",
     "groupForecast": "Proqnoz",
     "legend": "Açıqlama",
     "lineage": "Mənşə",
     "rooting": "Parçalanır…",
     "scenario": "Ssenari",
-    "significance": "Statistik yoxlama",
+    "significance": "Etibarlılıq yoxlaması",
     "tracing": "İzlənir…",
     "why": "Niyə?"
   },
@@ -389,10 +387,6 @@
     "title": "A/B testlər",
     "variantA": "A variantı",
     "variantB": "B variantı"
-  },
-  "explainPanel": {
-    "noDrivers": "Aydın driver tapılmadı.",
-    "rootCauseAnalysis": "Kök-səbəb analizi"
   },
   "filterPills": {
     "clear": "Təmizlə",

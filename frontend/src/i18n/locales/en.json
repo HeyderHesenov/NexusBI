@@ -110,16 +110,14 @@
     "tools": "Tools",
     "closePanel": "Close panel",
     "groupDiagnostics": "Diagnostics",
-    "groupExplain": "Explain & lineage",
     "groupForecast": "Forecast",
     "anomalies": "Anomalies",
     "causal": "Cause analysis",
+    "causalNeedsTwo": "Cause analysis (needs 2+ numbers)",
     "chart": "Chart",
     "checking": "Checking…",
     "detecting": "Analyzing…",
     "downloadCsv": "Download CSV",
-    "explain": "Explain",
-    "explaining": "Explaining…",
     "findingDrivers": "Searching…",
     "forecast": "Forecast",
     "forecasting": "Forecasting…",
@@ -127,7 +125,7 @@
     "lineage": "Lineage",
     "rooting": "Breaking down…",
     "scenario": "Scenario",
-    "significance": "Statistical check",
+    "significance": "Reliability check",
     "tracing": "Tracing…",
     "why": "Why?"
   },
@@ -389,10 +387,6 @@
     "title": "A/B tests",
     "variantA": "Variant A",
     "variantB": "Variant B"
-  },
-  "explainPanel": {
-    "noDrivers": "No clear driver found.",
-    "rootCauseAnalysis": "Root-cause analysis"
   },
   "filterPills": {
     "clear": "Clear",

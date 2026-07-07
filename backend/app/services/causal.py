@@ -1,9 +1,9 @@
 """Causal / driver analysis — ranks which OTHER numeric columns most strongly
 associate with a target metric (Pearson r, p-value, BH-FDR), with honest caveats.
 
-Distinct from `ai/root_cause` (single-series magnitude share) and `ai/analysis.explain`
-(LLM qualitative driver list): this is statistical, deterministic (no AI), and reports
-correlation strength + significance, not size. Correlation ≠ causation — surfaced in caveats.
+Distinct from `ai/root_cause` (single-series magnitude-share decomposition tree):
+this is statistical, deterministic (no AI), and reports correlation strength +
+significance, not size. Correlation ≠ causation — surfaced in caveats.
 """
 from __future__ import annotations
 
