@@ -583,18 +583,16 @@
     "automl": "AutoML"
   },
   "notificationsPage": {
-    "analyzing": "Analiz…",
     "briefingLoading": "Hazırlanıyor…",
     "categoryAria": "Bildirim kategorisi",
     "emptyAll": "Bildirim yok",
     "emptyAllHint": "Bir uyarı kurun (Raporlar → kayıtlı sorgu) — koşul ihlal edildiğinde burada görünecek.",
     "emptyCategory": "Bu kategoride bildirim yok",
-    "emptyCategoryHint": "Başka bir kategoriye geçin veya yeni bir brifing/içgörü oluşturun.",
+    "emptyCategoryHint": "Başka bir kategoriye geçin veya yeni bir brifing oluşturun.",
     "eyebrow": "Merkez",
     "filterAll": "Tümü",
     "markAllRead": "Tümünü okundu işaretle",
     "morningBrief": "Sabah brifingi",
-    "smartInsight": "Akıllı içgörü oluştur",
     "title": "Bildirimler"
   },
   "pieChartWidget": {

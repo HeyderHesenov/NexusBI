@@ -583,18 +583,16 @@
     "automl": "AutoML"
   },
   "notificationsPage": {
-    "analyzing": "Analyzing…",
     "briefingLoading": "Preparing…",
     "categoryAria": "Notification category",
     "emptyAll": "No notifications",
     "emptyAllHint": "Set up an alert (Reports → saved query) — it will appear here when the condition is triggered.",
     "emptyCategory": "No notifications in this category",
-    "emptyCategoryHint": "Switch to another category or generate a new brief/insight.",
+    "emptyCategoryHint": "Switch to another category or generate a new brief.",
     "eyebrow": "Center",
     "filterAll": "All",
     "markAllRead": "Mark all as read",
     "morningBrief": "Morning brief",
-    "smartInsight": "Generate smart insight",
     "title": "Notifications"
   },
   "pieChartWidget": {

@@ -72,20 +72,3 @@ async def from_saved_query_run(
     insight = await insight_digest.summarize_change(sq.nl_query, prev_rows, result.data)
     if insight:
         await _record(db, sq.user_id, sq.name, insight)
-
-
-async def generate_for_user(db: AsyncSession, user_id: str, limit: int = 5) -> int:
-    """On-demand: scan the user's recent distinct queries and emit notable insights.
-
-    Uses already-stored result data (no query re-runs), one AI digest per query,
-    capped at ``limit``. Returns the number of notifications created.
-    """
-    created = 0
-    for nl, data in await scan_recent_distinct(db, user_id):
-        if created >= limit:
-            break
-        insight = await insight_digest.summarize_change(nl, [], data)
-        if insight:
-            await _record(db, user_id, nl[:60], insight)
-            created += 1
-    return created

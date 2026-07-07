@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bell, BellOff, CheckCheck, Sparkles, Sunrise } from 'lucide-react'
+import { Bell, BellOff, CheckCheck, Sunrise } from 'lucide-react'
 import { useNotificationStore } from '../store/notificationStore'
 import { IntegrationsPanel } from '../components/IntegrationsPanel'
 import { Dropdown, type DropdownOption } from '../components/ui/Dropdown'
@@ -15,7 +15,7 @@ function fmt(ts: string): string {
 
 export function NotificationsPage() {
   const { t } = useTranslation()
-  const { items, unread, generating, briefing, load, generate, generateDigest, markAllRead, markOneRead } =
+  const { items, unread, briefing, load, generateDigest, markAllRead, markOneRead } =
     useNotificationStore()
   const [active, setActive] = useState<Filter>('all')
 
@@ -59,14 +59,6 @@ export function NotificationsPage() {
           >
             <Sunrise size={15} className={briefing ? 'animate-pulse' : ''} />
             {briefing ? t('notificationsPage.briefingLoading') : t('notificationsPage.morningBrief')}
-          </button>
-          <button
-            onClick={() => generate()}
-            disabled={generating}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3 py-2 text-sm font-semibold text-accent transition hover:border-accent disabled:opacity-60"
-          >
-            <Sparkles size={15} className={generating ? 'animate-pulse' : ''} />
-            {generating ? t('notificationsPage.analyzing') : t('notificationsPage.smartInsight')}
           </button>
           {unread > 0 && (
             <button

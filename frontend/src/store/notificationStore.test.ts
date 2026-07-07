@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('react-hot-toast', () => ({ default: vi.fn() }))
 vi.mock('../api/alert', () => ({
   listNotifications: vi.fn(),
-  generateInsights: vi.fn(),
   buildDigest: vi.fn(),
   readAll: vi.fn(),
   readOne: vi.fn(),

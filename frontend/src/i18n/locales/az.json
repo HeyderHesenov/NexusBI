@@ -583,18 +583,16 @@
     "automl": "AutoML"
   },
   "notificationsPage": {
-    "analyzing": "Təhlil…",
     "briefingLoading": "Hazırlanır…",
     "categoryAria": "Bildiriş kateqoriyası",
     "emptyAll": "Bildiriş yoxdur",
     "emptyAllHint": "Alert qur (Hesabatlar → saxlanan sorğu) — şərt pozulanda burada görünəcək.",
     "emptyCategory": "Bu kateqoriyada bildiriş yoxdur",
-    "emptyCategoryHint": "Başqa kateqoriyaya keç və ya yeni brif/insight yarat.",
+    "emptyCategoryHint": "Başqa kateqoriyaya keç və ya yeni brif yarat.",
     "eyebrow": "Mərkəz",
     "filterAll": "Hamısı",
     "markAllRead": "Hamısını oxudum",
     "morningBrief": "Səhər brifi",
-    "smartInsight": "Smart insight yarat",
     "title": "Bildirişlər"
   },
   "pieChartWidget": {

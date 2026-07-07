@@ -583,18 +583,16 @@
     "automl": "AutoML"
   },
   "notificationsPage": {
-    "analyzing": "Анализ…",
     "briefingLoading": "Готовится…",
     "categoryAria": "Категория уведомлений",
     "emptyAll": "Нет уведомлений",
     "emptyAllHint": "Настройте оповещение (Отчёты → сохранённый запрос) — оно появится здесь при нарушении условия.",
     "emptyCategory": "В этой категории нет уведомлений",
-    "emptyCategoryHint": "Перейдите в другую категорию или создайте новый брифинг/инсайт.",
+    "emptyCategoryHint": "Перейдите в другую категорию или создайте новый брифинг.",
     "eyebrow": "Центр",
     "filterAll": "Все",
     "markAllRead": "Отметить все как прочитанные",
     "morningBrief": "Утренний брифинг",
-    "smartInsight": "Создать смарт-инсайт",
     "title": "Уведомления"
   },
   "pieChartWidget": {

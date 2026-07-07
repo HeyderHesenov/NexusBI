@@ -6,10 +6,8 @@ import * as api from '../api/alert'
 interface NotificationState {
   items: AppNotification[]
   unread: number
-  generating: boolean
   briefing: boolean
   load: () => Promise<void>
-  generate: () => Promise<void>
   generateDigest: () => Promise<void>
   markAllRead: () => Promise<void>
   markOneRead: (id: string) => Promise<void>
@@ -21,7 +19,6 @@ let known: Set<string> | null = null
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   items: [],
   unread: 0,
-  generating: false,
   briefing: false,
   load: async () => {
     const items = await api.listNotifications()
@@ -30,25 +27,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       const fresh = items.filter(
         (n) => !n.read && !known!.has(n.id) && n.category !== 'digest',
       ).length
-      if (fresh > 0) toast(`${fresh} yeni smart insight ✨`, { icon: '🔔' })
+      if (fresh > 0) toast(`${fresh} yeni bildiriş 🔔`, { icon: '🔔' })
     }
     known = new Set(items.map((n) => n.id))
     set({ items, unread: items.filter((n) => !n.read).length })
-  },
-  generate: async () => {
-    if (get().generating) return
-    set({ generating: true })
-    try {
-      const { created } = await api.generateInsights()
-      // load() already toasts the freshly created insights; only speak up here
-      // when nothing notable was found (load() stays silent in that case).
-      await get().load()
-      if (!created) toast('Yeni insight tapılmadı.', { icon: 'ℹ️' })
-    } catch {
-      /* interceptor toast */
-    } finally {
-      set({ generating: false })
-    }
   },
   generateDigest: async () => {
     if (get().briefing) return
