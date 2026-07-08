@@ -9,6 +9,7 @@ import {
   ZAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
+import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { useChartTheme } from './theme'
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
 /** Scatter needs two numeric axes; falls back to row index for X when the
  *  configured X column isn't numeric. */
 export function ScatterChartWidget({ data, config, height = 320, onPointClick }: Props) {
+  const fmtNum = useFormatNumber()
   const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const keys = Object.keys(data[0] ?? {})
   const numeric = keys.filter((k) => typeof data[0]?.[k] === 'number')
@@ -35,8 +37,25 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} />
-        <XAxis type="number" dataKey={x} name={x} stroke={AXIS} fontSize={12} tickLine={false} />
-        <YAxis type="number" dataKey={y} name={y} stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
+        <XAxis
+          type="number"
+          dataKey={x}
+          name={x}
+          stroke={AXIS}
+          fontSize={12}
+          tickLine={false}
+          tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+        />
+        <YAxis
+          type="number"
+          dataKey={y}
+          name={y}
+          stroke={AXIS}
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+        />
         <ZAxis range={[60, 60]} />
         <Tooltip
           cursor={{ strokeDasharray: '3 3', stroke: GRID }}

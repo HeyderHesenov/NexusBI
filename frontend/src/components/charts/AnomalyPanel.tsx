@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { AnomalyResult } from '../../types'
+import { useFormatNumber } from '../../hooks/useFormatNumber'
 
 const SEVERITY: Record<string, string> = {
   high: 'border-red-500/40 bg-red-500/10 text-red-300',
@@ -10,6 +11,7 @@ const SEVERITY: Record<string, string> = {
 
 export function AnomalyPanel({ result }: { result: AnomalyResult }) {
   const { t } = useTranslation()
+  const fmtNum = useFormatNumber()
   if (!result.anomalies.length) {
     return (
       <div className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm text-ink-soft">
@@ -40,7 +42,7 @@ export function AnomalyPanel({ result }: { result: AnomalyResult }) {
               <span className="font-medium text-ink">{a.label}</span>
               {a.value != null && (
                 <span className="ml-1.5 font-mono text-xs text-ink-faint">
-                  {a.value.toLocaleString()}
+                  {fmtNum(a.value)}
                 </span>
               )}
               <p className="text-ink-soft">{a.explanation}</p>

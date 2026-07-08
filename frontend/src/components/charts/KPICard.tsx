@@ -1,5 +1,6 @@
 import type { ChartConfig } from '../../types'
 import { useCountUp } from '../../hooks/useCountUp'
+import { useFormatNumber } from '../../hooks/useFormatNumber'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function KPICard({ data, config }: Props) {
+  const fmtNum = useFormatNumber()
   const row = data[0] ?? {}
   const key = config.y_axis ?? Object.keys(row)[0]
   const raw = key ? row[key] : '—'
@@ -14,7 +16,7 @@ export function KPICard({ data, config }: Props) {
   const isNumber = Number.isFinite(numeric) && raw !== '' && raw !== null
   const animated = useCountUp(isNumber ? numeric : NaN)
   const display = isNumber
-    ? animated.toLocaleString(undefined, { maximumFractionDigits: 2 })
+    ? fmtNum(animated, { ...(config.format?.currency ? { currency: config.format.currency } : {}), decimals: config.format?.decimals ?? 2 })
     : String(raw)
 
   return (

@@ -8,6 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
+import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { TruncatedTick } from './axis'
 import { useChartTheme } from './theme'
 
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function LineChartWidget({ data, config, height = 320 }: Props) {
+  const fmtNum = useFormatNumber()
   const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
@@ -32,7 +34,13 @@ export function LineChartWidget({ data, config, height = 320 }: Props) {
           tickLine={false}
           tick={longX ? <TruncatedTick max={10} anchor="middle" /> : { fontSize: 12, fill: AXIS }}
         />
-        <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
+        <YAxis
+          stroke={AXIS}
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+        />
         <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} itemStyle={tooltipItem} />
         <Line
           type="monotone"

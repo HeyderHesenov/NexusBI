@@ -9,9 +9,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChartConfig } from '../../types'
+import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { TruncatedTick } from './axis'
 import { ScrollZoom } from './ScrollZoom'
 import { useChartTheme } from './theme'
@@ -24,9 +25,6 @@ const TOP_N = 14
 // rest) but still fold an extreme tail so the SVG stays performant.
 const SCROLL_TOP_N = 60
 const ROW_PX = 34 // vertical room per bar when the chart scrolls
-
-const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
-const fmt = (v: unknown) => (typeof v === 'number' ? compact.format(v) : String(v ?? ''))
 
 interface Props {
   data: Record<string, unknown>[]
@@ -51,6 +49,11 @@ export function BarChartWidget({
   scrollable = false,
 }: Props) {
   const { t } = useTranslation()
+  const fmtNum = useFormatNumber()
+  const fmt = useCallback(
+    (v: unknown) => (typeof v === 'number' ? fmtNum(v, { compact: true }) : String(v ?? '')),
+    [fmtNum],
+  )
   const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const othersLabel = t('barChartWidget.othersLabel')
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]

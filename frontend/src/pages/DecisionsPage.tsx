@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Activity, Lightbulb, Target, TrendingDown, TrendingUp, Trash2 } from 'lucide-react'
 import { useDecisionStore } from '../store/decisionStore'
+import { formatNumber } from '../lib/format'
 import { TypewriterText } from '../components/charts/TypewriterText'
 import * as decisionApi from '../api/decision'
 import type { Decision, DecisionMeasurement, DecisionStatus, ImpactStatus } from '../types'
@@ -26,8 +27,7 @@ const IMPACT: Record<ImpactStatus, { labelKey: string; cls: string }> = {
   regressed: { labelKey: 'decisionsPage.impactRegressed', cls: 'border-red-500/40 bg-red-500/10 text-red-400' },
 }
 
-const fmt = (n: number | null) =>
-  n == null ? '—' : Intl.NumberFormat('az', { notation: 'compact', maximumFractionDigits: 2 }).format(n)
+const fmt = (n: number | null) => (n == null ? '—' : formatNumber(n, { compact: true, decimals: 2 }))
 
 export function DecisionsPage() {
   const { t } = useTranslation()

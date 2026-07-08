@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Activity, Database, Gauge, HelpCircle, PlayCircle, RefreshCw, Sparkles } from 'lucide-react'
 import { useAIQualityStore } from '../store/aiQualityStore'
+import { formatNumber } from '../lib/format'
 
 function Trend({ values }: { values: number[] }) {
   if (values.length < 2) return null
@@ -162,7 +163,7 @@ export function AIQualityPage() {
         <StatCard
           icon={<Sparkles size={12} />}
           label={t('aIQualityPage.statTokensLabel')}
-          value={obs ? Intl.NumberFormat('az', { notation: 'compact' }).format(obs.total_tokens) : '—'}
+          value={obs ? formatNumber(obs.total_tokens, { compact: true }) : '—'}
           hint={t('aIQualityPage.statTokensHint')}
         />
         <StatCard

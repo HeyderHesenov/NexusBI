@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import type { ChartConfig } from '../../types'
+import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { useChartTheme } from './theme'
 
 interface Props {
@@ -24,6 +25,7 @@ export function PieChartWidget({
   onPointClick,
 }: Props) {
   const { t } = useTranslation()
+  const fmtNum = useFormatNumber()
   const { SERIES, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const name = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const value = config.y_axis ?? Object.keys(data[0] ?? {})[1]
@@ -58,7 +60,7 @@ export function PieChartWidget({
       <div style={{ ...tooltipStyle, padding: '8px 10px' }}>
         <div style={{ ...tooltipLabel, marginBottom: 2 }}>{value}</div>
         <div style={tooltipItem}>
-          {v.toLocaleString()} ({pct}%)
+          {fmtNum(v)} ({pct}%)
         </div>
       </div>
     )

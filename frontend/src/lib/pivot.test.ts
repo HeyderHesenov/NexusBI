@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computePivot, formatPivotValue } from './pivot'
+import { formatNumber } from './format'
 
 const rows = [
   { region: 'North', product: 'A', revenue: 100 },
@@ -66,8 +67,10 @@ describe('computePivot — edge cases', () => {
 
 describe('formatPivotValue', () => {
   it('renders — for null and trims decimals', () => {
+    // formatPivotValue now routes through the shared formatNumber (az-AZ default
+    // locale), so it matches every other widget instead of the browser default.
     expect(formatPivotValue(null)).toBe('—')
-    expect(formatPivotValue(1000)).toBe((1000).toLocaleString())
-    expect(formatPivotValue(1.23456)).toBe((1.23).toLocaleString(undefined, { maximumFractionDigits: 2 }))
+    expect(formatPivotValue(1000)).toBe(formatNumber(1000, { decimals: 0 }))
+    expect(formatPivotValue(1.23456)).toBe(formatNumber(1.23456, { decimals: 2 }))
   })
 })

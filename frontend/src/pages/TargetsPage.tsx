@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Gauge, Plus, Trash2 } from 'lucide-react'
 import { useTargetStore } from '../store/targetStore'
 import { Field, FIELD, Select } from '../components/ui/form'
+import { formatNumber } from '../lib/format'
 import type { KPITarget } from '../api/scenario'
 
 const PERIODS = ['month', 'quarter', 'year']
@@ -143,7 +144,7 @@ export function TargetsPage() {
                 <div className="min-w-0">
                   <p className="font-medium text-ink">{kpi.name}</p>
                   <p className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">
-                    {kpi.current_value.toLocaleString('az-AZ')} / {kpi.target_value.toLocaleString('az-AZ')} ·{' '}
+                    {formatNumber(kpi.current_value)} / {formatNumber(kpi.target_value)} ·{' '}
                     {t(`targetsPage.period_${kpi.period}`, kpi.period)}
                   </p>
                 </div>

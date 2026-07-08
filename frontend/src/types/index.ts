@@ -19,6 +19,9 @@ export interface ChartConfig {
   y_axis: string | null
   color_by: string | null
   reasoning?: string
+  /** Optional per-chart number-format hint. Backend does not populate this yet
+   *  (forward-compat); widgets honor it via useFormatNumber when present. */
+  format?: { unit?: string; currency?: string; decimals?: number }
 }
 
 export interface StatFact {

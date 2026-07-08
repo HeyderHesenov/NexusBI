@@ -2,6 +2,8 @@
 // dimension), aggregate a measure. No backend — operates on the same result rows
 // already handed to ChartView. Unit-tested in pivot.test.ts.
 
+import { formatNumber } from './format'
+
 export type AggFn = 'sum' | 'avg' | 'count' | 'min' | 'max'
 
 export const AGG_LABELS: Record<AggFn, string> = {
@@ -114,10 +116,9 @@ export function computePivot(data: Record<string, unknown>[], cfg: PivotConfig):
   }
 }
 
-/** Compact number formatting for pivot cells (— for empty). */
+/** Number formatting for pivot cells (— for empty). Routes through the shared
+ *  formatNumber (default locale) so pivot matches every other widget. */
 export function formatPivotValue(v: number | null): string {
   if (v === null) return '—'
-  return Number.isInteger(v)
-    ? v.toLocaleString()
-    : v.toLocaleString(undefined, { maximumFractionDigits: 2 })
+  return Number.isInteger(v) ? formatNumber(v, { decimals: 0 }) : formatNumber(v, { decimals: 2 })
 }

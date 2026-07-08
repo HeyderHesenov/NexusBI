@@ -13,6 +13,7 @@ import { Crosshair, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ChartRenderer } from './LazyChartRenderer'
 import { useChartTheme } from './theme'
+import { useFormatNumber } from '../../hooks/useFormatNumber'
 import * as scenarioApi from '../../api/scenario'
 import type { GoalSeekResult, MonteCarloResult } from '../../api/scenario'
 import type { ChartConfig } from '../../types'
@@ -26,6 +27,7 @@ interface Props {
 /** What-if + goal-seek + Monte Carlo scenario planning for a result series. */
 export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
   const { t } = useTranslation()
+  const fmtNum = useFormatNumber()
   const theme = useChartTheme()
   const [pct, setPct] = useState('10')
   const [goal, setGoal] = useState('')
@@ -90,8 +92,8 @@ export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
   // Show readable P10–P90 / P50 in the tooltip, hiding the stacking artifacts.
   const fanTooltip = (value: number, name: string, props: { payload?: typeof fan[number] }) => {
     const row = props.payload
-    if (name === 'p50') return [value, 'P50']
-    if (name === 'band' && row) return [`${row.p10} – ${row.p90}`, 'P10–P90']
+    if (name === 'p50') return [fmtNum(value), 'P50']
+    if (name === 'band' && row) return [`${fmtNum(row.p10)} – ${fmtNum(row.p90)}`, 'P10–P90']
     return null
   }
 
@@ -113,9 +115,9 @@ export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
           %
         </label>
         <span className="font-mono text-xs text-ink-faint">
-          {actual.toLocaleString()} → <span className="text-ink">{projected.toLocaleString()}</span>{' '}
+          {fmtNum(actual)} → <span className="text-ink">{fmtNum(projected)}</span>{' '}
           <span className={delta >= 0 ? 'text-accent' : 'text-[#D87C6B]'}>
-            ({delta >= 0 ? '+' : ''}{delta.toLocaleString()})
+            ({delta >= 0 ? '+' : ''}{fmtNum(delta)})
           </span>
         </span>
       </div>
@@ -143,7 +145,7 @@ export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
             </button>
             {goalSeek && (
               <span className="font-mono text-xs text-ink-soft">
-                {t('scenarioPanel.current')} {goalSeek.current.toLocaleString()} → {t('scenarioPanel.required')}{' '}
+                {t('scenarioPanel.current')} {fmtNum(goalSeek.current)} → {t('scenarioPanel.required')}{' '}
                 <span className="text-ink">
                   {goalSeek.required_pct != null ? `${goalSeek.required_pct}%` : '—'}
                 </span>

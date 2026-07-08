@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
 import type { ForecastResult } from '../../types'
+import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { useChartTheme } from './theme'
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
 /** Historical series (solid) + forecast (dashed) with an 80% confidence band. */
 export function ForecastChartWidget({ result, height = 320 }: Props) {
   const { t } = useTranslation()
+  const fmtNum = useFormatNumber()
   const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const { history, forecast, label_col, value_col } = result
 
@@ -47,7 +49,13 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
       <ComposedChart data={combined} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
         <XAxis dataKey="label" stroke={AXIS} fontSize={12} tickLine={false} />
-        <YAxis stroke={AXIS} fontSize={12} tickLine={false} axisLine={false} />
+        <YAxis
+          stroke={AXIS}
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+        />
         <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} itemStyle={tooltipItem} />
         <Legend wrapperStyle={{ fontSize: 12, color: 'rgb(var(--ink-soft))' }} />
 

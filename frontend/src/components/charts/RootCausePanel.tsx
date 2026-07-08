@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, GitBranch } from 'lucide-react'
 import type { RootCauseNode, RootCauseResult } from '../../types'
+import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { TypewriterText } from './TypewriterText'
 
 const DOWN = '#D87C6B' // coral — matches the app's "negative" accent
@@ -14,6 +15,7 @@ function clampPct(p: number | null): number {
 
 /** One node of the decomposition tree; recurses into children. */
 function Node({ node, depth }: { node: RootCauseNode; depth: number }) {
+  const fmtNum = useFormatNumber()
   const hasKids = depth < MAX_DEPTH && node.children && node.children.length > 0
   const [open, setOpen] = useState(depth === 0)
   const down = node.direction === 'down'
@@ -52,7 +54,7 @@ function Node({ node, depth }: { node: RootCauseNode; depth: number }) {
         </span>
         {node.value != null && (
           <span className="w-16 shrink-0 text-right font-mono text-[11px] text-ink-faint">
-            {node.value.toLocaleString('az-AZ')}
+            {fmtNum(node.value)}
           </span>
         )}
       </div>
