@@ -7,6 +7,8 @@ from app.core.security import create_ws_ticket
 from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.schemas.dashboard import (
     DashboardCreate,
+    DashboardFilterResponse,
+    DashboardFilterSpec,
     DashboardGenerate,
     DashboardLiveUpdate,
     DashboardResponse,
@@ -102,6 +104,22 @@ async def set_live(
         fields["live_interval_seconds"] = payload.interval_seconds
     dash = await svc.update_dashboard(db, user.id, dashboard_id, fields)
     return await _dashboard_response(db, user.id, dash)
+
+
+@router.patch("/{dashboard_id}/filter", response_model=DashboardFilterResponse)
+async def set_filter(
+    dashboard_id: str,
+    payload: DashboardFilterSpec,
+    user: CurrentUser,
+    db: DbDep,
+    cache: CacheDep,
+) -> DashboardFilterResponse:
+    """Persist the dashboard's global filter and return each widget re-run with it
+    applied (data-only, no AI). An all-empty spec clears the filter."""
+    spec = payload.model_dump()
+    await svc.update_dashboard(db, user.id, dashboard_id, {"global_filter": spec})
+    widgets = await svc.apply_global_filter(db, user.id, dashboard_id, spec, cache)
+    return DashboardFilterResponse(global_filter=spec, widgets=widgets)
 
 
 @router.delete("/{dashboard_id}", status_code=status.HTTP_204_NO_CONTENT)

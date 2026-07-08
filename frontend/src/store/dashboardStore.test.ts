@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { useDashboardStore } from './dashboardStore'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useDashboardStore, isFilterActive } from './dashboardStore'
+import * as dashApi from '../api/dashboard'
 
 // applyLiveUpdate is a pure reducer (no API). We drive it via setState/getState.
 const chart = (n: number) => ({ chart_type: 'bar', data: [{ x: n }], chart_config: {} }) as never
@@ -44,5 +45,40 @@ describe('dashboardStore.applyLiveUpdate', () => {
     applyLiveUpdate('d1', [{ widget_id: 'w1', chart: chart(3) }] as never)
     applyLiveUpdate('d1', [{ widget_id: 'w1', chart: chart(4) }] as never)
     expect(useDashboardStore.getState().pulses.w1).toBe(2)
+  })
+})
+
+describe('isFilterActive', () => {
+  it('is false for null / all-empty specs', () => {
+    expect(isFilterActive(null)).toBe(false)
+    expect(isFilterActive({ dimensions: [] })).toBe(false)
+    expect(isFilterActive({ date_column: 'd', dimensions: [] })).toBe(false) // column but no bound
+    expect(isFilterActive({ dimensions: [{ column: 'region', values: [] }] })).toBe(false)
+  })
+
+  it('is true when a dated range or a sliced dimension is present', () => {
+    expect(isFilterActive({ date_column: 'd', date_start: '2024-01-01', dimensions: [] })).toBe(true)
+    expect(isFilterActive({ dimensions: [{ column: 'region', values: ['North'] }] })).toBe(true)
+  })
+})
+
+describe('dashboardStore.applyGlobalFilter', () => {
+  beforeEach(seed)
+
+  it('swaps in filtered widget charts and stores the returned spec', async () => {
+    const spec = { dimensions: [{ column: 'region', values: ['North'] }] }
+    vi.spyOn(dashApi, 'applyFilter').mockResolvedValue({
+      global_filter: spec as never,
+      widgets: [{ widget_id: 'w1', chart: chart(99) }],
+    } as never)
+
+    await useDashboardStore.getState().applyGlobalFilter('d1', spec as never)
+
+    const s = useDashboardStore.getState()
+    expect(s.current?.widgets[0].chart).toEqual(chart(99)) // filtered
+    expect(s.current?.widgets[1].chart).toEqual(chart(2)) // absent from response → kept
+    expect(s.globalFilter).toEqual(spec)
+    expect(s.filtering).toBe(false)
+    vi.restoreAllMocks()
   })
 })

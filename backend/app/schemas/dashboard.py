@@ -65,11 +65,37 @@ class DashboardLiveUpdate(BaseModel):
     interval_seconds: int | None = Field(default=None, ge=3, le=3600)
 
 
+class DimensionFilter(BaseModel):
+    column: str = Field(min_length=1, max_length=128)
+    values: list[str] = Field(default_factory=list, max_length=200)
+
+
+class DashboardFilterSpec(BaseModel):
+    """A dashboard's global filter: a date range on one column + dimension
+    slicers. All fields optional; an all-empty spec clears the filter."""
+
+    date_column: str | None = Field(default=None, max_length=128)
+    date_start: str | None = Field(default=None, max_length=32)
+    date_end: str | None = Field(default=None, max_length=32)
+    dimensions: list[DimensionFilter] = Field(default_factory=list, max_length=20)
+
+
+class FilteredWidget(BaseModel):
+    widget_id: str
+    chart: WidgetChart | None = None
+
+
+class DashboardFilterResponse(BaseModel):
+    global_filter: dict[str, Any] | None = None
+    widgets: list[FilteredWidget] = []
+
+
 class DashboardResponse(BaseModel):
     id: str
     name: str
     description: str
     layout: dict[str, Any] | None = None
+    global_filter: dict[str, Any] | None = None
     live_enabled: bool = False
     live_interval_seconds: int = 8
     widgets: list[WidgetResponse] = []

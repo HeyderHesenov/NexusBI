@@ -1092,5 +1092,16 @@
     "total": "Cəmi",
     "trend": "Dövr Δ",
     "anomaly": "Anomaliya"
+  },
+  "dashboardFilter": {
+    "title": "Filtr",
+    "dimension": "Ölçü",
+    "dateColumn": "Tarix sütunu",
+    "from": "Başlanğıc",
+    "to": "Son",
+    "apply": "Tətbiq et",
+    "clear": "Təmizlə",
+    "none": "—",
+    "noValues": "Dəyər yoxdur"
   }
 }

@@ -1092,5 +1092,16 @@
     "total": "Total",
     "trend": "Period Δ",
     "anomaly": "Anomalies"
+  },
+  "dashboardFilter": {
+    "title": "Filter",
+    "dimension": "Dimension",
+    "dateColumn": "Date column",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply",
+    "clear": "Clear",
+    "none": "—",
+    "noValues": "No values"
   }
 }

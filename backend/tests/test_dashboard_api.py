@@ -154,6 +154,54 @@ async def test_refresh_all_widgets(client: AsyncClient, auth: dict, monkeypatch)
     assert len(resp.json()["widgets"]) == 1
 
 
+async def test_global_filter_applies_persists_and_clears(
+    client: AsyncClient, auth: dict, monkeypatch
+):
+    _mock_query_ai(monkeypatch)
+    qid = await _make_query(client, auth)
+    dash_id = (
+        await client.post("/api/v1/dashboard/", json={"name": "D"}, headers=auth)
+    ).json()["id"]
+    await client.post(
+        f"/api/v1/dashboard/{dash_id}/widget",
+        json={"query_log_id": qid, "title": "Region"},
+        headers=auth,
+    )
+
+    # Baseline: the region breakdown returns several rows.
+    base = await client.get(f"/api/v1/dashboard/{dash_id}", headers=auth)
+    assert len(base.json()["widgets"][0]["chart"]["data"]) > 1
+
+    # Apply a dimension filter → only the North row survives (aggregate re-run).
+    resp = await client.patch(
+        f"/api/v1/dashboard/{dash_id}/filter",
+        json={"dimensions": [{"column": "region", "values": ["North"]}]},
+        headers=auth,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["global_filter"]["dimensions"][0]["values"] == ["North"]
+    rows = body["widgets"][0]["chart"]["data"]
+    assert len(rows) == 1 and rows[0]["region"] == "North"
+
+    # Persisted: reopening the dashboard carries the filter selection.
+    reopened = await client.get(f"/api/v1/dashboard/{dash_id}", headers=auth)
+    assert reopened.json()["global_filter"]["dimensions"][0]["values"] == ["North"]
+
+    # Clear (empty spec) → widgets return to the full, unfiltered breakdown.
+    cleared = await client.patch(f"/api/v1/dashboard/{dash_id}/filter", json={}, headers=auth)
+    assert len(cleared.json()["widgets"][0]["chart"]["data"]) > 1
+
+
+async def test_global_filter_requires_ownership(client: AsyncClient, auth: dict):
+    resp = await client.patch(
+        "/api/v1/dashboard/00000000-0000-0000-0000-000000000000/filter",
+        json={"dimensions": [{"column": "region", "values": ["North"]}]},
+        headers=auth,
+    )
+    assert resp.status_code == 404
+
+
 async def test_dashboard_requires_auth(client: AsyncClient):
     resp = await client.get("/api/v1/dashboard/")
     assert resp.status_code == 401

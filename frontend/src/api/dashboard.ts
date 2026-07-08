@@ -1,6 +1,23 @@
 import { client } from './client'
-import type { Dashboard, DashboardSummary, DataStory, Widget } from '../types'
+import type {
+  Dashboard,
+  DashboardFilterSpec,
+  DashboardSummary,
+  DataStory,
+  Widget,
+  WidgetChart,
+} from '../types'
 import type { Comment } from '../store/collabStore'
+
+export interface FilteredWidget {
+  widget_id: string
+  chart: WidgetChart | null
+}
+
+export interface DashboardFilterResult {
+  global_filter: DashboardFilterSpec | null
+  widgets: FilteredWidget[]
+}
 
 export async function listDashboards(): Promise<DashboardSummary[]> {
   const { data } = await client.get<DashboardSummary[]>('/dashboard/')
@@ -112,6 +129,17 @@ export async function setLive(
     enabled,
     interval_seconds: intervalSeconds,
   })
+  return data
+}
+
+export async function applyFilter(
+  dashboardId: string,
+  spec: DashboardFilterSpec,
+): Promise<DashboardFilterResult> {
+  const { data } = await client.patch<DashboardFilterResult>(
+    `/dashboard/${dashboardId}/filter`,
+    spec,
+  )
   return data
 }
 

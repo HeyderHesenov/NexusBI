@@ -228,32 +228,47 @@ async def process_nl_query(
 
 
 async def reexecute_logged_query(
-    log: QueryLog, db: AsyncSession, user_id: str, cache: CacheService | None = None
+    log: QueryLog,
+    db: AsyncSession,
+    user_id: str,
+    cache: CacheService | None = None,
+    filter_spec: dict[str, Any] | None = None,
 ) -> tuple[list[str], list[dict[str, Any]]]:
     """Re-run a query log's stored SQL and return fresh (columns, rows) — NO AI.
 
     Used by live dashboards to refresh data cheaply on a short interval: the
     chart type and insight are reused, only the underlying numbers change.
     Power BI (DAX) sources are not supported here.
+
+    ``filter_spec`` (a dashboard's global filter) is AND-ed into the stored SQL
+    BEFORE the guard chain — so the table allowlist and per-viewer RLS still run
+    on the filtered query. Fail-open: a widget whose query doesn't reference a
+    filter column is left unfiltered (see ``dashboard_filter_sql.apply_filter``).
     """
     if not log.generated_sql:
         raise ValueError("query log has no SQL to re-run")
+    from app.services import dashboard_filter_sql
+
     if log.datasource_id is None:
         from app.db import demo_data
 
-        return await asyncio.to_thread(demo_data.execute_demo_sql, log.generated_sql)
+        sql = dashboard_filter_sql.apply_filter(
+            log.generated_sql, filter_spec, demo_data.DEMO_SCHEMA, "sqlite"
+        )
+        return await asyncio.to_thread(demo_data.execute_demo_sql, sql)
     ds = await ds_service.get_datasource(db, user_id, log.datasource_id)
     if ds.db_type == DBType.powerbi:
         raise ValueError("live refresh unsupported for Power BI")
-    # Re-introspect the schema once: needed for both the table allowlist and RLS.
+    # Re-introspect the schema once: needed for the filter, the allowlist and RLS.
     own_cache = cache or await build_cache_service()
     try:
         schema = await ds_service.get_schema_cached(ds, own_cache)
     finally:
         if cache is None:  # close only the transient client we created here
             await own_cache.aclose()
+    sql = dashboard_filter_sql.apply_filter(log.generated_sql, filter_spec, schema, ds.db_type.value)
     # Same guard chain as generation/manual paths (allowlist + per-viewer RLS).
-    return await _guarded_execute(ds, log.generated_sql, schema, db, user_id)
+    return await _guarded_execute(ds, sql, schema, db, user_id)
 
 
 async def _guarded_execute(

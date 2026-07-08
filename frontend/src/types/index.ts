@@ -294,11 +294,26 @@ export interface Widget {
   chart: WidgetChart | null
 }
 
+export interface DimensionFilter {
+  column: string
+  values: string[]
+}
+
+/** Dashboard-wide filter: a date range on one column + dimension slicers.
+ *  Applied server-side to every widget's SQL. */
+export interface DashboardFilterSpec {
+  date_column?: string | null
+  date_start?: string | null
+  date_end?: string | null
+  dimensions: DimensionFilter[]
+}
+
 export interface Dashboard {
   id: string
   name: string
   description: string
   layout: Record<string, unknown> | null
+  global_filter?: DashboardFilterSpec | null
   live_enabled?: boolean
   live_interval_seconds?: number
   widgets: Widget[]

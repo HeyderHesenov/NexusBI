@@ -1092,5 +1092,16 @@
     "total": "Toplam",
     "trend": "Dönem Δ",
     "anomaly": "Anomali"
+  },
+  "dashboardFilter": {
+    "title": "Filtre",
+    "dimension": "Boyut",
+    "dateColumn": "Tarih sütunu",
+    "from": "Başlangıç",
+    "to": "Bitiş",
+    "apply": "Uygula",
+    "clear": "Temizle",
+    "none": "—",
+    "noValues": "Değer yok"
   }
 }

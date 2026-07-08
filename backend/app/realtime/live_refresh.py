@@ -22,7 +22,7 @@ from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
 from app.models.dashboard import Dashboard
 from app.realtime.hub import hub
-from app.services import dashboard_service, demo_feed
+from app.services import dashboard_filter_sql, dashboard_service, demo_feed
 
 log = get_logger("nexusbi.live")
 
@@ -47,17 +47,31 @@ async def _refresh_dashboard(dash_id: str, user_id: str) -> None:
             ).scalar_one_or_none()
             if dash is None:
                 return
-            for widget in dash.widgets:
-                if not widget.query_log_id:
-                    continue
-                try:
-                    chart = await dashboard_service.refresh_widget_data(db, widget, user_id, cache)
-                except Exception as exc:  # noqa: BLE001 — one widget failing can't sink the tick
-                    log.warning("live_widget_failed", widget_id=widget.id, error=str(exc)[:200])
-                    continue
-                if chart is not None:
-                    updates.append({"widget_id": widget.id, "chart": chart.model_dump(mode="json")})
-            await db.commit()
+            if dashboard_filter_sql.filter_active(dash.global_filter):
+                # A global filter is active: broadcast the FILTERED view. This path
+                # re-runs the filtered SQL WITHOUT persisting result_data, so the
+                # canonical unfiltered snapshot isn't corrupted (clearing the filter
+                # still returns the real baseline).
+                filtered = await dashboard_service.apply_global_filter(
+                    db, user_id, dash_id, dash.global_filter, cache, skip_rls=True
+                )
+                updates = [
+                    {"widget_id": fw["widget_id"], "chart": fw["chart"].model_dump(mode="json")}
+                    for fw in filtered
+                    if fw["chart"] is not None
+                ]
+            else:
+                for widget in dash.widgets:
+                    if not widget.query_log_id:
+                        continue
+                    try:
+                        chart = await dashboard_service.refresh_widget_data(db, widget, user_id, cache)
+                    except Exception as exc:  # noqa: BLE001 — one widget failing can't sink the tick
+                        log.warning("live_widget_failed", widget_id=widget.id, error=str(exc)[:200])
+                        continue
+                    if chart is not None:
+                        updates.append({"widget_id": widget.id, "chart": chart.model_dump(mode="json")})
+                await db.commit()
     finally:
         await cache.aclose()
     if updates:

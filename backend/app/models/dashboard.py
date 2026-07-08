@@ -23,6 +23,9 @@ class Dashboard(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     layout: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Dashboard-wide filter (date range + dimension slicers) persisted so the
+    # selection survives reload; applied to every widget's SQL at query time.
+    global_filter: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # Public read-only share link (null = not shared).
     share_token: Mapped[str | None] = mapped_column(
         String(64), unique=True, index=True, nullable=True

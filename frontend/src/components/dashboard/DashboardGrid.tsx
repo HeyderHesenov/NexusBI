@@ -6,6 +6,7 @@ import type { Dashboard } from '../../types'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { ChartRenderer } from '../charts/LazyChartRenderer'
 import { FilterPills, type Filter } from '../charts/FilterPills'
+import { DashboardFilterBar } from './DashboardFilterBar'
 import { ErrorBoundary } from '../ui/ErrorBoundary'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
@@ -34,6 +35,9 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
   const { t } = useTranslation()
   const layouts = useMemo(() => buildLayouts(dashboard), [dashboard.layout, dashboard.widgets])
   const pulses = useDashboardStore((s) => s.pulses)
+  const globalFilter = useDashboardStore((s) => s.globalFilter)
+  const filtering = useDashboardStore((s) => s.filtering)
+  const applyGlobalFilter = useDashboardStore((s) => s.applyGlobalFilter)
   const [busy, setBusy] = useState<string | null>(null)
   // Cross-filter: click a chart element → filter every widget that has that field.
   const [crossFilter, setCrossFilter] = useState<Filter | null>(null)
@@ -54,6 +58,13 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
 
   return (
     <>
+    <DashboardFilterBar
+      key={dashboard.id}
+      dashboard={dashboard}
+      active={globalFilter}
+      busy={filtering}
+      onApply={(spec) => applyGlobalFilter(dashboard.id, spec)}
+    />
     {crossFilter && (
       <div className="mb-4">
         <FilterPills

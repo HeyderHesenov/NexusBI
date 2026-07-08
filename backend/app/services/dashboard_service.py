@@ -33,6 +33,7 @@ async def to_response(db: AsyncSession, user_id: str, dash: Dashboard) -> Dashbo
         name=dash.name,
         description=dash.description,
         layout=dash.layout,
+        global_filter=dash.global_filter,
         live_enabled=dash.live_enabled,
         live_interval_seconds=dash.live_interval_seconds,
         widgets=await widgets_to_response(db, list(dash.widgets), user_id),
@@ -176,11 +177,16 @@ async def get_dashboard(db: AsyncSession, user_id: str, dashboard_id: str) -> Da
     return dash
 
 
-def _widget_chart(log: QueryLog | None, ds_names: dict[str, str]) -> WidgetChart | None:
-    """Build the embedded render snapshot for a widget from its query log."""
-    if log is None:
-        return None
-    result = log.result_data or {}
+def _chart_snapshot(
+    log: QueryLog,
+    columns: list[str],
+    rows: list[dict[str, Any]],
+    ds_names: dict[str, str],
+) -> WidgetChart:
+    """Assemble a WidgetChart from a log's metadata + explicit (columns, rows).
+
+    Shared by the stored-snapshot path (_widget_chart) and the live/global-filter
+    paths, which supply freshly-executed rows instead of log.result_data."""
     # Always emit a usable chart_config so the client never reconstructs it.
     chart_config = log.chart_config or {
         "chart_type": log.chart_type,
@@ -191,14 +197,22 @@ def _widget_chart(log: QueryLog | None, ds_names: dict[str, str]) -> WidgetChart
     return WidgetChart(
         chart_type=log.chart_type,
         chart_config=chart_config,
-        columns=result.get("columns", []),
-        data=result.get("rows", []),
+        columns=columns,
+        data=rows,
         insight=log.insight,
         sql=log.generated_sql,
         natural_language=log.natural_language,
         datasource_id=log.datasource_id,
         datasource_name=ds_names.get(log.datasource_id, "Demo") if log.datasource_id else "Demo",
     )
+
+
+def _widget_chart(log: QueryLog | None, ds_names: dict[str, str]) -> WidgetChart | None:
+    """Build the embedded render snapshot for a widget from its stored query log."""
+    if log is None:
+        return None
+    result = log.result_data or {}
+    return _chart_snapshot(log, result.get("columns", []), result.get("rows", []), ds_names)
 
 
 async def load_widget_query_logs(
@@ -433,6 +447,76 @@ async def refresh_widget_data(
         if name:
             ds_names[log.datasource_id] = name
     return _widget_chart(log, ds_names)
+
+
+async def apply_global_filter(
+    db: AsyncSession,
+    user_id: str,
+    dashboard_id: str,
+    spec: dict[str, Any] | None,
+    cache: CacheService | None = None,
+    skip_rls: bool = False,
+) -> list[dict[str, Any]]:
+    """Re-run every widget's stored SQL with the dashboard's global filter AND-ed
+    in, returning fresh [{widget_id, chart}] — data-only, NO AI, NOT persisted.
+
+    The stored ``result_data`` snapshot is left untouched (the filter is a view,
+    not a mutation). Fail-open per widget: if one widget's filtered query errors
+    (or its query doesn't reference a filter column), it falls back to its stored
+    unfiltered chart so the dashboard never breaks. An empty ``spec`` returns the
+    original, unfiltered charts (used to clear the filter).
+
+    ``skip_rls`` is for the live BROADCAST path (one dataset fans out to the whole
+    room including restricted guests): widgets on an RLS-restricted source are
+    skipped (chart=None) so the owner's row scope never reaches a guest. The
+    owner-only HTTP endpoint leaves it False (per-viewer RLS is applied normally)."""
+    from app.services import dashboard_filter_sql, rls_service
+
+    dash = await get_dashboard(db, user_id, dashboard_id)
+    widgets = list(dash.widgets)
+    logs = await load_widget_query_logs(db, widgets, user_id)
+
+    ds_ids = {q.datasource_id for q in logs.values() if q.datasource_id}
+    ds_names: dict[str, str] = {}
+    if ds_ids:
+        rows = await db.execute(
+            select(DataSource.id, DataSource.name).where(DataSource.id.in_(ds_ids))
+        )
+        ds_names = {ds_id: name for ds_id, name in rows.all()}
+
+    # Clearing the filter (empty spec) returns the stored snapshots as-is — no
+    # live re-execution, so numbers match what the user was viewing and we don't
+    # hit the source once per widget for a no-op.
+    if not dashboard_filter_sql.filter_active(spec):
+        return [
+            {"widget_id": w.id, "chart": _widget_chart(logs.get(w.query_log_id), ds_names)}
+            for w in widgets
+        ]
+
+    out: list[dict[str, Any]] = []
+    # Sequential on the shared session (an AsyncSession is not concurrent-safe);
+    # dashboards hold few widgets so this stays fast.
+    for w in widgets:
+        log = logs.get(w.query_log_id) if w.query_log_id else None
+        if log is None or not log.generated_sql:
+            out.append({"widget_id": w.id, "chart": _widget_chart(log, ds_names)})
+            continue
+        if skip_rls and log.datasource_id and await rls_service.datasource_has_rules(db, log.datasource_id):
+            # Don't fan an owner-scoped filtered dataset out to restricted guests.
+            out.append({"widget_id": w.id, "chart": None})
+            continue
+        try:
+            columns, rows_data = await query_service.reexecute_logged_query(
+                log, db, user_id, cache, filter_spec=spec
+            )
+            chart = _chart_snapshot(
+                log, columns, query_service._snapshot_rows(rows_data), ds_names
+            )
+        except Exception as exc:  # fail-open: keep the widget on its stored data
+            _log.warning("widget_filter_failed", widget_id=w.id, error=str(exc))
+            chart = _widget_chart(log, ds_names)
+        out.append({"widget_id": w.id, "chart": chart})
+    return out
 
 
 async def delete_widget(

@@ -1092,5 +1092,16 @@
     "total": "Итого",
     "trend": "Δ периода",
     "anomaly": "Аномалии"
+  },
+  "dashboardFilter": {
+    "title": "Фильтр",
+    "dimension": "Измерение",
+    "dateColumn": "Столбец даты",
+    "from": "С",
+    "to": "По",
+    "apply": "Применить",
+    "clear": "Сбросить",
+    "none": "—",
+    "noValues": "Нет значений"
   }
 }
