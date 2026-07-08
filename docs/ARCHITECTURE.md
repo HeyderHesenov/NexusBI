@@ -145,7 +145,15 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   `integration_channels` (Fernet-encrypted target). `@mention` in comments notifies in-app ONLY
   (no third-party fan-out — anti cross-tenant phishing), capped per comment.
 - **Realtime:** `realtime/hub` is an in-process WS pub/sub (collab cursors + chat); `live_refresh`
-  re-runs live dashboards' widget SQL (data-only) on an interval and pushes over the WS.
+  re-runs live dashboards' widget SQL (data-only) on an interval and pushes over the WS. When a
+  dashboard has an active **global filter** it routes through `apply_global_filter(skip_rls=True)`
+  so the live push stays filtered (and never fans an owner-scoped dataset out to restricted guests).
+- **Global dashboard filter:** `dashboard_filter_sql.apply_filter` (sqlglot) AND-s a date range +
+  dimension slicers into each widget's stored SQL **before** `_guarded_execute`, so the allowlist +
+  per-viewer RLS still run on the filtered query. Mirrors `rls_sql` but **fail-open** (a widget whose
+  query lacks the column is left unfiltered) and binds each column to one table (first owner) to avoid
+  over-restricting joins. `PATCH /dashboard/{id}/filter` persists the spec (`dashboards.global_filter`)
+  and returns each widget re-run with it — data-only, the stored snapshot is never mutated.
 - **Decision Intelligence Loop:** `decisions` (insight→action→outcome + status) via `decision_service`,
   extended into a closed loop. A decision can bind to a metric (an NL query + optional column): the
   **baseline** is captured at create time (read from the spawning query's stored result, else one run),
@@ -203,7 +211,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
   background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
   `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (391) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (420) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
@@ -240,8 +248,10 @@ RAG vector store + `eval_runs`); **`b0c1d2e3f4a5`** — `eval_runs.details` (per
 **`f4a5b6c7d8e9`** (`insights`), **`a5b6c7d8e9f0`** (`metric_nodes`), **`b6c7d8e9f0a1`**
 (`data_contracts` + `contract_runs`). Studio round: **`e9f0a1b2c3d4`** (`dashboard_snapshots` —
 Time Machine), **`f0a1b2c3d4e5`** (`ba_artifacts` — BA Framework Studio), **`a2b3c4d5e6f7`**
-(`ml_models` — AutoML). Migrations are Alembic, chained under
-`db/migrations/versions`; current head = **`a2b3c4d5e6f7`**. NOTE: the **demo** schema is seeded
+(`ml_models` — AutoML). Later rounds: **`b3c4d5e6f7a8`** (`alerts.condition_type` — anomaly
+alerts), **`c4d5e6f7a8b9`** (drop `insights` — dedup cleanup), **`d5e6f7a8b9c0`**
+(`dashboards.global_filter` — server-side global dashboard filter). Migrations are Alembic, chained
+under `db/migrations/versions`; current head = **`d5e6f7a8b9c0`**. NOTE: the **demo** schema is seeded
 in-memory (`db/demo_data._seed`, no migration) — `sales.customer_id` was added there to enable realistic
 customer↔sales joins, and an `events` table (visit→signup→trial→purchase) was added for
 cohort/funnel analytics; `format_demo_schema` sends real column types + sample values to the prompt.

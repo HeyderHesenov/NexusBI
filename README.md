@@ -289,6 +289,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
 | GET | `/api/v1/cohort/retention` · `/funnel` | Kohort retention heatmap · konversiya hunisi (demo `events`) |
 | POST/GET/DELETE | `/api/v1/dashboard/{id}/snapshots` (+ `/{sid}`) | Zaman Maşını — snapshot çək · siyahı · bax · sil |
+| PATCH | `/api/v1/dashboard/{id}/filter` | Qlobal dashboard filtri — tarix aralığı + dimension slicer, hər widget-in SQL-inə server-side WHERE kimi qatılır (RLS içində, data-only) |
 | GET | `/api/v1/graph` | Biznes biliklər qrafı — aktivlərin əlaqə xəritəsi (lineage reuse) |
 | POST/GET/DELETE | `/api/v1/ba/generate` · `/ba` · `/ba/{id}` | BA Framework Studio — SWOT/Porter/BCG/BPMN artefaktları (AI kvota) |
 | GET/POST/DELETE | `/api/v1/automl/tables` · `/train` · `/models` (+ `/{id}/predict`) | AutoML — cədvəllər · model öyrət · siyahı · proqnoz · sil (per-IP limit) |
@@ -334,7 +335,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 391 test
+cd backend && pytest        # 420 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
