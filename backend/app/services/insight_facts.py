@@ -10,7 +10,9 @@ from typing import Any
 
 from app.services import stats
 
-_TEMPORAL = re.compile(r"^\d{4}[-/]\d{2}")  # YYYY-MM / YYYY/MM prefixes
+# YYYY-MM / YYYY/MM prefixes. Mirrored in frontend/src/lib/kpi.ts (KPI card
+# delta derivation) — keep the regex and the majority threshold in sync.
+_TEMPORAL = re.compile(r"^\d{4}[-/]\d{2}")
 _SAMPLE_N = 20  # rows scanned to classify a column as numeric
 
 

@@ -104,7 +104,8 @@
     "pie": "Pie",
     "pivot": "Pivot",
     "scatter": "Scatter",
-    "table": "Table"
+    "table": "Table",
+    "kpi": "KPI"
   },
   "chartView": {
     "tools": "Tools",
@@ -1107,5 +1108,10 @@
   "chart": {
     "target": "Target",
     "others": "Other"
+  },
+  "kpi": {
+    "vsPrevious": "vs previous period",
+    "onTrack": "On track",
+    "behind": "Behind pace"
   }
 }

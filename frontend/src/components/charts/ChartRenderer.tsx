@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import type { KPITarget } from '../../api/scenario'
 import type { ChartConfig } from '../../types'
 import { AreaChartWidget } from './AreaChartWidget'
 import { BarChartWidget } from './BarChartWidget'
@@ -24,6 +25,8 @@ export interface ChartRendererProps {
   /** Matched KPI target value — bar/line/area draw a dashed reference line.
    *  Only authed surfaces pass this; public/embed render without targets. */
   targetValue?: number
+  /** Full matched target — KPI cards show a pacing row from it. */
+  target?: KPITarget | null
 }
 
 export function ChartRenderer({
@@ -35,6 +38,7 @@ export function ChartRenderer({
   anomalyLabels,
   scrollableBars = false,
   targetValue,
+  target,
 }: ChartRendererProps) {
   const { t } = useTranslation()
   if (!data.length) {
@@ -70,7 +74,7 @@ export function ChartRenderer({
     case 'scatter':
       return <ScatterChartWidget data={data} config={config} height={height} onPointClick={onPointClick} />
     case 'kpi_card':
-      return <KPICard data={data} config={config} />
+      return <KPICard data={data} config={config} target={target} />
     case 'pivot':
       return <PivotWidget data={data} />
     case 'table':

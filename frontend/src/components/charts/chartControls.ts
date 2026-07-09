@@ -1,6 +1,7 @@
 import {
   AreaChart as AreaIcon,
   BarChart3,
+  Gauge as KpiIcon,
   LineChart as LineIcon,
   PieChart as PieIcon,
   ScatterChart as ScatterIcon,
@@ -18,6 +19,9 @@ export const OPTIONS: { type: ChartType; labelKey: string; Icon: typeof BarChart
   { type: 'scatter', labelKey: 'chartToolbar.scatter', Icon: ScatterIcon },
   { type: 'table', labelKey: 'chartToolbar.table', Icon: TableIcon },
   { type: 'pivot', labelKey: 'chartToolbar.pivot', Icon: PivotIcon },
+  // KPI view is meaningful beyond single values: on a temporal series the
+  // card derives latest + delta + sparkline + target pacing (lib/kpi.ts).
+  { type: 'kpi_card', labelKey: 'chartToolbar.kpi', Icon: KpiIcon },
 ]
 
 /** Shared base for small chart control buttons (toolbar + ChartView actions). */

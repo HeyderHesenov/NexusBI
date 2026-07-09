@@ -104,7 +104,8 @@
     "pie": "Dairə",
     "pivot": "Pivot",
     "scatter": "Səpələnmə",
-    "table": "Cədvəl"
+    "table": "Cədvəl",
+    "kpi": "KPI"
   },
   "chartView": {
     "tools": "Alətlər",
@@ -1107,5 +1108,10 @@
   "chart": {
     "target": "Hədəf",
     "others": "Digər"
+  },
+  "kpi": {
+    "vsPrevious": "əvvəlki dövrə qarşı",
+    "onTrack": "Qrafikdədir",
+    "behind": "Geridə qalır"
   }
 }

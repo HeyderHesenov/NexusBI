@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Activity, Lightbulb, Target, TrendingDown, TrendingUp, Trash2 } from 'lucide-react'
 import { useDecisionStore } from '../store/decisionStore'
 import { formatNumber } from '../lib/format'
+import { Sparkline } from '../components/charts/Sparkline'
 import { TypewriterText } from '../components/charts/TypewriterText'
 import * as decisionApi from '../api/decision'
 import type { Decision, DecisionMeasurement, DecisionStatus, ImpactStatus } from '../types'
@@ -81,28 +82,6 @@ export function DecisionsPage() {
         </ul>
       )}
     </div>
-  )
-}
-
-function Sparkline({ points }: { points: number[] }) {
-  if (points.length < 2) return null
-  const w = 120
-  const h = 28
-  const min = Math.min(...points)
-  const max = Math.max(...points)
-  const span = max - min || 1
-  const path = points
-    .map((v, i) => {
-      const x = (i / (points.length - 1)) * w
-      const y = h - ((v - min) / span) * h
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(' ')
-  const up = points[points.length - 1] >= points[0]
-  return (
-    <svg width={w} height={h} className="overflow-visible">
-      <path d={path} fill="none" stroke={up ? '#10B981' : '#F87171'} strokeWidth={1.6} strokeLinecap="round" />
-    </svg>
   )
 }
 

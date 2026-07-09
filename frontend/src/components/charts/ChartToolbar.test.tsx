@@ -3,11 +3,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { ChartToolbar } from './ChartToolbar'
 
 describe('ChartToolbar', () => {
-  it('renders the 7 chart-type buttons', () => {
+  it('renders the 8 chart-type buttons', () => {
     render(<ChartToolbar value="bar" onChange={() => {}} />)
-    expect(screen.getAllByRole('button')).toHaveLength(7)
+    expect(screen.getAllByRole('button')).toHaveLength(8)
     expect(screen.getByRole('button', { name: 'Sütun' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pivot' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'KPI' })).toBeInTheDocument()
   })
 
   it('marks the current type pressed and fires onChange on select', () => {

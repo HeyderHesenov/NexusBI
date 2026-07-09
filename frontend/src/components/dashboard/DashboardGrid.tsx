@@ -89,7 +89,11 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
       draggableHandle=".drag-handle"
       onLayoutChange={(_current, all) => onLayoutChange(all)}
     >
-      {dashboard.widgets.map((w) => (
+      {dashboard.widgets.map((w) => {
+        const widgetTarget = w.chart
+          ? matchTarget(targets, [w.chart.chart_config.y_axis, w.title])
+          : null
+        return (
         <div key={w.id} className="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
           {(pulses[w.id] ?? 0) > 0 && (
             <span
@@ -138,11 +142,8 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
                   onPointClick={(field, value) =>
                     setCrossFilter({ field, value: String(value) })
                   }
-                  targetValue={targetValueFor(
-                    matchTarget(targets, [w.chart.chart_config.y_axis, w.title]),
-                    w.chart.data,
-                    w.chart.chart_config.y_axis,
-                  )}
+                  targetValue={targetValueFor(widgetTarget, w.chart.data, w.chart.chart_config.y_axis)}
+                  target={widgetTarget}
                 />
               </ErrorBoundary>
             ) : (
@@ -152,7 +153,8 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
             )}
           </div>
         </div>
-      ))}
+        )
+      })}
     </ResponsiveGridLayout>
     </>
   )

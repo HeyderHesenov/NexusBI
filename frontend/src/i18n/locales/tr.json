@@ -104,7 +104,8 @@
     "pie": "Pasta",
     "pivot": "Özet",
     "scatter": "Dağılım",
-    "table": "Tablo"
+    "table": "Tablo",
+    "kpi": "KPI"
   },
   "chartView": {
     "tools": "Araçlar",
@@ -1107,5 +1108,10 @@
   "chart": {
     "target": "Hedef",
     "others": "Diğer"
+  },
+  "kpi": {
+    "vsPrevious": "önceki döneme göre",
+    "onTrack": "Yolunda",
+    "behind": "Geride"
   }
 }
