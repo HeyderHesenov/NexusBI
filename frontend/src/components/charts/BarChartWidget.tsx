@@ -4,6 +4,7 @@ import {
   CartesianGrid,
   Cell,
   LabelList,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,9 +13,10 @@ import {
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChartConfig } from '../../types'
-import { useFormatNumber } from '../../hooks/useFormatNumber'
+import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
 import { TruncatedTick } from './axis'
 import { ScrollZoom } from './ScrollZoom'
+import { targetLineProps } from './targetLine'
 import { useChartTheme } from './theme'
 
 const ANOMALY_FILL = '#EF4444'
@@ -35,6 +37,8 @@ interface Props {
   /** Show all bars in a fixed-height, right-scrollbar viewport (vs. folding
    *  hard to Top-14). Used in the explorable chart view, not dashboard cells. */
   scrollable?: boolean
+  /** Matched KPI target — renders a dashed reference line on the value axis. */
+  targetValue?: number
 }
 
 /** Horizontal, value-sorted bars with end-of-bar value labels. Names sit on the
@@ -47,14 +51,15 @@ export function BarChartWidget({
   onPointClick,
   anomalyLabels,
   scrollable = false,
+  targetValue,
 }: Props) {
   const { t } = useTranslation()
-  const fmtNum = useFormatNumber()
+  const fmtVal = useChartValueFormatter(config.format)
   const fmt = useCallback(
-    (v: unknown) => (typeof v === 'number' ? fmtNum(v, { compact: true }) : String(v ?? '')),
-    [fmtNum],
+    (v: unknown) => (typeof v === 'number' ? fmtVal(v) : String(v ?? '')),
+    [fmtVal],
   )
-  const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
+  const { ACCENT, AXIS, GRID, INK_SOFT, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const othersLabel = t('barChartWidget.othersLabel')
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
@@ -92,9 +97,24 @@ export function BarChartWidget({
   // scrollbar still reaches all of them. Non-scrollable callers render at zoom 1.
   const renderChart = (chartHeight: number | string, zoom: number) => (
     <ResponsiveContainer width="100%" height={chartHeight}>
-      <BarChart data={barData} layout="vertical" margin={{ top: 8, right: 52, bottom: 0, left: 0 }}>
+      <BarChart
+        data={barData}
+        layout="vertical"
+        margin={{ top: 8, right: 52, bottom: config.y_label ? 14 : 0, left: 0 }}
+      >
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} horizontal={false} />
-        <XAxis type="number" stroke={AXIS} fontSize={12} tickLine={false} tickFormatter={fmt} />
+        <XAxis
+          type="number"
+          stroke={AXIS}
+          fontSize={12}
+          tickLine={false}
+          tickFormatter={fmt}
+          label={
+            config.y_label
+              ? { value: config.y_label, position: 'insideBottom', offset: -10, fontSize: 11, fill: AXIS }
+              : undefined
+          }
+        />
         <YAxis
           type="category"
           dataKey={x}
@@ -110,9 +130,17 @@ export function BarChartWidget({
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabel}
           itemStyle={tooltipItem}
+          formatter={(value: number | string) => fmt(Number(value))}
         />
+        {Number.isFinite(targetValue) ? (
+          <ReferenceLine
+            x={targetValue}
+            {...targetLineProps(t('chart.target'), INK_SOFT, 'insideTop')}
+          />
+        ) : null}
         <Bar
           dataKey={y}
+          name={config.y_label ?? y}
           fill={ACCENT}
           radius={[0, 6, 6, 0]}
           maxBarSize={Math.round(28 * zoom)}

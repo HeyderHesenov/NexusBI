@@ -1103,5 +1103,9 @@
     "clear": "Temizle",
     "none": "—",
     "noValues": "Değer yok"
+  },
+  "chart": {
+    "target": "Hedef",
+    "others": "Diğer"
   }
 }

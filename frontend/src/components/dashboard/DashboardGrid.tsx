@@ -3,7 +3,9 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Responsive, WidthProvider, type Layout, type Layouts } from 'react-grid-layout'
 import type { Dashboard } from '../../types'
+import { matchTarget, targetValueFor } from '../../lib/kpiTargets'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { useKpiTargets } from '../../hooks/useKpiTargets'
 import { ChartRenderer } from '../charts/LazyChartRenderer'
 import { FilterPills, type Filter } from '../charts/FilterPills'
 import { DashboardFilterBar } from './DashboardFilterBar'
@@ -41,6 +43,9 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
   const [busy, setBusy] = useState<string | null>(null)
   // Cross-filter: click a chart element → filter every widget that has that field.
   const [crossFilter, setCrossFilter] = useState<Filter | null>(null)
+  // Saved KPI targets → dashed reference line on widgets whose measure or
+  // title exactly matches a target name (scale-gated). Owner view is authed.
+  const targets = useKpiTargets()
 
   const refresh = async (id: string) => {
     setBusy(id)
@@ -133,6 +138,11 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
                   onPointClick={(field, value) =>
                     setCrossFilter({ field, value: String(value) })
                   }
+                  targetValue={targetValueFor(
+                    matchTarget(targets, [w.chart.chart_config.y_axis, w.title]),
+                    w.chart.data,
+                    w.chart.chart_config.y_axis,
+                  )}
                 />
               </ErrorBoundary>
             ) : (

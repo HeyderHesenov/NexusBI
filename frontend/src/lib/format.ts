@@ -55,3 +55,7 @@ export const formatSignedPct = (n: number): string => {
 /** Shared SVG-label ellipsis (charts have no CSS text-overflow). */
 export const truncateLabel = (s: string, max = 18): string =>
   s.length > max ? `${s.slice(0, max - 1)}…` : s
+
+/** Append a chart-format unit suffix: "%" hugs the number, words get a space. */
+export const appendUnit = (s: string, unit?: string | null): string =>
+  !unit ? s : unit === '%' ? `${s}%` : `${s} ${unit}`

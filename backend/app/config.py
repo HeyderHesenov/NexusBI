@@ -85,6 +85,10 @@ class Settings(BaseSettings):
     # ─── App ───
     DEMO_MODE: bool = Field(default=True)
     CORS_ORIGINS: str = Field(default="http://localhost:5173")
+    # ISO 4217 code applied to money-looking chart columns (e.g. "AZN", "USD").
+    # Empty => charts show plain numbers; column names can't reveal the currency,
+    # and a wrong symbol is worse than none.
+    DEFAULT_CURRENCY_CODE: str = Field(default="")
 
     # ─── Uploads (CSV/Excel datasources) ───
     UPLOAD_DIR: str = Field(default="./data/uploads")

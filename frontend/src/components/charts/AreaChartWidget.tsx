@@ -1,34 +1,46 @@
 import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Area,
   AreaChart,
   CartesianGrid,
+  Legend,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
-import { useFormatNumber } from '../../hooks/useFormatNumber'
+import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
 import { TruncatedTick } from './axis'
+import { targetLineProps } from './targetLine'
+import { useMultiSeries } from './useMultiSeries'
 import { useChartTheme } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
   config: ChartConfig
   height?: number | string
+  /** Matched KPI target — renders a dashed reference line when set. */
+  targetValue?: number
 }
 
-export function AreaChartWidget({ data, config, height = 320 }: Props) {
-  const fmtNum = useFormatNumber()
-  const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
+export function AreaChartWidget({ data, config, height = 320, targetValue }: Props) {
+  const { t } = useTranslation()
+  const fmtVal = useChartValueFormatter(config.format)
+  const { SERIES, ACCENT, AXIS, GRID, INK_SOFT, tooltipItem, tooltipLabel, tooltipStyle } =
+    useChartTheme()
   const x = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   const gid = `nx-area-${useId()}`
-  const longX = data.some((d) => String(d[x] ?? '').length > 10)
+
+  const multi = useMultiSeries(data, x, y, config)
+  const rows = multi ? multi.rows : data
+  const longX = rows.some((d) => String(d[x] ?? '').length > 10)
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+      <AreaChart data={rows} margin={{ top: 8, right: 8, bottom: config.x_label ? 16 : 0, left: 0 }}>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={ACCENT} stopOpacity={0.35} />
@@ -41,24 +53,60 @@ export function AreaChartWidget({ data, config, height = 320 }: Props) {
           stroke={AXIS}
           tickLine={false}
           tick={longX ? <TruncatedTick max={10} anchor="middle" /> : { fontSize: 12, fill: AXIS }}
+          label={
+            config.x_label
+              ? { value: config.x_label, position: 'insideBottom', offset: -12, fontSize: 11, fill: AXIS }
+              : undefined
+          }
         />
         <YAxis
           stroke={AXIS}
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+          tickFormatter={(v) => fmtVal(Number(v))}
+          label={
+            config.y_label
+              ? { value: config.y_label, angle: -90, position: 'insideLeft', fontSize: 11, fill: AXIS }
+              : undefined
+          }
         />
-        <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} itemStyle={tooltipItem} />
-        <Area
-          type="monotone"
-          dataKey={y}
-          stroke={ACCENT}
-          strokeWidth={2.5}
-          fill={`url(#${gid})`}
-          dot={false}
-          activeDot={{ r: 5, fill: ACCENT }}
+        <Tooltip
+          contentStyle={tooltipStyle}
+          labelStyle={tooltipLabel}
+          itemStyle={tooltipItem}
+          formatter={(value: number | string) => fmtVal(Number(value))}
         />
+        {multi ? <Legend wrapperStyle={{ fontSize: 12 }} /> : null}
+        {Number.isFinite(targetValue) ? (
+          <ReferenceLine y={targetValue} {...targetLineProps(t('chart.target'), INK_SOFT)} />
+        ) : null}
+        {multi ? (
+          multi.series.map((s, i) => (
+            <Area
+              key={s}
+              type="monotone"
+              dataKey={s}
+              stroke={SERIES[i % SERIES.length]}
+              strokeWidth={2}
+              fill={SERIES[i % SERIES.length]}
+              fillOpacity={0.08}
+              dot={false}
+              activeDot={{ r: 4, fill: SERIES[i % SERIES.length] }}
+            />
+          ))
+        ) : (
+          <Area
+            type="monotone"
+            dataKey={y}
+            name={config.y_label ?? y}
+            stroke={ACCENT}
+            strokeWidth={2.5}
+            fill={`url(#${gid})`}
+            dot={false}
+            activeDot={{ r: 5, fill: ACCENT }}
+          />
+        )}
       </AreaChart>
     </ResponsiveContainer>
   )

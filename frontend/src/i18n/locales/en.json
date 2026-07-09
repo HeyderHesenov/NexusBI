@@ -1103,5 +1103,9 @@
     "clear": "Clear",
     "none": "—",
     "noValues": "No values"
+  },
+  "chart": {
+    "target": "Target",
+    "others": "Other"
   }
 }

@@ -21,6 +21,9 @@ export interface ChartRendererProps {
   anomalyLabels?: Set<string>
   /** Render bar charts in a right-scrollbar viewport (explorable view only). */
   scrollableBars?: boolean
+  /** Matched KPI target value — bar/line/area draw a dashed reference line.
+   *  Only authed surfaces pass this; public/embed render without targets. */
+  targetValue?: number
 }
 
 export function ChartRenderer({
@@ -31,6 +34,7 @@ export function ChartRenderer({
   onPointClick,
   anomalyLabels,
   scrollableBars = false,
+  targetValue,
 }: ChartRendererProps) {
   const { t } = useTranslation()
   if (!data.length) {
@@ -46,12 +50,13 @@ export function ChartRenderer({
           onPointClick={onPointClick}
           anomalyLabels={anomalyLabels}
           scrollable={scrollableBars}
+          targetValue={targetValue}
         />
       )
     case 'line':
-      return <LineChartWidget data={data} config={config} height={height} />
+      return <LineChartWidget data={data} config={config} height={height} targetValue={targetValue} />
     case 'area':
-      return <AreaChartWidget data={data} config={config} height={height} />
+      return <AreaChartWidget data={data} config={config} height={height} targetValue={targetValue} />
     case 'pie':
       return (
         <PieChartWidget

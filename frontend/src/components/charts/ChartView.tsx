@@ -12,6 +12,8 @@ import type {
   SignificanceResult,
 } from '../../types'
 import { downloadCsv } from '../../lib/csv'
+import { matchTarget, targetValueFor } from '../../lib/kpiTargets'
+import { useKpiTargets } from '../../hooks/useKpiTargets'
 import * as analysisApi from '../../api/analysis'
 // AI analysis panels load on demand — none render until the user clicks their
 // button, so they stay out of the query/dashboard initial chunk.
@@ -315,11 +317,23 @@ export function ChartView({
 
   const activeConfig: ChartConfig = { ...config, chart_type: type }
 
+  // Saved KPI target matching this measure (exact name match, scale-gated)
+  // → dashed reference line on bar/line/area. Query page is always authed.
+  const targets = useKpiTargets()
+  const yKey = config.y_axis ?? Object.keys(data[0] ?? {})[1]
+  const targetValue = targetValueFor(matchTarget(targets, [config.y_axis, title]), data, yKey)
+
   // Many-point line/area charts get cluttered x-axis labels; wheel/drag zoom
   // thins them out. Pie also benefits: zooming windows the slices so you can
   // inspect the long tail past the Top-N fold. Bars instead scroll (a standard
   // right-side scrollbar reveals every column). Scatter/table/kpi stay as-is.
-  const zoomable = type === 'line' || type === 'area' || type === 'pie'
+  // Multi-series (color_by) results are excluded: ChartZoom windows LONG rows
+  // by index, which would cut an x-group mid-way and plot false dips.
+  const hasColorBy =
+    !!activeConfig.color_by &&
+    activeConfig.color_by !== activeConfig.x_axis &&
+    activeConfig.color_by !== activeConfig.y_axis
+  const zoomable = (type === 'line' || type === 'area' || type === 'pie') && !hasColorBy
 
   const renderChart = (height: number | string) => {
     const chart = (data: Record<string, unknown>[]) => (
@@ -331,6 +345,7 @@ export function ChartView({
         onPointClick={addFilter}
         anomalyLabels={anomalyLabels}
         scrollableBars={type === 'bar'}
+        targetValue={targetValue}
       />
     )
     return (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatNumber, formatMetricValue, formatSignedPct, localeFor } from './format'
+import { appendUnit, formatNumber, formatMetricValue, formatSignedPct, localeFor } from './format'
 
 describe('formatNumber', () => {
   it('formats plain numbers with the default locale', () => {
@@ -59,5 +59,14 @@ describe('formatSignedPct', () => {
     expect(formatSignedPct(12.34)).toBe('+12.3%')
     expect(formatSignedPct(-5)).toBe('-5%')
     expect(formatSignedPct(0)).toBe('+0%')
+  })
+})
+
+describe('appendUnit', () => {
+  it('hugs percent, spaces word units, passes through without a unit', () => {
+    expect(appendUnit('12.5', '%')).toBe('12.5%')
+    expect(appendUnit('42', 'ədəd')).toBe('42 ədəd')
+    expect(appendUnit('42')).toBe('42')
+    expect(appendUnit('42', null)).toBe('42')
   })
 })

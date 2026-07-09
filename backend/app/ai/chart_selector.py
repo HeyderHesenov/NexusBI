@@ -45,6 +45,7 @@ def rule_based_chart(columns: list[str], data: list[dict[str, Any]]) -> ChartCon
 
     Used by the SQL power-user path, which must stay entirely AI-free (no quota,
     no latency). Thin public wrapper over the existing fallback heuristic.
+    (Display hints — format/axis labels — are filled by ChartConfig itself.)
     """
     return _rule_based(columns, data)
 

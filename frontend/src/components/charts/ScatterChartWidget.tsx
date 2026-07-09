@@ -9,6 +9,7 @@ import {
   ZAxis,
 } from 'recharts'
 import type { ChartConfig } from '../../types'
+import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { useChartTheme } from './theme'
 
@@ -32,10 +33,15 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
     numeric.find((k) => k !== x) ||
     numeric[0] ||
     keys[1]
+  // Format/labels describe the CONFIGURED axes; drop them when fallback picked
+  // a different column (a mislabeled axis is worse than an unlabeled one).
+  const fmtVal = useChartValueFormatter(y === config.y_axis ? config.format : undefined)
+  const xLabel = x === config.x_axis ? config.x_label : undefined
+  const yLabel = y === config.y_axis ? config.y_label : undefined
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ScatterChart margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+      <ScatterChart margin={{ top: 8, right: 8, bottom: xLabel ? 18 : 8, left: 0 }}>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} />
         <XAxis
           type="number"
@@ -45,6 +51,11 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
           fontSize={12}
           tickLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+          label={
+            xLabel
+              ? { value: xLabel, position: 'insideBottom', offset: -12, fontSize: 11, fill: AXIS }
+              : undefined
+          }
         />
         <YAxis
           type="number"
@@ -54,7 +65,12 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+          tickFormatter={(v) => fmtVal(Number(v))}
+          label={
+            yLabel
+              ? { value: yLabel, angle: -90, position: 'insideLeft', fontSize: 11, fill: AXIS }
+              : undefined
+          }
         />
         <ZAxis range={[60, 60]} />
         <Tooltip
@@ -62,6 +78,9 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
           contentStyle={tooltipStyle}
           labelStyle={tooltipLabel}
           itemStyle={tooltipItem}
+          formatter={(value: number | string, name: string) =>
+            name === y ? fmtVal(Number(value)) : fmtNum(Number(value), { compact: true })
+          }
         />
         <Scatter
           data={data}
