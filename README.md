@@ -125,17 +125,9 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - ⚡ **Performans** — Redis nəticə keşi (user-scoped), per-datasource connection pooling,
   **lazy chart bundle** (ağır recharts yalnız qrafik render olunanda yüklənir — ilk açılış yüngül).
 - 📈 **Müşahidə** — Prometheus `/metrics`, struktur loglar.
-- 🧠 **AI-Engineering təməli (operator/dev aləti — "AI Keyfiyyət" səhifəsi)** — app öz Text2SQL
-  AI-ının doğruluğunu ölçür:
-  - **RAG grounding** — keçmiş sorğular + verified metriklər portativ vektor store (SQLite+numpy)
-    ilə prompt-a inject olunur; keyless offline (hash) fallback.
-  - **Səviyyələnmiş eval** — **execution-match** golden dəst (easy/medium/hard; JOIN/subquery/HAVING/
-    ranking) **dəyər-əsaslı** müqayisə ilə (sütun adı yox, nəticə) — dürüst rəqəm + per-tier + per-case.
-  - **Bare vs grounded** — RAG-ın real töhfəsini (delta) izolyasiya edir.
-  - **Tarixçə reqressiyası** — istifadəçinin saxladığı/dashboard sorğularında **AI drift**-i ölçür
-    (data dəyişikliyindən təcrid: eyni snapshot-da köhnə vs yeni SQL).
-  - **CI gate + alert** — determinist rule-based floor (CI-da reqressiya tutur) + dəqiqlik düşəndə
-    bildiriş; LLM observability (latency/token/RAG hit-rate). Demo məhdudiyyəti UI-da açıq etiketlənir.
+- 🧠 **RAG grounding** — keçmiş sorğular + verified metriklər portativ vektor store (SQLite+numpy)
+  ilə Text2SQL generation prompt-una inject olunur (result-cache açarına yox); keyless offline (hash)
+  fallback, hər NL→SQL cütü **index-on-write**. Bu, generation dəqiqliyini artırır.
 - ✅ **Keyfiyyət darvazası** — backend pytest, frontend Vitest, **bloklayıcı Playwright E2E smoke** (CI).
 
 ### Qabaqcıl analitika & statistik etibar (differensiator)
@@ -186,7 +178,7 @@ klassik ML, LLM yox:
                                      │ ai/text2sql ← ai/retrieval (RAG grounding)  │
                                      │ ai/chart_selector·insight·forecast·anomaly  │
                                      │ ai/root_cause·requirements·data_prep·copilot│
-                                     │ ai/eval (golden-set) · client.embed (vector)│
+                                     │ client.embed (vector)                       │
                                      │   │  SQL guard → engine pool → exec → RLS   │
                                      │   ▼                                         │
                                      │ services: digest·requirement·data_prep·     │
@@ -207,8 +199,7 @@ sorğular + verified metriklər yalnız generation prompt-una; result-cache aça
 Text2SQL → SQL guard → pooled engine ilə icra → **RLS filtri** → chart + insight (paralel) →
 QueryLog + cache + **index-on-write** (yeni NL→SQL cütü embed olunur) → QueryResult. On-demand
 AI təhlilləri (`root-cause`, `forecast`, `anomaly`, `explain`) və determinik hesablamalar
-(`goal-seek`, `monte-carlo`, `lineage`, `profiling`) ayrıca endpoint-lərdir; **Text2SQL
-keyfiyyəti** golden-set eval + AI observability ilə ölçülür (`/ai/eval`, `/ai/observability`).
+(`goal-seek`, `monte-carlo`, `lineage`, `profiling`) ayrıca endpoint-lərdir.
 
 Ətraflı: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -285,7 +276,6 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST | `/api/v1/copilot/chat` (mode=plan/execute) | Agentik copilot (plan → icra) |
 | POST/GET/DELETE | `/api/v1/saved/...` · `/alerts` · `/notifications` (+ `/digest`) | Saxlanan sorğular · monitorlar · brif |
 | POST/GET/PUT/DELETE | `/api/v1/decisions/...` (+ `/{id}/measure` · `/roi` · `/trajectory` · `/accuracy`) | Qərar İntellekti Döngüsü — jurnal + metrik baseline/realized ölçmə · ROI · trayektoriya · dəqiqlik |
-| POST/GET | `/api/v1/ai/eval/run` (`?grounded`) · `/eval/history-regression` · `/eval/runs` · `/observability` · `/retrieval/reindex` | Text2SQL golden-set eval (bare/grounded) · saxlanmış sorğularda AI drift · tarixçə · AI müşahidə · RAG reindex |
 | GET/POST | `/api/v1/insights/...` (+ `/generate` · `/{id}/dismiss`) | Insight mühərriki — avtomatik kəşf + təsir reytinqi |
 | GET/POST/PATCH/DELETE | `/api/v1/metric-tree/...` (+ `/evaluate`) | Metrik ağacı — KPI dekompozisiya + roll-up |
 | POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
@@ -309,8 +299,6 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | `AI_API_KEY` / `AI_MODEL` | AI mühərriki üçün giriş açarı + mühərrik identifikatoru (.env-dən; boşdursa offline rule-based) |
 | `EMBEDDING_MODEL` | RAG embedding mühərriki (boşdursa determinik offline hash fallback) |
 | `RAG_ENABLED` / `RAG_TOP_K` / `RAG_MAX_CANDIDATES` / `RAG_HASH_DIM` / `RAG_INDEX_ON_WRITE` | RAG grounding: aktiv · inject olunan nümunə sayı · skan limiti · offline embed ölçüsü · hər NL→SQL-i indeksləmə |
-| `AI_TRACE_ENABLED` / `EVAL_MIN_ACCURACY` | AI çağırış izi (token/latency müşahidə) · eval "aşağı hədd" işarəsi |
-| `EVAL_RULE_BASED_FLOOR` / `EVAL_ALERT_THRESHOLD` | CI gate: determinist rule-based eval floor (default 0.25) · dəqiqlik bu həddən aşağı düşəndə alert (default 0.7) |
 | `GOOGLE_CLIENT_ID` | Google OAuth Web client ID (boşdursa düymə deaktiv) |
 | `DATABASE_URL` | Async DSN (postgresql+asyncpg / sqlite+aiosqlite) |
 | `REDIS_URL` / `CACHE_TTL_SECONDS` | Redis (opsional) · nəticə keşi TTL (default 300) |
@@ -347,8 +335,7 @@ rotation/reuse-detect** · rate-limit & tiers · datasource & CSV upload · anom
 (goal-seek/Monte Carlo/pacing) · integrations (+ @mention) · embed/white-label/Stripe gate** ·
 saved-query & scheduler · engine pool · metric catalog · chat context · alerts · decisions ·
 **Qərar Döngüsü (baseline/measure/ROI/accuracy/impact-math/cascade) · RAG retrieval (user-scoped,
-offline embed determinizmi, dedup) · Text2SQL eval (dəyər-əsaslı execution-match, golden health,
-rule-based CI floor, bare/grounded) · tarixçə-reqressiyası (drift) · eval alert** ·
+offline embed determinizmi, dedup)** ·
 **qabaqcıl analitika: statistik mühafiz (t-test/z-test/Pearson/BH-FDR/MAD) · kauzal driver ·
 insight mühərriki (kəşf+reytinq) · metrik ağacı (roll-up) · data müqavilələri
 (profiling-əsaslı keyfiyyət)** · **kohort/funnel (test_cohort) · dashboard snapshotları
@@ -360,7 +347,7 @@ AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest f
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
-collab epoch-guard · decision measure · AI-quality eval · **insight · metric-tree ·
+collab epoch-guard · decision measure · **insight · metric-tree ·
 data-contract · cohort · snapshot · graph · twinStore · baStore · automlStore**) ·
 **UI primitivləri (ModalShell a11y · ErrorBoundary · Dropdown · StatsGuard/Causal panel ·
 CohortHeatmap/FunnelChart · BCGMatrix)**.

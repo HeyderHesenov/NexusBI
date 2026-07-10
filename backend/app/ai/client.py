@@ -189,33 +189,3 @@ def _record_call(resp: Any, started: float, kind: str) -> None:
     metrics.ai_latency_seconds.labels(kind).observe(elapsed)
     if tokens:
         metrics.ai_tokens_total.inc(tokens)
-    if settings.AI_TRACE_ENABLED:
-        _trace(kind, tokens, elapsed)
-
-
-# In-process rolling AI-call trace (bounded) — powers the AI Quality observability
-# view without a DB write on every call. Reset on restart; that's acceptable for
-# an at-a-glance health panel.
-_TRACE: list[dict[str, Any]] = []
-_TRACE_MAX = 500
-
-
-def _trace(kind: str, tokens: int | None, elapsed: float) -> None:
-    _TRACE.append({"kind": kind, "tokens": tokens or 0, "latency_ms": int(elapsed * 1000)})
-    if len(_TRACE) > _TRACE_MAX:
-        del _TRACE[: len(_TRACE) - _TRACE_MAX]
-
-
-def observability() -> dict[str, Any]:
-    """Aggregate the rolling trace for the AI Quality view."""
-    if not _TRACE:
-        return {"calls": 0, "total_tokens": 0, "avg_latency_ms": 0, "by_kind": {}}
-    by_kind: dict[str, int] = {}
-    for t in _TRACE:
-        by_kind[t["kind"]] = by_kind.get(t["kind"], 0) + 1
-    return {
-        "calls": len(_TRACE),
-        "total_tokens": sum(t["tokens"] for t in _TRACE),
-        "avg_latency_ms": round(sum(t["latency_ms"] for t in _TRACE) / len(_TRACE), 1),
-        "by_kind": by_kind,
-    }

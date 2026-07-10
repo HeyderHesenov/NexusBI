@@ -248,34 +248,6 @@ export interface AccuracySummary {
   avg_magnitude_error_pct: number | null
 }
 
-export interface EvalCaseDetail {
-  nl: string
-  passed: boolean
-  strict_passed: boolean
-  latency_ms: number
-  tier: 'easy' | 'medium' | 'hard'
-}
-
-export interface EvalRun {
-  id: string
-  model: string
-  mode: 'bare' | 'grounded' | 'history'
-  total: number
-  passed: number
-  exec_accuracy: number
-  avg_latency_ms: number
-  notes: string
-  details: EvalCaseDetail[]
-  created_at: string
-}
-
-export interface ObservabilitySummary {
-  calls: number
-  total_tokens: number
-  avg_latency_ms: number
-  by_kind: Record<string, number>
-}
-
 export type Schedule = 'off' | 'hourly' | 'daily' | 'weekly'
 
 export interface SavedQuery {

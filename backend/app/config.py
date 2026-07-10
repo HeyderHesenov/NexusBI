@@ -37,15 +37,6 @@ class Settings(BaseSettings):
     SCHEMA_LINK_MIN_TABLES: int = Field(default=8)  # at/below this, skip linking (full schema)
     SCHEMA_LINK_CACHE_TTL_SECONDS: int = Field(default=3600)
 
-    # ─── AI eval & observability ───
-    AI_TRACE_ENABLED: bool = Field(default=True)  # persist token/latency per AI call
-    EVAL_MIN_ACCURACY: float = Field(default=0.5)  # below this a run is flagged "below threshold"
-    # CI regression gate: the deterministic rule-based engine must stay at/above this
-    # exec-accuracy on the golden set (keyless, so CI-stable). Real-LLM eval is on-demand.
-    EVAL_RULE_BASED_FLOOR: float = Field(default=0.25)  # rule-based ~32%; margin for golden growth
-    # Eval/history-regression accuracy below this raises an in-app alert notification.
-    EVAL_ALERT_THRESHOLD: float = Field(default=0.7)
-
     # ─── OAuth ───
     GOOGLE_CLIENT_ID: str = Field(default="")
 

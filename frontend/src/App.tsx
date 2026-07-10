@@ -43,9 +43,6 @@ const PublicDashboardPage = lazy(() =>
 const DecisionsPage = lazy(() =>
   import('./pages/DecisionsPage').then((m) => ({ default: m.DecisionsPage })),
 )
-const AIQualityPage = lazy(() =>
-  import('./pages/AIQualityPage').then((m) => ({ default: m.AIQualityPage })),
-)
 const GraphPage = lazy(() =>
   import('./pages/GraphPage').then((m) => ({ default: m.GraphPage })),
 )
@@ -133,7 +130,6 @@ export default function App() {
               <Route path="/metrics" element={<MetricsPage />} />
               <Route path="/requirements" element={<RequirementsPage />} />
               <Route path="/workspaces" element={<WorkspacePage />} />
-              <Route path="/ai-quality" element={<AIQualityPage />} />
               <Route path="/targets" element={<TargetsPage />} />
               <Route path="/branding" element={<BrandingPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />

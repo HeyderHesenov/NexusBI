@@ -45,8 +45,6 @@ const groups = [
     titleKey: 'nav.groups.admin',
     items: [
       { to: '/workspaces', labelKey: 'nav.workspaces', icon: Users },
-      // AI Keyfiyyət operator/developer alətidir — əsas naviqasiyadan çıxarıldı;
-      // route qalır, yalnız /ai-quality URL-i ilə əlçatandır.
       { to: '/branding', labelKey: 'nav.branding', icon: Palette },
       { to: '/pricing', labelKey: 'nav.pricing', icon: CreditCard },
     ],
