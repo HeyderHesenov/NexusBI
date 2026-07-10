@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     RAG_HASH_DIM: int = Field(default=256)  # dim of the keyless/offline hash embedding
     RAG_INDEX_ON_WRITE: bool = Field(default=True)  # embed each fresh NL→SQL pair
 
+    # Schema linking: on wide schemas, embed table descriptors and send the model
+    # only the top-K relevant tables (+ FK targets). Small schemas use full context.
+    SCHEMA_LINK_TOP_K: int = Field(default=5)
+    SCHEMA_LINK_MIN_TABLES: int = Field(default=8)  # at/below this, skip linking (full schema)
+    SCHEMA_LINK_CACHE_TTL_SECONDS: int = Field(default=3600)
+
     # ─── AI eval & observability ───
     AI_TRACE_ENABLED: bool = Field(default=True)  # persist token/latency per AI call
     EVAL_MIN_ACCURACY: float = Field(default=0.5)  # below this a run is flagged "below threshold"

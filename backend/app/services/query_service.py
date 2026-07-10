@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.chart_selector import rule_based_chart, select_chart_type
 from app.ai.insight_generator import generate_insight
 from app.services.insight_facts import compute_facts
-from app.ai import sql_guard
+from app.ai import schema_linking, sql_guard
 from app.ai.text2dax import Text2DAXEngine
 from app.ai.text2sql import Text2SQLEngine
 from app.ai.types import ChartConfig, Text2SQLResult
@@ -440,7 +440,12 @@ async def _live_pipeline(
     if ds.db_type == DBType.powerbi:
         return await _powerbi_pipeline(nl_query, ds, cache, extra_context)
     schema = await ds_service.get_schema_cached(ds, cache)
-    schema_text = ds_service.schema_as_prompt(schema)
+    # On wide schemas, send the model only the tables this question needs (+ FK
+    # targets); small schemas (or any embedding hiccup) fall back to the full schema.
+    # The linked text feeds _sqlgen_key, so the generation cache is keyed per
+    # (question, rendered subset). Linking shapes GENERATION only — the guard below
+    # still runs on the FULL schema, and repair re-generates on the FULL schema.
+    schema_text = await schema_linking.select_relevant(nl_query, schema, cache)
     sql_result = await _generate_sql_cached(
         nl_query, schema_text, ds.db_type.value, extra_context, cache
     )
@@ -450,6 +455,7 @@ async def _live_pipeline(
     # column/join/type), feed the DB error back to the model and retry the corrected SQL.
     sql = sql_result.sql
     did_repair = False
+    full_schema_text: str | None = None  # rendered lazily only if a repair is needed
     for attempt in range(settings.SQL_REPAIR_MAX_ATTEMPTS + 1):
         try:
             columns, rows = await _guarded_execute(ds, sql, schema, db, user_id)
@@ -464,10 +470,14 @@ async def _live_pipeline(
                 "sql_repair_attempt", attempt=attempt + 1,
                 error=str(exc.detail or exc.message)[:200],
             )
+            # Repair on the FULL schema, not the linked subset: the failure may be a
+            # table schema linking dropped, which the subset can never recover.
+            if full_schema_text is None:
+                full_schema_text = ds_service.schema_as_prompt(schema)
             try:
                 sql_result = await _engine.repair_sql(
                     nl_query, sql, exc.detail or exc.message,
-                    schema_text, ds.db_type.value, extra_context,
+                    full_schema_text, ds.db_type.value, extra_context,
                 )
             except AIGenerationError as rexc:
                 _log.warning("sql_repair_failed", error=str(rexc.detail or rexc.message)[:200])
