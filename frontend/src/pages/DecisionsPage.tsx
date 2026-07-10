@@ -5,6 +5,7 @@ import { useDecisionStore } from '../store/decisionStore'
 import { formatNumber } from '../lib/format'
 import { Sparkline } from '../components/charts/Sparkline'
 import { TypewriterText } from '../components/charts/TypewriterText'
+import { FIELD } from '../components/ui/form'
 import * as decisionApi from '../api/decision'
 import type { Decision, DecisionStatus, DecisionTrajectory, ImpactStatus } from '../types'
 
@@ -50,7 +51,7 @@ export function DecisionsPage() {
         <div>
           <p className="eyebrow">{t('decisionsPage.eyebrow')}</p>
           <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
-            Insight → Action → Outcome
+            {t('decisionsPage.title')}
           </h1>
           <p className="mt-1 text-sm text-ink-soft">
             {t('decisionsPage.subtitle')}
@@ -261,7 +262,7 @@ function DecisionCard({
           onBlur={() => outcome !== d.outcome && onPatch(d.id, { outcome })}
           placeholder={t('decisionsPage.outcomePlaceholder')}
           rows={2}
-          className="w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+          className={FIELD}
         />
       </div>
     </li>

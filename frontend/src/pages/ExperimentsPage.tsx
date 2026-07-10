@@ -4,10 +4,8 @@ import toast from 'react-hot-toast'
 import { FlaskConical, Percent, Play, Plus, Sigma, Trash2, Trophy } from 'lucide-react'
 import { useExperimentStore } from '../store/experimentStore'
 import { ModalShell } from '../components/ui/ModalShell'
+import { FIELD } from '../components/ui/form'
 import type { Experiment, ExperimentKind } from '../types'
-
-const field =
-  'w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none'
 
 const num = (v: string) => (v === '' ? NaN : Number(v))
 
@@ -288,7 +286,7 @@ function CreateModal({
                 id="exp-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className={field}
+                className={FIELD}
                 placeholder={t('experimentsPage.namePlaceholder')}
               />
             </div>
@@ -405,7 +403,7 @@ function CreateModal({
                               onChange={(e) => setState((s) => ({ ...s, [f]: e.target.value }))}
                               aria-invalid={err !== null}
                               aria-describedby={err ? `${id}-err` : undefined}
-                              className={field}
+                              className={FIELD}
                               style={err ? { borderColor: DANGER } : undefined}
                             />
                             {err && (

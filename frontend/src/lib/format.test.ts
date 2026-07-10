@@ -68,6 +68,12 @@ describe('formatDate', () => {
     expect(formatDate(new Date(iso), { locale: 'en-US', mode: 'date' })).toContain('2024')
     expect(formatDate(Date.parse(iso), { locale: 'en-US', mode: 'date' })).toContain('2024')
   })
+
+  it('short mode produces a compact numeric date+time', () => {
+    const s = formatDate(iso, { locale: 'en-US', mode: 'short' })
+    expect(s).toContain('24') // 2-digit year
+    expect(s).toContain(':') // includes time
+  })
 })
 
 describe('formatMetricValue (unchanged behavior)', () => {

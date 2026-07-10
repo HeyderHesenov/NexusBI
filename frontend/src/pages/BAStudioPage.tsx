@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { Compass, Grid2x2, Loader2, Shield, Sparkles, Workflow } from 'lucide-react'
 import { SavedCard } from '../components/ui/SavedCard'
 import { useOpenParam } from '../hooks/useOpenParam'
+import { useFormatDate } from '../hooks/useFormatDate'
 import { BCGMatrix } from '../components/ba/BCGMatrix'
 import { MermaidDiagram } from '../components/ba/MermaidDiagram'
 import { PorterForces } from '../components/ba/PorterForces'
@@ -52,6 +53,7 @@ function ArtifactCanvas({ artifact }: { artifact: BAArtifact }) {
 
 export function BAStudioPage() {
   const { t } = useTranslation()
+  const fmtDate = useFormatDate()
   const { items, current, generating, load, generate, select, remove } = useBAStore()
   const [framework, setFramework] = useState<BAFramework>('swot')
   const [title, setTitle] = useState('')
@@ -193,7 +195,7 @@ export function BAStudioPage() {
                 <SavedCard
                   active={current?.id === a.id}
                   title={a.title}
-                  subtitle={`${t(`baStudio.fw_${a.framework}`)} · ${new Date(a.created_at).toLocaleDateString()}`}
+                  subtitle={`${t(`baStudio.fw_${a.framework}`)} · ${fmtDate(a.created_at, { mode: 'date' })}`}
                   deleteLabel={t('baStudio.delete')}
                   onSelect={() => select(a.id)}
                   onDelete={() =>

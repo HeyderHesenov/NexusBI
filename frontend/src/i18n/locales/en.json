@@ -320,6 +320,7 @@
     "title": "Data sources"
   },
   "decisionsPage": {
+    "title": "Insight → Action → Outcome",
     "baseline": "Baseline",
     "changeFromBaseline": "Change from baseline",
     "decisionAccuracy": "Decision accuracy",

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Activity, Database, Gauge, HelpCircle, PlayCircle, RefreshCw, Sparkles } from 'lucide-react'
 import { useAIQualityStore } from '../store/aiQualityStore'
 import { formatNumber } from '../lib/format'
+import { useFormatDate } from '../hooks/useFormatDate'
 
 function Trend({ values }: { values: number[] }) {
   if (values.length < 2) return null
@@ -34,6 +35,7 @@ function StatCard({ icon, label, value, hint }: { icon: React.ReactNode; label: 
 
 export function AIQualityPage() {
   const { t } = useTranslation()
+  const fmtDate = useFormatDate()
   const { runs, obs, busy, load, runEval, runHistory, reindex } = useAIQualityStore()
   const [showHelp, setShowHelp] = useState(false)
 
@@ -251,7 +253,7 @@ export function AIQualityPage() {
                     >
                       {r.mode === 'grounded' ? 'RAG' : r.mode === 'history' ? t('aIQualityPage.modeHistory') : 'bare'}
                     </span>
-                    <span className="font-mono text-ink-soft">{new Date(r.created_at).toLocaleString('az')}</span>
+                    <span className="font-mono text-ink-soft">{fmtDate(r.created_at)}</span>
                   </span>
                   <span className="font-mono text-ink">
                     {r.passed}/{r.total} · {Math.round(r.exec_accuracy * 100)}%

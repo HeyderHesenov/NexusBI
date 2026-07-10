@@ -5,6 +5,7 @@ import { useMetricStore } from '../store/metricStore'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { ModalShell } from '../components/ui/ModalShell'
 import { Field, Select } from '../components/ui/form'
+import { SkeletonRows } from '../components/ui/Skeleton'
 import type { MetricCreate } from '../types'
 
 const field =
@@ -12,7 +13,7 @@ const field =
 
 export function MetricsPage() {
   const { t } = useTranslation()
-  const { items, load, add, setVerified, remove } = useMetricStore()
+  const { items, loading, load, add, setVerified, remove } = useMetricStore()
   const { sources, load: loadSources } = useDatasourceStore()
   const [open, setOpen] = useState(false)
 
@@ -42,7 +43,9 @@ export function MetricsPage() {
         </button>
       </header>
 
-      {items.length === 0 ? (
+      {loading && items.length === 0 ? (
+        <SkeletonRows rows={6} rowClassName="h-20" />
+      ) : items.length === 0 ? (
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <Tag size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">{t('metricsPage.emptyTitle')}</p>

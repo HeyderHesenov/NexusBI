@@ -7,6 +7,7 @@ import { SavedCard } from '../components/ui/SavedCard'
 import { ModelDiagnostics } from '../components/automl/ModelDiagnostics'
 import { WeightBars } from '../components/automl/WeightBars'
 import { useOpenParam } from '../hooks/useOpenParam'
+import { useFormatDate } from '../hooks/useFormatDate'
 import { useAutoMLStore } from '../store/automlStore'
 import { formatMetricValue as fmt } from '../lib/format'
 import type { AutoMLTable, MLModelInfo } from '../types'
@@ -109,6 +110,7 @@ function PredictForm({ model, table }: { model: MLModelInfo; table: AutoMLTable 
 
 export function AutoMLPage() {
   const { t } = useTranslation()
+  const fmtDate = useFormatDate()
   const {
     tables, models, training, sourceTable, targetColumn, current,
     load, pickSource, pickTarget, train, select, remove,
@@ -255,7 +257,7 @@ export function AutoMLPage() {
                 <SavedCard
                   active={current?.id === m.id}
                   title={m.name}
-                  subtitle={`${t(`automl.type_${m.problem_type}`)} · ${new Date(m.created_at).toLocaleDateString()}`}
+                  subtitle={`${t(`automl.type_${m.problem_type}`)} · ${fmtDate(m.created_at, { mode: 'date' })}`}
                   deleteLabel={t('automl.delete')}
                   onSelect={() => select(m.id)}
                   onDelete={() =>

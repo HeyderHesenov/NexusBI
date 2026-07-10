@@ -44,8 +44,15 @@ export interface FormatDateOptions {
   /** BCP-47 locale; defaults to 'az-AZ'. React code should pass the current
    *  locale (see useFormatDate); lib-level callers get the default. */
   locale?: string
-  /** 'datetime' (default) → date + HH:mm; 'date' → date only. */
-  mode?: 'datetime' | 'date'
+  /** 'datetime' (default) → date + HH:mm; 'date' → date only; 'short' → the
+   *  compact numeric date+time used by audit/notification logs. */
+  mode?: 'datetime' | 'date' | 'short'
+}
+
+const DATE_CONFIG: Record<NonNullable<FormatDateOptions['mode']>, Intl.DateTimeFormatOptions> = {
+  datetime: { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' },
+  date: { year: 'numeric', month: 'short', day: '2-digit' },
+  short: { dateStyle: 'short', timeStyle: 'short' },
 }
 
 /** Single date/time formatter for the whole app — locale-aware via the same
@@ -55,11 +62,7 @@ export const formatDate = (value: string | number | Date, opts: FormatDateOption
   const { locale = 'az-AZ', mode = 'datetime' } = opts
   const d = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(d.getTime())) return '—'
-  const config: Intl.DateTimeFormatOptions =
-    mode === 'date'
-      ? { year: 'numeric', month: 'short', day: '2-digit' }
-      : { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }
-  return new Intl.DateTimeFormat(locale, config).format(d)
+  return new Intl.DateTimeFormat(locale, DATE_CONFIG[mode]).format(d)
 }
 
 /** Shared KPI number formatter — keep the metric-tree editor and the Digital Twin

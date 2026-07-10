@@ -320,6 +320,7 @@
     "title": "Veri kaynakları"
   },
   "decisionsPage": {
+    "title": "İçgörü → Aksiyon → Sonuç",
     "baseline": "Temel",
     "changeFromBaseline": "Temele göre değişim",
     "decisionAccuracy": "Karar doğruluğu",

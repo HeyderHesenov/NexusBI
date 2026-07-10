@@ -3,19 +3,17 @@ import { useTranslation } from 'react-i18next'
 import { History, Plus, Shield, Trash2, UserPlus, Users } from 'lucide-react'
 import { useWorkspaceStore } from '../store/workspaceStore'
 import { Field, FIELD, Select } from '../components/ui/form'
-
-function fmt(ts: string): string {
-  const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(ts)
-  return new Date(hasTz ? ts : `${ts}Z`).toLocaleString('az-AZ', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  })
-}
+import { useFormatDate } from '../hooks/useFormatDate'
 
 const ROLES = ['viewer', 'editor', 'owner']
 
 export function WorkspacePage() {
   const { t } = useTranslation()
+  const fmtDate = useFormatDate()
+  // Audit timestamps without an explicit zone are UTC — mark them so before
+  // formatting in the viewer's locale.
+  const fmtAudit = (ts: string) =>
+    fmtDate(/[zZ]|[+-]\d{2}:?\d{2}$/.test(ts) ? ts : `${ts}Z`, { mode: 'short' })
   const {
     workspaces, members, audit, load, create, loadMembers, addMember, removeMember, loadAudit,
   } = useWorkspaceStore()
@@ -184,7 +182,7 @@ export function WorkspacePage() {
                   {a.entity && <span className="text-ink-faint">· {a.entity}</span>}
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-                  {fmt(a.created_at)}
+                  {fmtAudit(a.created_at)}
                 </span>
               </li>
             ))}

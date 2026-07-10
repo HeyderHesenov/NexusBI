@@ -11,6 +11,7 @@ import { UploadSourceModal } from '../components/datasource/UploadSourceModal'
 import { DataPrepModal } from '../components/datasource/DataPrepModal'
 import { ProfilePanel } from '../components/datasource/ProfilePanel'
 import { RlsModal } from '../components/datasource/RlsModal'
+import { SkeletonRows } from '../components/ui/Skeleton'
 
 /** Parse a server timestamp as UTC even when it lacks a tz suffix (SQLite stores
  *  naive datetimes; without this the browser would read them as local time). */
@@ -30,7 +31,7 @@ function freshness(s: { last_refreshed_at?: string | null; freshness_sla_hours?:
 
 export function DataSourcesPage() {
   const { t } = useTranslation()
-  const { sources, load, test, remove, setSla } = useDatasourceStore()
+  const { sources, loading, load, test, remove, setSla } = useDatasourceStore()
   const { datasourceId, setDatasource } = useQueryStore()
   const [connectOpen, setConnectOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -99,7 +100,9 @@ export function DataSourcesPage() {
         </div>
       </header>
 
-      {sources.length === 0 ? (
+      {loading && sources.length === 0 ? (
+        <SkeletonRows rows={5} rowClassName="h-20" />
+      ) : sources.length === 0 ? (
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <Database size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">{t('dataSourcesPage.emptyTitle')}</p>

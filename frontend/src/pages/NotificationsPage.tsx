@@ -5,16 +5,14 @@ import { useNotificationStore } from '../store/notificationStore'
 import { IntegrationsPanel } from '../components/IntegrationsPanel'
 import { Dropdown, type DropdownOption } from '../components/ui/Dropdown'
 import { CATEGORY_META, CATEGORY_ORDER } from '../lib/notificationCategories'
+import { useFormatDate } from '../hooks/useFormatDate'
 import type { NotificationCategory } from '../types'
 
 type Filter = NotificationCategory | 'all'
 
-function fmt(ts: string): string {
-  return new Date(ts).toLocaleString('az-AZ', { dateStyle: 'short', timeStyle: 'short' })
-}
-
 export function NotificationsPage() {
   const { t } = useTranslation()
+  const fmtDate = useFormatDate()
   const { items, unread, briefing, load, generateDigest, markAllRead, markOneRead } =
     useNotificationStore()
   const [active, setActive] = useState<Filter>('all')
@@ -133,7 +131,7 @@ export function NotificationsPage() {
                         {n.body}
                       </p>
                       <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-                        {fmt(n.created_at)}
+                        {fmtDate(n.created_at, { mode: 'short' })}
                       </p>
                     </div>
                   </div>

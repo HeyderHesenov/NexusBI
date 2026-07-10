@@ -320,6 +320,7 @@
     "title": "Источники данных"
   },
   "decisionsPage": {
+    "title": "Инсайт → Действие → Результат",
     "baseline": "База",
     "changeFromBaseline": "Изменение от базы",
     "decisionAccuracy": "Точность решений",

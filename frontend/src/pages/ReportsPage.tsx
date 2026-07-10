@@ -5,6 +5,8 @@ import { BellPlus, Clock, Mail, Play, Trash2, BookMarked } from 'lucide-react'
 import { useSavedQueryStore } from '../store/savedQueryStore'
 import { ModalShell } from '../components/ui/ModalShell'
 import { Field, Select } from '../components/ui/form'
+import { SkeletonRows } from '../components/ui/Skeleton'
+import { useFormatDate } from '../hooks/useFormatDate'
 import * as alertApi from '../api/alert'
 import * as subApi from '../api/reportSubscription'
 import type { ReportFormat, ReportSchedule, Subscription } from '../api/reportSubscription'
@@ -19,11 +21,9 @@ const SCHEDULES: { value: Schedule; labelKey: string }[] = [
 
 export function ReportsPage() {
   const { t } = useTranslation()
-  const fmt = (ts: string | null): string => {
-    if (!ts) return t('reportsPage.never')
-    return new Date(ts).toLocaleString('az-AZ', { dateStyle: 'short', timeStyle: 'short' })
-  }
-  const { items, load, run, remove, setSchedule } = useSavedQueryStore()
+  const fmtDate = useFormatDate()
+  const fmt = (ts: string | null): string => (ts ? fmtDate(ts, { mode: 'short' }) : t('reportsPage.never'))
+  const { items, loading, load, run, remove, setSchedule } = useSavedQueryStore()
   const [alertFor, setAlertFor] = useState<{ id: string; name: string } | null>(null)
   const [deliverFor, setDeliverFor] = useState<{ id: string; name: string } | null>(null)
 
@@ -43,7 +43,9 @@ export function ReportsPage() {
         </p>
       </header>
 
-      {items.length === 0 ? (
+      {loading && items.length === 0 ? (
+        <SkeletonRows rows={5} rowClassName="h-20" />
+      ) : items.length === 0 ? (
         <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
           <BookMarked size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">{t('reportsPage.emptyTitle')}</p>
