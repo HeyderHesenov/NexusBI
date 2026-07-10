@@ -29,7 +29,7 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 | API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, **snapshot**, metric, saved_query, billing, branding, decision, integration, copilot, requirement, **ba**, **automl**, scenario, workspace, **cohort**, **graph**, **ai_quality (eval/observability/reindex)**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
 | Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **cohort_service, snapshot_service, graph_service, ba_service, automl_service** |
-| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding), eval/* (tiered golden set, value-based execution-match, bare/grounded/history runner + regression)**, sql_guard, schema_introspector, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed + rolling AI trace)** |
+| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding), eval/* (tiered golden set, value-based execution-match, bare/grounded/history runner + regression)**, sql_guard, schema_introspector, **schema_linking (wide-schema table selection: embed+cosine top-K + FK closure, metadata-only)**, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed + rolling AI trace)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit |
 | Realtime | `realtime/*` | hub (collab WS pub/sub), live_refresh (canlı dashboard loop) |
@@ -211,12 +211,12 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
   background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
   `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (420) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (478) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
   deterministic, no cost — identical to CI; new suites: test_cohort, test_snapshots, test_graph,
-  test_ba, test_automl). Frontend Vitest (202) covers `lib/*`, hooks, and Zustand
+  test_ba, test_automl). Frontend Vitest (268) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, AI-quality eval, the advanced-analytics
   stores/panels — experiment/insight/metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
@@ -250,8 +250,10 @@ RAG vector store + `eval_runs`); **`b0c1d2e3f4a5`** — `eval_runs.details` (per
 Time Machine), **`f0a1b2c3d4e5`** (`ba_artifacts` — BA Framework Studio), **`a2b3c4d5e6f7`**
 (`ml_models` — AutoML). Later rounds: **`b3c4d5e6f7a8`** (`alerts.condition_type` — anomaly
 alerts), **`c4d5e6f7a8b9`** (drop `insights` — dedup cleanup), **`d5e6f7a8b9c0`**
-(`dashboards.global_filter` — server-side global dashboard filter). Migrations are Alembic, chained
-under `db/migrations/versions`; current head = **`d5e6f7a8b9c0`**. NOTE: the **demo** schema is seeded
+(`dashboards.global_filter` — server-side global dashboard filter), **`e6f7a8b9c0d1`**
+(`ml_models.leaderboard` + `.diagnostics` — AutoML k-fold CV / confusion / actual-vs-predicted /
+permutation importance / per-prediction explain stats). Migrations are Alembic, chained
+under `db/migrations/versions`; current head = **`e6f7a8b9c0d1`**. NOTE: the **demo** schema is seeded
 in-memory (`db/demo_data._seed`, no migration) — `sales.customer_id` was added there to enable realistic
 customer↔sales joins, and an `events` table (visit→signup→trial→purchase) was added for
 cohort/funnel analytics; `format_demo_schema` sends real column types + sample values to the prompt.
@@ -278,12 +280,17 @@ cohort/funnel analytics; `format_demo_schema` sends real column types + sample v
   (migration `f0a1b2c3d4e5`); `POST /ba/generate` (AI quota) + `GET /ba` + `GET/DELETE /ba/{id}`;
   shared `ai/textparse.py`. FE `/ba-studio` (SWOTGrid 2×2, PorterForces, BCGMatrix SVG,
   MermaidDiagram as a lazy ~1MB chunk, `securityLevel: strict`). (6) **AutoML Studio** —
-  `scikit-learn==1.6.1`; `MLModel` (migration `a2b3c4d5e6f7` = new head; the pickle blob is only
-  ever the server's own estimator and never appears in any response); `automl_service`
-  (Linear/LogReg vs RandomForest holdout selection, sklearn imports kept function-local, fit in
-  `asyncio.to_thread`, ≤5000 training rows, blob ≤5MB); `GET /automl/tables`,
-  `POST /automl/train` (per-IP 5/min), `GET /automl/models`, `POST /automl/models/{id}/predict`
-  (per-IP 30/min), `DELETE /automl/models/{id}`; FE `/automl` wizard.
+  `scikit-learn==1.6.1`; `MLModel` (migration `a2b3c4d5e6f7`; `leaderboard`+`diagnostics` JSON added
+  in `e6f7a8b9c0d1`; the pickle blob is only ever the server's own estimator and never appears in
+  any response); `automl_service` (Linear/LogReg vs RandomForest holdout selection, sklearn imports
+  kept function-local, fit + diagnostics in `asyncio.to_thread`, ≤5000 training rows, blob ≤5MB).
+  `_build_diagnostics` adds a candidate **leaderboard**, **k-fold CV** of the winner (shuffled,
+  NaN-sanitized so JSON.parse never chokes), a **confusion matrix** (numeric-aware label order) or
+  **actual-vs-predicted** points (≤200), **permutation importance**, and capped per-feature stats
+  for **per-prediction explanations** that name the original column (not the one-hot dummy);
+  `GET /automl/tables`, `POST /automl/train` (per-IP 5/min), `GET /automl/models`,
+  `POST /automl/models/{id}/predict` → `{predictions, explanations}` (per-IP 30/min),
+  `DELETE /automl/models/{id}`; FE `/automl` wizard with diagnostics visuals (Recharts + heat-grid).
 - **Guard-chain reuse, again:** the AutoML datasource path runs through the SAME
   `query_service._guarded_execute` chain as `/query` (table allowlist → per-viewer RLS →
   pooled execute) — training data can't see rows the viewer couldn't query.

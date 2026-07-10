@@ -18,7 +18,10 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - 🗣️ **Natural language sorğu** — "Regionlar üzrə satış payı" yaz, cavabı al.
 - 💬 **Chat-with-your-data** — çoxdönüşlü follow-up: "bunu aya görə böl", "yalnız 2024";
   əvvəlki sual+SQL kontekst kimi saxlanılır.
-- 🧠 **Text2SQL** — sual təhlükəsiz `SELECT`-ə çevrilir (guard + re-validation).
+- 🧠 **Text2SQL** — sual təhlükəsiz `SELECT`-ə çevrilir (guard + re-validation). Geniş
+  sxemlərdə (>8 cədvəl) **sxem-linking** modelə yalnız suala aid cədvəlləri (+ FK
+  hədəfləri) göndərir — embedding-cosine top-K, samples HEÇ VAXT (tenant-leak); kiçik
+  sxem və ya xəta → tam sxemə fail-open, repair loop tam sxemdə işləyir.
 - ⌨️ **SQL power-user rejimi** — analitik təbii dil əvəzinə **öz SQL-ini yazır və ya
   AI-nin SQL-ini redaktə edib yenidən işlədir** (CodeMirror, sxem-bilən autocomplete).
   Tamamilə **AI-siz** (kvota yemir); eyni təhlükəsizlik zənciri (SELECT-only → cədvəl
@@ -158,9 +161,11 @@ klassik ML, LLM yox:
   kumulyativ-ardıcıl waterfall, ±10% tornado həssaslıq analizi; ssenarilər lokal saxlanılır
   (backend dəyişikliyi yox). `/twin`.
 - 🤖 **AutoML Studiyası** — cədvəldən bir kliklə model öyrət (**scikit-learn**: Linear/LogReg vs
-  RandomForest, holdout üzrə yaxşısı seçilir), feature əhəmiyyəti + interaktiv proqnoz;
-  datasource yolu `/query` ilə **eyni guard zəncirindən** keçir (cədvəl allowlist + per-viewer
-  RLS); ≤5000 sətir öyrətmə, fit ayrı thread-də. `/automl` wizard.
+  RandomForest, holdout üzrə yaxşısı seçilir) + **dərin diaqnostika**: model reytinqi
+  (leaderboard), **k-fold çarpaz yoxlama**, qarışıqlıq matrisi / faktiki-vs-proqnoz + qalıq
+  histoqramı, permutasiya əhəmiyyəti və **per-proqnoz izahları** (orijinal sütun adı ilə).
+  Datasource yolu `/query` ilə **eyni guard zəncirindən** keçir (cədvəl allowlist + per-viewer
+  RLS); ≤5000 sətir öyrətmə, fit + diaqnostika ayrı thread-də. `/automl` wizard.
 
 ---
 
@@ -335,7 +340,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 420 test
+cd backend && pytest        # 478 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -354,7 +359,7 @@ A/B əhəmiyyət · insight mühərriki (kəşf+reytinq) · metrik ağacı (roll
 AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
 `AI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
 
-**Frontend Vitest (202 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (268 test):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
