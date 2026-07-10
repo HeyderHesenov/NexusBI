@@ -5,10 +5,12 @@ import { useParams } from 'react-router-dom'
 import { ChartRenderer } from '../components/charts/LazyChartRenderer'
 import { CollabPanel } from '../components/dashboard/CollabPanel'
 import { CollabSurface } from '../components/dashboard/CollabSurface'
+import { DashboardFilterBar } from '../components/dashboard/DashboardFilterBar'
 import { NexusMark } from '../components/brand/NexusMark'
 import * as dashApi from '../api/dashboard'
 import { useCollabStore } from '../store/collabStore'
-import type { Dashboard } from '../types'
+import { mergeFilteredWidgets } from '../store/dashboardStore'
+import type { Dashboard, DashboardFilterSpec } from '../types'
 
 export function PublicDashboardPage() {
   const { t } = useTranslation()
@@ -16,7 +18,24 @@ export function PublicDashboardPage() {
   const [dash, setDash] = useState<Dashboard | null>(null)
   const [error, setError] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
+  // Viewer-side filter — local only, never persisted to the owner's dashboard.
+  const [filterSpec, setFilterSpec] = useState<DashboardFilterSpec | null>(null)
+  const [filtering, setFiltering] = useState(false)
   const { participants, connect, disconnect } = useCollabStore()
+
+  const applyFilter = async (spec: DashboardFilterSpec) => {
+    if (!token) return
+    setFiltering(true)
+    try {
+      const result = await dashApi.applyPublicFilter(token, spec)
+      setFilterSpec(result.global_filter)
+      setDash((d) => (d ? { ...d, widgets: mergeFilteredWidgets(d.widgets, result.widgets) } : d))
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setFiltering(false)
+    }
+  }
 
   useEffect(() => {
     if (!token) return
@@ -79,6 +98,12 @@ export function PublicDashboardPage() {
           <p className="py-20 text-center text-ink-soft">{t('publicDashboardPage.emptyPanel')}</p>
         ) : (
           <CollabSurface>
+            <DashboardFilterBar
+              dashboard={dash}
+              active={filterSpec}
+              busy={filtering}
+              onApply={applyFilter}
+            />
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {dash.widgets.map((w) => (
                 <div key={w.id} className="flex h-80 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card">

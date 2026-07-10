@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChartRenderer } from '../components/charts/LazyChartRenderer'
+import { DashboardFilterBar } from '../components/dashboard/DashboardFilterBar'
 import * as branding from '../api/branding'
+import * as dashApi from '../api/dashboard'
 import type { EmbeddedDashboardView } from '../api/branding'
 import { deriveAccentVariants, hexToTriplet } from '../lib/color'
+import { mergeFilteredWidgets } from '../store/dashboardStore'
+import type { DashboardFilterSpec } from '../types'
 
 /** Layout-less, white-label, read-only embedded dashboard for external apps. */
 export function EmbedDashboardPage() {
@@ -13,6 +17,33 @@ export function EmbedDashboardPage() {
   const [view, setView] = useState<EmbeddedDashboardView | null>(null)
   const [error, setError] = useState(false)
   const [logoBroken, setLogoBroken] = useState(false)
+  // Viewer-side filter — local only, never persisted to the owner's dashboard.
+  const [filterSpec, setFilterSpec] = useState<DashboardFilterSpec | null>(null)
+  const [filtering, setFiltering] = useState(false)
+
+  const applyFilter = async (spec: DashboardFilterSpec) => {
+    if (!token) return
+    setFiltering(true)
+    try {
+      const result = await dashApi.applyPublicFilter(token, spec, 'embed')
+      setFilterSpec(result.global_filter)
+      setView((v) =>
+        v
+          ? {
+              ...v,
+              dashboard: {
+                ...v.dashboard,
+                widgets: mergeFilteredWidgets(v.dashboard.widgets, result.widgets),
+              },
+            }
+          : v,
+      )
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setFiltering(false)
+    }
+  }
 
   useEffect(() => {
     if (!token) return
@@ -86,6 +117,13 @@ export function EmbedDashboardPage() {
         {dashboard.widgets.length === 0 ? (
           <p className="py-20 text-center text-ink-soft">{t('embedDashboardPage.emptyDashboard')}</p>
         ) : (
+          <>
+          <DashboardFilterBar
+            dashboard={dashboard}
+            active={filterSpec}
+            busy={filtering}
+            onApply={applyFilter}
+          />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {dashboard.widgets.map((w) => (
               <div
@@ -109,6 +147,7 @@ export function EmbedDashboardPage() {
               </div>
             ))}
           </div>
+          </>
         )}
       </main>
     </div>

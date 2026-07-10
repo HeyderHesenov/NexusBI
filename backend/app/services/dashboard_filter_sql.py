@@ -102,6 +102,33 @@ def filter_active(spec: dict[str, Any] | None) -> bool:
     return bool(dims) or bool(date_col)
 
 
+def narrow_spec_to_columns(spec: dict[str, Any] | None, columns: set[str]) -> dict[str, Any]:
+    """Drop any dimension/date filter whose column is not in ``columns``
+    (compared case-insensitively).
+
+    Used on the anonymous public/embed path to bind a filter to a widget ONLY
+    by columns that widget actually displays. Without it a column name shown by
+    one widget would be AND-ed (via ``apply_filter``'s schema binding) onto a
+    *different* widget's same-named but never-shown base-table column, letting a
+    viewer slice hidden data. ``columns`` should be the widget's stored result
+    columns."""
+    if not spec:
+        return {"dimensions": [], "date_column": None, "date_start": None, "date_end": None}
+    allowed = {c.lower() for c in columns}
+    dims = [
+        d for d in (spec.get("dimensions") or [])
+        if str(d.get("column", "")).lower() in allowed
+    ]
+    date_col = spec.get("date_column")
+    keep_date = bool(date_col) and str(date_col).lower() in allowed
+    return {
+        "dimensions": dims,
+        "date_column": date_col if keep_date else None,
+        "date_start": spec.get("date_start") if keep_date else None,
+        "date_end": spec.get("date_end") if keep_date else None,
+    }
+
+
 def apply_filter(
     sql: str,
     spec: dict[str, Any] | None,

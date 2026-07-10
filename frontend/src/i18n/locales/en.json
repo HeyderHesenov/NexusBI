@@ -1103,7 +1103,9 @@
     "apply": "Apply",
     "clear": "Clear",
     "none": "—",
-    "noValues": "No values"
+    "noValues": "No values",
+    "addSlicer": "Add slicer",
+    "removeSlicer": "Remove slicer"
   },
   "chart": {
     "target": "Target",

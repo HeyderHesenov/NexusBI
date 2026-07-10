@@ -148,6 +148,18 @@ export async function getPublicDashboard(token: string): Promise<Dashboard> {
   return data
 }
 
+/** Viewer-side filter on a shared/embedded dashboard — read-only, never persisted. */
+export async function applyPublicFilter(
+  token: string,
+  spec: DashboardFilterSpec,
+  kind: 'public' | 'embed' = 'public',
+): Promise<DashboardFilterResult> {
+  const path =
+    kind === 'embed' ? `/public/embed/${token}/filter` : `/public/dashboard/${token}/filter`
+  const { data } = await client.post<DashboardFilterResult>(path, spec)
+  return data
+}
+
 export async function getComments(dashboardId: string): Promise<Comment[]> {
   const { data } = await client.get<Comment[]>(`/dashboard/${dashboardId}/comments`)
   return data

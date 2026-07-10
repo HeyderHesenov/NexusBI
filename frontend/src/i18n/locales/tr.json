@@ -1103,7 +1103,9 @@
     "apply": "Uygula",
     "clear": "Temizle",
     "none": "—",
-    "noValues": "Değer yok"
+    "noValues": "Değer yok",
+    "addSlicer": "Dilimleyici ekle",
+    "removeSlicer": "Dilimleyiciyi kaldır"
   },
   "chart": {
     "target": "Hedef",

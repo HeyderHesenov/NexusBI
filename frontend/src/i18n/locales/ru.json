@@ -1103,7 +1103,9 @@
     "apply": "Применить",
     "clear": "Сбросить",
     "none": "—",
-    "noValues": "Нет значений"
+    "noValues": "Нет значений",
+    "addSlicer": "Добавить срез",
+    "removeSlicer": "Удалить срез"
   },
   "chart": {
     "target": "Цель",

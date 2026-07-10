@@ -17,6 +17,18 @@ export function isFilterActive(spec: DashboardFilterSpec | null | undefined): bo
   return dated || sliced
 }
 
+/** Swap each widget's chart for its filtered version. A widget PRESENT in the
+ *  response with a null chart (filtered to empty / RLS-skipped) must show
+ *  empty — not stale unfiltered data; a widget ABSENT keeps its chart.
+ *  Shared by the owner store and the public/embed pages. */
+export function mergeFilteredWidgets<T extends { id: string; chart: WidgetChart | null }>(
+  widgets: T[],
+  updates: dashApi.FilteredWidget[],
+): T[] {
+  const byId = new Map(updates.map((u) => [u.widget_id, u.chart]))
+  return widgets.map((w) => (byId.has(w.id) ? { ...w, chart: byId.get(w.id) ?? null } : w))
+}
+
 interface DashboardState {
   list: DashboardSummary[]
   current: Dashboard | null
@@ -128,7 +140,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     set({ filtering: true })
     try {
       const result = await dashApi.applyFilter(dashboardId, spec)
-      const byId = new Map(result.widgets.map((w) => [w.widget_id, w.chart]))
       set((s) => {
         // The user navigated away mid-flight (open() auto-apply race) — don't
         // clobber the now-current dashboard's filter with this stale result.
@@ -138,12 +149,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
           current: {
             ...s.current,
             global_filter: result.global_filter,
-            // Swap in each widget's filtered chart. A widget PRESENT in the
-            // response with a null chart (filtered to empty) must show empty —
-            // not stale unfiltered data; a widget ABSENT keeps its chart.
-            widgets: s.current.widgets.map((w) =>
-              byId.has(w.id) ? { ...w, chart: byId.get(w.id) ?? null } : w,
-            ),
+            widgets: mergeFilteredWidgets(s.current.widgets, result.widgets),
           },
         }
       })

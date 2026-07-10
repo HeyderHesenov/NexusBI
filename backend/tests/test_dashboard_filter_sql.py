@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from app.db import demo_data
 from app.services import rls_sql
-from app.services.dashboard_filter_sql import apply_filter, filter_active
+from app.services.dashboard_filter_sql import apply_filter, filter_active, narrow_spec_to_columns
 
 SCHEMA = {
     "sales": [{"name": "region"}, {"name": "revenue"}, {"name": "sale_date"}, {"name": "id"}],
@@ -146,6 +146,26 @@ def test_rls_still_applies_on_top_of_filter():
     low = out.lower()
     # Both the dashboard filter and the RLS predicate reference region.
     assert low.count("region") >= 3
+
+
+def test_narrow_spec_to_columns_drops_undisplayed():
+    spec = {
+        "dimensions": [{"column": "region", "values": ["North"]}, {"column": "salary", "values": ["x"]}],
+        "date_column": "sale_date",
+        "date_start": "2024-01-01",
+        "date_end": None,
+    }
+    # Widget displays region + total only — salary and sale_date fall away, so the
+    # filter can never bind to this widget's hidden same-named base columns.
+    out = narrow_spec_to_columns(spec, {"region", "total"})
+    assert [d["column"] for d in out["dimensions"]] == ["region"]
+    assert out["date_column"] is None and out["date_start"] is None
+    # A widget that does display the date column keeps the range.
+    out2 = narrow_spec_to_columns(spec, {"Region", "Sale_Date"})  # case-insensitive
+    assert {d["column"] for d in out2["dimensions"]} == {"region"}
+    assert out2["date_column"] == "sale_date" and out2["date_start"] == "2024-01-01"
+    # Nothing displayed → inert spec (apply_global_filter keeps the stored snapshot).
+    assert not filter_active(narrow_spec_to_columns(spec, {"unrelated"}))
 
 
 def test_aggregate_actually_shrinks_on_demo_data():

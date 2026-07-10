@@ -456,6 +456,7 @@ async def apply_global_filter(
     spec: dict[str, Any] | None,
     cache: CacheService | None = None,
     skip_rls: bool = False,
+    restrict_to_widget_columns: bool = False,
 ) -> list[dict[str, Any]]:
     """Re-run every widget's stored SQL with the dashboard's global filter AND-ed
     in, returning fresh [{widget_id, chart}] — data-only, NO AI, NOT persisted.
@@ -469,7 +470,11 @@ async def apply_global_filter(
     ``skip_rls`` is for the live BROADCAST path (one dataset fans out to the whole
     room including restricted guests): widgets on an RLS-restricted source are
     skipped (chart=None) so the owner's row scope never reaches a guest. The
-    owner-only HTTP endpoint leaves it False (per-viewer RLS is applied normally)."""
+    owner-only HTTP endpoint leaves it False (per-viewer RLS is applied normally).
+
+    ``restrict_to_widget_columns`` (anonymous public/embed path) binds each
+    widget only by columns it actually displays: a name shown by one widget can't
+    slice a different widget's same-named but hidden base-table column."""
     from app.services import dashboard_filter_sql, rls_service
 
     dash = await get_dashboard(db, user_id, dashboard_id)
@@ -505,9 +510,18 @@ async def apply_global_filter(
             # Don't fan an owner-scoped filtered dataset out to restricted guests.
             out.append({"widget_id": w.id, "chart": None})
             continue
+        widget_spec = spec
+        if restrict_to_widget_columns:
+            result_cols = {str(c) for c in (log.result_data or {}).get("columns", [])}
+            widget_spec = dashboard_filter_sql.narrow_spec_to_columns(spec, result_cols)
+            if not dashboard_filter_sql.filter_active(widget_spec):
+                # No displayed column of THIS widget is filtered — leave it on
+                # its stored snapshot instead of binding to a hidden base column.
+                out.append({"widget_id": w.id, "chart": _widget_chart(log, ds_names)})
+                continue
         try:
             columns, rows_data = await query_service.reexecute_logged_query(
-                log, db, user_id, cache, filter_spec=spec
+                log, db, user_id, cache, filter_spec=widget_spec
             )
             chart = _chart_snapshot(
                 log, columns, query_service._snapshot_rows(rows_data), ds_names

@@ -1103,7 +1103,9 @@
     "apply": "Tətbiq et",
     "clear": "Təmizlə",
     "none": "—",
-    "noValues": "Dəyər yoxdur"
+    "noValues": "Dəyər yoxdur",
+    "addSlicer": "Slicer əlavə et",
+    "removeSlicer": "Slicer-i sil"
   },
   "chart": {
     "target": "Hədəf",

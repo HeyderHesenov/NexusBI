@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Filter as FilterIcon, RotateCcw } from 'lucide-react'
+import { Filter as FilterIcon, Plus, RotateCcw, X } from 'lucide-react'
 import type { Dashboard, DashboardFilterSpec } from '../../types'
 import { FIELD, Select } from '../ui/form'
 
@@ -12,11 +12,23 @@ interface Props {
 }
 
 const MAX_VALUES = 60 // cap the value chip list so a high-cardinality column stays usable
+const MAX_SLICERS = 5 // matches the public endpoint's dimension cap
 
 const EMPTY_SPEC: DashboardFilterSpec = { date_column: null, date_start: null, date_end: null, dimensions: [] }
 
-/** Persistent dashboard-wide filter: pick a dimension column + values and/or a
- *  date range, Apply → the server re-runs every widget's SQL with it AND-ed in. */
+interface Slicer {
+  column: string
+  values: Set<string>
+}
+
+const slicersFrom = (active: DashboardFilterSpec | null): Slicer[] => {
+  const dims = active?.dimensions ?? []
+  if (!dims.length) return [{ column: '', values: new Set() }]
+  return dims.map((d) => ({ column: d.column, values: new Set(d.values) }))
+}
+
+/** Persistent dashboard-wide filter: dimension slicers (several at once) + a
+ *  date range, Apply → the server re-runs every widget's SQL with them AND-ed in. */
 export function DashboardFilterBar({ dashboard, active, busy, onApply }: Props) {
   const { t } = useTranslation()
 
@@ -27,50 +39,77 @@ export function DashboardFilterBar({ dashboard, active, busy, onApply }: Props) 
     return [...set].sort()
   }, [dashboard.widgets])
 
-  const activeDim = active?.dimensions?.[0]
-  const [dimCol, setDimCol] = useState(activeDim?.column ?? '')
-  const [dimValues, setDimValues] = useState<Set<string>>(new Set(activeDim?.values ?? []))
+  const [slicers, setSlicers] = useState<Slicer[]>(() => slicersFrom(active))
   const [dateCol, setDateCol] = useState(active?.date_column ?? '')
   const [dateStart, setDateStart] = useState(active?.date_start ?? '')
   const [dateEnd, setDateEnd] = useState(active?.date_end ?? '')
 
-  // Distinct values for the chosen dimension, ACCUMULATED across renders. After
-  // an Apply the widget rows are the filtered subset, so recomputing from scratch
-  // would drop the deselected values and trap the user (no way to broaden). The
-  // per-column domain only ever grows, so once a value is seen it stays offerable.
+  // Distinct values per column, ACCUMULATED across renders. After an Apply the
+  // widget rows are the filtered subset, so recomputing from scratch would drop
+  // the deselected values and trap the user (no way to broaden). The per-column
+  // domain only ever grows, so once a value is seen it stays offerable.
   const domainRef = useRef<Record<string, Set<string>>>({})
-  const valueOptions = useMemo(() => {
-    if (!dimCol) return []
-    const acc = domainRef.current[dimCol] ?? new Set<string>()
+  // Memoize the sorted option list per column, invalidated only when the widget
+  // data changes. Without this, valuesFor() re-scanned every widget's rows for
+  // every slicer on every render (each keystroke/toggle) — O(slicers×widgets×rows).
+  const sortedRef = useRef<{ widgets: Dashboard['widgets']; byCol: Record<string, string[]> }>({
+    widgets: dashboard.widgets,
+    byCol: {},
+  })
+  const valuesFor = (column: string): string[] => {
+    if (!column) return []
+    const cache = sortedRef.current
+    if (cache.widgets !== dashboard.widgets) {
+      cache.widgets = dashboard.widgets
+      cache.byCol = {} // widget rows changed → recompute (domainRef keeps accumulated values)
+    }
+    const cached = cache.byCol[column]
+    if (cached) return cached
+    const acc = domainRef.current[column] ?? new Set<string>()
     for (const w of dashboard.widgets) {
       for (const row of w.chart?.data ?? []) {
-        const v = row[dimCol]
+        const v = row[column]
         if (v !== null && v !== undefined && v !== '') acc.add(String(v))
         if (acc.size >= MAX_VALUES) break
       }
       if (acc.size >= MAX_VALUES) break
     }
-    domainRef.current[dimCol] = acc
-    return [...acc].sort()
-  }, [dimCol, dashboard.widgets])
+    domainRef.current[column] = acc
+    const sorted = [...acc].sort()
+    cache.byCol[column] = sorted
+    return sorted
+  }
 
-  const toggleValue = (v: string) =>
-    setDimValues((prev) => {
-      const next = new Set(prev)
-      next.has(v) ? next.delete(v) : next.add(v)
-      return next
+  const patchSlicer = (i: number, next: Partial<Slicer>) =>
+    setSlicers((prev) => prev.map((s, j) => (j === i ? { ...s, ...next } : s)))
+
+  const toggleValue = (i: number, v: string) =>
+    setSlicers((prev) =>
+      prev.map((s, j) => {
+        if (j !== i) return s
+        const values = new Set(s.values)
+        values.has(v) ? values.delete(v) : values.add(v)
+        return { ...s, values }
+      }),
+    )
+
+  const removeSlicer = (i: number) =>
+    setSlicers((prev) => {
+      const next = prev.filter((_, j) => j !== i)
+      return next.length ? next : [{ column: '', values: new Set<string>() }]
     })
 
   const buildSpec = (): DashboardFilterSpec => ({
     date_column: dateCol || null,
     date_start: dateStart || null,
     date_end: dateEnd || null,
-    dimensions: dimCol && dimValues.size ? [{ column: dimCol, values: [...dimValues] }] : [],
+    dimensions: slicers
+      .filter((s) => s.column && s.values.size)
+      .map((s) => ({ column: s.column, values: [...s.values] })),
   })
 
   const clearAll = () => {
-    setDimCol('')
-    setDimValues(new Set())
+    setSlicers([{ column: '', values: new Set() }])
     setDateCol('')
     setDateStart('')
     setDateEnd('')
@@ -86,19 +125,6 @@ export function DashboardFilterBar({ dashboard, active, busy, onApply }: Props) 
           <FilterIcon size={14} className="text-accent" />
           {t('dashboardFilter.title')}
         </span>
-
-        {/* Dimension slicer */}
-        <div className="min-w-[150px]">
-          <label className="eyebrow mb-1 block">{t('dashboardFilter.dimension')}</label>
-          <Select
-            value={dimCol}
-            options={colOptions}
-            onChange={(e) => {
-              setDimCol(e.target.value)
-              setDimValues(new Set())
-            }}
-          />
-        </div>
 
         {/* Date range */}
         <div className="min-w-[150px]">
@@ -148,31 +174,65 @@ export function DashboardFilterBar({ dashboard, active, busy, onApply }: Props) 
         </div>
       </div>
 
-      {/* Value chips for the chosen dimension */}
-      {dimCol && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {valueOptions.length === 0 && (
-            <span className="text-xs text-ink-faint">{t('dashboardFilter.noValues')}</span>
-          )}
-          {valueOptions.map((v) => {
-            const on = dimValues.has(v)
-            return (
-              <button
-                key={v}
-                onClick={() => toggleValue(v)}
-                aria-pressed={on}
-                className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
-                  on
-                    ? 'border-accent bg-accent-soft font-medium text-accent'
-                    : 'border-line text-ink-soft hover:border-accent/50'
-                }`}
-              >
-                {v}
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {/* Dimension slicers — several columns can constrain at once. */}
+      <div className="mt-3 space-y-2">
+        {slicers.map((s, i) => {
+          const options = valuesFor(s.column)
+          return (
+            <div key={i} className="flex flex-wrap items-start gap-2">
+              <div className="min-w-[150px]">
+                {i === 0 && <label className="eyebrow mb-1 block">{t('dashboardFilter.dimension')}</label>}
+                <Select
+                  value={s.column}
+                  options={colOptions}
+                  onChange={(e) => patchSlicer(i, { column: e.target.value, values: new Set() })}
+                />
+              </div>
+              <div className={`flex min-h-[38px] flex-1 flex-wrap items-center gap-1.5 ${i === 0 ? 'sm:mt-6' : ''}`}>
+                {s.column && options.length === 0 && (
+                  <span className="text-xs text-ink-faint">{t('dashboardFilter.noValues')}</span>
+                )}
+                {s.column &&
+                  options.map((v) => {
+                    const on = s.values.has(v)
+                    return (
+                      <button
+                        key={v}
+                        onClick={() => toggleValue(i, v)}
+                        aria-pressed={on}
+                        className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
+                          on
+                            ? 'border-accent bg-accent-soft font-medium text-accent'
+                            : 'border-line text-ink-soft hover:border-accent/50'
+                        }`}
+                      >
+                        {v}
+                      </button>
+                    )
+                  })}
+              </div>
+              {(slicers.length > 1 || s.column) && (
+                <button
+                  onClick={() => removeSlicer(i)}
+                  aria-label={t('dashboardFilter.removeSlicer')}
+                  className={`rounded-lg p-1.5 text-ink-faint transition hover:bg-surface hover:text-ink ${i === 0 ? 'sm:mt-6' : ''}`}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          )
+        })}
+        {slicers.length < MAX_SLICERS && (
+          <button
+            onClick={() => setSlicers((prev) => [...prev, { column: '', values: new Set() }])}
+            className="inline-flex items-center gap-1 rounded-lg border border-dashed border-line px-2.5 py-1 text-xs text-ink-soft transition hover:border-accent/50 hover:text-ink"
+          >
+            <Plus size={12} />
+            {t('dashboardFilter.addSlicer')}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
