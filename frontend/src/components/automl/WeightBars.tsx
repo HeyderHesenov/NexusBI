@@ -29,7 +29,7 @@ export function WeightBars({ title, items, limit = 10 }: Props) {
                 style={{ width: `${Math.max(0, (i.weight / max) * 100)}%` }}
               />
             </span>
-            <span className="w-12 text-right font-mono text-ink-faint">
+            <span className="w-12 text-right font-mono text-ink-soft">
               {Math.round(Math.max(0, i.weight) * 100)}%
             </span>
           </div>

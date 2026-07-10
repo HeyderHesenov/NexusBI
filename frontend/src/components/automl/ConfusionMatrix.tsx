@@ -3,10 +3,13 @@ import { DANGER, useChartTheme } from '../charts/theme'
 import type { MLDiagnostics } from '../../types'
 
 /** Alpha-as-hex suffix (00–ff) so a cell's tint encodes its share of the row's
- *  peak count — correct hits deepen in emerald, mistakes in the danger hue. */
+ *  peak count — correct hits deepen in emerald, mistakes in the danger hue. The
+ *  peak (row-max, i.e. the diagonal) caps at 0.55 alpha, not full opacity, so the
+ *  `text-ink` count stays ≥4.5:1 (WCAG AA) against emerald/danger in both themes —
+ *  a fully-opaque fill drops the most-scanned cells to ~2.1:1. */
 function tint(hex: string, intensity: number): string | undefined {
   if (intensity <= 0) return undefined
-  const a = Math.round((0.14 + 0.86 * intensity) * 255)
+  const a = Math.round((0.14 + 0.41 * intensity) * 255)
   return `${hex}${a.toString(16).padStart(2, '0')}`
 }
 

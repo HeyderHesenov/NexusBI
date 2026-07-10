@@ -131,6 +131,23 @@ export function AutoMLPage() {
     }
   }
 
+  // Rendered in two wizard states, so defined once. Before a table is picked it
+  // carries the source hint at a natural width; once chosen it drops the hint so
+  // the input row stays aligned across the 4-col strip.
+  const sourceField = (hint?: string) => (
+    <Field id="ml-table" label={t('automl.sourceLabel')} hint={hint}>
+      <Select
+        id="ml-table"
+        value={sourceTable ?? ''}
+        onChange={(e) => pickSource(e.target.value)}
+        options={[
+          { value: '', label: t('automl.pickTable') },
+          ...tables.map((tb) => ({ value: tb.name, label: tb.name })),
+        ]}
+      />
+    </Field>
+  )
+
   return (
     <div className="mx-auto w-full max-w-5xl">
       <header className="mb-6">
@@ -148,55 +165,45 @@ export function AutoMLPage() {
             <Loader2 size={18} className="animate-spin text-accent" />
             {t('automl.training')}
           </div>
+        ) : !sourceTable ? (
+          // Pre-pick: one natural-width select with its hint — a lone control
+          // stranded across a 4-col grid reads as unfinished.
+          <div className="max-w-xs">{sourceField(t('automl.sourceHint'))}</div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
-            <Field id="ml-table" label={t('automl.sourceLabel')}>
+            {sourceField()}
+            <Field id="ml-target" label={t('automl.targetLabel')}>
               <Select
-                id="ml-table"
-                value={sourceTable ?? ''}
-                onChange={(e) => pickSource(e.target.value)}
+                id="ml-target"
+                value={targetColumn ?? ''}
+                onChange={(e) => pickTarget(e.target.value)}
                 options={[
-                  { value: '', label: t('automl.pickTable') },
-                  ...tables.map((tb) => ({ value: tb.name, label: tb.name })),
+                  { value: '', label: t('automl.pickTarget') },
+                  ...targetOptions.map((c) => ({
+                    value: c.name,
+                    label: `${c.name} (${c.dtype})`,
+                  })),
                 ]}
               />
             </Field>
-            {sourceTable && (
-              <>
-                <Field id="ml-target" label={t('automl.targetLabel')}>
-                  <Select
-                    id="ml-target"
-                    value={targetColumn ?? ''}
-                    onChange={(e) => pickTarget(e.target.value)}
-                    options={[
-                      { value: '', label: t('automl.pickTarget') },
-                      ...targetOptions.map((c) => ({
-                        value: c.name,
-                        label: `${c.name} (${c.dtype})`,
-                      })),
-                    ]}
-                  />
-                </Field>
-                <Field id="ml-name" label={t('automl.nameLabel')}>
-                  <input
-                    id="ml-name"
-                    className={FIELD}
-                    value={name}
-                    maxLength={255}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={sourceTable && targetColumn ? `${sourceTable}.${targetColumn}` : ''}
-                  />
-                </Field>
-                <button
-                  type="button"
-                  onClick={onTrain}
-                  disabled={!targetColumn}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press disabled:opacity-50"
-                >
-                  <BrainCircuit size={15} /> {t('automl.train')}
-                </button>
-              </>
-            )}
+            <Field id="ml-name" label={t('automl.nameLabel')}>
+              <input
+                id="ml-name"
+                className={FIELD}
+                value={name}
+                maxLength={255}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={targetColumn ? `${sourceTable}.${targetColumn}` : ''}
+              />
+            </Field>
+            <button
+              type="button"
+              onClick={onTrain}
+              disabled={!targetColumn}
+              className="inline-flex w-full items-center justify-center gap-1.5 self-end rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press disabled:opacity-50"
+            >
+              <BrainCircuit size={15} /> {t('automl.train')}
+            </button>
           </div>
         )}
       </section>
@@ -215,7 +222,7 @@ export function AutoMLPage() {
             <div className="flex flex-wrap gap-3">
               {Object.entries(current.metrics).map(([k, v]) => (
                 <div key={k} className="rounded-xl border border-line bg-surface-2 px-4 py-2">
-                  <p className="text-xs text-ink-faint">{t(`automl.metric_${k}`, k)}</p>
+                  <p className="text-xs text-ink-soft">{t(`automl.metric_${k}`, k)}</p>
                   <p className="font-mono text-xl font-bold text-ink">
                     {Math.round(v * 1000) / 1000}
                   </p>

@@ -63,8 +63,12 @@ export function RegressionDiagnostics({ avp }: { avp: AVP }) {
     <div className="flex flex-col gap-5">
       <div>
         <p className="eyebrow mb-2">{t('automl.avpTitle')}</p>
-        <ResponsiveContainer width="100%" height={280}>
-          <ScatterChart margin={{ top: 8, right: 12, bottom: 20, left: 0 }}>
+        {/* Square box: X and Y share one data domain, so only equal pixel scales
+            keep "points hugging the 45° ideal line" honest — a wide box squashes
+            the diagonal toward flat and breaks the read. */}
+        <div className="mx-auto w-full max-w-md">
+          <ResponsiveContainer width="100%" aspect={1}>
+            <ScatterChart margin={{ top: 8, right: 12, bottom: 20, left: 0 }}>
             <CartesianGrid strokeDasharray="2 4" stroke={GRID} />
             <XAxis
               type="number"
@@ -108,8 +112,9 @@ export function RegressionDiagnostics({ avp }: { avp: AVP }) {
               formatter={(v: number | string) => fmtNum(Number(v))}
             />
             <Scatter data={points} fill={ACCENT} fillOpacity={0.7} />
-          </ScatterChart>
-        </ResponsiveContainer>
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div>
