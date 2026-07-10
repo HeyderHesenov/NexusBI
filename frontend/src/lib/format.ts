@@ -40,6 +40,28 @@ export const formatNumber = (value: number, opts: FormatNumberOptions = {}): str
   return new Intl.NumberFormat(locale, config).format(value)
 }
 
+export interface FormatDateOptions {
+  /** BCP-47 locale; defaults to 'az-AZ'. React code should pass the current
+   *  locale (see useFormatDate); lib-level callers get the default. */
+  locale?: string
+  /** 'datetime' (default) → date + HH:mm; 'date' → date only. */
+  mode?: 'datetime' | 'date'
+}
+
+/** Single date/time formatter for the whole app — locale-aware via the same
+ *  lang→locale map as numbers, so timestamps localize with the picked language
+ *  instead of a hardcoded 'az-AZ'. Invalid/empty input renders as an em dash. */
+export const formatDate = (value: string | number | Date, opts: FormatDateOptions = {}): string => {
+  const { locale = 'az-AZ', mode = 'datetime' } = opts
+  const d = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  const config: Intl.DateTimeFormatOptions =
+    mode === 'date'
+      ? { year: 'numeric', month: 'short', day: '2-digit' }
+      : { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }
+  return new Intl.DateTimeFormat(locale, config).format(d)
+}
+
 /** Shared KPI number formatter — keep the metric-tree editor and the Digital Twin
  * showing the exact same string for the exact same value. Built on formatNumber
  * so it shares one locale; ≥1000 rounds to 1 decimal (as before). */

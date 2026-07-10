@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendUnit, formatNumber, formatMetricValue, formatSignedPct, localeFor } from './format'
+import { appendUnit, formatDate, formatNumber, formatMetricValue, formatSignedPct, localeFor } from './format'
 
 describe('formatNumber', () => {
   it('formats plain numbers with the default locale', () => {
@@ -40,6 +40,33 @@ describe('localeFor', () => {
     expect(localeFor('en')).toBe('en-US')
     expect(localeFor('ru')).toBe('ru-RU')
     expect(localeFor('tr')).toBe('tr-TR')
+  })
+})
+
+describe('formatDate', () => {
+  const iso = '2024-03-05T14:30:00Z'
+
+  it('renders invalid/empty input as an em dash', () => {
+    expect(formatDate('')).toBe('—')
+    expect(formatDate('not-a-date')).toBe('—')
+  })
+
+  it('date mode has no time component; datetime mode does', () => {
+    const dateOnly = formatDate(iso, { locale: 'en-US', mode: 'date' })
+    expect(dateOnly).toContain('2024')
+    expect(dateOnly).not.toContain(':')
+    expect(formatDate(iso, { locale: 'en-US', mode: 'datetime' })).toContain(':')
+  })
+
+  it('localizes: different locales yield different month names', () => {
+    const en = formatDate(iso, { locale: 'en-US', mode: 'date' })
+    const ru = formatDate(iso, { locale: 'ru-RU', mode: 'date' })
+    expect(en).not.toBe(ru)
+  })
+
+  it('accepts Date and epoch inputs', () => {
+    expect(formatDate(new Date(iso), { locale: 'en-US', mode: 'date' })).toContain('2024')
+    expect(formatDate(Date.parse(iso), { locale: 'en-US', mode: 'date' })).toContain('2024')
   })
 })
 
