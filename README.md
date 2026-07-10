@@ -44,7 +44,7 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 - 🤖 **Agentik Copilot (plan → təsdiq → icra)** — köməkçi əvvəl addım planı göstərir, sən
   təsdiqləyirsən, sonra icra edir. **29 alətlə platformanın HƏR funksiyasını çatdan idarə edir:**
   sorğu · dashboard qur/paylaş · **AutoML modeli öyrət/proqnoz** · **SWOT/Porter/BCG/BPMN** ·
-  kohort/funnel · snapshot · **A/B test yarat+analiz** · qərar yaz/ölç · kəşf skanı · data
+  kohort/funnel · snapshot · qərar yaz/ölç · kəşf skanı · data
   müqaviləsi yoxla · **Digital Twin ssenarisi** · metrik/alert/sorğu yarat. Nəticə çipləri
   yaradılan obyekti birbaşa açır (`?open=` deep-link). Silmə əməliyyatları qəsdən çatdan kənardır;
   ağır alətlər (train/generate) alət başına 2/söhbət ilə məhdudlaşır.
@@ -145,8 +145,6 @@ klassik ML, LLM yox:
   saxta korrelyasiya). `POST /query/{id}/significance` → ChartView "Statistik yoxlama" paneli.
 - 🔗 **Kauzal nəticə** — hədəf metriklə ən güclü əlaqəli sütunlar (Pearson r + p-dəyər + **BH-FDR**
   çox-müqayisə düzəlişi), dürüst caveat-larla. `POST /query/{id}/causal` → "Səbəb analizi" paneli.
-- 🧪 **A/B testlər** — iki variant (konversiya nisbəti və ya orta) statistik əhəmiyyət + lift +
-  95% CI + qalib verdikti. `/experiments` · **Planlama → A/B testlər**.
 - 🔍 **Insight mühərriki** — son nəticələri avtomatik tarayır (dominantlıq, konsentrasiya, MAD-əsaslı
   anomaliya), **təsirə görə** sıralayır, dedup edir. `/insights` · **Analiz → Kəşflər**.
 - 🌳 **Metrik ağacı** — KPI dekompozisiyası (Gəlir = Qiymət × Həcm), dəyərlər aşağıdan-yuxarı
@@ -288,7 +286,6 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST/GET/DELETE | `/api/v1/saved/...` · `/alerts` · `/notifications` (+ `/digest`) | Saxlanan sorğular · monitorlar · brif |
 | POST/GET/PUT/DELETE | `/api/v1/decisions/...` (+ `/{id}/measure` · `/roi` · `/trajectory` · `/accuracy`) | Qərar İntellekti Döngüsü — jurnal + metrik baseline/realized ölçmə · ROI · trayektoriya · dəqiqlik |
 | POST/GET | `/api/v1/ai/eval/run` (`?grounded`) · `/eval/history-regression` · `/eval/runs` · `/observability` · `/retrieval/reindex` | Text2SQL golden-set eval (bare/grounded) · saxlanmış sorğularda AI drift · tarixçə · AI müşahidə · RAG reindex |
-| POST/GET/DELETE | `/api/v1/experiments/...` (+ `/{id}/analyze`) | A/B testlər — konversiya/orta əhəmiyyət + lift + 95% CI |
 | GET/POST | `/api/v1/insights/...` (+ `/generate` · `/{id}/dismiss`) | Insight mühərriki — avtomatik kəşf + təsir reytinqi |
 | GET/POST/PATCH/DELETE | `/api/v1/metric-tree/...` (+ `/evaluate`) | Metrik ağacı — KPI dekompozisiya + roll-up |
 | POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
@@ -353,7 +350,7 @@ saved-query & scheduler · engine pool · metric catalog · chat context · aler
 offline embed determinizmi, dedup) · Text2SQL eval (dəyər-əsaslı execution-match, golden health,
 rule-based CI floor, bare/grounded) · tarixçə-reqressiyası (drift) · eval alert** ·
 **qabaqcıl analitika: statistik mühafiz (t-test/z-test/Pearson/BH-FDR/MAD) · kauzal driver ·
-A/B əhəmiyyət · insight mühərriki (kəşf+reytinq) · metrik ağacı (roll-up) · data müqavilələri
+insight mühərriki (kəşf+reytinq) · metrik ağacı (roll-up) · data müqavilələri
 (profiling-əsaslı keyfiyyət)** · **kohort/funnel (test_cohort) · dashboard snapshotları
 (test_snapshots) · biliklər qrafı (test_graph) · BA frameworks + mermaid sanitizer (test_ba) ·
 AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
@@ -363,7 +360,7 @@ AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest f
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
-collab epoch-guard · decision measure · AI-quality eval · **experiment · insight · metric-tree ·
+collab epoch-guard · decision measure · AI-quality eval · **insight · metric-tree ·
 data-contract · cohort · snapshot · graph · twinStore · baStore · automlStore**) ·
 **UI primitivləri (ModalShell a11y · ErrorBoundary · Dropdown · StatsGuard/Causal panel ·
 CohortHeatmap/FunnelChart · BCGMatrix)**.

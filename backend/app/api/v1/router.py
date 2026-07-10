@@ -5,7 +5,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     ai_quality, alert, auth, automl, ba, billing, branding, copilot, dashboard, data_contract,
-    dataprep, datasource, decision, experiment, graph, integration, metric,
+    dataprep, datasource, decision, graph, integration, metric,
     metric_tree, public, query, requirement, saved_query, scenario, search, snapshot,
     workspace,
 )
@@ -25,7 +25,6 @@ api_router.include_router(metric_tree.router)
 api_router.include_router(data_contract.router)
 api_router.include_router(alert.router)
 api_router.include_router(decision.router)
-api_router.include_router(experiment.router)
 api_router.include_router(integration.router)
 api_router.include_router(copilot.router)
 api_router.include_router(requirement.router)

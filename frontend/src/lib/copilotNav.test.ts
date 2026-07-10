@@ -11,7 +11,6 @@ describe('copilotNavTarget', () => {
   })
 
   it('routes every id-keyed chip', () => {
-    expect(copilotNavTarget(a({ experiment_id: 'e' }))).toBe('/experiments')
     expect(copilotNavTarget(a({ decision_id: 'd' }))).toBe('/decisions')
     expect(copilotNavTarget(a({ contract_id: 'c' }))).toBe('/contracts')
     expect(copilotNavTarget(a({ dashboard_id: 'd' }))).toBe('/dashboards')

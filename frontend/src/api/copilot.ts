@@ -9,7 +9,6 @@ export interface CopilotAction {
   metric_id?: string | null
   ml_model_id?: string | null
   ba_artifact_id?: string | null
-  experiment_id?: string | null
   decision_id?: string | null
   contract_id?: string | null
 }

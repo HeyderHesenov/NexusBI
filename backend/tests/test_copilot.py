@@ -185,10 +185,10 @@ def test_all_new_tools_registered_with_handlers():
     from app.ai import copilot
 
     expected = {
-        "search_assets", "list_ml_models", "list_experiments", "list_decisions",
+        "search_assets", "list_ml_models", "list_decisions",
         "list_contracts", "list_saved_queries", "train_ml_model", "predict_ml",
         "generate_ba_artifact",
-        "capture_snapshot", "create_experiment", "create_decision",
+        "capture_snapshot", "create_decision",
         "measure_decision", "run_data_contract",
         "evaluate_metric_tree", "simulate_metric_tree", "create_alert",
     }

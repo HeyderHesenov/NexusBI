@@ -6,7 +6,6 @@ import type { CopilotAction } from '../api/copilot'
 export function copilotNavTarget(a: CopilotAction): string | null {
   if (a.ml_model_id) return `/automl?open=${a.ml_model_id}`
   if (a.ba_artifact_id) return `/ba-studio?open=${a.ba_artifact_id}`
-  if (a.experiment_id) return '/experiments'
   if (a.decision_id) return '/decisions'
   if (a.contract_id) return '/contracts'
   if (a.dashboard_id) return '/dashboards'

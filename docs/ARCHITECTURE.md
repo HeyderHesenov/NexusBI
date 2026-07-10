@@ -103,7 +103,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   (`COPILOT_MAX_STEPS`) with a **29-tool registry that drives every product feature**: discovery
   tools (`search_assets` + `list_*` so the model finds ids instead of inventing them), queries/
   dashboards, AutoML train+predict, BA Studio generate, cohort funnel/retention, snapshots,
-  A/B create+analyze, decisions create/measure, insight scan, data-contract run, metric-tree
+  decisions create/measure, insight scan, data-contract run, metric-tree
   evaluate + twin `simulate` (single backend home: `metric_tree_service.simulate`), alerts.
   Tools are owner-scoped (user_id injected, never from the model) and delegate to existing
   services. Two modes: `plan` (propose steps, no execution, no quota) and `execute` (run;
@@ -218,7 +218,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   deterministic, no cost — identical to CI; new suites: test_cohort, test_snapshots, test_graph,
   test_ba, test_automl). Frontend Vitest (268) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, AI-quality eval, the advanced-analytics
-  stores/panels — experiment/insight/metric-tree/data-contract/Dropdown/color — and the studio round:
+  stores/panels — insight/metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
   Playwright). E2E: `frontend/e2e/smoke.spec.ts` over login → query → dashboards against the preview.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus
@@ -232,7 +232,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
 `alerts`, `notifications`, `decisions`, **`requirement_docs`, `kpi_targets`,
 `integration_channels`, `workspaces`, `workspace_members`, `rls_rules`, `audit_logs`,
 `brand_configs` (1:1), `refresh_tokens`, `query_embeddings`, `eval_runs` (global, no FK),
-**`experiments`, `insights`, `metric_nodes` (self-FK tree), `data_contracts`**,
+**`insights`, `metric_nodes` (self-FK tree), `data_contracts`**,
 **`ba_artifacts`, `ml_models`**; `dashboards`
 (1)─<(N) `widgets`, `dashboard_comments` and **`dashboard_snapshots`**; `data_contracts` (1)─<(N) `contract_runs`;
 `decisions` (1)─<(N) `decision_measurements`; `alerts` → `saved_queries`; `widgets.query_log_id`
@@ -324,7 +324,7 @@ cohort/funnel analytics; `format_demo_schema` sends real column types + sample v
   z-test, Pearson, Benjamini-Hochberg FDR, MAD outliers, summary-stats t-test); `services/tabular.py`
   holds the shared numeric-column/row-alignment helpers. Built on it: **statistical guard** (`ai/stats_guard`
   + `POST /query/{id}/significance`), **causal driver analysis** (`services/causal` + `/causal`),
-  **A/B testing** (`ab_service`, `experiments`), **insight engine** (`insight_engine.scan` — discovery +
+  **insight engine** (`insight_engine.scan` — discovery +
   impact ranking + idempotent dedup, reuses `scan_recent_distinct`), **metric tree** (`metric_tree_service`
   bottom-up roll-up, recursive subtree delete since SQLite cascade is inert), and **data contracts**
   (`data_contract_service` reuses `profiling_service` for safe sample-based checks + schema-hash drift +

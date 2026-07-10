@@ -46,9 +46,6 @@ const DecisionsPage = lazy(() =>
 const AIQualityPage = lazy(() =>
   import('./pages/AIQualityPage').then((m) => ({ default: m.AIQualityPage })),
 )
-const ExperimentsPage = lazy(() =>
-  import('./pages/ExperimentsPage').then((m) => ({ default: m.ExperimentsPage })),
-)
 const GraphPage = lazy(() =>
   import('./pages/GraphPage').then((m) => ({ default: m.GraphPage })),
 )
@@ -128,7 +125,6 @@ export default function App() {
               <Route path="/sources" element={<DataSourcesPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/decisions" element={<DecisionsPage />} />
-              <Route path="/experiments" element={<ExperimentsPage />} />
               <Route path="/graph" element={<GraphPage />} />
               <Route path="/twin" element={<TwinPage />} />
               <Route path="/ba-studio" element={<BAStudioPage />} />

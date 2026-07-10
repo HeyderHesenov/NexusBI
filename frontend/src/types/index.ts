@@ -537,44 +537,6 @@ export interface CausalResult {
   caveats: string[]
 }
 
-export type ExperimentKind = 'conversion' | 'mean'
-
-export interface ExperimentResult {
-  kind: string
-  metric: { a: number; b: number; unit: string }
-  p_value: number
-  significant: boolean
-  lift_pct: number | null
-  diff: number | null
-  ci_low: number
-  ci_high: number
-  winner: string | null
-  verdict: string
-  sample_note: string
-}
-
-export interface Experiment {
-  id: string
-  name: string
-  kind: ExperimentKind
-  a_label: string
-  b_label: string
-  data: Record<string, Record<string, number>>
-  result: ExperimentResult | null
-  status: string
-  notes: string
-  created_at: string
-}
-
-export interface ExperimentCreate {
-  name: string
-  kind: ExperimentKind
-  a_label?: string
-  b_label?: string
-  data: Record<string, Record<string, number>>
-  notes?: string
-}
-
 export interface KpiItem {
   name: string
   question: string

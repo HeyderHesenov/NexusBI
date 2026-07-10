@@ -1,4 +1,4 @@
-import { BookMarked, BrainCircuit, Compass, CreditCard, Database, FileText, FlaskConical, Gauge, History, LayoutDashboard, MessageSquare, Network, Palette, ShieldCheck, SlidersHorizontal, Tag, Target, Users } from 'lucide-react'
+import { BookMarked, BrainCircuit, Compass, CreditCard, Database, FileText, Gauge, History, LayoutDashboard, MessageSquare, Network, Palette, ShieldCheck, SlidersHorizontal, Tag, Target, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { NexusMark } from '../brand/NexusMark'
@@ -37,7 +37,6 @@ const groups = [
     items: [
       { to: '/decisions', labelKey: 'nav.decisions', icon: Target },
       { to: '/targets', labelKey: 'nav.targets', icon: Gauge },
-      { to: '/experiments', labelKey: 'nav.experiments', icon: FlaskConical },
       { to: '/twin', labelKey: 'nav.twin', icon: SlidersHorizontal },
       { to: '/ba-studio', labelKey: 'nav.baStudio', icon: Compass },
     ],

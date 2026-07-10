@@ -30,7 +30,7 @@ class CopilotRequest(BaseModel):
 
 class CopilotAction(BaseModel):
     # query | dashboard | widget | share | saved_query | metric | digest |
-    # ml_model | ba_artifact | experiment | decision | contract | insight |
+    # ml_model | ba_artifact | decision | contract | insight |
     # metric_tree | snapshot | alert
     type: str
     label: str
@@ -40,7 +40,6 @@ class CopilotAction(BaseModel):
     metric_id: str | None = None
     ml_model_id: str | None = None
     ba_artifact_id: str | None = None
-    experiment_id: str | None = None
     decision_id: str | None = None
     contract_id: str | None = None
 

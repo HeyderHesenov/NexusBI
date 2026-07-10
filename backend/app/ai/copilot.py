@@ -1,7 +1,7 @@
 """Agentic BI copilot: a bounded tool-calling loop over existing services.
 
 The model can drive every product feature — queries, dashboards, AutoML,
-BA Studio, snapshots, A/B tests, decisions, insights, data
+BA Studio, snapshots, decisions, insights, data
 contracts, the metric tree / twin simulation, alerts. Every tool is owner-scoped
 (the user_id is injected by the loop, never taken from the model) and the loop
 is hard-capped at COPILOT_MAX_STEPS so it always terminates. Tools add no new
@@ -29,7 +29,7 @@ _log = get_logger("nexusbi.copilot")
 SYSTEM_PROMPT = (
     "Sən NexusBI platformasının köməkçi agentisən. İstifadəçinin adından platformanın "
     "İSTƏNİLƏN funksiyasını icra edirsən: sorğu, dashboard, AutoML modeli, BA çərçivəsi "
-    "(SWOT/Porter/BCG/BPMN), kohort/funnel, snapshot, A/B test, qərar, kəşf skanı, data "
+    "(SWOT/Porter/BCG/BPMN), kohort/funnel, snapshot, qərar, kəşf skanı, data "
     "müqaviləsi, metrik ağacı simulyasiyası, alert. Bir obyektin id-si lazımdırsa, əvvəl "
     "uyğun list_* və ya search_assets aləti ilə tap — id UYDURMA. Ağır əməliyyatı "
     "(model öyrətmə, AI generasiya) bir dəfə çağır, təkrarlama. Uydurma rəqəm vermə — "
@@ -192,14 +192,6 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "list_experiments",
-            "description": "A/B eksperimentlərini siyahılayır (id, ad, status).",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "list_decisions",
             "description": "Qərar jurnalını siyahılayır (id, başlıq, status).",
             "parameters": {"type": "object", "properties": {}},
@@ -286,25 +278,6 @@ TOOLS: list[dict[str, Any]] = [
                     "label": {"type": "string"},
                 },
                 "required": ["dashboard_id"],
-            },
-        },
-    },
-    # ── A/B test ──
-    {
-        "type": "function",
-        "function": {
-            "name": "create_experiment",
-            "description": "A/B eksperimenti yaradır və dərhal analiz edir. kind=conversion → data={a:{n,conversions},b:{n,conversions}}; kind=mean → data={a:{n,mean,sd},b:{n,mean,sd}}.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "kind": {"type": "string", "enum": ["conversion", "mean"]},
-                    "a_label": {"type": "string"},
-                    "b_label": {"type": "string"},
-                    "data": {"type": "object"},
-                },
-                "required": ["name", "kind", "data"],
             },
         },
     },
@@ -575,12 +548,6 @@ class _ToolContext:
             ]
         }
 
-    async def list_experiments(self, _args: dict[str, Any]) -> dict[str, Any]:
-        from app.services import ab_service
-
-        exps = await ab_service.list_for(self.db, self.user_id)
-        return {"experiments": [{"id": e.id, "name": e.name, "status": e.status} for e in exps[:20]]}
-
     async def list_decisions(self, _args: dict[str, Any]) -> dict[str, Any]:
         from app.services import decision_service
 
@@ -700,37 +667,6 @@ class _ToolContext:
             {"type": "snapshot", "label": "Snapshot çəkildi", "dashboard_id": dashboard_id}
         )
         return {"snapshot_id": snap.id, "widget_count": len((snap.payload or {}).get("widgets", []))}
-
-    # ── A/B test ──
-
-    async def create_experiment(self, args: dict[str, Any]) -> dict[str, Any]:
-        from app.schemas.experiment import ExperimentCreate
-        from app.services import ab_service
-
-        name = str(args.get("name") or "").strip()
-        data = args.get("data")
-        if not name or not isinstance(data, dict):
-            return {"error": "name və data tələb olunur."}
-        kind = args.get("kind") if args.get("kind") in ("conversion", "mean") else "conversion"
-        payload = ExperimentCreate(
-            name=name[:255], kind=kind,
-            a_label=str(args.get("a_label") or "A")[:80],
-            b_label=str(args.get("b_label") or "B")[:80],
-            data=data,
-        )
-        exp = await ab_service.create(self.db, self.user_id, payload)
-        try:
-            exp = await ab_service.analyze(self.db, self.user_id, exp.id)
-        except Exception as exc:
-            # Analysis rejected the data (e.g. conversions > n) — don't leave an
-            # orphaned never-analyzed experiment behind.
-            await self.db.delete(exp)
-            await self.db.flush()
-            return {"error": str(exc)[:200]}
-        self.actions.append(
-            {"type": "experiment", "label": f"Eksperiment analiz edildi: {name}", "experiment_id": exp.id}
-        )
-        return {"experiment_id": exp.id, "result": exp.result}
 
     # ── Qərarlar ──
 
