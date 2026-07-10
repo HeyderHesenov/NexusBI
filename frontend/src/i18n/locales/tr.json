@@ -341,7 +341,12 @@
     "statusOpen": "Açık",
     "step": "Adım",
     "subtitle": "İçgörüden karara, karardan ölçülebilir etkiye — kapanan döngü.",
-    "targetsReached": "{{achieved}}/{{total}} hedefe ulaşıldı"
+    "targetsReached": "{{achieved}}/{{total}} hedefe ulaşıldı",
+    "trajectory": "Yörünge",
+    "counterfactualBand": "Karşıolgusal bant",
+    "counterfactualLine": "Kararsız projeksiyon",
+    "vsCounterfactual": "karşıolgusala göre",
+    "counterfactualBaselineNote": "Karardan önce yeterli geçmiş yok — mutlak değişim gösteriliyor."
   },
   "embedDashboardPage": {
     "emptyDashboard": "Bu pano boş.",

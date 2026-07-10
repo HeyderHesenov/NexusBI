@@ -97,14 +97,56 @@ async def test_decision_loop_baseline_measure_roi(client: AsyncClient, auth: dic
     roi = measured.json()
     assert roi["realized_value"] is not None
     assert roi["impact_status"] in {"pending", "on_track", "achieved", "regressed", "missed"}
+    # Baseline is the first measurement, so there's no pre-decision history → the
+    # counterfactual honestly falls back to the "baseline" method (no forecast band).
+    assert roi["counterfactual"]["method"] == "baseline"
+    assert roi["counterfactual"]["band"] is None
 
     traj = await client.get(f"/api/v1/decisions/{did}/trajectory", headers=auth)
     assert traj.status_code == 200
-    assert len(traj.json()) == 2  # baseline + one measurement
+    assert len(traj.json()["points"]) == 2  # baseline + one measurement
+    assert traj.json()["counterfactual"]["method"] == "baseline"
 
     acc = await client.get("/api/v1/decisions/accuracy", headers=auth)
     assert acc.status_code == 200
     assert acc.json()["total_measured"] == 1
+
+
+def test_counterfactual_branches():
+    """≥3 pre-baseline points → forecast band; otherwise honest baseline method."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.decision import Decision, DecisionMeasurement
+
+    base_at = datetime(2026, 1, 10, tzinfo=timezone.utc)
+
+    def meas(day: int, value: float) -> DecisionMeasurement:
+        return DecisionMeasurement(
+            decision_id="d", value=value, measured_at=base_at + timedelta(days=day)
+        )
+
+    d = Decision(user_id="u", title="t", baseline_value=100.0, realized_value=140.0)
+    d.baseline_at = base_at
+
+    # No pre-history (baseline is the first point) → baseline fallback, no band.
+    only_post = [meas(0, 100.0), meas(1, 120.0), meas(2, 140.0)]
+    cf = decision_service.counterfactual(d, only_post)
+    assert cf["method"] == "baseline"
+    assert cf["band"] is None
+    assert cf["counterfactual_value"] == 100.0
+    assert cf["delta_vs_counterfactual"] == 40.0  # realized 140 − baseline 100
+
+    # ≥3 pre-baseline points on a flat ~100 trend → projected ≈100, band present,
+    # realized 140 beats the counterfactual (positive delta).
+    with_pre = [meas(-3, 98.0), meas(-2, 100.0), meas(-1, 102.0), meas(0, 100.0), meas(1, 140.0)]
+    cf2 = decision_service.counterfactual(d, with_pre)
+    assert cf2["method"] != "baseline"
+    assert cf2["band"] is not None and len(cf2["band"]) == 2  # one per post point
+    assert cf2["delta_vs_counterfactual"] > 0  # realized above the projection
+
+    # No realized value yet → nothing to score.
+    d.realized_value = None
+    assert decision_service.counterfactual(d, only_post) is None
 
 
 def test_impact_status_math():

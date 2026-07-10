@@ -341,7 +341,12 @@
     "statusOpen": "Açıq",
     "step": "Addım",
     "subtitle": "İnsight-dan qərara, qərardan ölçülən təsirə — qapanan döngü.",
-    "targetsReached": "{{achieved}}/{{total}} hədəfə çatdı"
+    "targetsReached": "{{achieved}}/{{total}} hədəfə çatdı",
+    "trajectory": "Trayektoriya",
+    "counterfactualBand": "Kontrfaktual bant",
+    "counterfactualLine": "Qərarsız proqnoz",
+    "vsCounterfactual": "Kontrfaktuala qarşı",
+    "counterfactualBaselineNote": "Qərardan əvvəl kifayət tarixçə yoxdur — mütləq dəyişiklik göstərilir."
   },
   "embedDashboardPage": {
     "emptyDashboard": "Bu panel boşdur.",

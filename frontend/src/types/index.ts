@@ -197,6 +197,22 @@ export interface DecisionCreate {
   measure_cadence?: DecisionCadence | null
 }
 
+export interface CounterfactualBand {
+  measured_at: string
+  yhat: number
+  lower: number
+  upper: number
+}
+
+export interface Counterfactual {
+  // "baseline" = no pre-history, absolute change vs baseline (NOT a true
+  // counterfactual); otherwise the forecast method that produced the band.
+  method: string
+  band: CounterfactualBand[] | null
+  counterfactual_value: number | null
+  delta_vs_counterfactual: number | null
+}
+
 export interface DecisionROI {
   decision_id: string
   baseline_value: number | null
@@ -209,6 +225,7 @@ export interface DecisionROI {
   impact_status: ImpactStatus
   baseline_at: string | null
   realized_at: string | null
+  counterfactual: Counterfactual | null
 }
 
 export interface DecisionMeasurement {
@@ -216,6 +233,11 @@ export interface DecisionMeasurement {
   value: number
   measured_at: string
   query_log_id: string | null
+}
+
+export interface DecisionTrajectory {
+  points: DecisionMeasurement[]
+  counterfactual: Counterfactual | null
 }
 
 export interface AccuracySummary {

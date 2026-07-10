@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Activity, Lightbulb, Target, TrendingDown, TrendingUp, Trash2 } from 'lucide-react'
+import { Activity, ChevronDown, Lightbulb, Target, TrendingDown, TrendingUp, Trash2 } from 'lucide-react'
 import { useDecisionStore } from '../store/decisionStore'
 import { formatNumber } from '../lib/format'
 import { Sparkline } from '../components/charts/Sparkline'
 import { TypewriterText } from '../components/charts/TypewriterText'
 import * as decisionApi from '../api/decision'
-import type { Decision, DecisionMeasurement, DecisionStatus, ImpactStatus } from '../types'
+import type { Decision, DecisionStatus, DecisionTrajectory, ImpactStatus } from '../types'
+
+// recharts is heavy — keep it out of the Decisions bundle until a card is expanded.
+const TrajectoryChart = lazy(() =>
+  import('../components/decision/TrajectoryChart').then((m) => ({ default: m.TrajectoryChart })),
+)
 
 const STATUS: { value: DecisionStatus; labelKey: string }[] = [
   { value: 'open', labelKey: 'decisionsPage.statusOpen' },
@@ -98,7 +103,8 @@ function DecisionCard({
 }) {
   const { t } = useTranslation()
   const [outcome, setOutcome] = useState(d.outcome)
-  const [traj, setTraj] = useState<DecisionMeasurement[]>([])
+  const [traj, setTraj] = useState<DecisionTrajectory | null>(null)
+  const [expanded, setExpanded] = useState(false)
   const [busy, setBusy] = useState(false)
   const tracked = d.baseline_value != null
 
@@ -106,8 +112,15 @@ function DecisionCard({
   // Keyed on realized_at: onMeasure updates it via the store, which refetches once.
   useEffect(() => {
     if (!tracked || d.realized_value == null) return
-    decisionApi.trajectory(d.id).then(setTraj).catch(() => undefined)
+    let ignore = false // drop an out-of-order response so stale points can't clobber fresh ones
+    decisionApi.trajectory(d.id).then((tr) => !ignore && setTraj(tr)).catch(() => undefined)
+    return () => {
+      ignore = true
+    }
   }, [d.id, tracked, d.realized_value, d.realized_at])
+
+  const cf = traj?.counterfactual ?? null
+  const points = traj?.points ?? []
 
   const doMeasure = async () => {
     if (busy) return
@@ -186,12 +199,48 @@ function DecisionCard({
                 </p>
               </div>
             </div>
-            <Sparkline points={traj.map((t) => t.value)} />
+            <Sparkline points={points.map((p) => p.value)} />
           </div>
           {delta != null && (
             <p className="mt-1 text-xs text-ink-faint">
               {t('decisionsPage.changeFromBaseline')}: {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
             </p>
+          )}
+
+          {points.length >= 2 && (
+            <>
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className="mt-2 inline-flex items-center gap-1 text-xs text-ink-soft transition hover:text-accent"
+              >
+                <ChevronDown size={13} className={`transition ${expanded ? 'rotate-180' : ''}`} />
+                {t('decisionsPage.trajectory')}
+              </button>
+              {expanded && (
+                <div className="mt-2 border-t border-line pt-3">
+                  {cf?.method === 'baseline' ? (
+                    // No usable pre-decision history: a baseline delta is NOT a true
+                    // counterfactual, so say so plainly instead of drawing a fake band.
+                    <p className="mb-2 text-xs text-ink-faint">{t('decisionsPage.counterfactualBaselineNote')}</p>
+                  ) : (
+                    cf?.delta_vs_counterfactual != null && (
+                      <p className="mb-2 text-xs text-ink-soft">
+                        {t('decisionsPage.vsCounterfactual')}:{' '}
+                        <span className={cf.delta_vs_counterfactual >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                          {cf.delta_vs_counterfactual > 0 ? '+' : ''}
+                          {fmt(cf.delta_vs_counterfactual)}
+                        </span>
+                      </p>
+                    )
+                  )}
+                  {traj && (
+                    <Suspense fallback={<div className="h-[220px]" />}>
+                      <TrajectoryChart trajectory={traj} baseline={d.baseline_value} />
+                    </Suspense>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

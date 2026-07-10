@@ -341,7 +341,12 @@
     "statusOpen": "Открыто",
     "step": "Шаг",
     "subtitle": "От инсайта к решению, от решения к измеримому эффекту — замкнутый цикл.",
-    "targetsReached": "Достигнуто целей: {{achieved}}/{{total}}"
+    "targetsReached": "Достигнуто целей: {{achieved}}/{{total}}",
+    "trajectory": "Траектория",
+    "counterfactualBand": "Контрфактный диапазон",
+    "counterfactualLine": "Прогноз без решения",
+    "vsCounterfactual": "против контрфакта",
+    "counterfactualBaselineNote": "Недостаточно истории до решения — показано абсолютное изменение."
   },
   "embedDashboardPage": {
     "emptyDashboard": "Эта панель пуста.",

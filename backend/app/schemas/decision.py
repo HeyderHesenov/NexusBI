@@ -71,6 +71,22 @@ class DecisionMeasurementResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CounterfactualBand(BaseModel):
+    measured_at: datetime
+    yhat: float
+    lower: float
+    upper: float
+
+
+class Counterfactual(BaseModel):
+    # "baseline" = no usable pre-history, absolute change vs baseline (NOT a true
+    # counterfactual); otherwise the stats.forecast_series method that produced band.
+    method: str
+    band: list[CounterfactualBand] | None = None
+    counterfactual_value: float | None = None
+    delta_vs_counterfactual: float | None = None
+
+
 class DecisionROI(BaseModel):
     decision_id: str
     baseline_value: float | None
@@ -83,6 +99,12 @@ class DecisionROI(BaseModel):
     impact_status: str
     baseline_at: datetime | None
     realized_at: datetime | None
+    counterfactual: Counterfactual | None = None
+
+
+class DecisionTrajectory(BaseModel):
+    points: list[DecisionMeasurementResponse]
+    counterfactual: Counterfactual | None = None
 
 
 class AccuracySummary(BaseModel):

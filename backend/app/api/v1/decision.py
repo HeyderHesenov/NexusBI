@@ -10,6 +10,7 @@ from app.schemas.decision import (
     DecisionMeasurementResponse,
     DecisionResponse,
     DecisionROI,
+    DecisionTrajectory,
     DecisionUpdate,
 )
 from app.services import decision_service as svc
@@ -47,21 +48,25 @@ async def measure(
 ) -> DecisionROI:
     d = await svc.get(db, user.id, decision_id)
     d = await svc.measure(db, cache, d)
-    return DecisionROI.model_validate(svc.roi(d))
+    return DecisionROI.model_validate(await svc.roi_with_counterfactual(db, d))
 
 
 @router.get("/{decision_id}/roi", response_model=DecisionROI)
 async def roi(decision_id: str, user: CurrentUser, db: DbDep) -> DecisionROI:
     d = await svc.get(db, user.id, decision_id)
-    return DecisionROI.model_validate(svc.roi(d))
+    return DecisionROI.model_validate(await svc.roi_with_counterfactual(db, d))
 
 
-@router.get("/{decision_id}/trajectory", response_model=list[DecisionMeasurementResponse])
+@router.get("/{decision_id}/trajectory", response_model=DecisionTrajectory)
 async def trajectory(
     decision_id: str, user: CurrentUser, db: DbDep
-) -> list[DecisionMeasurementResponse]:
+) -> DecisionTrajectory:
+    d = await svc.get(db, user.id, decision_id)
     points = await svc.trajectory(db, user.id, decision_id)
-    return [DecisionMeasurementResponse.model_validate(p) for p in points]
+    return DecisionTrajectory(
+        points=[DecisionMeasurementResponse.model_validate(p) for p in points],
+        counterfactual=svc.counterfactual(d, points),
+    )
 
 
 @router.delete("/{decision_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -4,9 +4,9 @@ import type {
   Decision,
   DecisionCreate,
   DecisionDirection,
-  DecisionMeasurement,
   DecisionROI,
   DecisionStatus,
+  DecisionTrajectory,
 } from '../types'
 
 export async function list(): Promise<Decision[]> {
@@ -49,8 +49,8 @@ export async function roi(id: string): Promise<DecisionROI> {
   return data
 }
 
-export async function trajectory(id: string): Promise<DecisionMeasurement[]> {
-  const { data } = await client.get<DecisionMeasurement[]>(`/decisions/${id}/trajectory`)
+export async function trajectory(id: string): Promise<DecisionTrajectory> {
+  const { data } = await client.get<DecisionTrajectory>(`/decisions/${id}/trajectory`)
   return data
 }
 

@@ -304,6 +304,64 @@ def roi(d: Decision) -> dict[str, Any]:
     }
 
 
+def counterfactual(d: Decision, measurements: list[DecisionMeasurement]) -> dict[str, Any] | None:
+    """Estimate what the metric WOULD have done without the decision and score
+    the realized value against it.
+
+    When ≥3 measurements predate the decision (``baseline_at``), project that
+    pre-decision trend forward with :func:`stats.forecast_series` and return a
+    per-post-point band plus ``realized − projected``. In practice the baseline
+    IS the first measurement, so there is usually no pre-history: we then fall
+    back to ``method="baseline"`` (honest absolute change from the baseline, no
+    band). The caller must surface which method was used — a baseline delta is
+    NOT a true counterfactual and must not be presented as one.
+    """
+    from app.services import stats
+
+    baseline_at = _aware(d.baseline_at)
+    realized = d.realized_value
+    if baseline_at is None or realized is None:
+        return None
+
+    def _at(m: DecisionMeasurement) -> datetime:
+        return _aware(m.measured_at)  # type: ignore[return-value]
+
+    pre = sorted((m for m in measurements if _at(m) < baseline_at), key=_at)
+    post = sorted((m for m in measurements if _at(m) >= baseline_at), key=_at)
+
+    if len(pre) >= 3 and post:
+        fc = stats.forecast_series([m.value for m in pre], len(post))
+        pts = fc["points"]
+        if pts:  # empty only if every pre value was non-finite → fall through to baseline
+            band = [
+                {"measured_at": m.measured_at, "yhat": p["yhat"], "lower": p["lower"], "upper": p["upper"]}
+                for m, p in zip(post, pts)
+            ]
+            projected = pts[-1]["yhat"]
+            return {
+                "method": fc["method"],
+                "band": band,
+                "counterfactual_value": round(projected, 4),
+                "delta_vs_counterfactual": round(realized - projected, 4),
+            }
+
+    baseline = d.baseline_value
+    return {
+        "method": "baseline",
+        "band": None,
+        "counterfactual_value": round(baseline, 4) if baseline is not None else None,
+        "delta_vs_counterfactual": round(realized - baseline, 4) if baseline is not None else None,
+    }
+
+
+async def roi_with_counterfactual(db: AsyncSession, d: Decision) -> dict[str, Any]:
+    """``roi(d)`` plus a ``counterfactual`` block (loads the trajectory once)."""
+    measurements = await trajectory(db, d.user_id, d.id)
+    out = roi(d)
+    out["counterfactual"] = counterfactual(d, measurements)
+    return out
+
+
 async def accuracy_summary(db: AsyncSession, user_id: str) -> dict[str, Any]:
     """How well this user's predictions matched reality — the calibration signal."""
     result = await db.execute(

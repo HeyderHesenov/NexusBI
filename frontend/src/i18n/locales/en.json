@@ -341,7 +341,12 @@
     "statusOpen": "Open",
     "step": "Step",
     "subtitle": "From insight to decision, from decision to measurable impact — the closing loop.",
-    "targetsReached": "{{achieved}}/{{total}} targets reached"
+    "targetsReached": "{{achieved}}/{{total}} targets reached",
+    "trajectory": "Trajectory",
+    "counterfactualBand": "Counterfactual band",
+    "counterfactualLine": "No-decision projection",
+    "vsCounterfactual": "vs counterfactual",
+    "counterfactualBaselineNote": "Not enough history before the decision — showing the absolute change instead."
   },
   "embedDashboardPage": {
     "emptyDashboard": "This dashboard is empty.",
