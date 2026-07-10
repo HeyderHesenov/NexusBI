@@ -423,11 +423,21 @@
     "delete": "Sil"
   },
   "historyPage": {
+    "colChart": "Qrafik",
     "colDate": "Tarix",
+    "colDuration": "Müddət",
     "colQuery": "Sorğu",
+    "confirmDeleteMessage": "Bu sorğu tarixçədən silinəcək. Bu əməliyyat geri qaytarıla bilməz.",
+    "confirmDeleteTitle": "Sorğunu sil?",
     "deleteQuery": "Sorğunu sil",
     "empty": "Hələ sorğu yoxdur.",
     "eyebrow": "Jurnal",
+    "filterAllCharts": "Bütün qrafiklər",
+    "loadMore": "Daha çox yüklə",
+    "noMatches": "Uyğun sorğu tapılmadı.",
+    "rerun": "Yenidən icra et",
+    "resultsCount": "{{count}} sorğu",
+    "searchPlaceholder": "Sorğularda axtar…",
     "title": "Sorğu tarixçəsi"
   },
   "integrationsPanel": {

@@ -423,11 +423,21 @@
     "delete": "Sil"
   },
   "historyPage": {
+    "colChart": "Grafik",
     "colDate": "Tarih",
+    "colDuration": "Süre",
     "colQuery": "Sorgu",
+    "confirmDeleteMessage": "Bu sorgu geçmişten silinecek. Bu işlem geri alınamaz.",
+    "confirmDeleteTitle": "Sorgu silinsin mi?",
     "deleteQuery": "Sorguyu sil",
     "empty": "Henüz sorgu yok.",
     "eyebrow": "Günlük",
+    "filterAllCharts": "Tüm grafikler",
+    "loadMore": "Daha fazla",
+    "noMatches": "Eşleşen sorgu yok.",
+    "rerun": "Yeniden çalıştır",
+    "resultsCount": "{{count}} sorgu",
+    "searchPlaceholder": "Sorgularda ara…",
     "title": "Sorgu geçmişi"
   },
   "integrationsPanel": {

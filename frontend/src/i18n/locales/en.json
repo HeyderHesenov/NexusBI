@@ -423,11 +423,21 @@
     "delete": "Delete"
   },
   "historyPage": {
+    "colChart": "Chart",
     "colDate": "Date",
+    "colDuration": "Duration",
     "colQuery": "Query",
+    "confirmDeleteMessage": "This query will be removed from history. This action cannot be undone.",
+    "confirmDeleteTitle": "Delete query?",
     "deleteQuery": "Delete query",
     "empty": "No queries yet.",
     "eyebrow": "Journal",
+    "filterAllCharts": "All charts",
+    "loadMore": "Load more",
+    "noMatches": "No matching queries.",
+    "rerun": "Re-run",
+    "resultsCount": "{{count}} queries",
+    "searchPlaceholder": "Search queries…",
     "title": "Query history"
   },
   "integrationsPanel": {

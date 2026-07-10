@@ -423,11 +423,21 @@
     "delete": "Удалить"
   },
   "historyPage": {
+    "colChart": "График",
     "colDate": "Дата",
+    "colDuration": "Длит.",
     "colQuery": "Запрос",
+    "confirmDeleteMessage": "Запрос будет удалён из истории. Это действие нельзя отменить.",
+    "confirmDeleteTitle": "Удалить запрос?",
     "deleteQuery": "Удалить запрос",
     "empty": "Пока нет запросов.",
     "eyebrow": "Журнал",
+    "filterAllCharts": "Все графики",
+    "loadMore": "Загрузить ещё",
+    "noMatches": "Нет подходящих запросов.",
+    "rerun": "Повторить",
+    "resultsCount": "Запросов: {{count}}",
+    "searchPlaceholder": "Поиск запросов…",
     "title": "История запросов"
   },
   "integrationsPanel": {
