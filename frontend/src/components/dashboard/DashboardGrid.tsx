@@ -142,7 +142,7 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
                   onPointClick={(field, value) =>
                     setCrossFilter({ field, value: String(value) })
                   }
-                  targetValue={targetValueFor(widgetTarget, w.chart.data, w.chart.chart_config.y_axis)}
+                  targetValue={targetValueFor(widgetTarget, w.chart.data, w.chart.chart_config.y_axis, w.chart.chart_config.x_axis)}
                   target={widgetTarget}
                 />
               </ErrorBoundary>

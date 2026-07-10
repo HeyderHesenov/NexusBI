@@ -112,6 +112,22 @@ describe('deriveKpiSeries', () => {
     expect(s.deltaPct).toBeNull()
   })
 
+  it('samples several rows for the numeric column — a NULL first cell must not misclassify', () => {
+    const data = [
+      { month: '2024-01', revenue: null }, // first cell is NULL...
+      { month: '2024-02', revenue: 120 },
+      { month: '2024-03', revenue: 90 },
+    ]
+    const s = deriveKpiSeries(data, cfg({ y_axis: null }))
+    expect(s.yKey).toBe('revenue') // ...but the column is still detected as the measure, NOT 'month'
+    expect(s.latest).toBe(90)
+  })
+
+  it('parses comma-grouped numbers ("1,234" → 1234), mirroring backend to_float', () => {
+    const s = deriveKpiSeries([{ revenue: '1,234' }], cfg({ x_axis: null }))
+    expect(s.latest).toBe(1234)
+  })
+
   it('keeps a single text answer row on its first column (NL answers)', () => {
     const s = deriveKpiSeries([{ mehsul: 'Alma şirəsi', say: 342 }], cfg({ x_axis: null, y_axis: null }))
     expect(s.yKey).toBe('mehsul')

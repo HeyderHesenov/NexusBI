@@ -1,4 +1,5 @@
 import type { KPITarget } from '../api/scenario'
+import { TEMPORAL, looksTemporal, num } from './kpi'
 
 /**
  * Case-insensitive EXACT name match between saved KPI targets and a chart's
@@ -23,16 +24,24 @@ export function matchTarget(
 const TARGET_SCALE_CAP = 3
 
 /** Target value for a chart, or undefined when it is out of scale with the
- *  plotted series (name matching is fuzzy by nature; scale is the sanity check). */
+ *  plotted series (name matching is fuzzy by nature; scale is the sanity check).
+ *  When `xKey` is given and the x labels look temporal, rollup/total rows ("Cəmi",
+ *  "N/A") are excluded from the scale so their summed value can't inflate maxAbs
+ *  and wave through an out-of-scale target — mirrors deriveKpiSeries's filter. */
 export function targetValueFor(
   target: KPITarget | null,
   rows: Record<string, unknown>[],
   yKey: string | null | undefined,
+  xKey?: string | null,
 ): number | undefined {
   if (!target || !Number.isFinite(target.target_value) || !yKey) return undefined
+  const dropRollups =
+    !!xKey && looksTemporal(rows.map((r) => String(r[xKey] ?? '')))
   let maxAbs = 0
   for (const row of rows) {
-    const v = Math.abs(Number(row[yKey]))
+    if (dropRollups && !TEMPORAL.test(String(row[xKey!] ?? ''))) continue
+    const n = num(row[yKey])
+    const v = n == null ? NaN : Math.abs(n)
     if (Number.isFinite(v) && v > maxAbs) maxAbs = v
   }
   if (maxAbs === 0) return undefined

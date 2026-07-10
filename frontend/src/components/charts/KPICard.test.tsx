@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { KPITarget } from '../../api/scenario'
 import type { ChartConfig } from '../../types'
 import { KPICard } from './KPICard'
+import { DANGER } from './theme'
 
 const cfg = (over: Partial<ChartConfig> = {}): ChartConfig => ({
   chart_type: 'kpi_card',
@@ -34,6 +35,20 @@ describe('KPICard', () => {
     const { container } = render(<KPICard data={temporal} config={cfg()} />)
     expect(screen.getByText('+20%')).toBeTruthy()
     expect(container.querySelector('svg path')).toBeTruthy()
+  })
+
+  it('sparkline color agrees with the delta chip sign — a red chip cannot pair a green line', () => {
+    // [100, 200, 150]: delta = last vs previous = (150−200)/200 = −25% (red, down).
+    // The whole-series net move (150 ≥ 100) is UP — the old sparkline went green
+    // and contradicted the chip. It must now follow the chip and stroke DANGER.
+    const downTrend = [
+      { month: '2024-01', revenue: 100 },
+      { month: '2024-02', revenue: 200 },
+      { month: '2024-03', revenue: 150 },
+    ]
+    const { container } = render(<KPICard data={downTrend} config={cfg()} />)
+    const stroke = container.querySelector('svg.overflow-visible path')?.getAttribute('stroke')
+    expect(stroke).toBe(DANGER)
   })
 
   it('single row shows the value only — no delta, no sparkline', () => {

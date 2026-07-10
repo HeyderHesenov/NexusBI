@@ -34,6 +34,31 @@ def test_period_delta_for_dated_series():
     assert trend["value"].startswith("+")  # rising series
 
 
+def test_period_delta_uses_chronological_order_not_row_order():
+    cols = ["month", "revenue"]
+    # SQL DESC order (newest first) — the first/last ROW would flip the sign.
+    rows = [
+        {"month": "2026-03", "revenue": 160},
+        {"month": "2026-02", "revenue": 200},
+        {"month": "2026-01", "revenue": 100},
+    ]
+    trend = next(f for f in compute_facts(cols, rows) if f["kind"] == "trend")
+    # Chronological baseline→latest: 100 (Jan) → 160 (Mar) = +60%, not row order.
+    assert trend["value"] == "+60%"
+
+
+def test_period_delta_sorts_mixed_separators():
+    cols = ["month", "revenue"]
+    rows = [
+        {"month": "2024/03", "revenue": 3},
+        {"month": "2024-01", "revenue": 1},
+        {"month": "2024/02", "revenue": 2},
+    ]
+    trend = next(f for f in compute_facts(cols, rows) if f["kind"] == "trend")
+    # '2024/03' must not sort before '2024-01'; baseline 1 → latest 3 = +200%.
+    assert trend["value"] == "+200%"
+
+
 def test_no_period_delta_for_categorical():
     cols = ["product", "revenue"]
     rows = [{"product": p, "revenue": v} for p, v in [("A", 10), ("B", 20)]]

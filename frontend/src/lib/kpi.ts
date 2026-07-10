@@ -1,7 +1,10 @@
 import type { ChartConfig } from '../types'
 
 /** Mirror of the backend's insight_facts._TEMPORAL: YYYY-MM / YYYY/MM prefixes. */
-const TEMPORAL = /^\d{4}[-/]\d{2}/
+export const TEMPORAL = /^\d{4}[-/]\d{2}/
+
+/** Rows scanned to classify a column as numeric — mirror of insight_facts._SAMPLE_N. */
+const SAMPLE_N = 20
 
 export interface KpiSeries {
   /** The value column this series was derived from — the card must use the
@@ -17,14 +20,31 @@ export interface KpiSeries {
   points: number[]
 }
 
-/** Strict numeric coercion: null/''/booleans are NOT zero (Number(null)===0). */
-const num = (v: unknown): number | null => {
+/** Strict numeric coercion: null/''/booleans are NOT zero (Number(null)===0).
+ *  Strings drop thousands-separator commas first ("1,234" → 1234), mirroring the
+ *  backend's stats.to_float so a comma-grouped cell isn't silently dropped. */
+export const num = (v: unknown): number | null => {
   if (v == null || v === '' || typeof v === 'boolean') return null
-  const n = Number(v)
+  const n = typeof v === 'string' ? Number(v.replace(/,/g, '')) : Number(v)
   return Number.isFinite(n) ? n : null
 }
 
-const looksTemporal = (labels: string[]): boolean => {
+/** True when ≥80% of the (non-empty) sampled cells coerce to a number — mirror of
+ *  the backend's _numeric_columns. Samples several rows (not just data[0], which
+ *  may be NULL/atypical) so the measure column isn't misclassified. */
+const isNumericColumn = (rows: Record<string, unknown>[], key: string): boolean => {
+  let seen = 0
+  let coerced = 0
+  for (const r of rows.slice(0, SAMPLE_N)) {
+    const v = r[key]
+    if (v == null || v === '') continue
+    seen += 1
+    if (num(v) != null) coerced += 1
+  }
+  return seen > 0 && coerced >= seen * 0.8
+}
+
+export const looksTemporal = (labels: string[]): boolean => {
   if (labels.length < 2) return false
   const hits = labels.filter((s) => TEMPORAL.test(s)).length
   return hits >= Math.max(2, Math.floor(labels.length / 2))
@@ -51,12 +71,14 @@ export function deriveKpiSeries(
   const keys = Object.keys(first)
   // Single answer row keeps the first column even when textual (an NL answer
   // like a product name); a multi-row series needs a numeric column that is
-  // not the time axis (year/month labels coerce to numbers too).
+  // not the time axis (year/month labels coerce to numbers too). Column type is
+  // decided over a sample of rows, not just data[0] (a null first cell would
+  // otherwise fall through to keys[0] — the x axis or a text column).
   const yKey =
     config.y_axis ??
     (data.length === 1
       ? keys[0]
-      : keys.find((k) => k !== config.x_axis && num(first[k]) != null) ?? keys[0])
+      : keys.find((k) => k !== config.x_axis && isNumericColumn(data, k)) ?? keys[0])
   none.yKey = yKey
   const latestOnly = (row: Record<string, unknown>): KpiSeries => ({
     ...none,

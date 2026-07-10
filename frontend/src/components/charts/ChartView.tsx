@@ -322,7 +322,7 @@ export function ChartView({
   const targets = useKpiTargets()
   const yKey = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   const matchedTarget = matchTarget(targets, [config.y_axis, title])
-  const targetValue = targetValueFor(matchedTarget, data, yKey)
+  const targetValue = targetValueFor(matchedTarget, data, yKey, config.x_axis)
 
   // Many-point line/area charts get cluttered x-axis labels; wheel/drag zoom
   // thins them out. Pie also benefits: zooming windows the slices so you can

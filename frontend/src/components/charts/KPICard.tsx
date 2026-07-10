@@ -35,7 +35,7 @@ export function KPICard({ data, config, target }: Props) {
   // Known limit: this assumes the target period matches the series period
   // (month target × monthly series); grossly mismatched periods are already
   // suppressed by the 3× scale gate.
-  const targetValue = target ? targetValueFor(target, data, key) : undefined
+  const targetValue = target ? targetValueFor(target, data, key, config.x_axis) : undefined
   const pacing =
     target && targetValue !== undefined && isNumber && targetValue !== 0
       ? {
@@ -71,7 +71,7 @@ export function KPICard({ data, config, target }: Props) {
             {formatSignedPct(delta)}
             <span className="font-normal text-ink-faint">{t('kpi.vsPrevious')}</span>
           </span>
-          <Sparkline points={series.points} />
+          <Sparkline points={series.points} trend={rounded != null && rounded < 0 ? 'down' : 'up'} />
         </div>
       )}
       {pacing && (

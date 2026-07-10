@@ -79,12 +79,18 @@ def compute_facts(columns: list[str], rows: list[dict[str, Any]]) -> list[dict[s
             "value": f"{stats.compact_number(best_v)} ({pct:.0f}%)",
         })
 
-    # Period-over-period change for a dated series (first → last).
-    if label_col and len(vals) >= 2 and vals[0]:
-        labels = [str(rows[i].get(label_col)) for i, _ in finite]
-        if _looks_temporal(labels):
-            delta = (vals[-1] - vals[0]) / abs(vals[0]) * 100
-            facts.append({"kind": "trend", "label": "", "value": f"{delta:+.0f}%"})
+    # Period-over-period change for a dated series (earliest → latest). Rows arrive
+    # in SQL order, which isn't guaranteed chronological, so sort by the period
+    # label ('/' normalized to '-' so "2024/03" doesn't sort after "2024-11")
+    # before taking the endpoints — mirrors frontend kpi.ts (periodKey/deriveKpiSeries).
+    if label_col and len(finite) >= 2:
+        labeled = [(str(rows[i].get(label_col)), v) for i, v in finite]
+        if _looks_temporal([lbl for lbl, _ in labeled]):
+            ordered = sorted(labeled, key=lambda t: t[0].replace("/", "-"))
+            first_v, last_v = ordered[0][1], ordered[-1][1]
+            if first_v:  # guard the (sorted) baseline against division by zero
+                delta = (last_v - first_v) / abs(first_v) * 100
+                facts.append({"kind": "trend", "label": "", "value": f"{delta:+.0f}%"})
 
     # Robust anomaly count (same MAD z-score the anomaly panel uses).
     outliers = stats.zscore_outliers(vals)
