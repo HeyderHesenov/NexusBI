@@ -52,7 +52,9 @@
   },
   "anomalyPanel": {
     "anomalies": "Anomalies",
-    "noAnomalies": "No anomalies found."
+    "noAnomalies": "No anomalies found.",
+    "multivariate": "Multivariate",
+    "multivariateHint": "Joint cross-column outliers via IsolationForest"
   },
   "barChartWidget": {
     "others": "Others ({{n}})",

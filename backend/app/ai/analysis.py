@@ -7,6 +7,7 @@ behind. Driver narration lives in root_cause.decompose (the hierarchical tree).
 """
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Any
 
@@ -16,6 +17,46 @@ from app.core.exceptions import AIGenerationError
 from app.services import stats
 
 _NUMERIC = (int, float)
+# Multivariate anomaly detection kicks in only with enough numeric width and rows —
+# below this an IsolationForest is noise, and the robust univariate MAD pass suffices.
+_MULTIVAR_MIN_COLS = 2
+_MULTIVAR_MIN_ROWS = 10
+# contamination="auto" can flag a large tail on skewed BI data; surface only the
+# strongest joint outliers so the panel stays a signal, not a wall of points.
+_MULTIVAR_MAX_ADD = 10
+
+
+def _numeric_columns(columns: list[str], rows: list[dict[str, Any]]) -> list[str]:
+    """Columns that are numeric in the first row (the display schema is stable)."""
+    sample = rows[0]
+    return [c for c in columns if isinstance(sample.get(c), _NUMERIC)]
+
+
+def _isolation_forest_flags(rows: list[dict[str, Any]], numeric_cols: list[str]) -> list[int]:
+    """Global row indices of joint (multivariate) outliers, MOST anomalous first and
+    capped at ``_MULTIVAR_MAX_ADD``; empty on any failure. Lazy sklearn import +
+    deterministic seed; meant for ``asyncio.to_thread``."""
+    matrix: list[list[float]] = []
+    keep: list[int] = []
+    for gi, r in enumerate(rows):
+        vals = [stats.to_float(r.get(c)) for c in numeric_cols]
+        if all(v is not None for v in vals):
+            matrix.append([float(v) for v in vals])  # type: ignore[arg-type]
+            keep.append(gi)
+    if len(matrix) < _MULTIVAR_MIN_ROWS:
+        return []
+    try:
+        from sklearn.ensemble import IsolationForest
+
+        model = IsolationForest(random_state=42, contamination="auto")
+        preds = model.fit_predict(np.asarray(matrix, dtype=float))
+        # Lower decision_function = more anomalous; rank the flagged points by it.
+        scores = model.decision_function(np.asarray(matrix, dtype=float))
+    except Exception:  # noqa: BLE001 — never let an optional detector break the base result
+        return []
+    flagged = [i for i, p in enumerate(preds) if p == -1]
+    flagged.sort(key=lambda i: scores[i])  # most anomalous first
+    return [keep[i] for i in flagged[:_MULTIVAR_MAX_ADD]]
 
 
 def pick_series(columns: list[str], rows: list[dict[str, Any]]) -> tuple[str, str]:
@@ -50,7 +91,10 @@ def _future_labels(existing: list[str], periods: int) -> list[str]:
 async def detect_anomalies(
     columns: list[str], rows: list[dict[str, Any]], nl_query: str
 ) -> dict[str, Any]:
-    """Flag anomalous points via the MAD-based modified z-score (robust, no AI)."""
+    """Flag anomalous points via the robust MAD modified z-score (default), plus a
+    multivariate IsolationForest pass when the result is wide/tall enough. Both are
+    deterministic (no AI); the MAD pass stays the primary signal and the forest only
+    ADDS points that are anomalous jointly across the numeric columns."""
     label_col, value_col = pick_series(columns, rows)
     coerced = [stats.to_float(r.get(value_col)) for r in rows]
     idx = [i for i, v in enumerate(coerced) if v is not None]
@@ -59,6 +103,7 @@ async def detect_anomalies(
     flagged = set(stats.zscore_outliers(series))
     mz = stats.modified_zscores(series)
     median = float(np.median(series)) if series else 0.0
+    mad_global = {idx[local] for local in flagged}
 
     anomalies = []
     for local in sorted(flagged):
@@ -69,6 +114,7 @@ async def detect_anomalies(
         severity = "high" if score >= 5 else "medium"
         direction = "yuxarı" if value > median else "aşağı"
         anomalies.append({
+            "index": gi,
             "label": str(rows[gi].get(label_col)),
             "value": value,
             "severity": severity,
@@ -78,7 +124,42 @@ async def detect_anomalies(
             ),
         })
 
-    if anomalies:
+    # Multivariate: joint outliers a single-column z-score can't see (e.g. a normal
+    # revenue at an abnormal quantity). Only ADD points MAD didn't already flag.
+    method = "mad"
+    numeric_cols = _numeric_columns(columns, rows)
+    if len(numeric_cols) >= _MULTIVAR_MIN_COLS and len(rows) >= _MULTIVAR_MIN_ROWS:
+        forest_flags = await asyncio.to_thread(_isolation_forest_flags, rows, numeric_cols)
+        if forest_flags:
+            method = "mad+isolation_forest"
+            others = ", ".join(c for c in numeric_cols if c != value_col)
+            for gi in (i for i in forest_flags if i not in mad_global):
+                anomalies.append({
+                    "index": gi,
+                    "label": str(rows[gi].get(label_col)),
+                    "value": stats.to_float(rows[gi].get(value_col)),
+                    "severity": "medium",
+                    "explanation": (
+                        f"Çoxdəyişənli kənar — {others} ilə birlikdə qeyri-adi kombinasiya "
+                        f"(IsolationForest)."
+                    ),
+                })
+
+    # Keep the on-screen order stable by original row position across both passes.
+    anomalies.sort(key=lambda a: a["index"])
+    for a in anomalies:
+        a.pop("index", None)
+
+    mad_count = len(flagged)
+    mv_count = len(anomalies) - mad_count
+    if anomalies and mv_count > 0:
+        # Don't lump the joint outliers in with the modified-z ones — they are a
+        # different (multivariate) signal, so describe the split honestly.
+        summary = (
+            f"{len(anomalies)} anomaliya: {mad_count} robust-z (MAD) + "
+            f"{mv_count} çoxdəyişənli (IsolationForest), n={len(series)}."
+        )
+    elif anomalies:
         summary = f"{len(anomalies)} anomaliya: median-dan >3.5 modifikasiyalı-z kənar (n={len(series)})."
     elif len(series) < 4:
         summary = f"Yalnız {len(series)} ədədi nöqtə — anomaliya üçün az."
@@ -90,6 +171,7 @@ async def detect_anomalies(
         "summary": summary,
         "label_col": label_col,
         "value_col": value_col,
+        "method": method,
     }
 
 

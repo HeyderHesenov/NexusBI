@@ -52,7 +52,9 @@
   },
   "anomalyPanel": {
     "anomalies": "Anomaliyalar",
-    "noAnomalies": "Anomaliya tapılmadı."
+    "noAnomalies": "Anomaliya tapılmadı.",
+    "multivariate": "Çoxdəyişənli",
+    "multivariateHint": "IsolationForest ilə sütunlar arası birgə kənarlar"
   },
   "barChartWidget": {
     "others": "Digər ({{n}})",

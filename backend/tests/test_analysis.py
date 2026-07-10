@@ -37,6 +37,33 @@ async def _make_query(client: AsyncClient, auth: dict) -> str:
     return resp.json()["query_log_id"]
 
 
+async def test_multivariate_isolation_forest_flags_joint_outlier():
+    """A point normal in each column but abnormal jointly is caught only by the
+    multivariate pass — MAD on the value column alone can't see it."""
+    from app.ai import analysis
+
+    columns = ["label", "x", "y"]
+    rows = [{"label": f"r{i}", "x": 10.0 + (i % 3) * 0.1, "y": 10.0 + (i % 3) * 0.1} for i in range(15)]
+    # x stays in-cluster (univariate MAD on x won't flag it) but y is far out.
+    rows.append({"label": "joint", "x": 10.1, "y": 90.0})
+
+    result = await analysis.detect_anomalies(columns, rows, "test")
+    assert result["method"] == "mad+isolation_forest"
+    assert "joint" in {a["label"] for a in result["anomalies"]}
+    # No internal bookkeeping leaks into the response points.
+    assert all("index" not in a for a in result["anomalies"])
+
+
+async def test_single_numeric_column_stays_mad():
+    """One numeric column → no IsolationForest, method stays the robust MAD default."""
+    from app.ai import analysis
+
+    columns = ["label", "x"]
+    rows = [{"label": f"r{i}", "x": 10.0} for i in range(15)]
+    result = await analysis.detect_anomalies(columns, rows, "test")
+    assert result["method"] == "mad"
+
+
 async def test_anomalies_endpoint(client, auth):
     """No AI mock — anomaly flagging is a deterministic MAD z-score."""
     qid = await _make_query(client, auth)

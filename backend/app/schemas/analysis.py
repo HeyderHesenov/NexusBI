@@ -18,6 +18,7 @@ class AnomalyResponse(BaseModel):
     summary: str = ""
     label_col: str
     value_col: str
+    method: str = "mad"  # "mad" | "mad+isolation_forest"
 
 
 class ForecastPoint(BaseModel):

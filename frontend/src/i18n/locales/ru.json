@@ -52,7 +52,9 @@
   },
   "anomalyPanel": {
     "anomalies": "Аномалии",
-    "noAnomalies": "Аномалии не найдены."
+    "noAnomalies": "Аномалии не найдены.",
+    "multivariate": "Многомерный",
+    "multivariateHint": "Совместные выбросы по столбцам через IsolationForest"
   },
   "barChartWidget": {
     "others": "Другие ({{n}})",

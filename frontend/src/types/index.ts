@@ -406,6 +406,7 @@ export interface AnomalyResult {
   summary: string
   label_col: string
   value_col: string
+  method?: string // "mad" | "mad+isolation_forest"
 }
 
 export interface ForecastPoint {

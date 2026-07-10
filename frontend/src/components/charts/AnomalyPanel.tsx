@@ -23,7 +23,15 @@ export function AnomalyPanel({ result }: { result: AnomalyResult }) {
     <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-4">
       <div className="flex items-center gap-2">
         <AlertTriangle size={15} className="text-amber-400" />
-        <p className="eyebrow text-ink-soft">{result.summary || t('anomalyPanel.anomalies')}</p>
+        <p className="eyebrow flex-1 text-ink-soft">{result.summary || t('anomalyPanel.anomalies')}</p>
+        {result.method === 'mad+isolation_forest' && (
+          <span
+            className="shrink-0 rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 text-[10px] font-medium text-accent"
+            title={t('anomalyPanel.multivariateHint')}
+          >
+            {t('anomalyPanel.multivariate')}
+          </span>
+        )}
       </div>
       <ul className="space-y-1.5">
         {result.anomalies.map((a, i) => (
