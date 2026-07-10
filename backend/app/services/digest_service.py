@@ -5,8 +5,9 @@ driver/reason), and rolls them into a SINGLE notification so the user opens the
 app to "what you need to know" already prepared.
 
 Design notes:
-- Reuses ``insight_service.scan_recent_distinct`` (shared history scan) and
-  ``insight_digest.summarize_change`` (AI, notable-or-null) per highlight.
+- Ranks candidates by NOTABILITY (each query's latest value vs its own history,
+  a robust modified z-score) rather than recency, so the brief leads with what
+  changed. Only the top-N get the (AI) ``insight_digest.summarize_change`` narration.
 - Falls back to a deterministic rule-based highlight so the brief still works
   fully offline (same philosophy as the rest of the app).
 - One brief = one Notification (title "🌅 Səhər brifi", body = bullet list).
@@ -24,11 +25,18 @@ from app.config import settings
 from app.core.logging import get_logger
 from app.core.notification_types import NotificationCategory
 from app.models.alert import Notification
+from app.models.query_log import QueryLog
 from app.models.user import User
-from app.services import insight_service
+from app.services import stats
+from app.services.insight_service import rows_of
 
 _log = get_logger("nexusbi.digest")
 _TITLE = "🌅 Səhər brifi"
+# How far back to scan for per-query history when scoring notability.
+_HISTORY_WINDOW = 200
+# A robust z needs a few prior points to mean anything; below this, score 0.0 so a
+# first-ever run is never "notable" (nothing to compare it against).
+_MIN_HISTORY = 3
 
 
 def _is_number(v: Any) -> bool:
@@ -67,16 +75,91 @@ def _rule_based_highlight(rows: list[dict[str, Any]]) -> str | None:
     return f"Ən yüksək {value_col} = {display}{share}."
 
 
+def _scalar(rows: list[dict[str, Any]]) -> float | None:
+    """A stable representative magnitude for a result set: the sum of its first
+    numeric column. Used to compare a query against its own past snapshots."""
+    if not rows:
+        return None
+    numeric_cols = [k for k, v in rows[0].items() if _is_number(v)]
+    if not numeric_cols:
+        return None
+    col = numeric_cols[0]
+    vals = [float(r[col]) for r in rows if _is_number(r.get(col))]
+    return sum(vals) if vals else None
+
+
+def _notability(scalars: list[float]) -> float:
+    """How unusual the LATEST snapshot is vs this query's own history — the robust
+    modified z-score of the last point. 0.0 without enough history (a first run
+    has nothing to be notable against); a flat series scores 0 (MAD handles it)."""
+    if len(scalars) < _MIN_HISTORY:
+        return 0.0
+    z = stats.modified_zscores(scalars)
+    return abs(z[-1]) if z else 0.0
+
+
+async def _recent_with_history(
+    db: AsyncSession, user_id: str
+) -> list[tuple[str, list[dict[str, Any]], list[float]]]:
+    """Recent distinct queries as (nl, latest_rows, scalar_series). The scalar
+    series is chronological (oldest→newest) so ``_notability`` scores the current
+    value against prior runs of the SAME query. Newest-latest first (tie-break)."""
+    res = await db.execute(
+        select(QueryLog)
+        .where(QueryLog.user_id == user_id, QueryLog.result_data.is_not(None))
+        .order_by(QueryLog.created_at.desc())
+        .limit(_HISTORY_WINDOW)
+    )
+    order: list[str] = []
+    by_nl: dict[str, dict[str, Any]] = {}
+    for log in res.scalars().all():  # newest first
+        nl = (log.natural_language or "").strip()
+        if not nl:
+            continue
+        key = nl.lower()
+        rows = rows_of(log)
+        if key not in by_nl:
+            by_nl[key] = {"nl": nl, "latest_rows": rows, "history": []}
+            order.append(key)
+        else:  # an OLDER run of an already-seen query → history only
+            sc = _scalar(rows)
+            if sc is not None:
+                by_nl[key]["history"].append(sc)  # newest-older→older; reversed below
+    out = []
+    for key in order:
+        e = by_nl[key]
+        if not e["latest_rows"]:  # skip queries whose newest run was empty
+            continue
+        # Score the value actually shown: current = _scalar(latest_rows) is always
+        # the LAST element, so notability can never describe a stale snapshot even if
+        # the newest run's rows became non-numeric.
+        current = _scalar(e["latest_rows"])
+        series = list(reversed(e["history"])) + [current] if current is not None else []
+        out.append((e["nl"], e["latest_rows"], series))
+    return out
+
+
 async def build_digest(
     db: AsyncSession, user_id: str, *, max_items: int | None = None
 ) -> Notification | None:
     """Build (and persist) a single brief notification for the user.
 
+    Ranks recent queries by NOTABILITY (how much the latest value deviates from
+    the query's own history) rather than recency, so the brief leads with what
+    actually changed. Notability is computed cheaply (no AI) for every candidate;
+    only the top ``limit`` get the (AI) per-highlight narration.
+
     Returns the Notification (caller flushes/commits) or None if nothing notable.
     """
     limit = max_items if max_items is not None else settings.DIGEST_MAX_ITEMS
+    scored = [
+        (_notability(scalars), nl, rows)
+        for nl, rows, scalars in await _recent_with_history(db, user_id)
+    ]
+    scored.sort(key=lambda s: s[0], reverse=True)  # stable → recency breaks 0.0 ties
+
     items: list[str] = []
-    for nl, rows in await insight_service.scan_recent_distinct(db, user_id):
+    for _score, nl, rows in scored:
         if len(items) >= limit:
             break
         insight = await insight_digest.summarize_change(nl, [], rows)

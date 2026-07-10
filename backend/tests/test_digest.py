@@ -53,6 +53,25 @@ def test_rule_based_highlight_no_numeric():
     assert digest_service._rule_based_highlight([]) is None
 
 
+def test_notability_spike_beats_flat():
+    """The brief must rank a query that jumped above one that stayed flat."""
+    flat = digest_service._notability([100, 100, 100, 100, 100])
+    spike = digest_service._notability([100, 100, 100, 100, 500])
+    assert spike > flat
+    assert flat == 0.0  # an unchanged series is not notable
+
+
+def test_notability_needs_history():
+    assert digest_service._notability([]) == 0.0
+    assert digest_service._notability([100, 200]) == 0.0  # below _MIN_HISTORY → no signal
+
+
+def test_scalar_sums_first_numeric_column():
+    assert digest_service._scalar([{"r": "N", "rev": 10}, {"r": "S", "rev": 30}]) == 40.0
+    assert digest_service._scalar([{"name": "x"}]) is None
+    assert digest_service._scalar([]) is None
+
+
 async def test_digest_endpoint_ai(client, auth, monkeypatch):
     async def fake_summarize(nl, prev, curr):
         return "Gəlir 12% artıb."
