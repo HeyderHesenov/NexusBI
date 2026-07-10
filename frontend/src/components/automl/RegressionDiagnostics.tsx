@@ -63,7 +63,7 @@ export function RegressionDiagnostics({ avp }: { avp: AVP }) {
     <div className="flex flex-col gap-5">
       <div>
         <p className="eyebrow mb-2">{t('automl.avpTitle')}</p>
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={280}>
           <ScatterChart margin={{ top: 8, right: 12, bottom: 20, left: 0 }}>
             <CartesianGrid strokeDasharray="2 4" stroke={GRID} />
             <XAxis
@@ -114,7 +114,7 @@ export function RegressionDiagnostics({ avp }: { avp: AVP }) {
 
       <div>
         <p className="eyebrow mb-2">{t('automl.residualTitle')}</p>
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={220}>
           <BarChart data={bins} margin={{ top: 8, right: 12, bottom: 20, left: 0 }}>
             <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
             <XAxis

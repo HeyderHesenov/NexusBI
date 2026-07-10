@@ -132,7 +132,7 @@ export function AutoMLPage() {
   }
 
   return (
-    <div className="w-full">
+    <div className="mx-auto w-full max-w-5xl">
       <header className="mb-6">
         <p className="eyebrow">{t('automl.eyebrow')}</p>
         <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
@@ -141,107 +141,103 @@ export function AutoMLPage() {
         <p className="mt-1 text-sm text-ink-soft">{t('automl.subtitle')}</p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        {/* wizard */}
-        <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 lg:col-span-2 lg:self-start">
-          {training ? (
-            <div className="grid min-h-[220px] place-items-center text-center">
-              <div>
-                <Loader2 size={22} className="mx-auto animate-spin text-accent" />
-                <p className="mt-3 text-sm text-ink-soft">{t('automl.training')}</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              <Field id="ml-table" label={t('automl.sourceLabel')} hint={t('automl.sourceHint')}>
-                <Select
-                  id="ml-table"
-                  value={sourceTable ?? ''}
-                  onChange={(e) => pickSource(e.target.value)}
-                  options={[
-                    { value: '', label: t('automl.pickTable') },
-                    ...tables.map((tb) => ({ value: tb.name, label: tb.name })),
-                  ]}
-                />
-              </Field>
-              {sourceTable && (
-                <>
-                  <Field id="ml-target" label={t('automl.targetLabel')}>
-                    <Select
-                      id="ml-target"
-                      value={targetColumn ?? ''}
-                      onChange={(e) => pickTarget(e.target.value)}
-                      options={[
-                        { value: '', label: t('automl.pickTarget') },
-                        ...targetOptions.map((c) => ({
-                          value: c.name,
-                          label: `${c.name} (${c.dtype})`,
-                        })),
-                      ]}
-                    />
-                  </Field>
-                  <Field id="ml-name" label={t('automl.nameLabel')}>
-                    <input
-                      id="ml-name"
-                      className={FIELD}
-                      value={name}
-                      maxLength={255}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder={sourceTable && targetColumn ? `${sourceTable}.${targetColumn}` : ''}
-                    />
-                  </Field>
-                  <button
-                    type="button"
-                    onClick={onTrain}
-                    disabled={!targetColumn}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press disabled:opacity-50"
-                  >
-                    <BrainCircuit size={15} /> {t('automl.train')}
-                  </button>
-                </>
-              )}
-            </>
-          )}
-        </section>
+      {/* wizard — full-width top strip */}
+      <section className="mb-4 rounded-2xl border border-line bg-surface p-5">
+        {training ? (
+          <div className="flex min-h-[64px] items-center justify-center gap-3 text-sm text-ink-soft">
+            <Loader2 size={18} className="animate-spin text-accent" />
+            {t('automl.training')}
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+            <Field id="ml-table" label={t('automl.sourceLabel')}>
+              <Select
+                id="ml-table"
+                value={sourceTable ?? ''}
+                onChange={(e) => pickSource(e.target.value)}
+                options={[
+                  { value: '', label: t('automl.pickTable') },
+                  ...tables.map((tb) => ({ value: tb.name, label: tb.name })),
+                ]}
+              />
+            </Field>
+            {sourceTable && (
+              <>
+                <Field id="ml-target" label={t('automl.targetLabel')}>
+                  <Select
+                    id="ml-target"
+                    value={targetColumn ?? ''}
+                    onChange={(e) => pickTarget(e.target.value)}
+                    options={[
+                      { value: '', label: t('automl.pickTarget') },
+                      ...targetOptions.map((c) => ({
+                        value: c.name,
+                        label: `${c.name} (${c.dtype})`,
+                      })),
+                    ]}
+                  />
+                </Field>
+                <Field id="ml-name" label={t('automl.nameLabel')}>
+                  <input
+                    id="ml-name"
+                    className={FIELD}
+                    value={name}
+                    maxLength={255}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={sourceTable && targetColumn ? `${sourceTable}.${targetColumn}` : ''}
+                  />
+                </Field>
+                <button
+                  type="button"
+                  onClick={onTrain}
+                  disabled={!targetColumn}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press disabled:opacity-50"
+                >
+                  <BrainCircuit size={15} /> {t('automl.train')}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </section>
 
-        {/* result */}
-        <section className="rounded-2xl border border-line bg-surface p-5 lg:col-span-3">
-          {current ? (
-            <div className="flex flex-col gap-4">
-              <div>
-                <p className="eyebrow">
-                  {t(`automl.type_${current.problem_type}`)} · {current.best_algo} ·{' '}
-                  {t('automl.rows', { count: current.row_count })}
-                </p>
-                <h2 className="font-display text-lg font-bold text-ink">{current.name}</h2>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {Object.entries(current.metrics).map(([k, v]) => (
-                  <div key={k} className="rounded-xl border border-line bg-surface-2 px-4 py-2">
-                    <p className="text-xs text-ink-faint">{t(`automl.metric_${k}`, k)}</p>
-                    <p className="font-mono text-xl font-bold text-ink">
-                      {Math.round(v * 1000) / 1000}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <WeightBars title={t('automl.importance')} items={current.importances} />
-              <ModelDiagnostics model={current} />
-              {/* key: a model switch must remount the form — stale inputs from
-                  another table's columns must not leak into this prediction */}
-              <PredictForm key={current.id} model={current} table={currentTable} />
+      {/* result — full-width, stacked */}
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        {current ? (
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="eyebrow">
+                {t(`automl.type_${current.problem_type}`)} · {current.best_algo} ·{' '}
+                {t('automl.rows', { count: current.row_count })}
+              </p>
+              <h2 className="font-display text-lg font-bold text-ink">{current.name}</h2>
             </div>
-          ) : (
-            <div className="plot-grid grid min-h-[45vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-              <div>
-                <BrainCircuit size={24} className="mx-auto text-ink-faint" />
-                <p className="mt-3 font-display text-lg text-ink">{t('automl.emptyTitle')}</p>
-                <p className="mt-1 text-sm text-ink-soft">{t('automl.emptyBody')}</p>
-              </div>
+            <div className="flex flex-wrap gap-3">
+              {Object.entries(current.metrics).map(([k, v]) => (
+                <div key={k} className="rounded-xl border border-line bg-surface-2 px-4 py-2">
+                  <p className="text-xs text-ink-faint">{t(`automl.metric_${k}`, k)}</p>
+                  <p className="font-mono text-xl font-bold text-ink">
+                    {Math.round(v * 1000) / 1000}
+                  </p>
+                </div>
+              ))}
             </div>
-          )}
-        </section>
-      </div>
+            <WeightBars title={t('automl.importance')} items={current.importances} />
+            <ModelDiagnostics model={current} />
+            {/* key: a model switch must remount the form — stale inputs from
+                another table's columns must not leak into this prediction */}
+            <PredictForm key={current.id} model={current} table={currentTable} />
+          </div>
+        ) : (
+          <div className="plot-grid grid min-h-[45vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+            <div>
+              <BrainCircuit size={24} className="mx-auto text-ink-faint" />
+              <p className="mt-3 font-display text-lg text-ink">{t('automl.emptyTitle')}</p>
+              <p className="mt-1 text-sm text-ink-soft">{t('automl.emptyBody')}</p>
+            </div>
+          </div>
+        )}
+      </section>
 
       {models.length > 0 && (
         <section className="mt-6">
