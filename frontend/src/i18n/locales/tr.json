@@ -1115,5 +1115,29 @@
     "vsPrevious": "önceki döneme göre",
     "onTrack": "Yolunda",
     "behind": "Geride"
+  },
+  "onboarding": {
+    "title": "Başlangıç",
+    "progress": "{{done}}/{{total}} adım tamamlandı",
+    "dismiss": "Kapat",
+    "go": "Git",
+    "steps": {
+      "source": {
+        "title": "Veri kaynağı bağla",
+        "hint": "Postgres, MySQL bağla veya CSV/Excel yükle"
+      },
+      "query": {
+        "title": "İlk sorunu sor",
+        "hint": "Sade dilde yaz — NexusBI SQL'e çevirir"
+      },
+      "save": {
+        "title": "Sorguyu kaydet",
+        "hint": "Sık kullandığını kaydet veya zamanla"
+      },
+      "dashboard": {
+        "title": "Pano oluştur",
+        "hint": "Sonuçları panele ekle"
+      }
+    }
   }
 }

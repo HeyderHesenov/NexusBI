@@ -1115,5 +1115,29 @@
     "vsPrevious": "vs previous period",
     "onTrack": "On track",
     "behind": "Behind pace"
+  },
+  "onboarding": {
+    "title": "Get started",
+    "progress": "{{done}}/{{total}} steps done",
+    "dismiss": "Dismiss",
+    "go": "Go",
+    "steps": {
+      "source": {
+        "title": "Connect a data source",
+        "hint": "Add Postgres, MySQL or upload CSV/Excel"
+      },
+      "query": {
+        "title": "Ask your first question",
+        "hint": "Write in plain language — NexusBI turns it into SQL"
+      },
+      "save": {
+        "title": "Save a query",
+        "hint": "Keep or schedule the ones you run often"
+      },
+      "dashboard": {
+        "title": "Build a dashboard",
+        "hint": "Pin results onto a panel"
+      }
+    }
   }
 }

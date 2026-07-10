@@ -1115,5 +1115,29 @@
     "vsPrevious": "əvvəlki dövrə qarşı",
     "onTrack": "Qrafikdədir",
     "behind": "Geridə qalır"
+  },
+  "onboarding": {
+    "title": "Başlanğıc",
+    "progress": "{{done}}/{{total}} addım tamamlandı",
+    "dismiss": "Bağla",
+    "go": "Keç",
+    "steps": {
+      "source": {
+        "title": "Data mənbəyi qoş",
+        "hint": "Postgres, MySQL qoş və ya CSV/Excel yüklə"
+      },
+      "query": {
+        "title": "İlk sualını ver",
+        "hint": "Adi dildə yaz — NexusBI SQL-ə çevirir"
+      },
+      "save": {
+        "title": "Sorğunu saxla",
+        "hint": "Tez-tez işlətdiyini saxla və ya planlaşdır"
+      },
+      "dashboard": {
+        "title": "Dashboard qur",
+        "hint": "Nəticələri panelə əlavə et"
+      }
+    }
   }
 }

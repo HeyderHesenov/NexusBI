@@ -9,6 +9,7 @@ import { StatFactChips } from '../components/charts/StatFactChips'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
 import { CreateDecisionModal } from '../components/query/CreateDecisionModal'
 import { DatasourcePicker } from '../components/query/DatasourcePicker'
+import { OnboardingChecklist } from '../components/onboarding/OnboardingChecklist'
 import { NLQueryInput } from '../components/query/NLQueryInput'
 import { SaveQueryModal } from '../components/query/SaveQueryModal'
 import { SchemaBrowser } from '../components/query/SchemaBrowser'
@@ -61,6 +62,8 @@ export function QueryPage() {
               {t('queryPage.headingLine2')}
             </h1>
           </header>
+
+          <OnboardingChecklist />
 
           <div className="flex items-center justify-between gap-2">
             <DatasourcePicker />
