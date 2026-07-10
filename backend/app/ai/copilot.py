@@ -631,11 +631,16 @@ class _ToolContext:
         row = args.get("row")
         if not model_id or not isinstance(row, dict) or not row:
             return {"error": "model_id və dolu row tələb olunur."}
-        preds = await automl_service.predict(self.db, self.user_id, model_id, [row])
+        preds, explanations = await automl_service.predict(
+            self.db, self.user_id, model_id, [row]
+        )
         self.actions.append(
             {"type": "ml_model", "label": "Proqnoz verildi", "ml_model_id": model_id}
         )
-        return {"prediction": preds[0] if preds else None}
+        return {
+            "prediction": preds[0] if preds else None,
+            "explanation": explanations[0] if explanations else [],
+        }
 
     # ── BA Studio ──
 

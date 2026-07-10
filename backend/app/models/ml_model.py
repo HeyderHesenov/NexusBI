@@ -40,6 +40,12 @@ class MLModel(Base, TimestampMixin):
     best_algo: Mapped[str] = mapped_column(String(50), nullable=False)
     metrics: Mapped[dict] = mapped_column(JSON, nullable=False)
     importances: Mapped[list] = mapped_column(JSON, nullable=False)
+    # Candidate scoreboard (every algorithm tried + its score), and richer
+    # diagnostics (k-fold CV, confusion matrix / actual-vs-predicted, permutation
+    # importance, per-prediction explain stats). Nullable so models trained before
+    # this column existed still load. See automl_service._build_diagnostics.
+    leaderboard: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    diagnostics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     model_blob: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     sklearn_version: Mapped[str] = mapped_column(String(20), nullable=False)
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

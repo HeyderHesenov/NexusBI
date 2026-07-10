@@ -4,6 +4,8 @@ import toast from 'react-hot-toast'
 import { BrainCircuit, Loader2, Sparkles } from 'lucide-react'
 import { Field, FIELD, Select } from '../components/ui/form'
 import { SavedCard } from '../components/ui/SavedCard'
+import { ModelDiagnostics } from '../components/automl/ModelDiagnostics'
+import { WeightBars } from '../components/automl/WeightBars'
 import { useOpenParam } from '../hooks/useOpenParam'
 import { useAutoMLStore } from '../store/automlStore'
 import { formatMetricValue as fmt } from '../lib/format'
@@ -11,38 +13,9 @@ import type { AutoMLTable, MLModelInfo } from '../types'
 
 const isIdish = (c: string) => c.toLowerCase() === 'id' || c.toLowerCase().endsWith('_id')
 
-function ImportanceBars({ model }: { model: MLModelInfo }) {
-  const { t } = useTranslation()
-  const top = model.importances.slice(0, 10)
-  const max = Math.max(...top.map((i) => i.weight), 0.0001)
-  return (
-    <div>
-      <p className="eyebrow mb-2">{t('automl.importance')}</p>
-      <div className="flex flex-col gap-1.5">
-        {top.map((i) => (
-          <div key={i.feature} className="flex items-center gap-2 text-xs">
-            <span className="w-40 truncate text-ink-soft" title={i.feature}>
-              {i.feature}
-            </span>
-            <span className="h-2 flex-1 rounded-full bg-surface-2">
-              <span
-                className="block h-2 rounded-full bg-accent"
-                style={{ width: `${(i.weight / max) * 100}%` }}
-              />
-            </span>
-            <span className="w-12 text-right font-mono text-ink-faint">
-              {Math.round(i.weight * 100)}%
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function PredictForm({ model, table }: { model: MLModelInfo; table: AutoMLTable | undefined }) {
   const { t } = useTranslation()
-  const { predict, predictions } = useAutoMLStore()
+  const { predict, predictions, explanations } = useAutoMLStore()
   const [values, setValues] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
 
@@ -110,6 +83,26 @@ function PredictForm({ model, table }: { model: MLModelInfo; table: AutoMLTable 
           </p>
         )}
       </div>
+      {predictions !== null && predictions.length > 0 && explanations[0]?.length > 0 && (
+        <div className="mt-3 border-t border-line pt-3">
+          <p className="eyebrow mb-2">{t('automl.explainTitle')}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {explanations[0].map((e) => (
+              <span
+                key={e.feature}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2 py-1 text-xs"
+                title={`${Math.round(e.influence * 100)}%`}
+              >
+                <span className="truncate text-ink-soft">{e.feature}</span>
+                <span className="font-mono text-ink">
+                  {typeof e.value === 'number' ? fmt(e.value) : e.value}
+                </span>
+                <span className="font-mono text-accent">{Math.round(e.influence * 100)}%</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -225,14 +218,15 @@ export function AutoMLPage() {
               <div className="flex flex-wrap gap-3">
                 {Object.entries(current.metrics).map(([k, v]) => (
                   <div key={k} className="rounded-xl border border-line bg-surface-2 px-4 py-2">
-                    <p className="text-xs text-ink-faint">{t(`automl.metric_${k}`)}</p>
+                    <p className="text-xs text-ink-faint">{t(`automl.metric_${k}`, k)}</p>
                     <p className="font-mono text-xl font-bold text-ink">
                       {Math.round(v * 1000) / 1000}
                     </p>
                   </div>
                 ))}
               </div>
-              <ImportanceBars model={current} />
+              <WeightBars title={t('automl.importance')} items={current.importances} />
+              <ModelDiagnostics model={current} />
               {/* key: a model switch must remount the form — stale inputs from
                   another table's columns must not leak into this prediction */}
               <PredictForm key={current.id} model={current} table={currentTable} />

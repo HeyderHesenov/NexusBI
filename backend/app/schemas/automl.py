@@ -25,6 +25,12 @@ class MLModelOut(BaseModel):
     best_algo: str
     metrics: dict[str, float]
     importances: list[dict[str, Any]]
+    # Every candidate algorithm tried + its score (best flagged). Empty for models
+    # trained before diagnostics existed.
+    leaderboard: list[dict[str, Any]] = Field(default_factory=list)
+    # k-fold CV, confusion matrix / actual-vs-predicted, permutation importance, and
+    # per-prediction explain stats. Empty for pre-diagnostics models.
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
     sklearn_version: str
     row_count: int
     created_at: datetime
@@ -36,6 +42,10 @@ class PredictRequest(BaseModel):
 
 class PredictResponse(BaseModel):
     predictions: list[Any]
+    # Per prediction, the few features that most influenced it (model importance ×
+    # how unusual the input value is). Parallel to ``predictions``; may be empty for
+    # models trained before explain stats existed.
+    explanations: list[list[dict[str, Any]]] = Field(default_factory=list)
 
 
 class AutoMLTableColumn(BaseModel):

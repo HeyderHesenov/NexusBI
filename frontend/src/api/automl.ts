@@ -1,5 +1,10 @@
 import { client } from './client'
-import type { AutoMLTable, MLModelInfo } from '../types'
+import type { AutoMLTable, MLModelInfo, MLPredictionExplain } from '../types'
+
+export interface PredictResult {
+  predictions: unknown[]
+  explanations: MLPredictionExplain[][]
+}
 
 export async function tables(): Promise<AutoMLTable[]> {
   const { data } = await client.get<AutoMLTable[]>('/automl/tables')
@@ -23,12 +28,12 @@ export async function listModels(): Promise<MLModelInfo[]> {
 export async function predict(
   modelId: string,
   rows: Record<string, unknown>[],
-): Promise<unknown[]> {
-  const { data } = await client.post<{ predictions: unknown[] }>(
+): Promise<PredictResult> {
+  const { data } = await client.post<PredictResult>(
     `/automl/models/${modelId}/predict`,
     { rows },
   )
-  return data.predictions
+  return { predictions: data.predictions, explanations: data.explanations ?? [] }
 }
 
 export async function removeModel(id: string): Promise<void> {

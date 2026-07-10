@@ -714,6 +714,36 @@ export interface AutoMLTable {
   columns: AutoMLTableColumn[]
 }
 
+export interface MLFeatureWeight {
+  feature: string
+  weight: number
+}
+
+export interface MLLeaderboardEntry {
+  algo: string
+  metric: string
+  score: number
+  f1_macro?: number
+  is_best: boolean
+}
+
+export interface MLDiagnostics {
+  cv?: { metric: string; folds: number; scores: number[]; mean: number; std: number }
+  confusion?: { labels: string[]; matrix: number[][] }
+  actual_vs_predicted?: { actual: number[]; predicted: number[] }
+  permutation_importance?: MLFeatureWeight[]
+  /** Per-feature stats used server-side to explain predictions; not read by the UI. */
+  explain?: Record<string, unknown>
+}
+
+/** One influential feature behind a single prediction. `value` is a number for a
+ *  numeric feature, or the category string for a one-hot categorical. */
+export interface MLPredictionExplain {
+  feature: string
+  value: number | string
+  influence: number
+}
+
 export interface MLModelInfo {
   id: string
   name: string
@@ -724,7 +754,9 @@ export interface MLModelInfo {
   problem_type: 'regression' | 'classification'
   best_algo: string
   metrics: Record<string, number>
-  importances: { feature: string; weight: number }[]
+  importances: MLFeatureWeight[]
+  leaderboard: MLLeaderboardEntry[]
+  diagnostics: MLDiagnostics
   sklearn_version: string
   row_count: number
   created_at: string

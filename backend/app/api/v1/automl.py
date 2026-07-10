@@ -61,8 +61,8 @@ async def list_models(user: CurrentUser, db: DbDep) -> list[MLModelOut]:
 async def predict(
     model_id: str, payload: PredictRequest, user: CurrentUser, db: DbDep
 ) -> PredictResponse:
-    preds = await svc.predict(db, user.id, model_id, payload.rows)
-    return PredictResponse(predictions=preds)
+    preds, explanations = await svc.predict(db, user.id, model_id, payload.rows)
+    return PredictResponse(predictions=preds, explanations=explanations)
 
 
 @router.delete("/models/{model_id}", status_code=status.HTTP_204_NO_CONTENT)

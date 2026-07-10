@@ -23,6 +23,8 @@ const model = (id: string): MLModelInfo => ({
   best_algo: 'random_forest',
   metrics: { r2: 0.95 },
   importances: [{ feature: 'quantity', weight: 1 }],
+  leaderboard: [{ algo: 'random_forest', metric: 'r2', score: 0.95, is_best: true }],
+  diagnostics: { cv: { metric: 'r2', folds: 5, scores: [0.9], mean: 0.95, std: 0.01 } },
   sklearn_version: '1.6.1',
   row_count: 300,
   created_at: '2026-07-03T10:00:00Z',
@@ -31,7 +33,8 @@ const model = (id: string): MLModelInfo => ({
 beforeEach(() => {
   useAutoMLStore.setState({
     tables: [], models: [], training: false,
-    sourceTable: null, targetColumn: null, current: null, predictions: null,
+    sourceTable: null, targetColumn: null, current: null,
+    predictions: null, explanations: [],
   })
   vi.clearAllMocks()
 })
@@ -71,6 +74,27 @@ describe('automlStore', () => {
     useAutoMLStore.getState().select('2')
     expect(useAutoMLStore.getState().current?.id).toBe('2')
     expect(useAutoMLStore.getState().predictions).toBeNull()
+  })
+
+  it('predict stores predictions and their per-prediction explanations', async () => {
+    vi.mocked(api.predict).mockResolvedValue({
+      predictions: [42],
+      explanations: [[{ feature: 'quantity', value: 5, influence: 1 }]],
+    })
+    useAutoMLStore.setState({ current: model('1') })
+    await useAutoMLStore.getState().predict([{ quantity: 5 }])
+    const s = useAutoMLStore.getState()
+    expect(s.predictions).toEqual([42])
+    expect(s.explanations[0][0].feature).toBe('quantity')
+  })
+
+  it('select also drops stale explanations', () => {
+    useAutoMLStore.setState({
+      models: [model('1'), model('2')],
+      explanations: [[{ feature: 'quantity', value: 1, influence: 1 }]],
+    })
+    useAutoMLStore.getState().select('2')
+    expect(useAutoMLStore.getState().explanations).toEqual([])
   })
 
   it('remove clears current/predictions only when the current model is removed', async () => {

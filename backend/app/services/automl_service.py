@@ -32,8 +32,16 @@ MAX_BLOB_BYTES = 5 * 1024 * 1024
 _MAX_DUMMY_CARDINALITY = 30  # categorical cols with more uniques are dropped
 _MIN_ROWS = 30
 _TABLE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,254}$")
+_NUMERIC_COERCE_FRAC = 0.9  # a column is numeric when ≥ this share of cells parse as numbers
 RF_TREES = 50
 SEED = 42
+# Diagnostics knobs.
+CV_FOLDS = 5  # k for cross-validation of the winning estimator
+_MAX_AVP_POINTS = 200  # actual-vs-predicted points persisted for the scatter
+_MAX_CONFUSION_CLASSES = 15  # skip the confusion matrix beyond this many classes
+_PERM_REPEATS = 5  # permutation-importance shuffles per feature
+_EXPLAIN_TOP = 3  # features surfaced per per-prediction explanation
+_EXPLAIN_STATS_MAX = 40  # per-feature stats persisted for explanations (bounds JSON size)
 
 
 def to_response(m: MLModel) -> MLModelOut:
@@ -48,6 +56,8 @@ def to_response(m: MLModel) -> MLModelOut:
         best_algo=m.best_algo,
         metrics=m.metrics or {},
         importances=m.importances or [],
+        leaderboard=m.leaderboard or [],
+        diagnostics=m.diagnostics or {},
         sklearn_version=m.sklearn_version,
         row_count=m.row_count,
         created_at=m.created_at,
@@ -109,7 +119,7 @@ def _fit_sync(
         s = x_df[col]
         if s.dtype == object:
             coerced = pd.to_numeric(s, errors="coerce")
-            if coerced.notna().mean() >= 0.9:
+            if coerced.notna().mean() >= _NUMERIC_COERCE_FRAC:
                 x_df[col] = coerced
 
     # Drop identifier-ish and unusable columns.
@@ -122,6 +132,9 @@ def _fit_sync(
     if x_df.empty or not len(x_df.columns):
         raise NexusBIException("Uyğun feature sütunu qalmadı.")
 
+    # Original (pre one-hot) column names — lets explanations name the real column
+    # ("region") instead of the encoded dummy ("region_West").
+    pre_dummy_cols = [str(c) for c in x_df.columns]
     x_df = pd.get_dummies(x_df, dummy_na=False)
     x_df = x_df.fillna(0)
     feature_columns = [str(c) for c in x_df.columns]
@@ -159,6 +172,10 @@ def _fit_sync(
         scored.sort(key=lambda s: s[0], reverse=True)
         best_score, best_algo, best_model = scored[0]
         metrics = {"r2": round(best_score, 4)}
+        leaderboard = [
+            {"algo": a, "metric": "r2", "score": round(s, 4), "is_best": a == best_algo}
+            for s, a, _ in scored
+        ]
     else:
         if len(set(y_train)) < 2:
             raise NexusBIException("Hədəf sütununda ən azı 2 sinif olmalıdır.")
@@ -176,6 +193,14 @@ def _fit_sync(
         scored.sort(key=lambda s: s[0], reverse=True)
         (acc, f1), best_algo, best_model = scored[0]
         metrics = {"accuracy": round(acc, 4), "f1_macro": round(f1, 4)}
+        leaderboard = [
+            {
+                "algo": a, "metric": "accuracy",
+                "score": round(sc[0], 4), "f1_macro": round(sc[1], 4),
+                "is_best": a == best_algo,
+            }
+            for sc, a, _ in scored
+        ]
 
     if hasattr(best_model, "feature_importances_"):
         weights = best_model.feature_importances_
@@ -192,6 +217,18 @@ def _fit_sync(
         reverse=True,
     )[:15]
 
+    diagnostics = _build_diagnostics(
+        problem=problem,
+        best_model=best_model,
+        feature_columns=feature_columns,
+        pre_dummy_cols=pre_dummy_cols,
+        importance_weights=weights,  # reuse the vector already derived above
+        x_full=x_df.values.astype(float),
+        y_full=y_values,
+        x_test=x_test,
+        y_test=y_test,
+    )
+
     blob = pickle.dumps(best_model)
     if len(blob) > MAX_BLOB_BYTES:
         raise NexusBIException("Model həddindən böyükdür.")
@@ -200,11 +237,180 @@ def _fit_sync(
         "best_algo": best_algo,
         "metrics": metrics,
         "importances": importances,
+        "leaderboard": leaderboard,
+        "diagnostics": diagnostics,
         "feature_columns": feature_columns,
         "blob": blob,
         "sklearn_version": sklearn.__version__,
         "row_count": int(len(df)),
     }
+
+
+def _origin_of(feature: str, pre_dummy_cols: list[str]) -> tuple[str, str | None]:
+    """Map a post-one-hot feature back to (original column, category). A plain numeric
+    column returns (itself, None); a dummy ``region_West`` returns ("region", "West").
+    Picks the LONGEST matching prefix so a column name containing '_' isn't mis-split."""
+    if feature in pre_dummy_cols:
+        return feature, None
+    best: str | None = None
+    for c in pre_dummy_cols:
+        if feature.startswith(c + "_") and (best is None or len(c) > len(best)):
+            best = c
+    if best is not None:
+        return best, feature[len(best) + 1 :]
+    return feature, None
+
+
+def _label_sort_key(label: str) -> tuple[int, float | str]:
+    """Order class labels numerically when they are numbers ('2' before '10'),
+    lexically otherwise — a numeric target keeps numeric labels (see _fit_sync)."""
+    try:
+        return (0, float(label))
+    except (TypeError, ValueError):
+        return (1, label)
+
+
+def _json_safe(obj: Any) -> Any:
+    """Replace non-finite floats (NaN/±Inf) with None so the diagnostics JSON never
+    serializes a bare ``NaN`` token that strict JSON.parse on the client would reject.
+    (A near-constant CV fold yields an undefined r2 that never raises.)"""
+    import math
+
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_safe(v) for v in obj]
+    return obj
+
+
+def _build_diagnostics(
+    *,
+    problem: str,
+    best_model: Any,
+    feature_columns: list[str],
+    pre_dummy_cols: list[str],
+    importance_weights: Any,
+    x_full: Any,
+    y_full: Any,
+    x_test: Any,
+    y_test: Any,
+) -> dict[str, Any]:
+    """Richer, honest diagnostics for the winning model (all computed in-thread):
+    k-fold CV of the winner, a confusion matrix (classification) or actual-vs-predicted
+    points (regression), permutation importance, and per-feature mean/std used for
+    per-prediction explanations. Each piece degrades gracefully to empty on failure —
+    diagnostics must never sink a successful training run."""
+    import numpy as np
+    from sklearn.base import clone
+    from sklearn.inspection import permutation_importance
+    from sklearn.metrics import confusion_matrix
+    from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score
+
+    diag: dict[str, Any] = {}
+
+    # ── k-fold CV of the winning estimator (a single holdout can flatter/​punish) ──
+    try:
+        if problem == "classification":
+            _, class_counts = np.unique(y_full, return_counts=True)
+            folds = int(min(CV_FOLDS, class_counts.min()))
+            splitter = StratifiedKFold(n_splits=folds, shuffle=True, random_state=SEED)
+            metric_name = "accuracy"
+        else:
+            folds = int(min(CV_FOLDS, len(y_full)))
+            # Shuffle: rows arrive in table order (no ORDER BY), so contiguous folds
+            # on a target that trends over the rows would each see a narrow range.
+            splitter = KFold(n_splits=folds, shuffle=True, random_state=SEED)
+            metric_name = "r2"
+        if folds >= 2:
+            scores = cross_val_score(
+                clone(best_model), x_full, y_full, cv=splitter, scoring=metric_name
+            )
+            # A (near-)constant fold makes r2 undefined → NaN; drop it rather than
+            # persist a NaN that would poison the whole diagnostics payload.
+            if np.isfinite(scores).all():
+                diag["cv"] = {
+                    "metric": metric_name,
+                    "folds": folds,
+                    "scores": [round(float(s), 4) for s in scores],
+                    "mean": round(float(scores.mean()), 4),
+                    "std": round(float(scores.std()), 4),
+                }
+    except Exception as exc:  # noqa: BLE001 — diagnostics are best-effort
+        _log.warning("automl_cv_failed", error=str(exc)[:200])
+
+    # ── Holdout shape: confusion matrix (clf) or actual-vs-predicted (reg) ──
+    try:
+        y_pred = best_model.predict(x_test)
+        if problem == "classification":
+            labels = sorted({str(v) for v in np.concatenate([y_test, y_pred])}, key=_label_sort_key)
+            if len(labels) <= _MAX_CONFUSION_CLASSES:
+                cm = confusion_matrix(
+                    [str(v) for v in y_test], [str(v) for v in y_pred], labels=labels
+                )
+                diag["confusion"] = {"labels": labels, "matrix": cm.astype(int).tolist()}
+        else:
+            actual = [float(v) for v in y_test]
+            predicted = [float(v) for v in y_pred]
+            if len(actual) > _MAX_AVP_POINTS:  # even stride keeps the range representative
+                step = len(actual) / _MAX_AVP_POINTS
+                idx = [int(i * step) for i in range(_MAX_AVP_POINTS)]
+                actual = [round(actual[i], 4) for i in idx]
+                predicted = [round(predicted[i], 4) for i in idx]
+            else:
+                actual = [round(v, 4) for v in actual]
+                predicted = [round(v, 4) for v in predicted]
+            diag["actual_vs_predicted"] = {"actual": actual, "predicted": predicted}
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("automl_holdout_shape_failed", error=str(exc)[:200])
+
+    # ── Permutation importance (model-agnostic; complements the built-in weights) ──
+    try:
+        perm = permutation_importance(
+            best_model, x_test, y_test, n_repeats=_PERM_REPEATS, random_state=SEED
+        )
+        # Clamp negatives: a feature whose shuffle IMPROVES the score contributes
+        # nothing, so show it as 0 rather than a nonsense negative bar downstream.
+        pm = np.clip(perm.importances_mean, 0.0, None)
+        total = float(pm.sum()) or 1.0
+        diag["permutation_importance"] = sorted(
+            (
+                {"feature": f, "weight": round(float(w) / total, 4)}
+                for f, w in zip(feature_columns, pm)
+            ),
+            key=lambda d: d["weight"],
+            reverse=True,
+        )[:15]
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("automl_perm_importance_failed", error=str(exc)[:200])
+
+    # ── Per-feature stats (mean/std + reused importance) for per-prediction explains.
+    # Capped to the most important features so a wide one-hot expansion can't bloat
+    # the persisted JSON; each carries its original column + category for display. ──
+    try:
+        means = x_full.mean(axis=0)
+        stds = x_full.std(axis=0)
+        imp = np.asarray(importance_weights, dtype=float)  # reuse _fit_sync's vector
+        imp_total = float(imp.sum()) or 1.0
+        order = [int(i) for i in np.argsort(imp)[::-1][:_EXPLAIN_STATS_MAX]]
+        explain: dict[str, list[Any]] = {
+            "features": [], "origins": [], "categories": [],
+            "means": [], "stds": [], "importances": [],
+        }
+        for i in order:
+            origin, category = _origin_of(feature_columns[i], pre_dummy_cols)
+            explain["features"].append(feature_columns[i])
+            explain["origins"].append(origin)
+            explain["categories"].append(category)
+            explain["means"].append(round(float(means[i]), 4))
+            explain["stds"].append(round(float(stds[i]), 4))
+            explain["importances"].append(round(float(imp[i]) / imp_total, 4))
+        diag["explain"] = explain
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("automl_explain_stats_failed", error=str(exc)[:200])
+
+    return _json_safe(diag)
 
 
 async def train(
@@ -231,6 +437,8 @@ async def train(
         best_algo=fit["best_algo"],
         metrics=fit["metrics"],
         importances=fit["importances"],
+        leaderboard=fit["leaderboard"],
+        diagnostics=fit["diagnostics"],
         model_blob=fit["blob"],
         sklearn_version=fit["sklearn_version"],
         row_count=fit["row_count"],
@@ -248,33 +456,93 @@ async def train(
     return model
 
 
+def _explain_rows(
+    matrix: Any, feature_columns: list[str], explain: dict[str, Any] | None
+) -> list[list[dict[str, Any]]]:
+    """For each input row, the few features that most influenced its prediction:
+    (model importance) × (how many std-devs the input value sits from the training
+    mean). Honest local attribution — "important AND unusual for this input" — not a
+    causal claim. Names the ORIGINAL column ("region", value "West"), not the encoded
+    dummy, and keeps only the strongest dummy per column. Empty per row when explain
+    stats are unavailable (e.g. a model trained before diagnostics existed)."""
+    explain = explain or {}
+    feats = explain.get("features") or []
+    origins = explain.get("origins") or []
+    cats = explain.get("categories") or []
+    means = explain.get("means") or []
+    stds = explain.get("stds") or []
+    imps = explain.get("importances") or []
+    n = min(len(feats), len(origins), len(cats), len(means), len(stds), len(imps))
+    if n == 0:
+        return [[] for _ in matrix]
+    col_index = {f: i for i, f in enumerate(feature_columns)}
+    out: list[list[dict[str, Any]]] = []
+    for row in matrix:
+        # Best (highest-scoring) feature per original column → value shown.
+        best_by_origin: dict[str, tuple[float, Any]] = {}
+        for k in range(n):
+            ci = col_index.get(feats[k])
+            if ci is None or ci >= len(row):
+                continue
+            val = float(row[ci])
+            is_dummy = cats[k] is not None
+            if is_dummy and val < 0.5:
+                continue  # this category isn't the row's — don't attribute it here
+            std = stds[k]
+            z = (val - means[k]) / std if std else 0.0
+            score = imps[k] * abs(z)
+            if score <= 0:
+                continue
+            display = cats[k] if is_dummy else round(val, 4)
+            prev = best_by_origin.get(origins[k])
+            if prev is None or score > prev[0]:
+                best_by_origin[origins[k]] = (score, display)
+        ranked = sorted(best_by_origin.items(), key=lambda kv: kv[1][0], reverse=True)[:_EXPLAIN_TOP]
+        total = sum(score for _, (score, _) in ranked) or 1.0
+        out.append(
+            [
+                {"feature": origin, "value": display, "influence": round(score / total, 4)}
+                for origin, (score, display) in ranked
+            ]
+        )
+    return out
+
+
 def _predict_sync(
-    blob: bytes, feature_columns: list[str], rows: list[dict[str, Any]]
-) -> list[Any]:
+    blob: bytes,
+    feature_columns: list[str],
+    rows: list[dict[str, Any]],
+    explain: dict[str, Any] | None = None,
+) -> tuple[list[Any], list[list[dict[str, Any]]]]:
     import pandas as pd
 
     # Only our own blob (see module docstring) — never client-supplied bytes.
     model = pickle.loads(blob)  # noqa: S301
     df = pd.DataFrame(rows)
     # A numeric sent as "5" must hit the numeric training column, not become a
-    # spurious one-hot ("quantity_5") that reindex would silently zero out.
+    # spurious one-hot ("quantity_5") that reindex would silently zero out. Use the
+    # SAME ≥90% threshold as training (not "all"), so one junk cell in a batch of
+    # rows doesn't demote the whole numeric column into dummies for every row.
     for col in df.columns:
         if df[col].dtype == object:
             coerced = pd.to_numeric(df[col], errors="coerce")
-            if coerced.notna().all():
+            if coerced.notna().mean() >= _NUMERIC_COERCE_FRAC:
                 df[col] = coerced
     df = pd.get_dummies(df, dummy_na=False)
     # Unseen categories become all-zero dummies; missing numerics fill with 0.
     df = df.reindex(columns=feature_columns, fill_value=0).fillna(0)
-    preds = model.predict(df.values.astype(float))
-    return [p.item() if hasattr(p, "item") else p for p in preds]
+    matrix = df.values.astype(float)
+    preds = model.predict(matrix)
+    predictions = [p.item() if hasattr(p, "item") else p for p in preds]
+    return predictions, _explain_rows(matrix, feature_columns, explain)
 
 
 async def predict(
     db: AsyncSession, user_id: str, model_id: str, rows: list[dict[str, Any]]
-) -> list[Any]:
+) -> tuple[list[Any], list[list[dict[str, Any]]]]:
+    """Returns (predictions, per-prediction explanations) parallel to ``rows``."""
     if not rows:
-        return []
+        return [], []
     if len(rows) > MAX_PREDICT_ROWS:
         raise NexusBIException(f"Bir dəfəyə ən çox {MAX_PREDICT_ROWS} sətir proqnozlana bilər.")
     if any(not r for r in rows):
@@ -286,7 +554,10 @@ async def predict(
         raise NexusBIException(
             "Model fərqli scikit-learn versiyası ilə öyrədilib — yenidən öyrədin."
         )
-    return await asyncio.to_thread(_predict_sync, m.model_blob, m.feature_columns or [], rows)
+    explain = (m.diagnostics or {}).get("explain")
+    return await asyncio.to_thread(
+        _predict_sync, m.model_blob, m.feature_columns or [], rows, explain
+    )
 
 
 def _current_sklearn_version() -> str:
