@@ -28,8 +28,8 @@ _REGIONS = ["North", "South", "East", "West", "Central"]
 _COUNTRIES = ["Azerbaijan", "Turkey", "Georgia", "Germany", "USA"]
 _MONTHS = [f"2024-{m:02d}" for m in range(1, 13)]
 
-# Single source of truth for the funnel stage vocabulary — the seed below, the
-# cohort service and the frontend step labels all key off these names.
+# Single source of truth for the funnel stage vocabulary — the events seed below
+# keys off these names.
 FUNNEL_EVENT_STEPS = ["visit", "signup", "trial", "purchase"]
 
 # Live-feed multipliers per category (1.0 = baseline). The "live dashboard"
@@ -119,12 +119,11 @@ def _seed(conn: sqlite3.Connection) -> None:
         "CREATE TABLE events (id INTEGER, customer_id INTEGER,"
         " event_type TEXT, event_date TEXT)"
     )
-    # Deterministic product-usage events powering the cohort/funnel analytics.
+    # Deterministic product-usage events backing the demo NL "funnel"-style queries.
     # Funnel (distinct customers per step): 60 visit → 45 signup → 30 trial →
-    # 20 purchase (nested prefixes of customer id). Retention: customer i stays
-    # active for (i % 5) extra months after its first month, so every 5-customer
-    # monthly cohort retains exactly 5/4/3/2/1 customers at offsets 0..4
-    # (100/80/60/40/20%) — capped at 2024-12.
+    # 20 purchase (nested prefixes of customer id). Each customer i also emits visit
+    # rows across (i % 5)+1 consecutive months from its first-activity month
+    # (capped at 2024-12), giving a deterministic multi-month event spread.
     visit, signup, trial, purchase = FUNNEL_EVENT_STEPS
     events = []
     eid = 1

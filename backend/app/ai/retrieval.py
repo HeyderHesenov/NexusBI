@@ -125,7 +125,7 @@ def _format(rows: list[QueryEmbedding]) -> str:
 
 # Canonical demo examples seeded globally (user_id=None) so demo queries are
 # RAG-grounded from the first run. Idempotent (index_text dedups). These teach
-# good aliasing/grouping; the eval bypasses RAG, so seeding can't inflate it.
+# good aliasing/grouping.
 _DEMO_SEED: list[tuple[str, str]] = [
     ("Regionlar üzrə satış payı",
      "SELECT region, SUM(revenue) AS total_revenue FROM sales GROUP BY region"),

@@ -29,7 +29,7 @@ _log = get_logger("nexusbi.copilot")
 SYSTEM_PROMPT = (
     "Sən NexusBI platformasının köməkçi agentisən. İstifadəçinin adından platformanın "
     "İSTƏNİLƏN funksiyasını icra edirsən: sorğu, dashboard, AutoML modeli, BA çərçivəsi "
-    "(SWOT/Porter/BCG/BPMN), kohort/funnel, snapshot, qərar, kəşf skanı, data "
+    "(SWOT/Porter/BCG/BPMN), snapshot, qərar, kəşf skanı, data "
     "müqaviləsi, metrik ağacı simulyasiyası, alert. Bir obyektin id-si lazımdırsa, əvvəl "
     "uyğun list_* və ya search_assets aləti ilə tap — id UYDURMA. Ağır əməliyyatı "
     "(model öyrətmə, AI generasiya) bir dəfə çağır, təkrarlama. Uydurma rəqəm vermə — "

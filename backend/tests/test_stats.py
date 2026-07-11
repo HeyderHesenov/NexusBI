@@ -20,18 +20,6 @@ def test_welch_ttest_identical_groups_not_significant():
     assert not res.significant and res.p_value == 1.0
 
 
-def test_two_proportion_ztest_detects_lift():
-    res = stats.two_proportion_ztest(100, 1000, 160, 1000)  # 10% vs 16%
-    assert res["significant"] and res["p_value"] < 0.01
-    assert res["lift"] > 0.5  # ~60% relative lift
-    assert res["ci_low"] > 0  # CI excludes zero
-
-
-def test_two_proportion_ztest_tiny_sample_not_significant():
-    res = stats.two_proportion_ztest(1, 5, 2, 5)
-    assert not res["significant"]
-
-
 def test_pearson_perfect_correlation():
     x = list(range(20))
     y = [2 * v + 1 for v in x]
