@@ -85,6 +85,113 @@ async def test_query_lineage_endpoint(client, auth):
     assert body["columns"]
 
 
+# ─── Answer Trust Badge: confidence + provenance ───
+
+async def test_trust_badge_llm_provenance(client, auth):
+    """A live LLM answer carries provenance=llm and the model's confidence."""
+    body = (
+        await client.post(
+            "/api/v1/query/ask",
+            json={"nl_query": "məhsul gəliri", "datasource_id": None},
+            headers=auth,
+        )
+    ).json()
+    assert body["provenance"] == "llm"
+    assert body["confidence"] == 0.9  # from the mocked engine
+
+
+async def test_trust_badge_deterministic_fallback(client, auth, monkeypatch):
+    """AI offline → rule-based fallback is labelled deterministic_fallback @ 0.3."""
+    from app.core.exceptions import AIGenerationError
+
+    async def boom(self, nl, schema, dtype="sqlite", extra_context=""):
+        raise AIGenerationError("no ai key")
+
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", boom)
+    body = (
+        await client.post(
+            "/api/v1/query/ask",
+            json={"nl_query": "ən çox satan məhsullar", "datasource_id": None},
+            headers=auth,
+        )
+    ).json()
+    assert body["provenance"] == "deterministic_fallback"
+    assert body["confidence"] == 0.3  # rule_based_sql sentinel
+
+
+async def test_trust_badge_user_sql_provenance(client, auth):
+    """Analyst-authored SQL is exact-by-construction: provenance=user_sql, no score."""
+    body = (
+        await client.post(
+            "/api/v1/query/run",
+            json={
+                "sql": "SELECT region, SUM(revenue) AS total FROM sales GROUP BY region",
+                "datasource_id": None,
+            },
+            headers=auth,
+        )
+    ).json()
+    assert body["provenance"] == "user_sql"
+    assert body["confidence"] is None
+
+
+async def test_trust_badge_self_repaired(client, auth, monkeypatch):
+    """LLM SQL fails execution, gets repaired from the DB error → self_repaired."""
+    from tests.conftest import seed_internal_datasource, seed_sqlite_file
+
+    conn_str = seed_sqlite_file(
+        "CREATE TABLE sales (region TEXT, revenue INTEGER);"
+        "INSERT INTO sales VALUES ('North', 100), ('South', 200);"
+    )
+    ds_id = await seed_internal_datasource("test@nexusbi.io", "Repair src", conn_str)
+
+    async def bad_then(self, nl, schema, dtype="sqlite", extra_context=""):
+        from app.ai.types import Text2SQLResult
+
+        return Text2SQLResult(sql="SELECT missing_col FROM sales", confidence=0.9)
+
+    async def fix(self, nl, sql, error, schema_text, dialect, extra_context=""):
+        from app.ai.types import Text2SQLResult
+
+        return Text2SQLResult(
+            sql="SELECT region, SUM(revenue) AS total FROM sales GROUP BY region",
+            confidence=0.6,
+        )
+
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", bad_then)
+    monkeypatch.setattr(query_service.Text2SQLEngine, "repair_sql", fix)
+
+    body = (
+        await client.post(
+            "/api/v1/query/ask",
+            json={"nl_query": "region üzrə gəlir", "datasource_id": ds_id},
+            headers=auth,
+        )
+    ).json()
+    assert body["provenance"] == "self_repaired"
+    assert body["data"]  # repaired query returned rows
+
+
+async def test_trust_badge_persisted_in_history_and_reopen(client, auth):
+    """Provenance/confidence survive to the history list and the re-open endpoint."""
+    qid = (
+        await client.post(
+            "/api/v1/query/ask",
+            json={"nl_query": "gəlir xülasəsi", "datasource_id": None},
+            headers=auth,
+        )
+    ).json()["query_log_id"]
+
+    reopened = (await client.get(f"/api/v1/query/{qid}", headers=auth)).json()
+    assert reopened["provenance"] == "llm"
+    assert reopened["confidence"] == 0.9
+
+    hist = (await client.get("/api/v1/query/history", headers=auth)).json()
+    row = next(it for it in hist["items"] if it["id"] == qid)
+    assert row["provenance"] == "llm"
+    assert row["confidence"] == 0.9
+
+
 async def test_datasource_sla_update(client, auth):
     from tests.conftest import seed_internal_datasource, seed_sqlite_file
 

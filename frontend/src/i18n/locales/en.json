@@ -1043,6 +1043,22 @@
     "permImportanceTitle": "Permutation importance",
     "explainTitle": "Top drivers of this prediction"
   },
+  "trust": {
+    "high": "High trust",
+    "medium": "Medium trust",
+    "low": "Low trust",
+    "deterministic": "Deterministic",
+    "repaired": "Auto-repaired",
+    "exact": "Exact",
+    "tip": {
+      "high": "The AI built this query with high confidence.",
+      "medium": "The AI built this query with medium confidence — worth a quick check.",
+      "low": "The AI is unsure about this query — review the result carefully.",
+      "deterministic": "AI is offline — the result was computed exactly by a rule-based query (no LLM guessing).",
+      "repaired": "The first query failed and was auto-corrected from the database error.",
+      "exact": "You wrote this query — the result is computed exactly by your SQL."
+    }
+  },
   "statFacts": {
     "total": "Total",
     "trend": "Period Δ",

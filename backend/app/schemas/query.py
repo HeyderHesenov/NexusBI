@@ -48,6 +48,11 @@ class QueryResult(BaseModel):
     execution_time_ms: int = 0
     query_log_id: str | None = None
     from_cache: bool = False
+    # Answer-trust signal for the UI badge. `provenance`: llm | deterministic_fallback
+    # | self_repaired | user_sql (None on legacy logs → no badge). `confidence` is the
+    # model's own 0–1 score, only meaningful for provenance="llm".
+    confidence: float | None = None
+    provenance: str | None = None
 
 
 class QueryHistoryItem(BaseModel):
@@ -57,6 +62,9 @@ class QueryHistoryItem(BaseModel):
     chart_type: str
     execution_time_ms: int
     created_at: str
+    # Answer-trust signal (None on legacy rows → no badge in the history list).
+    confidence: float | None = None
+    provenance: str | None = None
 
 
 class QueryHistoryPage(BaseModel):

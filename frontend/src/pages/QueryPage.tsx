@@ -6,6 +6,7 @@ import { HistoryDeleteUI } from '../components/query/HistoryDeleteUI'
 import { useHistoryDelete } from '../hooks/useHistoryDelete'
 import { TypewriterText } from '../components/charts/TypewriterText'
 import { StatFactChips } from '../components/charts/StatFactChips'
+import { TrustBadge } from '../components/query/TrustBadge'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
 import { CreateDecisionModal } from '../components/query/CreateDecisionModal'
 import { DatasourcePicker } from '../components/query/DatasourcePicker'
@@ -277,6 +278,7 @@ function TurnCard({
 
       <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
         <div className="mb-3 flex items-center justify-end gap-2">
+          <TrustBadge provenance={result.provenance} confidence={result.confidence} />
           {result.from_cache && (
             <span className="rounded-full border border-accent/40 bg-accent-soft px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent">
               {t('queryPage.fromCache')}

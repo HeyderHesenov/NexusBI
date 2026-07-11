@@ -1043,6 +1043,22 @@
     "permImportanceTitle": "Permütasyon önemi",
     "explainTitle": "Bu tahminin başlıca etkenleri"
   },
+  "trust": {
+    "high": "Yüksek güven",
+    "medium": "Orta güven",
+    "low": "Düşük güven",
+    "deterministic": "Deterministik",
+    "repaired": "Otomatik onarıldı",
+    "exact": "Kesin",
+    "tip": {
+      "high": "Yapay zeka bu sorguyu yüksek güvenle oluşturdu.",
+      "medium": "Yapay zeka bu sorguyu orta güvenle oluşturdu — kontrol etmekte fayda var.",
+      "low": "Yapay zeka bu sorgudan emin değil — sonucu dikkatlice inceleyin.",
+      "deterministic": "Yapay zeka çevrimdışı — sonuç kural tabanlı bir sorguyla tam olarak hesaplandı (tahmin yok).",
+      "repaired": "İlk sorgu başarısız oldu ve veritabanı hatasından otomatik olarak düzeltildi.",
+      "exact": "Bu sorguyu siz yazdınız — sonuç doğrudan SQL'inizle tam hesaplanır."
+    }
+  },
   "statFacts": {
     "total": "Toplam",
     "trend": "Dönem Δ",

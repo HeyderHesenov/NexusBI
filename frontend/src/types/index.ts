@@ -33,6 +33,14 @@ export interface StatFact {
   value: string
 }
 
+/** How the SQL/DAX behind an answer was produced — drives the trust badge.
+ *  null on legacy logs → no badge is shown. */
+export type Provenance =
+  | 'llm'
+  | 'deterministic_fallback'
+  | 'self_repaired'
+  | 'user_sql'
+
 export interface QueryResult {
   sql: string
   query_language?: 'sql' | 'dax'
@@ -44,6 +52,8 @@ export interface QueryResult {
   execution_time_ms: number
   query_log_id: string | null
   from_cache?: boolean
+  confidence?: number | null
+  provenance?: Provenance | null
 }
 
 export interface PowerBIDataset {
@@ -59,6 +69,8 @@ export interface QueryHistoryItem {
   chart_type: string
   execution_time_ms: number
   created_at: string
+  confidence?: number | null
+  provenance?: Provenance | null
 }
 
 export interface QueryHistoryPage {

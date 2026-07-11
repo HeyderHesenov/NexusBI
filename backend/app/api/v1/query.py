@@ -89,6 +89,8 @@ async def history(
             chart_type=q.chart_type,
             execution_time_ms=q.execution_time_ms,
             created_at=q.created_at.isoformat(),
+            confidence=q.confidence,
+            provenance=q.provenance,
         )
         for q in result.scalars().all()
     ]
@@ -110,6 +112,8 @@ async def get_one(query_id: str, user: CurrentUser, db: DbDep) -> QueryResult:
         insight=log.insight,
         execution_time_ms=log.execution_time_ms,
         query_log_id=log.id,
+        confidence=log.confidence,
+        provenance=log.provenance,
     )
 
 

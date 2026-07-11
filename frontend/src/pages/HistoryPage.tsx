@@ -14,6 +14,7 @@ import { SkeletonRows } from '../components/ui/Skeleton'
 import { Button } from '../components/ui/Button'
 import { FIELD, Select } from '../components/ui/form'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { TrustBadge } from '../components/query/TrustBadge'
 import type { QueryHistoryItem } from '../types'
 
 const PAGE_SIZE = 50
@@ -185,9 +186,12 @@ export function HistoryPage() {
                           </button>
                         </td>
                         <td className="px-5 py-3">
-                          <span className="rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[11px] text-accent">
-                            {h.chart_type}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[11px] text-accent">
+                              {h.chart_type}
+                            </span>
+                            <TrustBadge provenance={h.provenance} confidence={h.confidence} />
+                          </div>
                         </td>
                         <td className="whitespace-nowrap px-5 py-3 font-mono text-ink-soft tabular-nums">
                           {fmtNum(h.execution_time_ms)} ms

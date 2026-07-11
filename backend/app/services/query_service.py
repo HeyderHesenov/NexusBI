@@ -142,6 +142,8 @@ async def process_nl_query(
             insight=cached["insight"],
             elapsed_ms=elapsed_ms,
             from_cache=True,
+            confidence=cached.get("confidence"),
+            provenance=cached.get("provenance"),
         )
 
     # Cache miss → ground generation with RAG (similar prior queries + verified
@@ -158,11 +160,13 @@ async def process_nl_query(
             _log.warning("rag_retrieve_failed", error=str(exc)[:200])
 
     if settings.DEMO_MODE and not datasource_id:
-        query_text, columns, rows = await _demo_pipeline(nl_query, prompt_context)
+        query_text, columns, rows, confidence, provenance = await _demo_pipeline(
+            nl_query, prompt_context
+        )
         resolved_ds_id: str | None = None
         query_language = "sql"
     else:
-        query_text, columns, rows, query_language = await _live_pipeline(
+        query_text, columns, rows, query_language, confidence, provenance = await _live_pipeline(
             nl_query, datasource_id, user_id, db, cache, prompt_context
         )
         resolved_ds_id = datasource_id
@@ -194,6 +198,8 @@ async def process_nl_query(
             "rows": snapped,
             "chart_config": chart_config.model_dump(),
             "insight": insight,
+            "confidence": confidence,
+            "provenance": provenance,
         },
         ttl=settings.CACHE_TTL_SECONDS,
     )
@@ -209,6 +215,8 @@ async def process_nl_query(
         insight=insight,
         elapsed_ms=elapsed_ms,
         from_cache=False,
+        confidence=confidence,
+        provenance=provenance,
     )
 
     # Index this fresh NL→SQL pair so future questions retrieve it (RAG). Only real
@@ -370,6 +378,8 @@ async def run_user_sql(
         insight="",
         elapsed_ms=elapsed_ms,
         from_cache=False,
+        # Analyst-authored SQL: no LLM guessed it, so the number is exact-by-construction.
+        provenance="user_sql",
     )
 
 
@@ -388,11 +398,14 @@ async def _finalize(
     insight: str,
     elapsed_ms: int,
     from_cache: bool,
+    confidence: float | None = None,
+    provenance: str | None = None,
 ) -> QueryResult:
     """Persist a QueryLog and build the response (shared by cache hit + miss).
 
     ``rows`` is the full result for the response; ``snapped`` is the bounded
     snapshot persisted to the log (already computed by the caller).
+    ``confidence``/``provenance`` are the answer-trust signal shown as a badge.
     """
     log = QueryLog(
         user_id=user_id,
@@ -404,6 +417,8 @@ async def _finalize(
         result_data={"columns": columns, "rows": snapped},
         insight=insight,
         execution_time_ms=elapsed_ms,
+        confidence=confidence,
+        provenance=provenance,
     )
     db.add(log)
     await db.flush()
@@ -425,6 +440,8 @@ async def _finalize(
         execution_time_ms=elapsed_ms,
         query_log_id=log.id,
         from_cache=from_cache,
+        confidence=confidence,
+        provenance=provenance,
     )
 
 
@@ -435,7 +452,7 @@ async def _live_pipeline(
     db: AsyncSession,
     cache: CacheService,
     extra_context: str = "",
-) -> tuple[str, list[str], list[dict[str, Any]], str]:
+) -> tuple[str, list[str], list[dict[str, Any]], str, float | None, str]:
     ds = await ds_service.get_datasource(db, user_id, datasource_id or "")
     if ds.db_type == DBType.powerbi:
         return await _powerbi_pipeline(nl_query, ds, cache, extra_context)
@@ -494,7 +511,8 @@ async def _live_pipeline(
     if did_repair:
         key = _sqlgen_key(schema_text, ds.db_type.value, extra_context, nl_query)
         await cache.set(key, sql_result.model_dump(), ttl=settings.SQLGEN_CACHE_TTL_SECONDS)
-    return sql, columns, rows, "sql"
+    provenance = "self_repaired" if did_repair else "llm"
+    return sql, columns, rows, "sql", sql_result.confidence, provenance
 
 
 def _dax_schema_text(schema: dict[str, Any]) -> str:
@@ -512,7 +530,7 @@ async def _powerbi_pipeline(
     ds: Any,
     cache: CacheService,
     extra_context: str = "",
-) -> tuple[str, list[str], list[dict[str, Any]], str]:
+) -> tuple[str, list[str], list[dict[str, Any]], str, float | None, str]:
     """Power BI path: NL -> DAX -> provider.execute_dax. Mirrors the SQL path."""
     from app.ai import rule_based_dax
     from app.services.powerbi.provider import get_provider
@@ -521,24 +539,27 @@ async def _powerbi_pipeline(
     dataset_id = cfg["dataset_id"]
     schema = await ds_service.get_schema_cached(ds, cache)
     schema_text = _dax_schema_text(schema)
+    provenance = "llm"
     try:
         dax_result = await _dax_engine.generate_dax(nl_query, schema_text, extra_context)
     except AIGenerationError as exc:
         # No working AI — keep Power BI demo usable with a deterministic DAX fallback.
         _log.warning("powerbi_dax_fallback", error=exc.message, detail=exc.detail)
         dax_result = rule_based_dax.generate_dax_fallback(nl_query)
+        provenance = "deterministic_fallback"
     columns, rows = await get_provider().execute_dax(dataset_id, dax_result.dax)
-    return dax_result.dax, columns, rows, "dax"
+    return dax_result.dax, columns, rows, "dax", dax_result.confidence, provenance
 
 
 async def _demo_pipeline(
     nl_query: str,
     extra_context: str = "",
-) -> tuple[str, list[str], list[dict[str, Any]]]:
+) -> tuple[str, list[str], list[dict[str, Any]], float | None, str]:
     from app.ai import rule_based_sql
     from app.db import demo_data
 
     schema_text = demo_data.format_demo_schema()
+    provenance = "llm"
     try:
         sql_result = await _engine.generate_sql(nl_query, schema_text, "sqlite", extra_context)
     except AIGenerationError as exc:
@@ -546,5 +567,6 @@ async def _demo_pipeline(
         # with a deterministic, schema-aware SQL fallback.
         _log.warning("demo_ai_fallback", error=exc.message, detail=exc.detail)
         sql_result = rule_based_sql.generate_sql_fallback(nl_query)
+        provenance = "deterministic_fallback"
     columns, rows = await asyncio.to_thread(demo_data.execute_demo_sql, sql_result.sql)
-    return sql_result.sql, columns, rows
+    return sql_result.sql, columns, rows, sql_result.confidence, provenance

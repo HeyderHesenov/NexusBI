@@ -1043,6 +1043,22 @@
     "permImportanceTitle": "Permutasiya əhəmiyyəti",
     "explainTitle": "Bu proqnoza ən çox təsir edənlər"
   },
+  "trust": {
+    "high": "Yüksək etibar",
+    "medium": "Orta etibar",
+    "low": "Aşağı etibar",
+    "deterministic": "Deterministik",
+    "repaired": "Təmir edilmiş",
+    "exact": "Dəqiq",
+    "tip": {
+      "high": "AI sorğunu yüksək əminliklə qurdu.",
+      "medium": "AI sorğunu orta əminliklə qurdu — nəticəni yoxlamaq faydalıdır.",
+      "low": "AI sorğuya az əmindir — nəticəni diqqətlə yoxlayın.",
+      "deterministic": "AI oflayndır — nəticə qayda əsaslı sorğu ilə dəqiq hesablandı (LLM təxmini yox).",
+      "repaired": "İlk sorğu xəta verdi, verilənlər bazasının səhvinə görə avtomatik düzəldildi.",
+      "exact": "Sorğunu siz yazdınız — nəticə birbaşa SQL ilə dəqiq hesablanıb."
+    }
+  },
   "statFacts": {
     "total": "Cəmi",
     "trend": "Dövr Δ",

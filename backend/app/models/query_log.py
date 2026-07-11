@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import JSON, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -30,3 +30,9 @@ class QueryLog(Base, TimestampMixin):
     result_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     insight: Mapped[str] = mapped_column(Text, nullable=False, default="")
     execution_time_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Answer-trust signal computed by the pipeline. `provenance` is how the SQL/DAX
+    # was produced: llm | deterministic_fallback (AI offline → rule-based) |
+    # self_repaired (LLM SQL failed, repaired from the DB error) | user_sql (analyst
+    # wrote it). NULL on rows logged before this feature → the UI shows no badge.
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    provenance: Mapped[str | None] = mapped_column(String(24), nullable=True)
