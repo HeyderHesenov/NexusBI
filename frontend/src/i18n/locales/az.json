@@ -272,6 +272,9 @@
     "select": "Seç",
     "subtitle": "Öz SQL bazanı qoş və ya CSV/Excel yüklə, sonra təbii dillə sorğula.",
     "testConnectionTitle": "Bağlantını yoxla",
+    "refreshDataTitle": "Datanı yenilə (faylı yenidən yüklə)",
+    "refreshed": "Data yeniləndi — {{rows}} sətir.",
+    "refreshWarning": "Data yeniləndi, amma {{n}} sütun/cədvəl artıq yoxdur: {{items}}",
     "title": "Verilənlər mənbələri"
   },
   "decisionsPage": {

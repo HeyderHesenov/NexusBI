@@ -72,6 +72,21 @@ export async function upload(file: File, name: string): Promise<DataSource> {
   return data
 }
 
+export interface DataRefreshResult {
+  datasource: DataSource
+  rows: number
+  /** Raw identifiers (table / table.column) lost vs the previous data. */
+  warnings: string[]
+}
+
+/** Re-ingest a fresh file into the SAME source id (keeps saved queries/widgets). */
+export async function replaceData(id: string, file: File): Promise<DataRefreshResult> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await client.patch<DataRefreshResult>(`/datasource/${id}/data`, form)
+  return data
+}
+
 export async function listPowerBIDatasets(): Promise<PowerBIDataset[]> {
   const { data } = await client.get<PowerBIDataset[]>('/datasource/powerbi/datasets')
   return data

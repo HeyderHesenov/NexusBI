@@ -13,6 +13,7 @@ interface DatasourceState {
   create: (payload: DataSourceCreate) => Promise<DataSource>
   uploadFile: (file: File, name: string) => Promise<DataSource>
   connectPowerBI: (name: string, datasetId: string) => Promise<DataSource>
+  replaceData: (id: string, file: File) => Promise<dsApi.DataRefreshResult>
   test: (id: string) => Promise<boolean>
   setSla: (id: string, hours: number | null) => Promise<void>
   remove: (id: string) => Promise<void>
@@ -57,6 +58,17 @@ export const useDatasourceStore = create<DatasourceState>((set, get) => ({
     useQueryStore.getState().setDatasource(ds.id)
     toast.success('Power BI qoşuldu.')
     return ds
+  },
+  replaceData: async (id, file) => {
+    const res = await dsApi.replaceData(id, file)
+    // Same id — swap the row in place and drop its now-stale cached schema. The
+    // caller (page) shows the localized success/warning toast.
+    const { [id]: _dropped, ...schemas } = get().schemas
+    set({
+      sources: get().sources.map((s) => (s.id === id ? res.datasource : s)),
+      schemas,
+    })
+    return res
   },
   test: async (id) => {
     try {

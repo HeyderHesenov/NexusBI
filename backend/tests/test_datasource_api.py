@@ -135,6 +135,80 @@ async def test_query_error_surfaces_generated_sql(
     assert body["sql"] == "SELECT product, revenue FROM sales"  # generated SQL surfaced
 
 
+# ─── Replace-in-place data refresh ───
+
+async def test_replace_data_keeps_id_and_wiring(client: AsyncClient, auth: dict):
+    """Refreshing a file source keeps its id, so FK'd queries stay wired, and the
+    new rows are visible (old cached result is invalidated)."""
+    csv1 = b"product,revenue\nLaptop,900\nPhone,500\nTablet,300\n"
+    up = await client.post(
+        "/api/v1/datasource/upload",
+        files={"file": ("sales.csv", csv1, "text/csv")},
+        data={"name": "Sales"},
+        headers=auth,
+    )
+    ds_id = up.json()["id"]
+
+    ask = await client.post(
+        "/api/v1/query/ask",
+        json={"nl_query": "gəlirlər", "datasource_id": ds_id},
+        headers=auth,
+    )
+    qid = ask.json()["query_log_id"]
+    assert len(ask.json()["data"]) == 3
+
+    csv2 = b"product,revenue\nLaptop,900\nPhone,500\nTablet,300\nWatch,150\nMouse,90\n"
+    rep = await client.patch(
+        f"/api/v1/datasource/{ds_id}/data",
+        files={"file": ("sales.csv", csv2, "text/csv")},
+        headers=auth,
+    )
+    assert rep.status_code == 200, rep.text
+    body = rep.json()
+    assert body["datasource"]["id"] == ds_id  # SAME row — nothing orphaned
+    assert body["rows"] == 5
+    assert body["warnings"] == []  # same schema → clean swap
+
+    # The FK'd query log still resolves against the (refreshed) source.
+    assert (await client.get(f"/api/v1/query/{qid}", headers=auth)).status_code == 200
+    # A fresh query now sees the new rows (qcache was invalidated).
+    ask2 = await client.post(
+        "/api/v1/query/ask",
+        json={"nl_query": "gəlirlər", "datasource_id": ds_id},
+        headers=auth,
+    )
+    assert len(ask2.json()["data"]) == 5
+
+
+async def test_replace_data_warns_on_dropped_column(client: AsyncClient, auth: dict):
+    csv1 = b"product,revenue,region\nLaptop,900,North\nPhone,500,South\n"
+    up = await client.post(
+        "/api/v1/datasource/upload",
+        files={"file": ("sales.csv", csv1, "text/csv")},
+        data={"name": "S"},
+        headers=auth,
+    )
+    ds_id = up.json()["id"]
+
+    csv2 = b"product,revenue\nLaptop,900\nPhone,500\n"  # 'region' dropped
+    rep = await client.patch(
+        f"/api/v1/datasource/{ds_id}/data",
+        files={"file": ("sales.csv", csv2, "text/csv")},
+        headers=auth,
+    )
+    assert rep.status_code == 200, rep.text
+    assert "sales.region" in rep.json()["warnings"]
+
+
+async def test_replace_data_rejects_unknown_source(client: AsyncClient, auth: dict):
+    resp = await client.patch(
+        "/api/v1/datasource/does-not-exist/data",
+        files={"file": ("x.csv", b"a,b\n1,2\n", "text/csv")},
+        headers=auth,
+    )
+    assert resp.status_code == 404
+
+
 async def test_metrics_endpoint(client: AsyncClient):
     resp = await client.get("/metrics")
     assert resp.status_code == 200

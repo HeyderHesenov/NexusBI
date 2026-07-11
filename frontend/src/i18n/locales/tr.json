@@ -272,6 +272,9 @@
     "select": "Seç",
     "subtitle": "Kendi SQL veritabanını bağla veya CSV/Excel yükle, ardından doğal dille sorgula.",
     "testConnectionTitle": "Bağlantıyı test et",
+    "refreshDataTitle": "Veriyi yenile (dosyayı yeniden yükle)",
+    "refreshed": "Veri yenilendi — {{rows}} satır.",
+    "refreshWarning": "Veri yenilendi ancak {{n}} sütun/tablo artık yok: {{items}}",
     "title": "Veri kaynakları"
   },
   "decisionsPage": {

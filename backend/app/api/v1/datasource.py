@@ -9,6 +9,7 @@ from fastapi import APIRouter, File, Form, Response, UploadFile, status
 from app.core.exceptions import SchemaNotFoundError
 from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.schemas.datasource import (
+    DataRefreshResponse,
     DataSourceCreate,
     DataSourceResponse,
     DataSourceSLAUpdate,
@@ -48,6 +49,32 @@ async def upload(
     label = name.strip() or (file.filename or "Yüklənmiş fayl")
     ds = await svc.add_datasource(db, user.id, label, "sqlite", conn_str, internal=True)
     return DataSourceResponse.model_validate(ds)
+
+
+@router.patch("/{datasource_id}/data", response_model=DataRefreshResponse)
+async def refresh_data(
+    datasource_id: str,
+    user: CurrentUser,
+    db: DbDep,
+    cache: CacheDep,
+    file: UploadFile = File(...),
+) -> DataRefreshResponse:
+    """Re-ingest a fresh CSV/Excel into the SAME source id.
+
+    Unlike delete-and-re-upload (which mints a new id and orphans every saved
+    query, widget, metric, RLS rule, and RAG exemplar), this keeps the id so all
+    of them stay wired — only the underlying data is swapped.
+    """
+    content = await file.read()
+    ds, rows, warnings = await svc.replace_data(
+        db, user.id, datasource_id, file.filename or "data.csv", content, cache
+    )
+    await audit_service.log(
+        db, user.id, "datasource.refresh_data", entity="datasource", entity_id=ds.id
+    )
+    return DataRefreshResponse(
+        datasource=DataSourceResponse.model_validate(ds), rows=rows, warnings=warnings
+    )
 
 
 @router.get("/powerbi/datasets", response_model=list[PowerBIDataset])

@@ -37,3 +37,13 @@ class DataSourceResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class DataRefreshResponse(BaseModel):
+    """Result of replacing a file-backed source's data in place."""
+
+    datasource: DataSourceResponse
+    rows: int
+    # Raw identifiers (table / table.column) present in the OLD data but gone in the
+    # NEW upload — the client localizes the surrounding message. Empty = clean swap.
+    warnings: list[str] = Field(default_factory=list)

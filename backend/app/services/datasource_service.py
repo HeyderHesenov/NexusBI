@@ -139,6 +139,115 @@ async def stamp_refreshed(db: AsyncSession, ds: DataSource) -> None:
     await db.flush()
 
 
+def _sqlite_file_path(conn_str: str) -> Path | None:
+    """Filesystem path behind a sqlite DSN, or None if it isn't a sqlite URL."""
+    try:
+        url = make_url(conn_str)
+    except ArgumentError:
+        return None
+    if url.get_backend_name() != "sqlite" or not url.database:
+        return None
+    return Path(url.database)
+
+
+def _schema_loss_warnings(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
+    """Tables/columns present in the OLD data but gone in the NEW upload.
+
+    Additive changes (new tables/columns) are silent — only losses are flagged,
+    since those are what break existing saved queries and widgets. Returns raw
+    identifiers (``table`` or ``table.column``); the client localizes the prose.
+    """
+    warnings: list[str] = []
+    for table in sorted(set(old) - set(new)):
+        warnings.append(table)
+    for table in sorted(set(old) & set(new)):
+        old_cols = {c["name"] for c in old.get(table, [])}
+        new_cols = {c["name"] for c in new.get(table, [])}
+        warnings.extend(f"{table}.{col}" for col in sorted(old_cols - new_cols))
+    return warnings
+
+
+def _delete_orphaned_upload(old_path: Path | None, new_conn: str) -> None:
+    """Delete the replaced sqlite file — but ONLY inside UPLOAD_DIR, never the new one."""
+    if old_path is None:
+        return
+    new_path = _sqlite_file_path(new_conn)
+    try:
+        resolved = old_path.resolve()
+        resolved.relative_to(Path(settings.UPLOAD_DIR).resolve())  # confine deletes
+        if new_path is not None and resolved == new_path.resolve():
+            return  # never delete the file we just wrote
+        resolved.unlink(missing_ok=True)
+    except (ValueError, OSError) as exc:  # outside UPLOAD_DIR or unlink failed
+        log.warning("replace_old_file_cleanup_failed", error=str(exc)[:200])
+
+
+async def replace_data(
+    db: AsyncSession,
+    user_id: str,
+    datasource_id: str,
+    filename: str,
+    content: bytes,
+    cache: CacheService,
+) -> tuple[DataSource, int, list[str]]:
+    """Re-ingest a fresh file into the SAME datasource row (file-backed sources only).
+
+    Keeps the datasource id, so every saved query, widget, metric, RLS rule, and RAG
+    exemplar FK'd to it stays wired — only the underlying SQLite file is swapped.
+    Returns ``(ds, row_count, loss_warnings)``.
+    """
+    from app.services import upload_service  # lazy: pulls pandas
+
+    ds = await get_datasource(db, user_id, datasource_id)
+    if ds.db_type != DBType.sqlite:
+        # Only uploaded CSV/Excel (sqlite) sources own their file; external DBs and
+        # Power BI are refreshed at the source, not re-uploaded here.
+        raise DataSourceConnectionError(
+            "Yalnız yüklənmiş fayl mənbələri yenidən yüklənə bilər."
+        )
+
+    # Snapshot the OLD schema (for the loss diff) and resolve the OLD file/engine key
+    # BEFORE the swap, so we can evict the engine and delete the orphaned file after.
+    old_schema: dict[str, Any] = {}
+    try:
+        old_schema = await get_schema_cached(ds, cache)
+    except Exception as exc:  # noqa: BLE001 — a broken old source must not block replacing it
+        log.warning("replace_old_schema_failed", datasource_id=ds.id, error=str(exc)[:200])
+    try:
+        old_conn = _resolve_conn_str(ds)
+    except DataSourceConnectionError:
+        old_conn = decrypt_secret(ds.connection_string_encrypted)
+    old_path = _sqlite_file_path(old_conn)
+
+    # Ingest the new file into a FRESH .db (reuses the upload guards: 10 MB / 100k rows
+    # / .csv|.xlsx). CPU-bound pandas work → off the event loop.
+    new_conn, _table, rows = await asyncio.to_thread(
+        upload_service.ingest_file, filename, content
+    )
+
+    # Point the SAME row at the new file, then invalidate everything derived from the
+    # old one: the pooled engine, the schema/profile caches, and cached query results.
+    ds.connection_string_encrypted = encrypt_secret(new_conn)
+    await db.flush()
+    await engine_pool.evict(old_conn)
+    await cache.delete(f"schema:{ds.id}")
+    await cache.delete_prefix(f"profile:{ds.id}:")
+    await cache.delete_prefix(f"qcache:{ds.id}:")
+
+    # Introspect the NEW file (cache just cleared → fresh) and flag any lost columns.
+    warnings: list[str] = []
+    try:
+        new_schema = await get_schema_cached(ds, cache)
+        warnings = _schema_loss_warnings(old_schema, new_schema)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("replace_new_schema_failed", datasource_id=ds.id, error=str(exc)[:200])
+
+    await stamp_refreshed(db, ds)
+    await db.refresh(ds)
+    _delete_orphaned_upload(old_path, new_conn)
+    return ds, rows, warnings
+
+
 async def list_datasources(db: AsyncSession, user_id: str) -> list[DataSource]:
     result = await db.execute(
         select(DataSource).where(DataSource.user_id == user_id)

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, Database, Gauge, Plug, Plus, ShieldHalf, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { BarChart3, Database, Gauge, Plug, Plus, RefreshCw, ShieldHalf, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { useQueryStore } from '../store/queryStore'
 import * as dsApi from '../api/datasource'
@@ -31,8 +32,10 @@ function freshness(s: { last_refreshed_at?: string | null; freshness_sla_hours?:
 
 export function DataSourcesPage() {
   const { t } = useTranslation()
-  const { sources, loading, load, test, remove, setSla } = useDatasourceStore()
+  const { sources, loading, load, test, remove, setSla, replaceData } = useDatasourceStore()
   const { datasourceId, setDatasource } = useQueryStore()
+  const refreshInputRef = useRef<HTMLInputElement | null>(null)
+  const [refreshId, setRefreshId] = useState<string | null>(null)
   const [connectOpen, setConnectOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [powerbiOpen, setPowerbiOpen] = useState(false)
@@ -45,6 +48,32 @@ export function DataSourcesPage() {
   useEffect(() => {
     load().catch(() => undefined)
   }, [load])
+
+  // Re-upload a fresh file into an existing file-backed source (keeps its id, so
+  // every saved query / widget stays wired). One hidden input, reused per row.
+  const pickRefreshFile = (id: string) => {
+    setRefreshId(id)
+    refreshInputRef.current?.click()
+  }
+  const onRefreshFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // let the same file be picked again next time
+    const id = refreshId
+    setRefreshId(null)
+    if (!file || !id) return
+    try {
+      const res = await replaceData(id, file)
+      if (res.warnings.length) {
+        toast(t('dataSourcesPage.refreshWarning', { n: res.warnings.length, items: res.warnings.join(', ') }), {
+          icon: '⚠️',
+        })
+      } else {
+        toast.success(t('dataSourcesPage.refreshed', { rows: res.rows }))
+      }
+    } catch {
+      // the axios interceptor already surfaced the API error
+    }
+  }
 
   const toggleSchema = async (id: string) => {
     if (openSchema === id) {
@@ -170,6 +199,15 @@ export function DataSourcesPage() {
                       <ShieldHalf size={15} />
                     </button>
                   )}
+                  {s.db_type === 'sqlite' && (
+                    <button
+                      onClick={() => pickRefreshFile(s.id)}
+                      title={t('dataSourcesPage.refreshDataTitle')}
+                      className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-accent hover:text-accent"
+                    >
+                      <RefreshCw size={15} />
+                    </button>
+                  )}
                   <button
                     onClick={() => test(s.id)}
                     title={t('dataSourcesPage.testConnectionTitle')}
@@ -248,6 +286,14 @@ export function DataSourcesPage() {
           ))}
         </ul>
       )}
+
+      <input
+        ref={refreshInputRef}
+        type="file"
+        accept=".csv,.xlsx"
+        className="hidden"
+        onChange={onRefreshFileChosen}
+      />
 
       <ConnectSourceModal open={connectOpen} onClose={() => setConnectOpen(false)} />
       <ConnectPowerBIModal open={powerbiOpen} onClose={() => setPowerbiOpen(false)} />

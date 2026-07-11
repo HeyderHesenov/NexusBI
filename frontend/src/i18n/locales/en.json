@@ -272,6 +272,9 @@
     "select": "Select",
     "subtitle": "Connect your SQL database or upload CSV/Excel, then query in natural language.",
     "testConnectionTitle": "Test connection",
+    "refreshDataTitle": "Refresh data (re-upload file)",
+    "refreshed": "Data refreshed — {{rows}} rows.",
+    "refreshWarning": "Data refreshed, but {{n}} column(s)/table(s) are now missing: {{items}}",
     "title": "Data sources"
   },
   "decisionsPage": {
