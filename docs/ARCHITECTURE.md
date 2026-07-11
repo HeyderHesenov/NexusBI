@@ -26,9 +26,9 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 
 | Layer | Path | Responsibility |
 |-------|------|----------------|
-| API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, **snapshot**, metric, saved_query, billing, branding, decision, integration, copilot, requirement, **ba**, **automl**, scenario, workspace, **cohort**, **graph**, public, ws |
+| API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, **snapshot**, metric, **metric_tree**, saved_query, billing, branding, decision, integration, copilot, requirement, **ba**, **automl**, scenario, workspace, **data_contract**, **alert**, **search**, **graph**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
-| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **cohort_service, snapshot_service, graph_service, ba_service, automl_service** |
+| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, ba_service, automl_service** |
 | AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding)**, sql_guard, schema_introspector, **schema_linking (wide-schema table selection: embed+cosine top-K + FK closure, metadata-only)**, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit |
@@ -79,6 +79,17 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
 - **Data sources:** connection strings encrypted at rest (Fernet). CSV/Excel uploads
   are ingested (`upload_service`, pandas) into a per-source SQLite file and registered
   as a normal `sqlite` data source — so the same NL→SQL→guard path applies.
+- **Replace-in-place refresh** (`datasource_service.replace_data`, `PATCH /datasource/{id}/data`):
+  re-ingests a fresh CSV/Excel onto the **SAME** sqlite datasource row (id preserved → queries,
+  widgets, and RLS stay wired). Evicts the old engine, clears `schema:`/`profile:`/`qcache:` caches,
+  deletes the orphaned .db (confined to `UPLOAD_DIR`), re-stamps freshness, and returns schema-loss
+  warnings (columns/tables present before but gone after). sqlite-only.
+- **One-click Explore** (`explore_service.build_explore_dashboard`, `POST /datasource/{id}/explore`):
+  a deterministic, **AI-free** X-ray dashboard. Classifies measures/dims/temporals from a guarded
+  200-row sample of the widest table, composes KPI/time-series/top-N/count SELECTs (≤8 widgets,
+  dialect-aware quoting), each run through the shared guard chain. Reuses two extracted helpers:
+  `query_service.guarded_read` (the guarded read half of `run_user_sql`, no persisted QueryLog) and
+  the now-public `dashboard_service.layout_widgets`. Power BI sources are rejected.
 - **Connection pooling:** `db/engine_pool` keeps one `AsyncEngine` (with its pool) per
   connection string in a bounded async-locked LRU; disposed on shutdown / source delete.
 - **Caching & schema:** `cache_service` is a thin Redis wrapper that degrades to a no-op
@@ -100,9 +111,9 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   driver/reason — into ONE "🌅 Səhər brifi" notification. The scheduler runs it once/day past
   `DIGEST_HOUR_UTC`; also on-demand via `POST /notifications/digest`. Rule-based fallback offline.
 - **Agentic copilot (universal executor):** `ai/copilot` is a bounded tool-calling loop
-  (`COPILOT_MAX_STEPS`) with a **29-tool registry that drives every product feature**: discovery
+  (`COPILOT_MAX_STEPS`) with a **24-tool registry that drives every product feature**: discovery
   tools (`search_assets` + `list_*` so the model finds ids instead of inventing them), queries/
-  dashboards, AutoML train+predict, BA Studio generate, cohort funnel/retention, snapshots,
+  dashboards, AutoML train+predict, BA Studio generate, snapshots,
   decisions create/measure, insight scan, data-contract run, metric-tree
   evaluate + twin `simulate` (single backend home: `metric_tree_service.simulate`), alerts.
   Tools are owner-scoped (user_id injected, never from the model) and delegate to existing
@@ -124,6 +135,12 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
 - **Trust layer:** metrics carry `verified`/`verified_by`/`verified_at` (certification badge);
   data sources carry `freshness_sla_hours`/`last_refreshed_at` (stale flag). `metric_service.set_verified`
   and `datasource_service.set_sla`/`stamp_refreshed` manage them.
+- **Answer trust signal (provenance + confidence):** every `QueryLog` records how its SQL was
+  produced — `provenance` ∈ {`llm`, `self_repaired` (repaired from the DB error), `deterministic_fallback`
+  (offline rule-based), `user_sql` (analyst-authored)} — plus a `confidence` score. Both are set in
+  `query_service._finalize`, surfaced on `QueryResult`/`QueryHistoryItem`, and rendered as a
+  `TrustBadge` chip on the Query + History pages. Migration `b1c2d3e4f5a6` (additive, nullable — old
+  rows show no badge).
 - **Workspaces / RBAC:** `workspaces` + `workspace_members` (role viewer<editor<owner);
   `workspace_service.require_role` gates membership ops; the workspace owner can't be self-demoted.
 - **Row-level security (RLS):** `rls_rules` (per-member allowed value on a datasource column).
@@ -191,12 +208,12 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
   background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
   `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (478) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (468) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
-  deterministic, no cost — identical to CI; new suites: test_cohort, test_snapshots, test_graph,
-  test_ba, test_automl). Frontend Vitest (268) covers `lib/*`, hooks, and Zustand
+  deterministic, no cost — identical to CI; new suites: test_snapshots, test_graph,
+  test_ba, test_automl). Frontend Vitest (305) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, the advanced-analytics
   stores/panels — insight/metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
@@ -231,34 +248,39 @@ Time Machine), **`f0a1b2c3d4e5`** (`ba_artifacts` — BA Framework Studio), **`a
 alerts), **`c4d5e6f7a8b9`** (drop `insights` — dedup cleanup), **`d5e6f7a8b9c0`**
 (`dashboards.global_filter` — server-side global dashboard filter), **`e6f7a8b9c0d1`**
 (`ml_models.leaderboard` + `.diagnostics` — AutoML k-fold CV / confusion / actual-vs-predicted /
-permutation importance / per-prediction explain stats). Migrations are Alembic, chained
-under `db/migrations/versions`; current head = **`e6f7a8b9c0d1`**. NOTE: the **demo** schema is seeded
-in-memory (`db/demo_data._seed`, no migration) — `sales.customer_id` was added there to enable realistic
-customer↔sales joins, and an `events` table (visit→signup→trial→purchase) was added for
-cohort/funnel analytics; `format_demo_schema` sends real column types + sample values to the prompt.
+permutation importance / per-prediction explain stats). De-bloat + trust round: **`f7a8b9c0d1e2`**
+(drop `experiments`), **`a8b9c0d1e2f3`** (drop `eval_runs`), **`b1c2d3e4f5a6`** (`query_logs.confidence`
++ `.provenance` — answer Trust Badge). Migrations are Alembic, chained under `db/migrations/versions`;
+current head = **`b1c2d3e4f5a6`**. NOTE: the **demo** schema is seeded in-memory
+(`db/demo_data._seed`, no migration) — `sales.customer_id` was added there to enable realistic
+customer↔sales joins, and an `events` table (visit→signup→trial→purchase) is retained (the dedicated
+cohort/funnel feature was later removed in `d23cdb2`; the events table now only backs NL "funnel"-style
+queries); `format_demo_schema` sends real column types + sample values to the prompt.
 
 ## Notable architecture deltas (this round)
 
-- **Studio round (6 features).** (1) **Cohort & funnel** — `cohort_service` computes weekly
-  retention + a visit→signup→trial→purchase funnel with deterministic SQL over the demo `events`
-  table; `GET /cohort/retention` + `/funnel`; FE `/cohort` renders hand-rolled SVG
-  (CohortHeatmap + FunnelChart). (2) **Time Machine** — `DashboardSnapshot` (migration
+- **Studio round (originally 6 features; the cohort/funnel item was later removed in `d23cdb2`,
+  leaving 5 live).** (1) **Time Machine** — `DashboardSnapshot` (migration
   `e9f0a1b2c3d4`) + `snapshot_service` (capture caps ≤200 rows/widget, 50-snapshot retention;
   the scheduler adds an hourly scheduled capture for live dashboards);
   `POST/GET /dashboard/{id}/snapshots`, `GET/DELETE .../snapshots/{sid}`; FE toggle + snapshot
-  timeline + diff badges (`lib/snapshotDiff`). (3) **Knowledge graph** — `graph_service.build`
+  timeline + diff badges (`lib/snapshotDiff`). (2) **Knowledge graph** — `graph_service.build`
   assembles namespaced nodes (table/metric/mnode/dash/widget/squery/decision/ds) reusing the
   lineage parser; `GET /graph`; FE `/graph` is a hand-rolled SVG force layout with an
-  impact-mode BFS highlight. (4) **Digital Twin** — frontend-ONLY `/twin`:
-  `lib/metricTreeMath.ts` is an exact port of the backend metric-tree `_combine` semantics;
-  leaf ±% sliders, cumulative-sequential waterfall, ±10% tornado sensitivity; scenarios persist
-  via zustand (`nexusbi-twin`, scenarios only). No backend change. (5) **BA Framework Studio** —
+  impact-mode BFS highlight. (3) **Digital Twin** — frontend-ONLY `/twin`, a **3-surface simulator
+  (Model · Simulyator · Risk)**. `lib/metricTreeMath.ts` is an exact port of the backend metric-tree
+  `_combine` semantics. **Model** = metric-tree editor; **Simulyator** = KPI hero (sparkline + optional
+  P10–P90 uncertainty band), leaf ±% sliders, cumulative waterfall, ±10% tornado, goal-seek, scenario
+  compare, KPI-target pacing badge, and a "what changed" ranked-driver narrative (`lib/twinNarrative.ts`);
+  **Risk** = 2000-iteration Monte Carlo over per-lever ranges → P10/P50/P90 + histogram
+  (`lib/twinAnalysis.ts`, animated `components/twin/chartkit.tsx`). Scenarios persist via zustand
+  (`nexusbi-twin`, scenarios only). No backend change. (4) **BA Framework Studio** —
   `ai/ba_frameworks.py` (SWOT/Porter/BCG/BPMN; AI-first with deterministic fallbacks; the BCG
   core is deterministic over a single demo snapshot — share = revenue share, growth = H2-vs-H1,
   AI only advises; BPMN mermaid passes a server-side **fail-closed sanitizer**); `BAArtifact`
   (migration `f0a1b2c3d4e5`); `POST /ba/generate` (AI quota) + `GET /ba` + `GET/DELETE /ba/{id}`;
   shared `ai/textparse.py`. FE `/ba-studio` (SWOTGrid 2×2, PorterForces, BCGMatrix SVG,
-  MermaidDiagram as a lazy ~1MB chunk, `securityLevel: strict`). (6) **AutoML Studio** —
+  MermaidDiagram as a lazy ~1MB chunk, `securityLevel: strict`). (5) **AutoML Studio** —
   `scikit-learn==1.6.1`; `MLModel` (migration `a2b3c4d5e6f7`; `leaderboard`+`diagnostics` JSON added
   in `e6f7a8b9c0d1`; the pickle blob is only ever the server's own estimator and never appears in
   any response); `automl_service` (Linear/LogReg vs RandomForest holdout selection, sklearn imports

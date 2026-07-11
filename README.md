@@ -42,9 +42,9 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   səbəbi ilə bir bildirişdə toplayır (planlı + on-demand).
 - ✨ **Smart insight bildirişləri** — saxlanan sorğu nəticələrindəki diqqətəlayiq dəyişikliklər.
 - 🤖 **Agentik Copilot (plan → təsdiq → icra)** — köməkçi əvvəl addım planı göstərir, sən
-  təsdiqləyirsən, sonra icra edir. **29 alətlə platformanın HƏR funksiyasını çatdan idarə edir:**
+  təsdiqləyirsən, sonra icra edir. **24 alətlə platformanın HƏR funksiyasını çatdan idarə edir:**
   sorğu · dashboard qur/paylaş · **AutoML modeli öyrət/proqnoz** · **SWOT/Porter/BCG/BPMN** ·
-  kohort/funnel · snapshot · qərar yaz/ölç · kəşf skanı · data
+  snapshot · qərar yaz/ölç · kəşf skanı · data
   müqaviləsi yoxla · **Digital Twin ssenarisi** · metrik/alert/sorğu yarat. Nəticə çipləri
   yaradılan obyekti birbaşa açır (`?open=` deep-link). Silmə əməliyyatları qəsdən çatdan kənardır;
   ağır alətlər (train/generate) alət başına 2/söhbət ilə məhdudlaşır.
@@ -76,6 +76,14 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 ### Data mənbələri & hazırlıq
 - 🔌 **Öz SQL bazanı qoş** — PostgreSQL / MySQL / SQLite (connection string, şifrəli saxlanılır).
 - 📁 **CSV / Excel yüklə** — fayl avtomatik sorğulana bilən SQLite cədvəlinə çevrilir.
+- 🔁 **Data yenilə (replace-in-place)** — fayl mənbəsinə təzə CSV/Excel yüklə → **eyni datasource
+  sətri** üzərinə yazılır (id qalır, sorğular/widget-lər/RLS bağlı qalır); köhnə engine evict olunur,
+  schema/profile/query keşləri təmizlənir, sxem-itkisi xəbərdarlığı qaytarılır. `PATCH
+  /datasource/{id}/data` (yalnız sqlite).
+- 🩻 **Bir kliklə Kəşf (One-click Explore)** — mənbədən **AI-siz** avtomatik X-ray dashboard:
+  ölçü/kəsim/zaman sütunları guard-lu nümunədən təsnif olunur → KPI · zaman seriyası · top-N · say
+  widget-ləri (≤8, eyni guard zənciri). `POST /datasource/{id}/explore` ("Kəşf et" düyməsi; Power BI
+  istisna).
 - 🪄 **NL data-prep + çoxcədvəli join** — "orders ilə customers-i birləşdir, aylıq qrupla"
   → AI transform planı → önizləmə → yeni törəmə mənbə kimi saxla (SELECT-only guard).
 - 📊 **Data profiling** — sütun üzrə null % · distinct · min/max · tip (nümunə əsaslı).
@@ -88,6 +96,10 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   (ad, ifadə, sinonimlər); AI sorğularda tutarlı işlədir.
 - ✅ **Etibar qatı** — metrikləri **sertifikatla** (verified badge + sahib), nəticə **lineage**-i,
   datasource **freshness SLA** (təzə / köhnəlib nişanı). "Tək həqiqət mənbəyi".
+- 🛡️ **Cavab etibar nişanı (Trust Badge)** — hər cavabda pipeline-in artıq hesabladığı **güvən +
+  mənşə** göstərilir: `llm` · `self_repaired` (DB xətasından təmir) · `deterministic_fallback`
+  (offline rule-based) · `user_sql` (analitikin öz SQL-i). Sorğu və Tarixçə səhifələrində çip
+  (`QueryLog.confidence`/`provenance`).
 - 🧩 **İnteraktiv dashboard** — widget-ləri sürüklə/ölç (react-grid-layout), auto-save,
   per-widget mənbə nişanı + yenilə, **cross-filter** (bir widget-də klik → bütün panel filtrlənir).
 - 🔴 **Canlı (real-time) dashboard** + 🎬 **AI Data Story** (kinematik təqdimat) + 🤖 **Copilot**.
@@ -143,13 +155,13 @@ klassik ML, LLM yox:
   toplanır + valideynə töhfə %. `/metric-tree` · **Məlumat → Metrik ağacı**.
 - 📋 **Data müqavilələri** — mənbə cədvəllərinə keyfiyyət zəmanəti (boş-deyil, unikal, diapazon,
   sxem-sabitliyi, təzəlik SLA); pozulmada bildiriş. `/contracts` · **Məlumat → Data müqavilələri**.
-- 📈 **Kohort & Funnel analitikası** — retention heatmap (kohort × həftə) + visit→signup→trial→
-  purchase konversiya hunisi (demo `events` cədvəli üzərində, determinist SQL). `/cohort`
-  (CohortHeatmap + FunnelChart, hand-rolled SVG).
-- 🎛️ **Digital Twin simulyatoru** — metrik ağacının tam **client-side** "rəqəmsal əkizi"
-  (`lib/metricTreeMath.ts` — backend `_combine` semantikasının dəqiq portu): leaf-lərə ±% slider,
-  kumulyativ-ardıcıl waterfall, ±10% tornado həssaslıq analizi; ssenarilər lokal saxlanılır
-  (backend dəyişikliyi yox). `/twin`.
+- 🎛️ **Digital Twin simulyatoru (3 səth: Model · Simulyator · Risk)** — metrik ağacının tam
+  **client-side** "rəqəmsal əkizi" (`lib/metricTreeMath.ts` — backend `_combine` semantikasının dəqiq
+  portu). **Model**: metrik ağacı redaktoru. **Simulyator**: KPI hero (count-up + delta + sparkline +
+  P10–P90 qeyri-müəyyənlik zolağı), leaf ±% sliderlər, kumulyativ waterfall, ±10% tornado, goal-seek,
+  ssenari müqayisəsi, KPI-hədəf pacing nişanı və "nə dəyişdi" driver narrativi. **Risk**:
+  2000-iterasiyalı Monte Carlo (per-lever diapazon → P10/P50/P90 + histoqram). Tam client-side,
+  backend dəyişikliyi yox. `/twin`.
 - 🤖 **AutoML Studiyası** — cədvəldən bir kliklə model öyrət (**scikit-learn**: Linear/LogReg vs
   RandomForest, holdout üzrə yaxşısı seçilir) + **dərin diaqnostika**: model reytinqi
   (leaderboard), **k-fold çarpaz yoxlama**, qarışıqlıq matrisi / faktiki-vs-proqnoz + qalıq
@@ -256,6 +268,9 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | GET | `/api/v1/auth/me` · `/providers` | Cari user · Google config |
 | POST/GET/DELETE | `/api/v1/datasource/...` | Connect/list/schema/test/sil |
 | POST | `/api/v1/datasource/upload` | CSV/Excel → SQLite datasource |
+| PATCH | `/api/v1/datasource/{id}/data` | Replace-in-place — təzə fayl yüklə, eyni datasource sətrini saxla (sqlite) |
+| POST | `/api/v1/datasource/{id}/explore` | One-click Explore — AI-siz avtomatik X-ray dashboard (Power BI istisna) |
+| GET/POST | `/api/v1/datasource/powerbi/datasets` · `/connect-powerbi` | Power BI dataset siyahısı · qoşulma |
 | POST | `/api/v1/query/ask` | NL sorğu (+ `previous_query_log_id` follow-up) → QueryResult |
 | POST | `/api/v1/query/run` | Power-user əl-SQL (AI-siz; SELECT-only + allowlist + RLS) → QueryResult |
 | GET | `/api/v1/query/history` · `/{id}` | Tarixçə · saxlanmış nəticə |
@@ -279,7 +294,6 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | GET/POST | `/api/v1/insights/...` (+ `/generate` · `/{id}/dismiss`) | Insight mühərriki — avtomatik kəşf + təsir reytinqi |
 | GET/POST/PATCH/DELETE | `/api/v1/metric-tree/...` (+ `/evaluate`) | Metrik ağacı — KPI dekompozisiya + roll-up |
 | POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
-| GET | `/api/v1/cohort/retention` · `/funnel` | Kohort retention heatmap · konversiya hunisi (demo `events`) |
 | POST/GET/DELETE | `/api/v1/dashboard/{id}/snapshots` (+ `/{sid}`) | Zaman Maşını — snapshot çək · siyahı · bax · sil |
 | PATCH | `/api/v1/dashboard/{id}/filter` | Qlobal dashboard filtri — tarix aralığı + dimension slicer, hər widget-in SQL-inə server-side WHERE kimi qatılır (RLS içində, data-only) |
 | GET | `/api/v1/graph` | Biznes biliklər qrafı — aktivlərin əlaqə xəritəsi (lineage reuse) |
@@ -325,7 +339,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 478 test
+cd backend && pytest        # 468 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -338,19 +352,19 @@ saved-query & scheduler · engine pool · metric catalog · chat context · aler
 offline embed determinizmi, dedup)** ·
 **qabaqcıl analitika: statistik mühafiz (t-test/z-test/Pearson/BH-FDR/MAD) · kauzal driver ·
 insight mühərriki (kəşf+reytinq) · metrik ağacı (roll-up) · data müqavilələri
-(profiling-əsaslı keyfiyyət)** · **kohort/funnel (test_cohort) · dashboard snapshotları
+(profiling-əsaslı keyfiyyət)** · **dashboard snapshotları
 (test_snapshots) · biliklər qrafı (test_graph) · BA frameworks + mermaid sanitizer (test_ba) ·
 AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
 `AI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
 
-**Frontend Vitest (268 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (305 test):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
 collab epoch-guard · decision measure · **insight · metric-tree ·
-data-contract · cohort · snapshot · graph · twinStore · baStore · automlStore**) ·
+data-contract · snapshot · graph · twinStore · baStore · automlStore**) ·
 **UI primitivləri (ModalShell a11y · ErrorBoundary · Dropdown · StatsGuard/Causal panel ·
-CohortHeatmap/FunnelChart · BCGMatrix)**.
+BCGMatrix)**.
 `cd frontend && npm run test`.
 
 **E2E (Playwright):** `frontend/e2e/smoke.spec.ts` — login → NL sorğu (demo SQLite + rule-based
