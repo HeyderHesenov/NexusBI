@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ChartView } from '../components/charts/ChartView'
 import { HistoryDeleteUI } from '../components/query/HistoryDeleteUI'
 import { useHistoryDelete } from '../hooks/useHistoryDelete'
-import { TypewriterText } from '../components/charts/TypewriterText'
+import { RevealText } from '../components/charts/RevealText'
 import { StatFactChips } from '../components/charts/StatFactChips'
 import { TrustBadge } from '../components/query/TrustBadge'
 import { SaveToDashboardModal } from '../components/dashboard/SaveToDashboardModal'
@@ -265,7 +265,7 @@ function TurnCard({
           <div className="min-w-0">
             <p className="eyebrow mb-1 text-accent">{t('queryPage.insight')}</p>
             {result.insight && (
-              <TypewriterText
+              <RevealText
                 key={result.query_log_id ?? result.insight}
                 text={result.insight}
                 className="text-sm leading-relaxed text-ink"

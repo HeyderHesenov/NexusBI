@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DataStory, Widget } from '../../types'
 import { ChartRenderer } from '../charts/LazyChartRenderer'
-import { TypewriterText } from '../charts/TypewriterText'
+import { RevealText } from '../charts/RevealText'
 
 interface Props {
   story: DataStory
@@ -87,7 +87,7 @@ export function StoryMode({ story, widgets, onClose }: Props) {
             {slide.title}
           </h2>
           {slide.narrative && (
-            <TypewriterText
+            <RevealText
               key={index}
               text={slide.narrative}
               className="max-w-3xl text-lg leading-relaxed text-ink-soft md:text-xl"

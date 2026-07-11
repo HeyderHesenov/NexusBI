@@ -6,7 +6,7 @@ import type { CopilotAction } from '../../api/copilot'
 import { copilotNavTarget } from '../../lib/copilotNav'
 import { useCopilotStore } from '../../store/copilotStore'
 import { useDashboardStore } from '../../store/dashboardStore'
-import { TypewriterText } from '../charts/TypewriterText'
+import { RevealText } from '../charts/RevealText'
 
 const SUGGESTION_KEYS = [
   'copilotWidget.suggestion1',
@@ -96,7 +96,7 @@ export function CopilotWidget() {
                   }`}
                 >
                   {m.role === 'assistant' && i === thread.length - 1 ? (
-                    <TypewriterText
+                    <RevealText
                       text={m.content}
                       className="whitespace-pre-wrap"
                       onType={scrollToEnd}

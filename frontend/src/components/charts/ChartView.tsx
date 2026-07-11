@@ -40,7 +40,7 @@ import { FilterPills, type Filter } from './FilterPills'
 const ForecastChartWidget = lazy(() =>
   import('./ForecastChartWidget').then((m) => ({ default: m.ForecastChartWidget })),
 )
-import { TypewriterText } from './TypewriterText'
+import { RevealText } from './RevealText'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -432,7 +432,7 @@ export function ChartView({
             </div>
             <ForecastChartWidget result={forecast} />
             {forecast.narrative && (
-              <TypewriterText
+              <RevealText
                 text={forecast.narrative}
                 className="text-sm leading-relaxed text-ink-soft"
               />

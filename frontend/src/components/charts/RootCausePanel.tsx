@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ChevronRight, GitBranch } from 'lucide-react'
 import type { RootCauseNode, RootCauseResult } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
-import { TypewriterText } from './TypewriterText'
+import { RevealText } from './RevealText'
 
 const DOWN = '#D87C6B' // coral — matches the app's "negative" accent
 const MAX_DEPTH = 6 // bound DOM/recursion against a pathologically deep AI tree
@@ -79,7 +79,7 @@ export function RootCausePanel({ result }: { result: RootCauseResult }) {
         <p className="eyebrow text-ink-soft">{t('rootCausePanel.title')}{result.metric ? ` · ${result.metric}` : ''}</p>
       </div>
       {result.summary && (
-        <TypewriterText text={result.summary} className="text-sm leading-relaxed text-ink-soft" />
+        <RevealText text={result.summary} className="text-sm leading-relaxed text-ink-soft" />
       )}
       {result.drivers.length === 0 ? (
         <p className="text-sm text-ink-faint">{t('rootCausePanel.noDrivers')}</p>

@@ -109,6 +109,13 @@
     animation-delay: 0.72s;
   }
 
+  /* Insight fade-in — the whole text appears at once with a soft rise, instead
+     of a character-by-character typewriter. Runs once on mount (re-keyed to
+     replay per new result). Only opacity + transform animate. */
+  .fade-in {
+    animation: fade-in 0.45s ease-out both;
+  }
+
   /* Live-update flash — one-shot accent ring that fades out. Remounted (keyed
      by pulse count) to re-trigger; only box-shadow/opacity animate. */
   .animate-flash {
@@ -165,6 +172,17 @@
   0% {
     opacity: 0;
     transform: translate3d(0, 16px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
   }
   100% {
     opacity: 1;

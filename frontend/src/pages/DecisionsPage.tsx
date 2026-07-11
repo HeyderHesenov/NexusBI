@@ -4,7 +4,7 @@ import { Activity, ChevronDown, Lightbulb, Target, TrendingDown, TrendingUp, Tra
 import { useDecisionStore } from '../store/decisionStore'
 import { formatNumber } from '../lib/format'
 import { Sparkline } from '../components/charts/Sparkline'
-import { TypewriterText } from '../components/charts/TypewriterText'
+import { RevealText } from '../components/charts/RevealText'
 import { FIELD } from '../components/ui/form'
 import * as decisionApi from '../api/decision'
 import type { Decision, DecisionStatus, DecisionTrajectory, ImpactStatus } from '../types'
@@ -249,7 +249,7 @@ function DecisionCard({
       {d.insight && (
         <div className="mt-2 flex items-start gap-1.5 text-sm text-ink-soft">
           <Lightbulb size={14} className="mt-0.5 shrink-0 text-accent" />
-          <TypewriterText text={d.insight} />
+          <RevealText text={d.insight} />
         </div>
       )}
       {d.action && <p className="mt-1 text-sm text-ink"><span className="text-ink-faint">{t('decisionsPage.step')}:</span> {d.action}</p>}
