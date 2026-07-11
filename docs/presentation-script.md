@@ -65,7 +65,7 @@ Səkkiz güclü tərəf — hərəsini bir cümlə ilə vur:
 - **RAG (Retrieval-Augmented Generation — AI-yə sənin öz schema/kontekstini “oxudub” cavabı ona əsaslandırmaq)** — daha dəqiq SQL.
 - **Təhlükəsizlik** — yalnız-SELECT qoruması, fail-closed (şübhə olanda bağlayan) RLS, şifrələnmiş sirlər, imzalı embed.
 - **Çoxdilli** — Azərbaycan, ingilis, rus, türk.
-- **Self-host (öz serverində qurmaq) + Copilot (agentic köməkçi)** — `docker-compose` ilə öz infrastrukturunda; ~29 alətli AI köməkçi.
+- **Self-host (öz serverində qurmaq) + Copilot (agentic köməkçi)** — `docker-compose` ilə öz infrastrukturunda; 24 alətli AI köməkçi.
 
 ---
 
@@ -84,7 +84,7 @@ Qısaca stack-i (texnologiya yığını) göstər ki, texniki auditoriya güvən
 **Nə deməli:**
 İstifadəçini dörd daimi alətlə tanış et:
 - **⌘K semantik axtarış** — dashboard, metrik, hesabatları **mənaya görə** tap (adı dəqiq bilməsən də).
-- **Copilot köməkçi** — **agentic** (yəni özü plan qurub addım-addım icra edən) AI: plan qurur → sən təsdiqləyirsən → icra edir (~29 alət).
+- **Copilot köməkçi** — **agentic** (yəni özü plan qurub addım-addım icra edən) AI: plan qurur → sən təsdiqləyirsən → icra edir (24 alət).
 - **Bildiriş mərkəzi** — alert (xəbərdarlıq) pozuntuları, smart-insight-lar və “Səhər brifi”.
 - **Tema və dil** — işıq/qaranlıq və 4 dil arasında ani keçid.
 
