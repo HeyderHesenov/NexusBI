@@ -418,6 +418,7 @@
     "titleRegister": "Hesab yarat"
   },
   "metricTreePage": {
+    "nodeAdded": "Düyün əlavə olundu.",
     "addChildNode": "Alt-düyün əlavə et",
     "cancel": "Ləğv et",
     "childNode": "Alt-düyün",
@@ -914,12 +915,19 @@
     "emptyTitle": "Metrik ağacı hələ qurulmayıb",
     "emptyBody": "Digital Twin metrik ağacının üstündə işləyir — əvvəlcə KPI dekompozisiyası yarat.",
     "goToTree": "Metrik ağacına keç",
+    "scenariosTitle": "Ssenarilər",
+    "linkTarget": "KPI hədəfi",
+    "noTargetOption": "Hədəf yoxdur",
+    "pacing": {
+      "hit": "Hədəfə çatır"
+    },
+    "narrative": {
+      "lead": "Əsas səbəblər"
+    },
     "tabs": {
-      "build": "Ağac",
-      "simulate": "Simulyasiya",
-      "goal": "Hədəf axtar",
-      "compare": "Müqayisə",
-      "monte": "Monte Karlo"
+      "model": "Model",
+      "simulate": "Simulyator",
+      "risk": "Risk"
     },
     "goalSeek": {
       "title": "Hədəf axtar",
@@ -940,7 +948,7 @@
       "scenario": "Ssenari",
       "vsBaseline": "Baza ilə fərq",
       "emptyTitle": "Ssenari yoxdur",
-      "emptyBody": "Əvvəlcə Simulyasiya tabında ssenari saxla."
+      "emptyBody": "Baza ilə müqayisə üçün bir ssenari saxla."
     },
     "monteCarlo": {
       "ranges": "Lever aralıqları (min…maks %)",

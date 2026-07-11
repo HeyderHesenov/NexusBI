@@ -418,6 +418,7 @@
     "titleRegister": "Create account"
   },
   "metricTreePage": {
+    "nodeAdded": "Node added.",
     "addChildNode": "Add child node",
     "cancel": "Cancel",
     "childNode": "Child node",
@@ -914,12 +915,19 @@
     "emptyTitle": "No metric tree yet",
     "emptyBody": "The Digital Twin runs on your metric tree — build a KPI decomposition first.",
     "goToTree": "Go to metric tree",
+    "scenariosTitle": "Scenarios",
+    "linkTarget": "KPI target",
+    "noTargetOption": "No target",
+    "pacing": {
+      "hit": "On target"
+    },
+    "narrative": {
+      "lead": "Top drivers"
+    },
     "tabs": {
-      "build": "Tree",
-      "simulate": "Simulate",
-      "goal": "Goal seek",
-      "compare": "Compare",
-      "monte": "Monte Carlo"
+      "model": "Model",
+      "simulate": "Simulator",
+      "risk": "Risk"
     },
     "goalSeek": {
       "title": "Goal seek",
@@ -940,7 +948,7 @@
       "scenario": "Scenario",
       "vsBaseline": "vs baseline",
       "emptyTitle": "No scenarios yet",
-      "emptyBody": "Save a scenario on the Simulate tab first."
+      "emptyBody": "Save a scenario to compare it against the baseline."
     },
     "monteCarlo": {
       "ranges": "Lever ranges (min…max %)",

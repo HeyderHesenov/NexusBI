@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import toast from 'react-hot-toast'
 import type { EvaluatedNode, MetricNodeCreate, TreeOperator } from '../types'
 import * as api from '../api/metricTree'
+import i18n from '../i18n'
 
 interface MetricTreeState {
   forest: EvaluatedNode[]
@@ -19,7 +20,7 @@ export const useMetricTreeStore = create<MetricTreeState>((set, get) => ({
   add: async (payload) => {
     await api.create(payload)
     await get().load()
-    toast.success('Düyün əlavə olundu.')
+    toast.success(i18n.t('metricTreePage.nodeAdded'))
   },
   edit: async (id, payload) => {
     await api.update(id, payload)

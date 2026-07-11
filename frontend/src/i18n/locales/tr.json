@@ -418,6 +418,7 @@
     "titleRegister": "Hesap oluştur"
   },
   "metricTreePage": {
+    "nodeAdded": "Düğüm eklendi.",
     "addChildNode": "Alt düğüm ekle",
     "cancel": "İptal",
     "childNode": "Alt düğüm",
@@ -914,12 +915,19 @@
     "emptyTitle": "Henüz metrik ağacı yok",
     "emptyBody": "Dijital İkiz metrik ağacının üzerinde çalışır — önce bir KPI ayrıştırması oluştur.",
     "goToTree": "Metrik ağacına git",
+    "scenariosTitle": "Senaryolar",
+    "linkTarget": "KPI hedefi",
+    "noTargetOption": "Hedef yok",
+    "pacing": {
+      "hit": "Hedefte"
+    },
+    "narrative": {
+      "lead": "Başlıca etkenler"
+    },
     "tabs": {
-      "build": "Ağaç",
-      "simulate": "Simülasyon",
-      "goal": "Hedef bul",
-      "compare": "Karşılaştır",
-      "monte": "Monte Carlo"
+      "model": "Model",
+      "simulate": "Simülatör",
+      "risk": "Risk"
     },
     "goalSeek": {
       "title": "Hedef bul",
@@ -940,7 +948,7 @@
       "scenario": "Senaryo",
       "vsBaseline": "tabana göre",
       "emptyTitle": "Henüz senaryo yok",
-      "emptyBody": "Önce Simülasyon sekmesinde bir senaryo kaydedin."
+      "emptyBody": "Tabanla karşılaştırmak için bir senaryo kaydedin."
     },
     "monteCarlo": {
       "ranges": "Kaldıraç aralıkları (min…maks %)",
