@@ -118,8 +118,22 @@ async def assemble_dashboard(
         raise SchemaNotFoundError("Sual nəticələri alınmadı.")
 
     dash = await create_dashboard(db, user_id, name[:255], description[:2000])
+    return await layout_widgets(db, user_id, dash, widgets)
+
+
+async def layout_widgets(
+    db: AsyncSession,
+    user_id: str,
+    dash: Dashboard,
+    items: list[tuple[str, str]],
+) -> Dashboard:
+    """Place ``(title, query_log_id)`` items into a 2-column grid, then reload.
+
+    Shared by the AI auto-dashboard, the requirements→dashboard flow, and the
+    Explore auto-dashboard so widget layout stays identical across all three.
+    """
     # 2-column grid, 12 cols, each widget 6 wide × 8 tall.
-    for i, (title, query_log_id) in enumerate(widgets):
+    for i, (title, query_log_id) in enumerate(items):
         await add_widget(
             db,
             user_id,

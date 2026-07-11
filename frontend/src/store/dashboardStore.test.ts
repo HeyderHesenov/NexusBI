@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDashboardStore, isFilterActive } from './dashboardStore'
 import * as dashApi from '../api/dashboard'
+import * as dsApi from '../api/datasource'
 
 // applyLiveUpdate is a pure reducer (no API). We drive it via setState/getState.
 const chart = (n: number) => ({ chart_type: 'bar', data: [{ x: n }], chart_config: {} }) as never
@@ -59,6 +60,28 @@ describe('isFilterActive', () => {
   it('is true when a dated range or a sliced dimension is present', () => {
     expect(isFilterActive({ date_column: 'd', date_start: '2024-01-01', dimensions: [] })).toBe(true)
     expect(isFilterActive({ dimensions: [{ column: 'region', values: ['North'] }] })).toBe(true)
+  })
+})
+
+describe('dashboardStore.explore', () => {
+  it('sets the built dashboard as current and appends it to the list', async () => {
+    useDashboardStore.setState({ list: [], current: null })
+    const dash = {
+      id: 'ex1',
+      name: 'Sales — kəşf',
+      description: 'Avtomatik kəşf: Sales',
+      widgets: [],
+      global_filter: null,
+    } as never
+    vi.spyOn(dsApi, 'explore').mockResolvedValue(dash)
+
+    const res = await useDashboardStore.getState().explore('ds1')
+
+    expect(res.id).toBe('ex1')
+    const s = useDashboardStore.getState()
+    expect(s.current?.id).toBe('ex1')
+    expect(s.list.some((d) => d.id === 'ex1')).toBe(true)
+    vi.restoreAllMocks()
   })
 })
 

@@ -314,6 +314,38 @@ def _sql_label(label: str | None, sql: str) -> str:
     return f"✎ {text[:180]}"
 
 
+async def guarded_read(
+    clean_sql: str,
+    datasource_id: str | None,
+    user_id: str,
+    db: AsyncSession,
+    cache: CacheService,
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """Run a SELECT-validated query through the full guard chain (demo or live)
+    WITHOUT persisting a QueryLog.
+
+    Single source of truth for the read half of the manual-SQL path — also used by
+    the Explore auto-dashboard to sample a table for column typing. The table
+    allowlist (the ONLY place tables are checked) + per-viewer RLS still apply.
+    """
+    if datasource_id is None:
+        # Ad-hoc SQL over the synthetic demo model — only when demo mode is on
+        # (mirrors process_nl_query's DEMO_MODE gate; never expose it in prod).
+        if not settings.DEMO_MODE:
+            raise NexusBIException("Sorğu üçün əvvəlcə mənbə seçin.")
+        from app.db import demo_data
+
+        sql_guard.assert_tables_in_schema(clean_sql, demo_data.demo_table_names(), "sqlite")
+        return await asyncio.to_thread(demo_data.execute_demo_sql, clean_sql)
+    ds = await ds_service.get_datasource(db, user_id, datasource_id)
+    if ds.db_type == DBType.powerbi:
+        raise NexusBIException(
+            "Power BI mənbələri əl ilə SQL dəstəkləmir (DAX istifadə olunur)."
+        )
+    schema = await ds_service.get_schema_cached(ds, cache)
+    return await _guarded_execute(ds, clean_sql, schema, db, user_id)
+
+
 async def run_user_sql(
     sql: str,
     datasource_id: str | None,
@@ -334,32 +366,11 @@ async def run_user_sql(
 
     # SELECT-only first: cheap rejection of DML/DDL/multi-statement before any DB work.
     clean_sql = sql_guard.validate_select_only(sql)
-
-    if datasource_id is None:
-        # Ad-hoc SQL over the synthetic demo model — only when demo mode is on
-        # (mirrors process_nl_query's DEMO_MODE gate; never expose it in prod).
-        if not settings.DEMO_MODE:
-            raise NexusBIException("Sorğu üçün əvvəlcə mənbə seçin.")
-        from app.db import demo_data
-
-        sql_guard.assert_tables_in_schema(clean_sql, demo_data.demo_table_names(), "sqlite")
-        try:
-            columns, rows = await asyncio.to_thread(demo_data.execute_demo_sql, clean_sql)
-        except NexusBIException as exc:
-            exc.sql = clean_sql  # surface the user's SQL in the error card
-            raise
-    else:
-        ds = await ds_service.get_datasource(db, user_id, datasource_id)
-        if ds.db_type == DBType.powerbi:
-            raise NexusBIException(
-                "Power BI mənbələri əl ilə SQL dəstəkləmir (DAX istifadə olunur)."
-            )
-        schema = await ds_service.get_schema_cached(ds, cache)
-        try:
-            columns, rows = await _guarded_execute(ds, clean_sql, schema, db, user_id)
-        except NexusBIException as exc:
-            exc.sql = clean_sql  # surface the user's SQL in the error card
-            raise
+    try:
+        columns, rows = await guarded_read(clean_sql, datasource_id, user_id, db, cache)
+    except NexusBIException as exc:
+        exc.sql = clean_sql  # surface the user's SQL in the error card
+        raise
 
     # No AI: deterministic chart, empty insight. On-demand panels (forecast/anomaly/
     # root-cause) still work later off the persisted query_log_id + result_data.

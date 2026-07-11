@@ -17,6 +17,7 @@ from app.schemas.datasource import (
     PowerBIDataset,
 )
 from app.schemas.dataprep import ProfileResponse
+from app.schemas.dashboard import DashboardResponse
 from app.schemas.workspace import RLSRuleCreate, RLSRuleResponse
 from app.services import audit_service, datasource_service as svc
 from app.services import profiling_service, rls_service, upload_service
@@ -75,6 +76,22 @@ async def refresh_data(
     return DataRefreshResponse(
         datasource=DataSourceResponse.model_validate(ds), rows=rows, warnings=warnings
     )
+
+
+@router.post("/{datasource_id}/explore", response_model=DashboardResponse)
+async def explore(
+    datasource_id: str, user: CurrentUser, db: DbDep, cache: CacheDep
+) -> DashboardResponse:
+    """One-click Explore: build a deterministic multi-widget 'X-ray' dashboard from
+    the source. No AI — composes guarded analytic SELECTs, so it works fully offline
+    (the AI dashboard planner is LLM-only and can't)."""
+    from app.services import dashboard_service, explore_service
+
+    dash = await explore_service.build_explore_dashboard(db, user.id, datasource_id, cache)
+    await audit_service.log(
+        db, user.id, "datasource.explore", entity="dashboard", entity_id=dash.id
+    )
+    return await dashboard_service.to_response(db, user.id, dash)
 
 
 @router.get("/powerbi/datasets", response_model=list[PowerBIDataset])

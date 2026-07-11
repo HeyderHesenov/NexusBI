@@ -1,5 +1,5 @@
 import { client } from './client'
-import type { DataSource, DataSourceCreate, DataSourceSchema, PowerBIDataset } from '../types'
+import type { Dashboard, DataSource, DataSourceCreate, DataSourceSchema, PowerBIDataset } from '../types'
 
 export async function list(): Promise<DataSource[]> {
   const { data } = await client.get<DataSource[]>('/datasource/')
@@ -84,6 +84,12 @@ export async function replaceData(id: string, file: File): Promise<DataRefreshRe
   const form = new FormData()
   form.append('file', file)
   const { data } = await client.patch<DataRefreshResult>(`/datasource/${id}/data`, form)
+  return data
+}
+
+/** One-click Explore: build a deterministic multi-widget dashboard from the source. */
+export async function explore(id: string): Promise<Dashboard> {
+  const { data } = await client.post<Dashboard>(`/datasource/${id}/explore`)
   return data
 }
 

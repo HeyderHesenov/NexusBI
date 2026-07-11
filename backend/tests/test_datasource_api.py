@@ -209,6 +209,66 @@ async def test_replace_data_rejects_unknown_source(client: AsyncClient, auth: di
     assert resp.status_code == 404
 
 
+# ─── One-click Explore (X-ray dashboard) ───
+
+async def test_explore_builds_offline_dashboard(client: AsyncClient, auth: dict):
+    """Explore builds a multi-widget dashboard with NO AI (conftest forces an empty
+    key) — the flagship offline path the LLM planner can't provide."""
+    csv = (
+        b"category,region,revenue,quantity,sale_date\n"
+        b"Elec,North,900,3,2024-01\n"
+        b"Elec,South,500,2,2024-02\n"
+        b"Home,North,300,1,2024-01\n"
+        b"Home,West,200,5,2024-03\n"
+    )
+    up = await client.post(
+        "/api/v1/datasource/upload",
+        files={"file": ("sales.csv", csv, "text/csv")},
+        data={"name": "Sales"},
+        headers=auth,
+    )
+    ds_id = up.json()["id"]
+
+    resp = await client.post(f"/api/v1/datasource/{ds_id}/explore", headers=auth)
+    assert resp.status_code == 200, resp.text
+    dash = resp.json()
+    assert dash["id"]
+    widgets = dash["widgets"]
+    assert len(widgets) >= 3  # KPI totals + breakdowns + count
+
+    charts = [w["chart"] for w in widgets]
+    assert all(c is not None and c["data"] for c in charts)  # every widget has real data
+    types = {c["chart_type"] for c in charts}
+    assert "kpi_card" in types  # SUM totals render as KPI cards
+
+    # The dashboard is persisted and listable.
+    listed = await client.get("/api/v1/dashboard/", headers=auth)
+    assert any(d["id"] == dash["id"] for d in listed.json())
+
+
+async def test_explore_rejects_unknown_source(client: AsyncClient, auth: dict):
+    resp = await client.post("/api/v1/datasource/does-not-exist/explore", headers=auth)
+    assert resp.status_code == 404
+
+
+def test_explore_composes_dialect_aware_quoting():
+    """MySQL needs backtick identifiers — double-quoting there reads as a string
+    literal and would break every composed query (sqlite/postgres keep the ANSI \")."""
+    from app.services import explore_service as ex
+
+    args = (["revenue"], ["region"], ["sale_date"])
+    mysql = ex._compose_queries("sales", *args, "mysql")
+    ansi = ex._compose_queries("sales", *args, "postgresql")
+
+    mysql_sql = " ".join(sql for _, sql in mysql)
+    ansi_sql = " ".join(sql for _, sql in ansi)
+
+    assert "`sales`" in mysql_sql and "`revenue`" in mysql_sql and "`say`" in mysql_sql
+    assert '"' not in mysql_sql  # no ANSI quotes leak into the MySQL SQL
+    assert '"sales"' in ansi_sql and '"revenue"' in ansi_sql
+    assert "`" not in ansi_sql  # no backticks leak into the ANSI SQL
+
+
 async def test_metrics_endpoint(client: AsyncClient):
     resp = await client.get("/metrics")
     assert resp.status_code == 200

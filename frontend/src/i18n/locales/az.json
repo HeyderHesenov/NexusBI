@@ -273,6 +273,9 @@
     "subtitle": "Öz SQL bazanı qoş və ya CSV/Excel yüklə, sonra təbii dillə sorğula.",
     "testConnectionTitle": "Bağlantını yoxla",
     "refreshDataTitle": "Datanı yenilə (faylı yenidən yüklə)",
+    "explore": "Kəşf et",
+    "exploreTitle": "Bu mənbədən avtomatik dashboard qur (AI yox, oflayn)",
+    "exploreDone": "Dashboard hazırdır — kəşfə bax.",
     "refreshed": "Data yeniləndi — {{rows}} sətir.",
     "refreshWarning": "Data yeniləndi, amma {{n}} sütun/cədvəl artıq yoxdur: {{items}}",
     "title": "Verilənlər mənbələri"

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { BarChart3, Database, Gauge, Plug, Plus, RefreshCw, ShieldHalf, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
+import { BarChart3, Database, Gauge, Loader2, Plug, Plus, RefreshCw, ShieldHalf, Sparkles, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
 import { useDatasourceStore } from '../store/datasourceStore'
+import { useDashboardStore } from '../store/dashboardStore'
 import { useQueryStore } from '../store/queryStore'
 import * as dsApi from '../api/datasource'
 import type { DataSourceSchema } from '../types'
@@ -33,9 +35,12 @@ function freshness(s: { last_refreshed_at?: string | null; freshness_sla_hours?:
 export function DataSourcesPage() {
   const { t } = useTranslation()
   const { sources, loading, load, test, remove, setSla, replaceData } = useDatasourceStore()
+  const explore = useDashboardStore((s) => s.explore)
   const { datasourceId, setDatasource } = useQueryStore()
+  const navigate = useNavigate()
   const refreshInputRef = useRef<HTMLInputElement | null>(null)
   const [refreshId, setRefreshId] = useState<string | null>(null)
+  const [exploringId, setExploringId] = useState<string | null>(null)
   const [connectOpen, setConnectOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [powerbiOpen, setPowerbiOpen] = useState(false)
@@ -72,6 +77,20 @@ export function DataSourcesPage() {
       }
     } catch {
       // the axios interceptor already surfaced the API error
+    }
+  }
+
+  // One-click Explore: build a deterministic dashboard from the source, then open it.
+  const onExplore = async (id: string) => {
+    setExploringId(id)
+    try {
+      await explore(id)
+      toast.success(t('dataSourcesPage.exploreDone'))
+      navigate('/dashboards')
+    } catch {
+      // the axios interceptor already surfaced the API error
+    } finally {
+      setExploringId(null)
     }
   }
 
@@ -170,6 +189,21 @@ export function DataSourcesPage() {
                   >
                     {datasourceId === s.id ? t('dataSourcesPage.active') : t('dataSourcesPage.select')}
                   </button>
+                  {s.db_type !== 'powerbi' && (
+                    <button
+                      onClick={() => onExplore(s.id)}
+                      disabled={exploringId === s.id}
+                      title={t('dataSourcesPage.exploreTitle')}
+                      className="inline-flex items-center gap-1 rounded-lg border border-accent/40 bg-accent-soft px-2.5 py-1.5 text-xs font-semibold text-accent transition hover:bg-accent hover:text-bg disabled:opacity-60"
+                    >
+                      {exploringId === s.id ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <Sparkles size={13} />
+                      )}
+                      {t('dataSourcesPage.explore')}
+                    </button>
+                  )}
                   <button
                     onClick={() => toggleSchema(s.id)}
                     title="Schema"

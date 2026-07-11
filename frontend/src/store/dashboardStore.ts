@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import toast from 'react-hot-toast'
 import type { Dashboard, DashboardFilterSpec, DashboardSummary, WidgetChart } from '../types'
 import * as dashApi from '../api/dashboard'
+import * as dsApi from '../api/datasource'
 
 interface LiveWidgetUpdate {
   widget_id: string
@@ -43,6 +44,7 @@ interface DashboardState {
   open: (id: string) => Promise<void>
   create: (name: string) => Promise<Dashboard>
   generate: (goal: string, datasourceId: string | null) => Promise<Dashboard>
+  explore: (datasourceId: string) => Promise<Dashboard>
   remove: (id: string) => Promise<void>
   addWidget: (dashboardId: string, queryLogId: string, title: string) => Promise<void>
   removeWidget: (dashboardId: string, widgetId: string) => Promise<void>
@@ -86,6 +88,16 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       list: [...s.list, { id: dash.id, name: dash.name, description: dash.description }],
       current: dash,
       // A fresh dashboard starts from its own (empty) filter, not the last one's.
+      globalFilter: dash.global_filter ?? null,
+    }))
+    return dash
+  },
+  explore: async (datasourceId) => {
+    // Deterministic X-ray dashboard from the source (no AI) — mirrors generate().
+    const dash = await dsApi.explore(datasourceId)
+    set((s) => ({
+      list: [...s.list, { id: dash.id, name: dash.name, description: dash.description }],
+      current: dash,
       globalFilter: dash.global_filter ?? null,
     }))
     return dash
