@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NexusBI — Təqdimat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ── NexusBI brand tokens (mirrors frontend/src/index.css) ── */
+  :root {
+    --bg: 23 22 21;
+    --surface: 31 30 29;
+    --surface-2: 41 39 37;
+    --line: 58 55 51;
+    --line-strong: 74 70 65;
+    --ink: 237 234 230;
+    --ink-soft: 168 163 155;
+    --ink-faint: 124 118 110;
+    --accent: 16 185 129;
+    --accent-soft: 20 45 38;
+  }
+  :root[data-theme="light"] {
+    --bg: 250 249 245;
+    --surface: 255 255 255;
+    --surface-2: 245 244 238;
+    --line: 229 227 220;
+    --line-strong: 214 211 202;
+    --ink: 31 30 29;
+    --ink-soft: 91 87 80;
+    --ink-faint: 140 135 126;
+    --accent: 14 159 110;
+    --accent-soft: 227 243 236;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: rgb(var(--bg));
+    color: rgb(var(--ink));
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  .serif { font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; }
+  .accent { color: rgb(var(--accent)); }
+  mark { background: rgb(var(--accent) / 0.16); color: rgb(var(--accent)); padding: 0 .18em; border-radius: 3px; }
+
+  /* ── Deck & slides ── */
+  .deck { position: relative; height: 100vh; width: 100vw; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: clamp(28px, 6vw, 96px);
+    opacity: 0; visibility: hidden;
+    transform: translateY(14px);
+    transition: opacity .5s ease, transform .5s ease, visibility .5s;
+    overflow-y: auto;
+  }
+  .slide.active { opacity: 1; visibility: visible; transform: none; }
+  .inner { width: 100%; max-width: 1080px; margin: 0 auto; }
+
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase;
+    color: rgb(var(--accent)); margin-bottom: 18px; display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 2px; background: rgb(var(--accent)); display: inline-block; }
+  h1 { font-size: clamp(40px, 8vw, 92px); line-height: 1.02; font-weight: 600; letter-spacing: -0.02em; }
+  h2 { font-size: clamp(28px, 5vw, 52px); line-height: 1.08; font-weight: 600; letter-spacing: -0.015em; margin-bottom: 20px; }
+  .lead { font-size: clamp(17px, 2.2vw, 22px); color: rgb(var(--ink-soft)); line-height: 1.55; max-width: 40ch; }
+  .muted { color: rgb(var(--ink-soft)); }
+  .faint { color: rgb(var(--ink-faint)); }
+
+  /* ── Cards & grids ── */
+  .grid { display: grid; gap: 14px; margin-top: 28px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 860px) { .g2, .g3, .g4 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: rgb(var(--surface));
+    border: 1px solid rgb(var(--line));
+    border-radius: 14px;
+    padding: 18px 20px;
+    transition: border-color .2s, transform .2s;
+  }
+  .card:hover { border-color: rgb(var(--accent) / 0.5); transform: translateY(-2px); }
+  .card .ct { font-size: 15.5px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: baseline; gap: 8px; }
+  .card .ct .dot { color: rgb(var(--accent)); font-size: 13px; }
+  .card .cb { font-size: 13.5px; line-height: 1.5; color: rgb(var(--ink-soft)); }
+  .card .route { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgb(var(--ink-faint)); background: rgb(var(--surface-2)); padding: 1px 6px; border-radius: 5px; margin-left: auto; }
+
+  ul.checks { margin-top: 24px; list-style: none; display: grid; gap: 12px; max-width: 52ch; }
+  ul.checks li { position: relative; padding-left: 30px; font-size: 16px; line-height: 1.5; color: rgb(var(--ink-soft)); }
+  ul.checks li::before {
+    content: "✓"; position: absolute; left: 0; top: 1px;
+    color: rgb(var(--accent)); font-weight: 700;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgb(var(--accent-soft)); display: grid; place-items: center; font-size: 12px;
+  }
+  ul.checks li b { color: rgb(var(--ink)); font-weight: 600; }
+
+  /* pipeline flow */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin-top: 34px; }
+  .flow .step {
+    flex: 1 1 0; min-width: 150px;
+    background: rgb(var(--surface)); border: 1px solid rgb(var(--line));
+    border-radius: 12px; padding: 16px;
+  }
+  .flow .step .n { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgb(var(--accent)); }
+  .flow .step .t { font-weight: 600; font-size: 15px; margin: 6px 0 4px; }
+  .flow .step .d { font-size: 12.5px; color: rgb(var(--ink-soft)); line-height: 1.45; }
+  .flow .arr { align-self: center; color: rgb(var(--accent)); font-size: 20px; }
+  @media (max-width: 860px) { .flow .arr { display: none; } }
+
+  .tag { display: inline-block; font-size: 12px; font-weight: 600; color: rgb(var(--accent));
+    background: rgb(var(--accent-soft)); border: 1px solid rgb(var(--accent) / 0.35); padding: 4px 11px; border-radius: 999px; }
+  .tagrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+
+  .stack-col h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: rgb(var(--accent)); margin-bottom: 12px; }
+  .stack-col p { font-size: 13.5px; color: rgb(var(--ink-soft)); line-height: 1.7; }
+
+  /* ── Chrome: progress, counter, nav, theme ── */
+  .progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: rgb(var(--line)); z-index: 30; }
+  .progress .bar { height: 100%; width: 0; background: rgb(var(--accent)); transition: width .45s ease; }
+  .counter { position: fixed; bottom: 22px; right: 26px; z-index: 30; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: rgb(var(--ink-faint)); }
+  .counter b { color: rgb(var(--ink)); }
+  .nav { position: fixed; bottom: 18px; left: 26px; z-index: 30; display: flex; gap: 8px; }
+  .nav button, .theme {
+    width: 38px; height: 38px; border-radius: 10px; cursor: pointer;
+    background: rgb(var(--surface)); border: 1px solid rgb(var(--line));
+    color: rgb(var(--ink)); font-size: 16px; display: grid; place-items: center;
+    transition: border-color .2s, background .2s;
+  }
+  .nav button:hover, .theme:hover { border-color: rgb(var(--accent) / 0.6); }
+  .nav button:disabled { opacity: .35; cursor: default; }
+  .theme { position: fixed; top: 20px; right: 26px; z-index: 30; }
+  .hint { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 20; font-size: 11.5px; color: rgb(var(--ink-faint)); }
+  @media (max-width: 640px) { .hint { display: none; } }
+
+  .brandmark { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 40px; }
+  .brandmark .logo { width: 44px; height: 44px; border-radius: 12px; background: rgb(var(--accent)); display: grid; place-items: center; color: rgb(var(--bg)); font-weight: 700; font-size: 22px; font-family: 'Source Serif 4', serif; }
+  .brandmark .nm { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .brandmark .nm span { color: rgb(var(--ink-faint)); font-weight: 400; }
+
+  .kpirow { display: flex; flex-wrap: wrap; gap: 30px; margin-top: 34px; }
+  .kpirow .k .v { font-family: 'Source Serif 4', serif; font-size: 34px; font-weight: 600; color: rgb(var(--accent)); }
+  .kpirow .k .l { font-size: 13px; color: rgb(var(--ink-soft)); margin-top: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .slide { transition: opacity .01ms, visibility .01ms; transform: none; }
+    .progress .bar { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<button class="theme" id="theme" title="İşıq / qaranlıq">◐</button>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · Title -->
+  <section class="slide">
+    <div class="inner">
+      <div class="brandmark">
+        <div class="logo">N</div>
+        <div class="nm">NexusBI</div>
+      </div>
+      <div class="eyebrow">AI ilə işləyən BI platforması</div>
+      <h1 class="serif">Sualdan<br /><span class="accent">Dashboard-a.</span></h1>
+      <p class="lead" style="margin-top:26px">Sualı adi dildə yaz — NexusBI təhlükəsiz SQL qurur, işlədir, ən uyğun qrafiki seçir və biznes insight-ı qaytarır.</p>
+      <div class="tagrow" style="margin-top:34px">
+        <span class="tag">Oflayn / demo-first</span>
+        <span class="tag">Deterministik</span>
+        <span class="tag">Təhlükəsiz (RLS)</span>
+        <span class="tag">az · en · ru · tr</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · What is it -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">NexusBI nədir?</div>
+      <h2 class="serif">SQL yazmadan öz datanla danış.</h2>
+      <p class="lead">Natural-language → dashboard BI platforması. Adi dildə yazdığın sual dörd addımda cavaba çevrilir — heç bir texniki bilik tələb olunmadan.</p>
+      <div class="flow">
+        <div class="step"><div class="n">01</div><div class="t">Adi dildə sual</div><div class="d">“Aylıq gəlir trendi necədir?”</div></div>
+        <div class="arr">→</div>
+        <div class="step"><div class="n">02</div><div class="t">Təhlükəsiz SQL</div><div class="d">SELECT-only guard + sətir-səviyyə RLS</div></div>
+        <div class="arr">→</div>
+        <div class="step"><div class="n">03</div><div class="t">Ən uyğun qrafik</div><div class="d">Data tipinə görə avtomatik seçim</div></div>
+        <div class="arr">→</div>
+        <div class="step"><div class="n">04</div><div class="t">Biznes insight</div><div class="d">Tapıntı + trend + tövsiyə mətni</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · Problem -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Hansı problemi həll edir?</div>
+      <h2 class="serif">Data var — cavab isə analitikin növbəsində gözləyir.</h2>
+      <ul class="checks">
+        <li><b>Darboğaz:</b> hər sual üçün biznes komandası SQL bilən analitikə müraciət etməli olur.</li>
+        <li><b>Ləngimə:</b> sadə bir “niyə düşdü?” sualı günlərlə gözləyir.</li>
+        <li><b>Alət çoxluğu:</b> sorğu, qrafik, proqnoz, hesabat — hamısı ayrı-ayrı yerlərdə.</li>
+      </ul>
+      <p class="lead" style="margin-top:28px">NexusBI bunu <mark>self-serve</mark> edir: sualı yazan şəxs cavabı, qrafiki və insight-ı dərhal özü alır.</p>
+    </div>
+  </section>
+
+  <!-- 4 · Who is it for -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Kimlər üçün?</div>
+      <h2 class="serif">SQL bilməyəndən data komandasına qədər.</h2>
+      <div class="grid g2">
+        <div class="card"><div class="ct"><span class="dot">◆</span>Analitiklər</div><div class="cb">Sürətli kəşfiyyat + xam SQL rejimi; təkrar işi avtomatlaşdır.</div></div>
+        <div class="card"><div class="ct"><span class="dot">◆</span>Menecer & rəhbərlər</div><div class="cb">SQL bilmədən öz suallarına dərhal cavab; dashboard və brif.</div></div>
+        <div class="card"><div class="ct"><span class="dot">◆</span>SQL power-user-lər</div><div class="cb">CodeMirror redaktoru, schema autocomplete, AI SQL-ini redaktə et.</div></div>
+        <div class="card"><div class="ct"><span class="dot">◆</span>Komanda & enterprise</div><div class="cb">RBAC, sətir-səviyyə təhlükəsizlik, embed və white-label.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · Advantages -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Üstünlüklər</div>
+      <h2 class="serif">Niyə NexusBI?</h2>
+      <div class="grid g4">
+        <div class="card"><div class="ct">Oflayn / demo-first</div><div class="cb">AI açarı olmadan da işləyir — deterministik rule-based mühərrik + seed demo.</div></div>
+        <div class="card"><div class="ct">Deterministik fallback</div><div class="cb">Text2SQL, RAG, forecast, anomaliya — hamısının AI-siz ehtiyat yolu var.</div></div>
+        <div class="card"><div class="ct">Etibar siqnalları</div><div class="cb">Hər cavabda TrustBadge (əminlik + mənşə), metrik sertifikasiyası, lineage.</div></div>
+        <div class="card"><div class="ct">Statistik nüvə</div><div class="cb">scipy / numpy — səbəb analizi, Monte Carlo, metrik roll-up (LLM yox).</div></div>
+        <div class="card"><div class="ct">RAG grounding</div><div class="cb">Portativ vektor store; sənin schema-na uyğun, daha dəqiq SQL.</div></div>
+        <div class="card"><div class="ct">Təhlükəsizlik</div><div class="cb">SELECT-only guard, fail-closed RLS, şifrələnmiş sirlər, imzalı embed.</div></div>
+        <div class="card"><div class="ct">Çoxdilli</div><div class="cb">Azərbaycan, ingilis, rus, türk — interfeys və insight-lar.</div></div>
+        <div class="card"><div class="ct">Self-host + Copilot</div><div class="cb">docker-compose ilə öz serverində; ~29 alətli agentic Copilot.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · Tech stack -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Texnologiya</div>
+      <h2 class="serif">Müasir, açıq və genişlənən stack.</h2>
+      <div class="grid g3">
+        <div class="stack-col">
+          <h3>Backend</h3>
+          <p>FastAPI (async)<br/>SQLAlchemy 2.0 · Pydantic v2<br/>Alembic miqrasiyalar<br/>sqlglot (SQL guard / RLS)<br/>scipy · scikit-learn<br/>Redis (opsional)</p>
+        </div>
+        <div class="stack-col">
+          <h3>Frontend</h3>
+          <p>React 18 + TypeScript<br/>Vite · TailwindCSS<br/>Recharts (qrafiklər)<br/>Zustand (state)<br/>react-i18next (4 dil)<br/>CodeMirror (SQL)</p>
+        </div>
+        <div class="stack-col">
+          <h3>Data mənbələri</h3>
+          <p>PostgreSQL · MySQL<br/>SQLite<br/>CSV / Excel yükləmə<br/>Power BI (NL → DAX)<br/>Demo: seed SQLite</p>
+        </div>
+      </div>
+      <div class="tagrow"><span class="tag">WebSocket canlı</span><span class="tag">Prometheus metrikləri</span><span class="tag">JWT + refresh rotasiya</span><span class="tag">PDF / Excel çatdırılma</span></div>
+    </div>
+  </section>
+
+  <!-- 7 · Global tools -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Hər səhifədə</div>
+      <h2 class="serif">Qlobal alətlər.</h2>
+      <div class="grid g2">
+        <div class="card"><div class="ct"><span class="dot">⌘K</span>Semantik axtarış</div><div class="cb">Dashboard, metrik və hesabatları məna üzrə tap — bir qısayolla.</div></div>
+        <div class="card"><div class="ct"><span class="dot">✦</span>Copilot köməkçi</div><div class="cb">Agentic assistent: plan qur → təsdiqlə → icra et (~29 platforma aləti).</div></div>
+        <div class="card"><div class="ct"><span class="dot">◉</span>Bildiriş mərkəzi</div><div class="cb">Alert breach-ləri, smart-insight-lar və “Səhər brifi” bir yerdə.</div></div>
+        <div class="card"><div class="ct"><span class="dot">◐</span>Tema & dil</div><div class="cb">İşıq/qaranlıq tema və 4 dil arasında ani keçid.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · Section: Analytics -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Bölmə 01 — Analiz</div>
+      <h2 class="serif">Soruş, kəşf et, proqnozlaşdır.</h2>
+      <div class="grid g3">
+        <div class="card"><div class="ct">Soruş<span class="route">/</span></div><div class="cb">Adi dildə sual; çox-turlu söhbət (davam sualları); SQL power-user rejimi + AI SQL-ini redaktə; TrustBadge; insight + stat-chip-lər; nəticəni dashboard-a saxla və ya qərara çevir.</div></div>
+        <div class="card"><div class="ct">Tarixçə<span class="route">/history</span></div><div class="cb">Bütün sorğuların jurnalı: axtar, qrafik tipinə görə filtrlə, bir kliklə yenidən işlət, sil.</div></div>
+        <div class="card"><div class="ct">AutoML<span class="route">/automl</span></div><div class="cb">Cədvəl + hədəf seç → Linear/Logistic vs Random Forest avtomatik müqayisə; R²/Accuracy/F1, feature importance, CV, confusion/residual; per-prediction “əsas drayverlər”; proqnoz ver.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · Section: Data -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Bölmə 02 — Məlumat</div>
+      <h2 class="serif">Mənbələr, məna qatı və keyfiyyət.</h2>
+      <div class="grid g3">
+        <div class="card"><div class="ct">Mənbələr<span class="route">/sources</span></div><div class="cb">Postgres/MySQL/SQLite qoşul, CSV/Excel yüklə, Power BI. Explore (oflayn avto-dashboard), Schema, Profil (null%/distinct/min-max), RLS, yerində Refresh, freshness SLA.</div></div>
+        <div class="card"><div class="ct">Metriklər<span class="route">/metrics</span></div><div class="cb">Biznes metriklərini bir dəfə təyin et (ad, SQL ifadəsi, sinonimlər); AI onları ardıcıl işlədir. Certify / verified nişanı.</div></div>
+        <div class="card"><div class="ct">Biliklər qrafı<span class="route">/graph</span></div><div class="cb">Bütün asset-lərin interaktiv qrafı (mənbə→cədvəl→metrik→widget→dashboard→qərar). Impact rejimi: seçilən node-un bütün downstream təsirləri.</div></div>
+        <div class="card"><div class="ct">Data müqavilələri<span class="route">/contracts</span></div><div class="cb">Cədvəllər üçün keyfiyyət zəmanətləri: Not-null, Unique, Range, Schema, Freshness. Yoxla → Pass/Fail.</div></div>
+        <div class="card"><div class="ct">Tələblər<span class="route">/requirements</span></div><div class="cb">BRD/user-story yüklə → ölçüləbilən KPI-ları çıxar → onlardan tam dashboard qur.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · Section: Visualization -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Bölmə 03 — Vizuallaşdırma</div>
+      <h2 class="serif">Canlı, paylaşıla bilən dashboard-lar.</h2>
+      <div class="grid g2">
+        <div class="card"><div class="ct">Dashboard-lar<span class="route">/dashboards</span></div><div class="cb">AI ilə qur, Explore, widget əlavə et/sürüklə, Canlı rejim (real-time), Zaman maşını (snapshot tarixçəsi), Hekayə (slayd təqdimat), Komanda (canlı kursor + chat), Paylaş/Embed (white-label), qlobal filtr + cross-filter.</div></div>
+        <div class="card"><div class="ct">Hesabatlar<span class="route">/reports</span></div><div class="cb">Saxlanmış sorğular: bir kliklə yenidən işlət, avtomatik cədvəl (saatlıq/günlük/həftəlik), alert (statik hədd və ya z-score anomaliya), PDF/Excel çatdırılma (email).</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 · Section: Planning -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Bölmə 04 — Planlama</div>
+      <h2 class="serif">İnsight-dan qərara və ssenariyə.</h2>
+      <div class="grid g4">
+        <div class="card"><div class="ct">Qərarlar<span class="route">/decisions</span></div><div class="cb">Decision Loop: insight→hərəkət→nəticə. Baseline vs realized vs counterfactual; qərar dəqiqliyi (kalibrasiya).</div></div>
+        <div class="card"><div class="ct">Hədəflər<span class="route">/targets</span></div><div class="cb">KPI hədəfləri + pacing: attainment %, gözlənilən sürət (on-track / behind).</div></div>
+        <div class="card"><div class="ct">Digital Twin<span class="route">/twin</span></div><div class="cb">Metrik ağacı simulyatoru: Simulyasiya (±% levers), Goal-seek, Müqayisə, Monte Carlo (P10/median/P90).</div></div>
+        <div class="card"><div class="ct">BA Studio<span class="route">/ba-studio</span></div><div class="cb">SWOT, Porter 5 Qüvvə, BCG matris, Proses xəritəsi (BPMN) — AI + deterministik fallback.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 · Section: Administration -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Bölmə 05 — İdarəetmə</div>
+      <h2 class="serif">Komanda, brend və planlar.</h2>
+      <div class="grid g4">
+        <div class="card"><div class="ct">Komanda<span class="route">/workspaces</span></div><div class="cb">Workspace-lər + RBAC (owner/editor/viewer), audit log.</div></div>
+        <div class="card"><div class="ct">Brendinq<span class="route">/branding</span></div><div class="cb">Embed dashboard-lar üçün white-label (ad, rəng, loqo) + AA-kontrast yoxlaması.</div></div>
+        <div class="card"><div class="ct">Planlar<span class="route">/pricing</span></div><div class="cb">Abunə planları (Free/Pro/Max/Max+), aylıq AI-sorğu kvotası, istifadə.</div></div>
+        <div class="card"><div class="ct">Bildirişlər<span class="route">/notifications</span></div><div class="cb">Bildiriş mərkəzi + “Səhər brifi” — dəyişiklikləri bir icmalda toplayır.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 · Analysis panels -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">İstənilən nəticə üzərində</div>
+      <h2 class="serif">Analiz panelləri.</h2>
+      <p class="lead">Hər sorğu nəticəsinə tək kliklə dərinləşən analizlər qoşulur — ayrı səhifə yox.</p>
+      <div class="grid g3">
+        <div class="card"><div class="ct">Qrafik & Pivot</div><div class="cb">Sütun/xətt/sahə/dairə/səpələnmə/cədvəl/pivot/KPI + CSV, zoom, drill-down. Client-side cross-tab pivot explorer.</div></div>
+        <div class="card"><div class="ct">Proqnoz & Ssenari</div><div class="cb">Forecast (etibar intervalı ilə) + Ssenari: goal-seek, Monte Carlo, what-if % düzəlişi.</div></div>
+        <div class="card"><div class="ct">Diaqnostika</div><div class="cb">Anomaliyalar (IsolationForest), Səbəb analizi (Pearson + BH-FDR), Etibarlılıq yoxlaması, Lineage.</div></div>
+        <div class="card"><div class="ct">“Niyə?”</div><div class="cb">Çoxsəviyyəli root-cause ağacı — drayverlər + töhfə %; AI oflayn olanda deterministik fallback.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 · Security -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Təhlükəsizlik & etibar</div>
+      <h2 class="serif">Fail-closed dizayn.</h2>
+      <ul class="checks">
+        <li><b>SELECT-only SQL guard</b> — DML/DDL/çox-ifadəli sorğular DB-yə çatmadan rədd olunur.</li>
+        <li><b>SQL-səviyyə RLS</b> — aqreqasiyadan əvvəl tətbiq olunur, cəm/qrup total-larını sızdırmır.</li>
+        <li><b>User-scoped cache</b> — nəticə keşi istifadəçiyə bağlıdır, RLS sızması yoxdur.</li>
+        <li><b>Şifrələnmə & rotasiya</b> — Fernet ilə sirlər, SSRF guard, refresh-token reuse aşkarı.</li>
+        <li><b>Provenance</b> — TrustBadge (əminlik/mənşə), metrik sertifikasiyası, lineage, freshness SLA.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 15 · Close / demo -->
+  <section class="slide">
+    <div class="inner">
+      <div class="eyebrow">Yekun</div>
+      <h2 class="serif">Sualını yaz — qalanını<br/><span class="accent">NexusBI edir.</span></h2>
+      <div class="kpirow">
+        <div class="k"><div class="v">17</div><div class="l">funksional bölmə</div></div>
+        <div class="k"><div class="v">4</div><div class="l">dil (az/en/ru/tr)</div></div>
+        <div class="k"><div class="v">5</div><div class="l">data mənbəyi tipi</div></div>
+        <div class="k"><div class="v">∞</div><div class="l">demo rejimində sorğu</div></div>
+      </div>
+      <div class="card" style="margin-top:36px; max-width:440px">
+        <div class="ct"><span class="dot">▶</span>Demo ilə yoxla</div>
+        <div class="cb" style="font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.9">
+          URL &nbsp;·&nbsp; <span class="accent">http://localhost:5173</span><br/>
+          Email &nbsp;·&nbsp; demo@nexusbi.io<br/>
+          Şifrə &nbsp;·&nbsp; demo1234
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prev" title="Geri (←)">‹</button>
+  <button id="next" title="İrəli (→)">›</button>
+</div>
+<div class="counter"><b id="cur">01</b> / <span id="total">15</span></div>
+<div class="hint">← → düymələri ilə naviqasiya · <b>F</b> tam ekran</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const bar = document.getElementById('bar');
+  const cur = document.getElementById('cur');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+  document.getElementById('total').textContent = String(slides.length).padStart(2, '0');
+  let i = 0;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function render() {
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+    cur.textContent = pad(i + 1);
+    prevBtn.disabled = i === 0;
+    nextBtn.disabled = i === slides.length - 1;
+    if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+  }
+  function go(n) { i = Math.max(0, Math.min(slides.length - 1, n)); render(); }
+
+  // Blur after click so a following Space press doesn't re-activate the button
+  // AND trigger the global Space→next handler (double-advance).
+  nextBtn.addEventListener('click', (e) => { go(i + 1); e.currentTarget.blur(); });
+  prevBtn.addEventListener('click', (e) => { go(i - 1); e.currentTarget.blur(); });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(i - 1); }
+    else if (e.key === 'Home') { go(0); }
+    else if (e.key === 'End') { go(slides.length - 1); }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    }
+  });
+
+  // Theme toggle (deck defaults to dark; remembers within the session).
+  const themeBtn = document.getElementById('theme');
+  themeBtn.addEventListener('click', (e) => {
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    document.documentElement.setAttribute('data-theme', light ? 'dark' : 'light');
+    e.currentTarget.blur();
+  });
+
+  // Deep-link: open on the hash slide if present, and follow later hash edits.
+  // render() uses replaceState (which never fires hashchange), so no loop.
+  window.addEventListener('hashchange', () => {
+    const n = parseInt(location.hash.slice(1), 10);
+    if (Number.isFinite(n) && n - 1 !== i) go(n - 1);
+  });
+  const start = parseInt((location.hash || '').slice(1), 10);
+  go(Number.isFinite(start) && start >= 1 ? start - 1 : 0);
+</script>
+</body>
+</html>
