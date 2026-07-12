@@ -21,7 +21,13 @@ from app.models.requirement import RequirementDoc
 from app.models.report_subscription import ReportSubscription
 from app.models.saved_query import SavedQuery
 from app.models.user import User
-from app.models.workspace import AuditLog, RLSRule, Workspace, WorkspaceMember
+from app.models.workspace import (
+    AuditLog,
+    RLSRule,
+    Workspace,
+    WorkspaceMember,
+    WorkspaceResource,
+)
 
 __all__ = [
     "Base",
@@ -49,6 +55,7 @@ __all__ = [
     "BrandConfig",
     "Workspace",
     "WorkspaceMember",
+    "WorkspaceResource",
     "RLSRule",
     "AuditLog",
     "DataContract",

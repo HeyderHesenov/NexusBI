@@ -98,6 +98,9 @@ class DashboardResponse(BaseModel):
     global_filter: dict[str, Any] | None = None
     live_enabled: bool = False
     live_interval_seconds: int = 8
+    # False when the viewer is a workspace member seeing a SHARED dashboard
+    # (read-only: the client hides edit/share/live controls).
+    owned: bool = True
     widgets: list[WidgetResponse] = []
 
     model_config = {"from_attributes": True}

@@ -45,8 +45,9 @@ def _profile_rows(columns: list[str], rows: list[dict[str, Any]]) -> list[dict[s
 async def profile(
     db, user_id: str, datasource_id: str, table: str, cache: CacheService
 ) -> dict[str, Any]:
-    """Profile a table of a user-owned datasource (sample of up to 1000 rows)."""
-    ds: DataSource = await datasource_service.get_datasource(db, user_id, datasource_id)
+    """Profile a table of an owned or shared-to-me datasource (≤1000-row sample)."""
+    # Read-only: owner OR a workspace member the source is shared with.
+    ds: DataSource = await datasource_service.get_datasource_for_user(db, user_id, datasource_id)
     if ds.db_type == DBType.powerbi:
         raise SchemaNotFoundError("Power BI mənbələri profilləşdirilmir.")
 

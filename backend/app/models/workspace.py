@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import JSON, ForeignKey, String
+from sqlalchemy import JSON, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -61,6 +61,34 @@ class RLSRule(Base, TimestampMixin):
     )
     column: Mapped[str] = mapped_column(String(255), nullable=False)
     allowed_value: Mapped[str] = mapped_column(String(500), nullable=False)
+
+
+class WorkspaceResource(Base, TimestampMixin):
+    """A dashboard or datasource shared to a workspace (all members can see it).
+
+    Additive: the shared resource stays owned by ``shared_by`` — this is a grant,
+    not a move. ``permission`` is reserved for a future editor-edit path; v1
+    renders shared dashboards read-only and grants query-only access to shared
+    datasources.
+    """
+
+    __tablename__ = "workspace_resources"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "resource_type", "resource_id", name="uq_ws_resource"
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    workspace_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    resource_type: Mapped[str] = mapped_column(String(20), nullable=False)  # dashboard | datasource
+    resource_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    shared_by: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    permission: Mapped[str] = mapped_column(String(10), nullable=False, default="view")
 
 
 class AuditLog(Base, TimestampMixin):

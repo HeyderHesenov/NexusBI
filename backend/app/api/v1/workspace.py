@@ -3,18 +3,22 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Response, status
 
+from app.core.exceptions import SchemaNotFoundError
 from app.dependencies import CurrentUser, DbDep
 from app.schemas.workspace import (
     AuditEntry,
     MemberAdd,
     MemberResponse,
     MemberRoleUpdate,
+    ResourceShare,
+    SharedResourceResponse,
     TransferOwnership,
     WorkspaceCreate,
     WorkspaceRename,
     WorkspaceResponse,
 )
 from app.services import audit_service
+from app.services import resource_share_service
 from app.services import workspace_service as svc
 
 router = APIRouter(tags=["workspace"])
@@ -141,6 +145,57 @@ async def delete_workspace(workspace_id: str, user: CurrentUser, db: DbDep) -> R
     await svc.delete(db, workspace_id, user.id)
     await audit_service.log(
         db, user.id, "workspace.delete", entity="workspace", entity_id=workspace_id
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ─── Shared resources (dashboards + datasources shared to the team) ───
+
+@router.post(
+    "/workspaces/{workspace_id}/resources",
+    response_model=SharedResourceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def share_resource(
+    workspace_id: str, payload: ResourceShare, user: CurrentUser, db: DbDep
+) -> SharedResourceResponse:
+    await resource_share_service.share(
+        db, workspace_id, user.id, payload.resource_type, payload.resource_id, payload.permission
+    )
+    await audit_service.log(
+        db, user.id, "workspace.share", entity="workspace", entity_id=workspace_id,
+        meta={"type": payload.resource_type, "resource": payload.resource_id},
+    )
+    shared = await resource_share_service.list_shared(
+        db, workspace_id, user.id, payload.resource_type
+    )
+    row = next((s for s in shared if s["resource_id"] == payload.resource_id), None)
+    if row is None:  # pragma: no cover — just shared, so it exists
+        raise SchemaNotFoundError("Paylaşım tapılmadı.")
+    return SharedResourceResponse(**row)
+
+
+@router.get(
+    "/workspaces/{workspace_id}/resources", response_model=list[SharedResourceResponse]
+)
+async def list_resources(
+    workspace_id: str, user: CurrentUser, db: DbDep, type: str | None = None
+) -> list[SharedResourceResponse]:
+    shared = await resource_share_service.list_shared(db, workspace_id, user.id, type)
+    return [SharedResourceResponse(**s) for s in shared]
+
+
+@router.delete(
+    "/workspaces/{workspace_id}/resources/{resource_type}/{resource_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def unshare_resource(
+    workspace_id: str, resource_type: str, resource_id: str, user: CurrentUser, db: DbDep
+) -> Response:
+    await resource_share_service.unshare(db, workspace_id, user.id, resource_type, resource_id)
+    await audit_service.log(
+        db, user.id, "workspace.unshare", entity="workspace", entity_id=workspace_id,
+        meta={"type": resource_type, "resource": resource_id},
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

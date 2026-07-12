@@ -129,7 +129,8 @@ async def list_all(user: CurrentUser, db: DbDep) -> list[DataSourceResponse]:
 async def schema(
     datasource_id: str, user: CurrentUser, db: DbDep, cache: CacheDep
 ) -> dict[str, Any]:
-    ds = await svc.get_datasource(db, user.id, datasource_id)
+    # Read: owner OR a member the source is shared with (so they can author queries).
+    ds = await svc.get_datasource_for_user(db, user.id, datasource_id)
     return await svc.get_schema_cached(ds, cache)
 
 
@@ -165,8 +166,12 @@ async def delete(datasource_id: str, user: CurrentUser, db: DbDep) -> Response:
     from app.core.security import decrypt_secret
     from app.db import engine_pool
 
+    from app.services import resource_share_service
+
     ds = await svc.get_datasource(db, user.id, datasource_id)
     await engine_pool.evict(decrypt_secret(ds.connection_string_encrypted))
+    # Drop any workspace shares of this source so no dangling share is left.
+    await resource_share_service.purge_for_resource(db, "datasource", datasource_id)
     await db.delete(ds)
     await db.flush()
     await audit_service.log(db, user.id, "datasource.delete", entity="datasource", entity_id=datasource_id)

@@ -1,15 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Crown, History, LogOut, Pencil, Plus, Shield, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import {
+  Check, Crown, Database, History, LayoutDashboard, LogOut, Pencil, Plus, Share2, Shield,
+  Trash2, UserPlus, Users, X,
+} from 'lucide-react'
 import { useWorkspaceStore } from '../store/workspaceStore'
+import { useAuthStore } from '../store/authStore'
 import { Field, FIELD, Select } from '../components/ui/form'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Avatar } from '../components/ui/Avatar'
 import { useFormatDate } from '../hooks/useFormatDate'
+import { listDashboards } from '../api/dashboard'
+import * as datasourceApi from '../api/datasource'
 
 const ROLES = ['viewer', 'editor', 'owner']
 // Owner is assigned only through the transfer flow (which also demotes the old owner).
 const MEMBER_ROLES = ['viewer', 'editor']
+
+interface OwnResource {
+  value: string // "dashboard:<id>" | "datasource:<id>"
+  label: string
+}
 
 export function WorkspacePage() {
   const { t } = useTranslation()
@@ -19,9 +31,10 @@ export function WorkspacePage() {
   const fmtAudit = (ts: string) =>
     fmtDate(/[zZ]|[+-]\d{2}:?\d{2}$/.test(ts) ? ts : `${ts}Z`, { mode: 'short' })
   const {
-    workspaces, members, audit, load, create, remove, loadMembers, addMember, removeMember,
-    rename, changeRole, transfer, leave, loadAudit,
+    workspaces, members, shared, audit, load, create, remove, loadMembers, addMember, removeMember,
+    rename, changeRole, transfer, leave, loadShared, share, unshare, loadAudit,
   } = useWorkspaceStore()
+  const userId = useAuthStore((s) => s.user?.id)
   const [name, setName] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
   const [email, setEmail] = useState('')
@@ -33,16 +46,41 @@ export function WorkspacePage() {
   const [transferTarget, setTransferTarget] = useState<
     { wsId: string; memberId: string; email: string } | null
   >(null)
+  // The current user's own dashboards + datasources — the pool a share picks from.
+  const [ownResources, setOwnResources] = useState<OwnResource[]>([])
+  const [sharePick, setSharePick] = useState('')
 
   useEffect(() => {
     load().catch(() => undefined)
     loadAudit().catch(() => undefined)
-  }, [load, loadAudit])
+    Promise.all([listDashboards().catch(() => []), datasourceApi.list().catch(() => [])])
+      .then(([dashboards, sources]) =>
+        setOwnResources([
+          ...dashboards.map((d) => ({
+            value: `dashboard:${d.id}`,
+            label: `${t('workspacePage.shareDashboard')}: ${d.name}`,
+          })),
+          ...sources.map((s) => ({
+            value: `datasource:${s.id}`,
+            label: `${t('workspacePage.shareDatasource')}: ${s.name}`,
+          })),
+        ]),
+      )
+      .catch(() => undefined)
+  }, [load, loadAudit, t])
 
   const toggle = (id: string) => {
     if (openId === id) return setOpenId(null)
     setOpenId(id)
     loadMembers(id).catch(() => undefined)
+    loadShared(id).catch(() => undefined)
+  }
+
+  const submitShare = (wsId: string) => {
+    if (!sharePick) return
+    const [type, id] = sharePick.split(':')
+    share(wsId, type as 'dashboard' | 'datasource', id).catch(() => undefined)
+    setSharePick('')
   }
 
   const startRename = (id: string, current: string) => {
@@ -275,6 +313,77 @@ export function WorkspacePage() {
                       </form>
                     </>
                   )}
+
+                  <div className="mt-3 border-t border-line pt-3">
+                    <p className="eyebrow mb-2 flex items-center gap-1.5">
+                      <Share2 size={12} /> {t('workspacePage.sharedResources')}
+                    </p>
+                    {(shared[w.id] ?? []).length === 0 ? (
+                      <p className="text-xs text-ink-faint">{t('workspacePage.noSharedResources')}</p>
+                    ) : (
+                      <ul className="space-y-1.5">
+                        {(shared[w.id] ?? []).map((s) => {
+                          const canUnshare = w.role === 'owner' || s.shared_by === userId
+                          return (
+                            <li key={s.id} className="flex items-center justify-between gap-2 text-sm">
+                              <span className="flex min-w-0 items-center gap-2">
+                                {s.resource_type === 'dashboard' ? (
+                                  <LayoutDashboard size={14} className="shrink-0 text-accent" />
+                                ) : (
+                                  <Database size={14} className="shrink-0 text-accent" />
+                                )}
+                                {s.resource_type === 'dashboard' ? (
+                                  <Link
+                                    to={`/dashboards?open=${s.resource_id}`}
+                                    className="truncate text-ink transition hover:text-accent hover:underline"
+                                  >
+                                    {s.name}
+                                  </Link>
+                                ) : (
+                                  <span className="truncate text-ink">{s.name}</span>
+                                )}
+                              </span>
+                              {canUnshare && (
+                                <button
+                                  onClick={() => unshare(w.id, s.resource_type, s.resource_id)}
+                                  title={t('workspacePage.unshare')}
+                                  aria-label={t('workspacePage.unshare')}
+                                  className="rounded-md border border-line p-1 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                    {(w.role === 'owner' || w.role === 'editor') && ownResources.length > 0 && (
+                      <div className="mt-2 flex flex-wrap items-end gap-2">
+                        <div className="min-w-56 flex-1">
+                          <Field id={`ws-share-${w.id}`} label={t('workspacePage.shareToWorkspace')}>
+                            <Select
+                              id={`ws-share-${w.id}`}
+                              value={sharePick}
+                              onChange={(e) => setSharePick(e.target.value)}
+                              options={[
+                                { value: '', label: t('workspacePage.pickResource') },
+                                ...ownResources,
+                              ]}
+                            />
+                          </Field>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => submitShare(w.id)}
+                          disabled={!sharePick}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3.5 py-2 text-sm font-semibold text-accent transition hover:border-accent disabled:opacity-50"
+                        >
+                          <Share2 size={14} /> {t('workspacePage.shareBtn')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </li>

@@ -48,6 +48,26 @@ class TransferOwnership(BaseModel):
     member_id: str = Field(min_length=1)
 
 
+class ResourceShare(BaseModel):
+    resource_type: Literal["dashboard", "datasource"]
+    resource_id: str = Field(min_length=1, max_length=36)
+    # Reserved for a future editor-edit path; v1 renders shared dashboards read-only.
+    permission: Literal["view", "edit"] = "view"
+
+
+class SharedResourceResponse(BaseModel):
+    id: str
+    resource_type: str
+    resource_id: str
+    name: str
+    permission: str
+    shared_by: str
+    owner_id: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class RLSRuleCreate(BaseModel):
     member_email: str = Field(min_length=3, max_length=255)
     column: str = Field(min_length=1, max_length=255)

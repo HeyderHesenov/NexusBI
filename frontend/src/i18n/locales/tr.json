@@ -207,7 +207,8 @@
     "story": "Hikâye",
     "team": "Ekip",
     "widget": "Widget",
-    "widgetAdded": "Widget eklendi."
+    "widgetAdded": "Widget eklendi.",
+    "sharedReadOnly": "Salt okunur (paylaşılan)"
   },
   "dataContractsPage": {
     "cancel": "İptal",
@@ -853,6 +854,8 @@
     "nameLabel": "Ad",
     "newWorkspace": "Yeni çalışma alanı",
     "newWorkspacePlaceholder": "Yeni çalışma alanı adı",
+    "noSharedResources": "Henüz paylaşım yok",
+    "pickResource": "Bir kaynak seç…",
     "rename": "Yeniden adlandır",
     "renamePlaceholder": "Yeni ad",
     "renamed": "Çalışma alanı yeniden adlandırıldı.",
@@ -862,11 +865,19 @@
     "role_owner": "Sahip",
     "role_viewer": "İzleyici",
     "save": "Kaydet",
+    "shareBtn": "Paylaş",
+    "shareDashboard": "Pano",
+    "shareDatasource": "Veri kaynağı",
+    "shareToWorkspace": "Çalışma alanına paylaş",
+    "shared": "Ekiple paylaşıldı.",
+    "sharedResources": "Paylaşılan kaynaklar",
     "subtitle": "Ekip üyelerini role göre yönetin (owner / editor / viewer) ve denetim günlüğünü izleyin.",
     "title": "Çalışma alanları",
     "transferConfirm": "Sahiplik \"{{email}}\" üyesine devredilecek. Sen editör olacaksın.",
     "transferOwnership": "Sahipliği devret",
-    "transferred": "Sahiplik devredildi."
+    "transferred": "Sahiplik devredildi.",
+    "unshare": "Paylaşımı kaldır",
+    "unshared": "Paylaşım kaldırıldı."
   },
   "timeMachine": {
     "title": "Zaman makinesi",

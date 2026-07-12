@@ -191,6 +191,121 @@ async def get_dashboard(db: AsyncSession, user_id: str, dashboard_id: str) -> Da
     return dash
 
 
+async def get_dashboard_for_view(
+    db: AsyncSession, viewer_id: str, dashboard_id: str
+) -> tuple[Dashboard, str]:
+    """Return ``(dashboard, owner_id)`` for a read.
+
+    Owner path first (``owner_id == viewer_id``). On a miss, a workspace member
+    viewing a SHARED dashboard: the board is loaded WITHOUT the owner filter and
+    the real owner id is returned so the render runs "as the owner". Raises 404 if
+    the viewer neither owns it nor is a member it's shared to. Mutations must keep
+    using the owner-only ``get_dashboard``.
+    """
+    try:
+        dash = await get_dashboard(db, viewer_id, dashboard_id)
+        return dash, viewer_id
+    except SchemaNotFoundError:
+        from app.services import resource_share_service
+
+        owner_id = await resource_share_service.dashboard_owner_for_viewer(
+            db, viewer_id, dashboard_id
+        )
+        if owner_id is None:
+            raise
+        result = await db.execute(
+            select(Dashboard)
+            .where(Dashboard.id == dashboard_id)
+            .options(selectinload(Dashboard.widgets))
+        )
+        dash = result.scalar_one_or_none()
+        if dash is None:
+            raise
+        return dash, owner_id
+
+
+async def render_dashboard_for_viewer(
+    db: AsyncSession,
+    dash: Dashboard,
+    owner_id: str,
+    viewer_id: str,
+    cache: CacheService | None = None,
+) -> DashboardResponse:
+    """Render a SHARED dashboard for a workspace member (read-only).
+
+    Widgets and their query logs belong to the OWNER (loaded via ``owner_id``).
+    RLS-LEAK INVARIANT: before returning any widget's data we check the VIEWER's
+    RLS on that widget's datasource. If the viewer has ANY rule there, the owner's
+    (unfiltered) stored snapshot MUST NOT be served — the widget's SQL is
+    re-executed with the VIEWER as the RLS subject, so the member sees the owner's
+    data constrained by exactly the member's rules. On any failure the widget
+    renders empty (fail-closed). Nothing here is persisted.
+    """
+    from app.services import rls_service
+
+    widgets = list(dash.widgets)
+    logs = await load_widget_query_logs(db, widgets, owner_id)
+
+    ds_ids = {q.datasource_id for q in logs.values() if q.datasource_id}
+    ds_names: dict[str, str] = {}
+    if ds_ids:
+        rows = await db.execute(
+            select(DataSource.id, DataSource.name).where(DataSource.id.in_(ds_ids))
+        )
+        ds_names = {ds_id: name for ds_id, name in rows.all()}
+
+    widget_responses: list[WidgetResponse] = []
+    for w in widgets:
+        log = logs.get(w.query_log_id) if w.query_log_id else None
+        chart = None
+        if log is not None:
+            restricted = bool(
+                log.datasource_id
+                and await rls_service.rules_for_user(db, log.datasource_id, viewer_id)
+            )
+            if restricted:
+                # Never serve the owner's unfiltered snapshot to a restricted viewer —
+                # re-run under the viewer's row scope (fail-closed on any error).
+                try:
+                    columns, rows_data = await query_service.reexecute_logged_query(
+                        log, db, viewer_id, cache, owner_id=owner_id
+                    )
+                    chart = _chart_snapshot(
+                        log, columns, query_service._snapshot_rows(rows_data), ds_names
+                    )
+                except Exception as exc:  # noqa: BLE001 — no data beats leaking owner rows
+                    _log.warning(
+                        "shared_widget_rls_reexec_failed", widget_id=w.id, error=str(exc)[:200]
+                    )
+                    chart = None
+            else:
+                chart = _widget_chart(log, ds_names)
+        widget_responses.append(
+            WidgetResponse(
+                id=w.id,
+                title=w.title,
+                query_log_id=w.query_log_id,
+                position_x=w.position_x,
+                position_y=w.position_y,
+                width=w.width,
+                height=w.height,
+                chart=chart,
+            )
+        )
+
+    return DashboardResponse(
+        id=dash.id,
+        name=dash.name,
+        description=dash.description,
+        layout=dash.layout,
+        global_filter=dash.global_filter,
+        live_enabled=dash.live_enabled,
+        live_interval_seconds=dash.live_interval_seconds,
+        owned=False,
+        widgets=widget_responses,
+    )
+
+
 def _chart_snapshot(
     log: QueryLog,
     columns: list[str],
@@ -311,6 +426,10 @@ async def update_dashboard(
 
 async def delete_dashboard(db: AsyncSession, user_id: str, dashboard_id: str) -> None:
     dash = await get_dashboard(db, user_id, dashboard_id)
+    from app.services import resource_share_service
+
+    # Drop any workspace shares of this dashboard so no dangling share is left.
+    await resource_share_service.purge_for_resource(db, "dashboard", dashboard_id)
     await db.delete(dash)
     await db.flush()
 

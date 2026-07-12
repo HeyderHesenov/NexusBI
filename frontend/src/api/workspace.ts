@@ -81,6 +81,47 @@ export async function leaveWorkspace(id: string): Promise<void> {
   await client.post(`/workspaces/${id}/leave`)
 }
 
+export interface SharedResource {
+  id: string
+  resource_type: 'dashboard' | 'datasource'
+  resource_id: string
+  name: string
+  permission: string
+  shared_by: string
+  owner_id: string
+  created_at: string
+}
+
+export async function listSharedResources(
+  id: string,
+  type?: 'dashboard' | 'datasource',
+): Promise<SharedResource[]> {
+  const { data } = await client.get<SharedResource[]>(`/workspaces/${id}/resources`, {
+    params: type ? { type } : undefined,
+  })
+  return data
+}
+
+export async function shareResource(
+  id: string,
+  resourceType: 'dashboard' | 'datasource',
+  resourceId: string,
+): Promise<SharedResource> {
+  const { data } = await client.post<SharedResource>(`/workspaces/${id}/resources`, {
+    resource_type: resourceType,
+    resource_id: resourceId,
+  })
+  return data
+}
+
+export async function unshareResource(
+  id: string,
+  resourceType: 'dashboard' | 'datasource',
+  resourceId: string,
+): Promise<void> {
+  await client.delete(`/workspaces/${id}/resources/${resourceType}/${resourceId}`)
+}
+
 export async function listAudit(): Promise<AuditEntry[]> {
   const { data } = await client.get<AuditEntry[]>('/audit')
   return data

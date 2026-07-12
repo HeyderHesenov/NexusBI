@@ -55,9 +55,16 @@ async def _dashboard_response(db: DbDep, user_id: str, dash) -> DashboardRespons
 
 
 @router.get("/{dashboard_id}", response_model=DashboardResponse)
-async def get_one(dashboard_id: str, user: CurrentUser, db: DbDep) -> DashboardResponse:
-    dash = await svc.get_dashboard(db, user.id, dashboard_id)
-    return await _dashboard_response(db, user.id, dash)
+async def get_one(
+    dashboard_id: str, user: CurrentUser, db: DbDep, cache: CacheDep
+) -> DashboardResponse:
+    # Owner sees their own board; a workspace member sees a SHARED board read-only
+    # ("rendered as the owner", but RLS-constrained to the member). Mutations below
+    # keep the owner-only get_dashboard, so a member GET-only path is fail-closed.
+    dash, owner_id = await svc.get_dashboard_for_view(db, user.id, dashboard_id)
+    if owner_id == user.id:
+        return await _dashboard_response(db, user.id, dash)
+    return await svc.render_dashboard_for_viewer(db, dash, owner_id, user.id, cache)
 
 
 @router.get("/{dashboard_id}/ws-ticket")

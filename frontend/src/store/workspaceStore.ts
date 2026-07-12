@@ -2,11 +2,12 @@ import { create } from 'zustand'
 import toast from 'react-hot-toast'
 import i18n from '../i18n'
 import * as api from '../api/workspace'
-import type { AuditEntry, Workspace, WorkspaceMember } from '../api/workspace'
+import type { AuditEntry, SharedResource, Workspace, WorkspaceMember } from '../api/workspace'
 
 interface WorkspaceState {
   workspaces: Workspace[]
   members: Record<string, WorkspaceMember[]>
+  shared: Record<string, SharedResource[]>
   audit: AuditEntry[]
   load: () => Promise<void>
   create: (name: string) => Promise<void>
@@ -18,12 +19,16 @@ interface WorkspaceState {
   changeRole: (id: string, memberId: string, role: string) => Promise<void>
   transfer: (id: string, memberId: string) => Promise<void>
   leave: (id: string) => Promise<void>
+  loadShared: (id: string) => Promise<void>
+  share: (id: string, resourceType: 'dashboard' | 'datasource', resourceId: string) => Promise<void>
+  unshare: (id: string, resourceType: 'dashboard' | 'datasource', resourceId: string) => Promise<void>
   loadAudit: () => Promise<void>
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   workspaces: [],
   members: {},
+  shared: {},
   audit: [],
   load: async () => set({ workspaces: await api.listWorkspaces() }),
   create: async (name) => {
@@ -85,10 +90,32 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set((s) => {
       const members = { ...s.members }
       delete members[id]
-      return { workspaces: s.workspaces.filter((w) => w.id !== id), members }
+      const shared = { ...s.shared }
+      delete shared[id]
+      return { workspaces: s.workspaces.filter((w) => w.id !== id), members, shared }
     })
     await get().loadAudit()
     toast.success(i18n.t('workspacePage.left'))
+  },
+  loadShared: async (id) => {
+    const shared = await api.listSharedResources(id)
+    set((s) => ({ shared: { ...s.shared, [id]: shared } }))
+  },
+  share: async (id, resourceType, resourceId) => {
+    try {
+      await api.shareResource(id, resourceType, resourceId)
+      await get().loadShared(id)
+      await get().loadAudit()
+      toast.success(i18n.t('workspacePage.shared'))
+    } catch {
+      /* interceptor toast */
+    }
+  },
+  unshare: async (id, resourceType, resourceId) => {
+    await api.unshareResource(id, resourceType, resourceId)
+    await get().loadShared(id)
+    await get().loadAudit()
+    toast.success(i18n.t('workspacePage.unshared'))
   },
   loadAudit: async () => set({ audit: await api.listAudit() }),
 }))

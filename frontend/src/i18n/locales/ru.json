@@ -207,7 +207,8 @@
     "story": "История",
     "team": "Команда",
     "widget": "Виджет",
-    "widgetAdded": "Виджет добавлен."
+    "widgetAdded": "Виджет добавлен.",
+    "sharedReadOnly": "Только чтение (общий)"
   },
   "dataContractsPage": {
     "cancel": "Отмена",
@@ -853,6 +854,8 @@
     "nameLabel": "Название",
     "newWorkspace": "Новое рабочее пространство",
     "newWorkspacePlaceholder": "Название нового рабочего пространства",
+    "noSharedResources": "Пока ничего не расшарено",
+    "pickResource": "Выберите ресурс…",
     "rename": "Переименовать",
     "renamePlaceholder": "Новое название",
     "renamed": "Рабочее пространство переименовано.",
@@ -862,11 +865,19 @@
     "role_owner": "Владелец",
     "role_viewer": "Наблюдатель",
     "save": "Сохранить",
+    "shareBtn": "Поделиться",
+    "shareDashboard": "Дашборд",
+    "shareDatasource": "Источник данных",
+    "shareToWorkspace": "Поделиться с командой",
+    "shared": "Доступно команде.",
+    "sharedResources": "Общие ресурсы",
     "subtitle": "Управляйте участниками команды по ролям (owner / editor / viewer) и отслеживайте журнал аудита.",
     "title": "Рабочие пространства",
     "transferConfirm": "Владение будет передано «{{email}}». Вы станете редактором.",
     "transferOwnership": "Передать владение",
-    "transferred": "Владение передано."
+    "transferred": "Владение передано.",
+    "unshare": "Отменить доступ",
+    "unshared": "Доступ отменён."
   },
   "timeMachine": {
     "title": "Машина времени",

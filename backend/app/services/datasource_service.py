@@ -267,6 +267,28 @@ async def get_datasource(db: AsyncSession, user_id: str, datasource_id: str) -> 
     return ds
 
 
+async def get_datasource_for_user(
+    db: AsyncSession, user_id: str, datasource_id: str
+) -> DataSource:
+    """Return a datasource the user OWNS, or one shared to a workspace they belong
+    to (query-only). READ path only — every admin/mutation path keeps the
+    owner-only ``get_datasource`` guard. RLS still applies per viewer downstream.
+    """
+    try:
+        return await get_datasource(db, user_id, datasource_id)
+    except SchemaNotFoundError:
+        from app.services import resource_share_service
+
+        if not await resource_share_service.datasource_shared_to_member(db, user_id, datasource_id):
+            raise
+        ds = (
+            await db.execute(select(DataSource).where(DataSource.id == datasource_id))
+        ).scalar_one_or_none()
+        if ds is None:
+            raise
+        return ds
+
+
 def powerbi_config(ds: DataSource) -> dict[str, Any]:
     """Decrypt and parse a Power BI datasource's stored config JSON."""
     return json.loads(decrypt_secret(ds.connection_string_encrypted))

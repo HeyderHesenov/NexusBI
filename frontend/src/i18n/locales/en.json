@@ -207,7 +207,8 @@
     "story": "Story",
     "team": "Team",
     "widget": "Widget",
-    "widgetAdded": "Widget added."
+    "widgetAdded": "Widget added.",
+    "sharedReadOnly": "Read-only (shared)"
   },
   "dataContractsPage": {
     "cancel": "Cancel",
@@ -853,6 +854,8 @@
     "nameLabel": "Name",
     "newWorkspace": "New workspace",
     "newWorkspacePlaceholder": "New workspace name",
+    "noSharedResources": "Nothing shared yet",
+    "pickResource": "Pick a resource…",
     "rename": "Rename",
     "renamePlaceholder": "New name",
     "renamed": "Workspace renamed.",
@@ -862,11 +865,19 @@
     "role_owner": "Owner",
     "role_viewer": "Viewer",
     "save": "Save",
+    "shareBtn": "Share",
+    "shareDashboard": "Dashboard",
+    "shareDatasource": "Datasource",
+    "shareToWorkspace": "Share to workspace",
+    "shared": "Shared with the team.",
+    "sharedResources": "Shared resources",
     "subtitle": "Manage team members by role (owner / editor / viewer) and track the audit log.",
     "title": "Workspaces",
     "transferConfirm": "Ownership will be transferred to \"{{email}}\". You'll become an editor.",
     "transferOwnership": "Transfer ownership",
-    "transferred": "Ownership transferred."
+    "transferred": "Ownership transferred.",
+    "unshare": "Unshare",
+    "unshared": "Share removed."
   },
   "timeMachine": {
     "title": "Time machine",

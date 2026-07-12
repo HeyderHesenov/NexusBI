@@ -1,5 +1,6 @@
-import { History, LayoutGrid, MessageCircle, Plus, Presentation, Radio, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { Eye, History, LayoutGrid, MessageCircle, Plus, Presentation, Radio, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import type { Layouts } from 'react-grid-layout'
@@ -27,6 +28,9 @@ export function DashboardPage() {
     addWidget, removeWidget, refreshWidget, refreshAll, saveLayout, toggleLive,
   } = useDashboardStore()
   const live = current?.live_enabled ?? false
+  // A workspace member viewing a SHARED dashboard: read-only (owned === false).
+  const canEdit = current?.owned !== false
+  const [searchParams, setSearchParams] = useSearchParams()
   const [createOpen, setCreateOpen] = useState(false)
   const [generateOpen, setGenerateOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -44,6 +48,16 @@ export function DashboardPage() {
     loadList().catch(() => undefined)
   }, [loadList])
 
+  // Deep-link: /dashboards?open=<id> opens a specific dashboard (used by the
+  // Komanda page to open a dashboard shared to the team). Clear the param after.
+  useEffect(() => {
+    const openId = searchParams.get('open')
+    if (!openId) return
+    open(openId).catch(() => undefined)
+    searchParams.delete('open')
+    setSearchParams(searchParams, { replace: true })
+  }, [searchParams, setSearchParams, open])
+
   // Join the live collaboration room for whichever dashboard is open.
   const currentId = current?.id
 
@@ -54,7 +68,9 @@ export function DashboardPage() {
     snapshotsReset()
   }, [currentId, snapshotsReset])
   useEffect(() => {
-    if (!currentId) return
+    // Collab (cursors/chat) is owner-only: the ws-ticket endpoint is owner-scoped,
+    // so a member viewing a SHARED board can't join — skip it for read-only views.
+    if (!currentId || !canEdit) return
     let cancelled = false
     // Mint a short-lived ws ticket so the long-lived JWT never lands in the URL.
     // Keep the token as a fallback so collab still works if the ticket call fails.
@@ -69,7 +85,7 @@ export function DashboardPage() {
       cancelled = true
       disconnect()
     }
-  }, [currentId, connect, disconnect])
+  }, [currentId, canEdit, connect, disconnect])
 
   const openStory = async () => {
     if (!current) return
@@ -85,7 +101,7 @@ export function DashboardPage() {
 
   // Persist layout changes, debounced so dragging doesn't spam the API.
   const onLayoutChange = (layouts: Layouts) => {
-    if (!current) return
+    if (!current || current.owned === false) return  // read-only shared view
     const id = current.id
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
@@ -109,10 +125,15 @@ export function DashboardPage() {
                 {t('dashboardPage.live')}
               </span>
             )}
+            {current && !canEdit && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px] font-medium text-ink-soft">
+                <Eye size={12} /> {t('dashboardPage.sharedReadOnly')}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
-          {current && current.widgets.length > 0 && (
+          {current && canEdit && current.widgets.length > 0 && (
             <button
               onClick={() => toggleLive(current.id, !live).catch(() => undefined)}
               className={`flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
@@ -125,7 +146,7 @@ export function DashboardPage() {
               {live ? t('dashboardPage.live') : t('dashboardPage.liveMode')}
             </button>
           )}
-          {current && current.widgets.length > 0 && (
+          {current && canEdit && current.widgets.length > 0 && (
             <button
               onClick={() => {
                 const next = !timeMachineOpen
@@ -142,7 +163,7 @@ export function DashboardPage() {
               <History size={16} /> {t('timeMachine.title')}
             </button>
           )}
-          {current && current.widgets.length > 0 && (
+          {current && canEdit && current.widgets.length > 0 && (
             <button
               onClick={openStory}
               disabled={storyLoading}
@@ -152,7 +173,7 @@ export function DashboardPage() {
               {storyLoading ? t('dashboardPage.preparing') : t('dashboardPage.story')}
             </button>
           )}
-          {current && current.widgets.length > 0 && (
+          {current && canEdit && current.widgets.length > 0 && (
             <button
               onClick={() => refreshAll(current.id)}
               disabled={refreshing}
@@ -161,7 +182,7 @@ export function DashboardPage() {
               <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> {t('dashboardPage.refreshAll')}
             </button>
           )}
-          {current && (
+          {current && canEdit && (
             <button
               onClick={() => setAddOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
@@ -169,7 +190,7 @@ export function DashboardPage() {
               <Plus size={16} /> {t('dashboardPage.widget')}
             </button>
           )}
-          {current && (
+          {current && canEdit && (
             <button
               onClick={() => setChatOpen((v) => !v)}
               className="relative flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
@@ -182,7 +203,7 @@ export function DashboardPage() {
               )}
             </button>
           )}
-          {current && (
+          {current && canEdit && (
             <button
               onClick={() => setShareOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
@@ -190,7 +211,7 @@ export function DashboardPage() {
               <Share2 size={16} /> {t('dashboardPage.share')}
             </button>
           )}
-          {current && (
+          {current && canEdit && (
             <button
               onClick={() => setDeleteOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
@@ -254,6 +275,7 @@ export function DashboardPage() {
               onRemoveWidget={(wid) => removeWidget(current.id, wid).catch(() => undefined)}
               onRefreshWidget={(wid) => refreshWidget(current.id, wid).catch(() => undefined)}
               onLayoutChange={onLayoutChange}
+              readOnly={!canEdit}
             />
           </CollabSurface>
         ) : (

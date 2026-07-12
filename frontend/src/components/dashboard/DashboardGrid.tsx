@@ -18,6 +18,9 @@ interface Props {
   onRemoveWidget: (id: string) => void
   onRefreshWidget: (id: string) => Promise<void>
   onLayoutChange: (layouts: Layouts) => void
+  /** Shared (workspace-member) view: no drag/resize, no per-widget edit, no
+   *  server-side global filter — everything here would 404 for a non-owner. */
+  readOnly?: boolean
 }
 
 /** Preserve every saved breakpoint; ensure lg has an entry per widget. */
@@ -33,7 +36,9 @@ function buildLayouts(dashboard: Dashboard): Layouts {
   return { ...saved, lg }
 }
 
-export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLayoutChange }: Props) {
+export function DashboardGrid({
+  dashboard, onRemoveWidget, onRefreshWidget, onLayoutChange, readOnly = false,
+}: Props) {
   const { t } = useTranslation()
   const layouts = useMemo(() => buildLayouts(dashboard), [dashboard.layout, dashboard.widgets])
   const pulses = useDashboardStore((s) => s.pulses)
@@ -63,13 +68,15 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
 
   return (
     <>
-    <DashboardFilterBar
-      key={dashboard.id}
-      dashboard={dashboard}
-      active={globalFilter}
-      busy={filtering}
-      onApply={(spec) => applyGlobalFilter(dashboard.id, spec)}
-    />
+    {!readOnly && (
+      <DashboardFilterBar
+        key={dashboard.id}
+        dashboard={dashboard}
+        active={globalFilter}
+        busy={filtering}
+        onApply={(spec) => applyGlobalFilter(dashboard.id, spec)}
+      />
+    )}
     {crossFilter && (
       <div className="mb-4">
         <FilterPills
@@ -87,6 +94,8 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
       rowHeight={34}
       margin={[16, 16]}
       draggableHandle=".drag-handle"
+      isDraggable={!readOnly}
+      isResizable={!readOnly}
       onLayoutChange={(_current, all) => onLayoutChange(all)}
     >
       {dashboard.widgets.map((w) => {
@@ -114,23 +123,25 @@ export function DashboardGrid({ dashboard, onRemoveWidget, onRefreshWidget, onLa
                 </span>
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                onClick={() => refresh(w.id)}
-                disabled={busy === w.id}
-                aria-label={t('dashboardGrid.refresh')}
-                className="text-ink-faint transition hover:text-accent disabled:opacity-50"
-              >
-                <RefreshCw size={14} className={busy === w.id ? 'animate-spin' : ''} />
-              </button>
-              <button
-                onClick={() => onRemoveWidget(w.id)}
-                aria-label={t('dashboardGrid.remove')}
-                className="text-ink-faint transition hover:text-[#D87C6B]"
-              >
-                <X size={15} />
-              </button>
-            </div>
+            {!readOnly && (
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => refresh(w.id)}
+                  disabled={busy === w.id}
+                  aria-label={t('dashboardGrid.refresh')}
+                  className="text-ink-faint transition hover:text-accent disabled:opacity-50"
+                >
+                  <RefreshCw size={14} className={busy === w.id ? 'animate-spin' : ''} />
+                </button>
+                <button
+                  onClick={() => onRemoveWidget(w.id)}
+                  aria-label={t('dashboardGrid.remove')}
+                  className="text-ink-faint transition hover:text-[#D87C6B]"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            )}
           </div>
           <div className="min-h-0 flex-1 p-3">
             {w.chart && w.chart.data.length ? (

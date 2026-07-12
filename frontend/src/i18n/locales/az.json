@@ -207,7 +207,8 @@
     "story": "Hekayə",
     "team": "Komanda",
     "widget": "Widget",
-    "widgetAdded": "Widget əlavə olundu."
+    "widgetAdded": "Widget əlavə olundu.",
+    "sharedReadOnly": "Yalnız oxu (paylaşılan)"
   },
   "dataContractsPage": {
     "cancel": "Ləğv et",
@@ -853,6 +854,8 @@
     "nameLabel": "Ad",
     "newWorkspace": "Yeni komanda sahəsi",
     "newWorkspacePlaceholder": "Yeni iş sahəsinin adı",
+    "noSharedResources": "Hələ paylaşım yoxdur",
+    "pickResource": "Resurs seç…",
     "rename": "Adını dəyiş",
     "renamePlaceholder": "Yeni ad",
     "renamed": "İş sahəsinin adı dəyişdirildi.",
@@ -862,11 +865,19 @@
     "role_owner": "Sahib",
     "role_viewer": "Baxan",
     "save": "Yadda saxla",
+    "shareBtn": "Paylaş",
+    "shareDashboard": "Dashboard",
+    "shareDatasource": "Data mənbəyi",
+    "shareToWorkspace": "Komandaya paylaş",
+    "shared": "Komandaya paylaşıldı.",
+    "sharedResources": "Paylaşılan resurslar",
     "subtitle": "Komanda üzvlərini rolla idarə et (owner / editor / viewer) və audit jurnalını izlə.",
     "title": "İş sahələri",
     "transferConfirm": "Sahiblik \"{{email}}\" üzvünə ötürüləcək. Sən redaktor olacaqsan.",
     "transferOwnership": "Sahibliyi ötür",
-    "transferred": "Sahiblik ötürüldü."
+    "transferred": "Sahiblik ötürüldü.",
+    "unshare": "Paylaşımı geri al",
+    "unshared": "Paylaşım geri alındı."
   },
   "timeMachine": {
     "title": "Zaman maşını",

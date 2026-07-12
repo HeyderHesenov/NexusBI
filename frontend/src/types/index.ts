@@ -325,6 +325,8 @@ export interface Dashboard {
   global_filter?: DashboardFilterSpec | null
   live_enabled?: boolean
   live_interval_seconds?: number
+  // False when the viewer is a workspace member seeing a SHARED dashboard (read-only).
+  owned?: boolean
   widgets: Widget[]
 }
 

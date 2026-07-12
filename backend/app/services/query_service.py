@@ -241,6 +241,7 @@ async def reexecute_logged_query(
     user_id: str,
     cache: CacheService | None = None,
     filter_spec: dict[str, Any] | None = None,
+    owner_id: str | None = None,
 ) -> tuple[list[str], list[dict[str, Any]]]:
     """Re-run a query log's stored SQL and return fresh (columns, rows) — NO AI.
 
@@ -252,6 +253,11 @@ async def reexecute_logged_query(
     BEFORE the guard chain — so the table allowlist and per-viewer RLS still run
     on the filtered query. Fail-open: a widget whose query doesn't reference a
     filter column is left unfiltered (see ``dashboard_filter_sql.apply_filter``).
+
+    ``owner_id`` separates *whose datasource this is* from *whose RLS applies*: when
+    a workspace member views a SHARED dashboard, the datasource is resolved as the
+    dashboard OWNER (``owner_id``) but the guard chain constrains rows by the
+    viewing MEMBER's RLS (``user_id``). Defaults to ``user_id`` (owner == viewer).
     """
     if not log.generated_sql:
         raise ValueError("query log has no SQL to re-run")
@@ -264,7 +270,9 @@ async def reexecute_logged_query(
             log.generated_sql, filter_spec, demo_data.DEMO_SCHEMA, "sqlite"
         )
         return await asyncio.to_thread(demo_data.execute_demo_sql, sql)
-    ds = await ds_service.get_datasource(db, user_id, log.datasource_id)
+    # Resolve the datasource as its OWNER (owner_id), but keep user_id as the RLS
+    # subject below so a shared-dashboard viewer sees only their own row scope.
+    ds = await ds_service.get_datasource_for_user(db, owner_id or user_id, log.datasource_id)
     if ds.db_type == DBType.powerbi:
         raise ValueError("live refresh unsupported for Power BI")
     # Re-introspect the schema once: needed for the filter, the allowlist and RLS.
@@ -337,7 +345,9 @@ async def guarded_read(
 
         sql_guard.assert_tables_in_schema(clean_sql, demo_data.demo_table_names(), "sqlite")
         return await asyncio.to_thread(demo_data.execute_demo_sql, clean_sql)
-    ds = await ds_service.get_datasource(db, user_id, datasource_id)
+    # Owner OR a workspace member with whom the source is shared (query-only). RLS
+    # is still applied per user_id inside _guarded_execute.
+    ds = await ds_service.get_datasource_for_user(db, user_id, datasource_id)
     if ds.db_type == DBType.powerbi:
         raise NexusBIException(
             "Power BI mənbələri əl ilə SQL dəstəkləmir (DAX istifadə olunur)."
@@ -464,7 +474,9 @@ async def _live_pipeline(
     cache: CacheService,
     extra_context: str = "",
 ) -> tuple[str, list[str], list[dict[str, Any]], str, float | None, str]:
-    ds = await ds_service.get_datasource(db, user_id, datasource_id or "")
+    # Owner OR a workspace member the source is shared with (query-only); RLS is
+    # applied per user_id in the guard chain below.
+    ds = await ds_service.get_datasource_for_user(db, user_id, datasource_id or "")
     if ds.db_type == DBType.powerbi:
         return await _powerbi_pipeline(nl_query, ds, cache, extra_context)
     schema = await ds_service.get_schema_cached(ds, cache)
