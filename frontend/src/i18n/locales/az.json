@@ -1160,6 +1160,16 @@
     }
   },
   "chatPage": {
+    "aiApprove": "Təsdiqlə",
+    "aiApproved": "Plan təsdiqləndi",
+    "aiCancel": "Ləğv et",
+    "aiCancelled": "Plan ləğv edildi",
+    "aiExecuting": "İcra olunur…",
+    "aiFailed": "İcra alınmadı",
+    "aiHint": "Sual ver, plan qursun",
+    "aiLocked": "Max planla açılır",
+    "aiPlan": "Plan",
+    "aiWelcome": "Nexus AI-a sual ver — sorğular, dashboardlar, proqnozlar. Əməliyyatlardan əvvəl plan təqdim edib təsdiqini gözləyəcək.",
     "channels": "Kanallar",
     "connected": "Qoşulu",
     "connecting": "Qoşulur…",

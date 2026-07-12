@@ -355,6 +355,7 @@ export interface AuthUser {
   is_active: boolean
   subscription_tier: string
   white_label: boolean
+  ai_chat: boolean
 }
 
 export interface Plan {

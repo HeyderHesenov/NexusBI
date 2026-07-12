@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing.tiers import has_ai_chat
 from app.core.exceptions import ForbiddenError, SchemaNotFoundError
 from app.core.notification_types import NotificationCategory
 from app.models.alert import Notification
@@ -34,13 +35,20 @@ def dm_room(user_a: str, user_b: str) -> str:
     return f"dm:{lo}:{hi}"
 
 
+def ai_room(user_id: str) -> str:
+    """The user's private conversation with the Nexus AI assistant."""
+    return f"ai:{user_id}"
+
+
 def _parse_room(room_key: str) -> tuple[str, tuple[str, ...]] | None:
-    """('channel', (ws_id, ch_id)) | ('dm', (a, b)) | None if malformed."""
+    """('channel', (ws_id, ch_id)) | ('dm', (a, b)) | ('ai', (uid,)) | None."""
     parts = room_key.split(":")
     if len(parts) == 4 and parts[0] == "ws" and parts[2] == "channel":
         return "channel", (parts[1], parts[3])
     if len(parts) == 3 and parts[0] == "dm":
         return "dm", (parts[1], parts[2])
+    if len(parts) == 2 and parts[0] == "ai":
+        return "ai", (parts[1],)
     return None
 
 
@@ -74,6 +82,14 @@ async def can_access_room(db: AsyncSession, user_id: str, room_key: str) -> bool
         if exists.scalar_one_or_none() is None:
             return False
         return await workspace_service.get_role(db, ws_id, user_id) is not None
+    if kind == "ai":
+        # Personal AI room: only its owner, and only on an AI-chat tier. The
+        # assistant itself posts via ai_chat_service, never through this guard.
+        (owner,) = ids
+        if user_id != owner:
+            return False
+        user = await db.get(User, user_id)
+        return user is not None and has_ai_chat(user.subscription_tier)
     # DM: the user must be one of the pair, and the two must co-belong to a workspace.
     a, b = ids
     if user_id not in (a, b):

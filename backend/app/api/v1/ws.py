@@ -15,7 +15,7 @@ from app.models.user import User
 from app.realtime.hub import Connection, Participant, hub
 from app.schemas.chat import ChatMessageResponse
 from app.schemas.comment import CommentResponse
-from app.services import chat_service, comment_service
+from app.services import ai_chat_service, chat_service, comment_service
 
 router = APIRouter()
 _log = get_logger("nexusbi.realtime")
@@ -215,6 +215,9 @@ async def room_ws(ws: WebSocket, room_key: str) -> None:
                     await db.commit()
                     payload = ChatMessageResponse.model_validate(message).model_dump(mode="json")
                 await hub.broadcast(room_key, {"type": "chat", "message": payload})
+                # The assistant replies out-of-band so the user's post never waits on AI.
+                if ai_chat_service.is_ai_trigger(room_key, text):
+                    ai_chat_service.spawn_reply(room_key, user_id, text)
             elif kind == "typing":
                 # Ephemeral — no DB, no persistence; peers age it out client-side.
                 if check_ip("ws_typing", ip, limit=30, window_seconds=10):

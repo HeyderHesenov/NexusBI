@@ -1,4 +1,5 @@
 import { client } from './client'
+import type { CopilotAction } from './copilot'
 
 export interface LastMessage {
   author_id: string
@@ -17,6 +18,22 @@ export interface Channel {
   last_message?: LastMessage | null
 }
 
+export interface AiPlanStep {
+  tool: string
+  summary: string
+}
+
+/** Server-written payload on assistant messages (plan/actions cards). */
+export interface AiMeta {
+  ai?: boolean
+  kind: 'plan' | 'actions' | 'error' | 'reply'
+  plan?: AiPlanStep[]
+  pending_message?: string
+  requester_id?: string
+  status?: 'pending' | 'approved' | 'cancelled' | 'failed'
+  actions?: CopilotAction[]
+}
+
 export interface ChatMessage {
   id: string
   room_key: string
@@ -24,6 +41,7 @@ export interface ChatMessage {
   author_name: string
   content: string
   created_at: string
+  meta?: AiMeta | null
 }
 
 export interface DMPeer {
@@ -65,7 +83,15 @@ export async function dmPeers(): Promise<DMPeer[]> {
   return data
 }
 
-// Room-key builders — mirror backend chat_service.channel_room / dm_room.
+export async function approveAi(messageId: string): Promise<void> {
+  await client.post('/chat/ai/approve', { message_id: messageId })
+}
+
+export async function cancelAi(messageId: string): Promise<void> {
+  await client.post('/chat/ai/cancel', { message_id: messageId })
+}
+
+// Room-key builders — mirror backend chat_service.channel_room / dm_room / ai_room.
 export function channelRoom(workspaceId: string, channelId: string): string {
   return `ws:${workspaceId}:channel:${channelId}`
 }
@@ -73,4 +99,13 @@ export function channelRoom(workspaceId: string, channelId: string): string {
 export function dmRoom(userA: string, userB: string): string {
   const [lo, hi] = [userA, userB].sort()
   return `dm:${lo}:${hi}`
+}
+
+export function aiRoom(userId: string): string {
+  return `ai:${userId}`
+}
+
+/** `meta` is written only server-side, so this can't be spoofed by a renamed user. */
+export function isAiMessage(m: ChatMessage): boolean {
+  return m.meta?.ai === true
 }

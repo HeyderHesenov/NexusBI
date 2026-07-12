@@ -1160,6 +1160,16 @@
     }
   },
   "chatPage": {
+    "aiApprove": "Approve",
+    "aiApproved": "Plan approved",
+    "aiCancel": "Cancel",
+    "aiCancelled": "Plan cancelled",
+    "aiExecuting": "Executing…",
+    "aiFailed": "Execution failed",
+    "aiHint": "Ask anything — it plans first",
+    "aiLocked": "Unlocks on the Max plan",
+    "aiPlan": "Plan",
+    "aiWelcome": "Ask Nexus AI — queries, dashboards, forecasts. It proposes a plan and waits for your approval before acting.",
     "channels": "Channels",
     "connected": "Connected",
     "connecting": "Connecting…",

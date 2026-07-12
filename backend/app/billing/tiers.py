@@ -18,6 +18,7 @@ class Tier:
     monthly_quota: int
     features: list[str] = field(default_factory=list)
     white_label: bool = False  # may set/serve custom branding on embeds
+    ai_chat: bool = False  # Nexus AI assistant participates in team chat
 
 
 TIERS: dict[str, Tier] = {
@@ -41,16 +42,28 @@ TIERS: dict[str, Tier] = {
         name="Max",
         price_usd=100,
         monthly_quota=1500,
-        features=["Aylıq 1500 AI sorğusu (5x)", "Bütün Pro üstünlükləri", "Genişləndirilmiş tarixçə"],
+        features=[
+            "Aylıq 1500 AI sorğusu (5x)",
+            "Bütün Pro üstünlükləri",
+            "Komanda söhbətində AI köməkçi",
+            "Genişləndirilmiş tarixçə",
+        ],
         white_label=True,
+        ai_chat=True,
     ),
     "max_plus": Tier(
         key="max_plus",
         name="Max+",
         price_usd=150,
         monthly_quota=3000,
-        features=["Aylıq 3000 AI sorğusu (10x)", "Bütün Max üstünlükləri", "Ən yüksək limit"],
+        features=[
+            "Aylıq 3000 AI sorğusu (10x)",
+            "Bütün Max üstünlükləri",
+            "Komanda söhbətində AI köməkçi",
+            "Ən yüksək limit",
+        ],
         white_label=True,
+        ai_chat=True,
     ),
     # Internal demo/test tier — unlimited usage, not shown as a purchasable plan.
     "unlimited": Tier(
@@ -60,6 +73,7 @@ TIERS: dict[str, Tier] = {
         monthly_quota=10**9,
         features=["Limitsiz AI sorğusu", "Bütün özəlliklər"],
         white_label=True,
+        ai_chat=True,
     ),
 }
 
@@ -79,3 +93,8 @@ def get_tier(key: str | None) -> Tier:
 def has_white_label(key: str | None) -> bool:
     """True if the tier may set/serve custom white-label branding."""
     return get_tier(key).white_label
+
+
+def has_ai_chat(key: str | None) -> bool:
+    """True if the tier may summon the Nexus AI assistant in team chat."""
+    return get_tier(key).ai_chat

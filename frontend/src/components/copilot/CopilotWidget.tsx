@@ -1,11 +1,9 @@
 import { ArrowRight, Check, ListChecks, Send, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
-import type { CopilotAction } from '../../api/copilot'
+import { useCopilotAction } from '../../hooks/useCopilotAction'
 import { copilotNavTarget } from '../../lib/copilotNav'
 import { useCopilotStore } from '../../store/copilotStore'
-import { useDashboardStore } from '../../store/dashboardStore'
 import { RevealText } from '../charts/RevealText'
 
 const SUGGESTION_KEYS = [
@@ -19,7 +17,7 @@ export function CopilotWidget() {
   const { open, sending, thread, toggle, setOpen, send, approve, cancel } = useCopilotStore()
   const [text, setText] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
+  const runAction = useCopilotAction(() => setOpen(false))
 
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -35,17 +33,6 @@ export function CopilotWidget() {
     if (!q) return
     setText('')
     send(q)
-  }
-
-  const runAction = async (a: CopilotAction) => {
-    const target = copilotNavTarget(a)
-    if (!target) return
-    if (a.dashboard_id) {
-      await useDashboardStore.getState().loadList().catch(() => undefined)
-      await useDashboardStore.getState().open(a.dashboard_id).catch(() => undefined)
-    }
-    navigate(target)
-    setOpen(false)
   }
 
   return (

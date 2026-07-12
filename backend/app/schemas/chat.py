@@ -1,7 +1,8 @@
-"""Team chat schemas (channels, messages, DM peers)."""
+"""Team chat schemas (channels, messages, DM peers, AI assistant actions)."""
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -39,12 +40,18 @@ class ChatMessageResponse(BaseModel):
     author_name: str
     content: str
     created_at: datetime
+    # Server-written AI payload (plan/actions cards); None for human messages.
+    meta: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}
 
 
 class RoomRequest(BaseModel):
     room_key: str = Field(min_length=1, max_length=120)
+
+
+class AiActionRequest(BaseModel):
+    message_id: str = Field(min_length=1, max_length=36)
 
 
 class DMPeer(BaseModel):

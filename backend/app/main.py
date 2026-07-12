@@ -129,6 +129,17 @@ async def lifespan(app: FastAPI):
             await _seed_rag_examples()
         except Exception as exc:  # noqa: BLE001 — never block startup on seeding
             log.warning("demo_seed_failed", error=str(exc))
+    # The chat assistant user exists in EVERY mode (paid tiers use it outside
+    # demo). Lazy get-or-create covers tests, which skip this lifespan entirely.
+    try:
+        from app.db.session import AsyncSessionLocal
+        from app.services import ai_chat_service
+
+        async with AsyncSessionLocal() as db:
+            await ai_chat_service.get_or_create_assistant(db)
+            await db.commit()
+    except Exception as exc:  # noqa: BLE001 — never block startup on seeding
+        log.warning("assistant_seed_failed", error=str(exc))
     background_tasks: list[asyncio.Task] = []
     if settings.SCHEDULER_ENABLED:
         from app.services.scheduler import run_loop

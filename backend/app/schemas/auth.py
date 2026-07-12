@@ -47,3 +47,10 @@ class UserResponse(BaseModel):
         from app.billing.tiers import has_white_label
 
         return has_white_label(self.subscription_tier)
+
+    @computed_field
+    @property
+    def ai_chat(self) -> bool:
+        from app.billing.tiers import has_ai_chat
+
+        return has_ai_chat(self.subscription_tier)

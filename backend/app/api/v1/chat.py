@@ -1,13 +1,16 @@
-"""Team chat HTTP endpoints: channels, history, room tickets, read markers, DM peers."""
+"""Team chat HTTP endpoints: channels, history, tickets, read markers, DM peers, AI."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Request, Response, status
 
 from app.core.exceptions import SchemaNotFoundError
+from app.core.rate_limit import _client_ip
 from app.core.security import create_room_ticket
-from app.dependencies import CurrentUser, DbDep
+from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.models.chat import ChatMessage
+from app.realtime.hub import hub
 from app.schemas.chat import (
+    AiActionRequest,
     ChannelCreate,
     ChannelResponse,
     ChatMessageResponse,
@@ -15,7 +18,7 @@ from app.schemas.chat import (
     LastMessage,
     RoomRequest,
 )
-from app.services import audit_service, chat_service
+from app.services import ai_chat_service, audit_service, chat_service
 
 router = APIRouter(tags=["chat"])
 
@@ -89,6 +92,46 @@ async def room_ticket(payload: RoomRequest, user: CurrentUser, db: DbDep) -> dic
 async def mark_read(payload: RoomRequest, user: CurrentUser, db: DbDep) -> Response:
     await chat_service.mark_read(db, user.id, payload.room_key)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+async def _broadcast_update(msg: ChatMessage) -> None:
+    await hub.broadcast(
+        msg.room_key,
+        {
+            "type": "chat_update",
+            "message": ChatMessageResponse.model_validate(msg).model_dump(mode="json"),
+        },
+    )
+
+
+@router.post("/chat/ai/approve", status_code=status.HTTP_202_ACCEPTED)
+async def ai_approve(
+    payload: AiActionRequest, user: CurrentUser, db: DbDep, cache: CacheDep, request: Request
+) -> dict[str, str]:
+    """Requester approves an AI plan → execution runs in the background.
+
+    Consumes one AI-quota unit (mirrors the copilot widget's execute mode)."""
+    msg = await ai_chat_service.approve(db, user, payload.message_id)
+    await audit_service.log(
+        db, user.id, "chat.ai_approve", entity="chat_message", entity_id=msg.id
+    )
+    # Persist BEFORE broadcasting/spawning: peers refetching history must see
+    # the approved status, and the executor task reads its own session.
+    await db.commit()
+    await _broadcast_update(msg)
+    ai_chat_service.spawn_execute(cache, msg, _client_ip(request))
+    return {"status": "approved"}
+
+
+@router.post("/chat/ai/cancel")
+async def ai_cancel(payload: AiActionRequest, user: CurrentUser, db: DbDep) -> dict[str, str]:
+    msg = await ai_chat_service.cancel(db, user, payload.message_id)
+    await audit_service.log(
+        db, user.id, "chat.ai_cancel", entity="chat_message", entity_id=msg.id
+    )
+    await db.commit()
+    await _broadcast_update(msg)
+    return {"status": "cancelled"}
 
 
 @router.get("/chat/dm/peers", response_model=list[DMPeer])

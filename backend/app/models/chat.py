@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -44,6 +44,9 @@ class ChatMessage(Base, TimestampMixin):
     )
     author_name: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    # Structured payload written ONLY server-side (AI plan/actions cards); the
+    # public post path never sets it, so `meta.ai` can't be spoofed by users.
+    meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class ChatReadMarker(Base, TimestampMixin):
