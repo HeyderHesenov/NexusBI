@@ -3,8 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCopilotAction } from '../../hooks/useCopilotAction'
 import { copilotNavTarget } from '../../lib/copilotNav'
+import { clampFabY, panelAnchor, readFabY, writeFabY } from '../../lib/fabPosition'
 import { useCopilotStore } from '../../store/copilotStore'
 import { RevealText } from '../charts/RevealText'
+
+const DRAG_THRESHOLD = 4
 
 const SUGGESTION_KEYS = [
   'copilotWidget.suggestion1',
@@ -18,6 +21,56 @@ export function CopilotWidget() {
   const [text, setText] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
   const runAction = useCopilotAction(() => setOpen(false))
+
+  // The FAB slides vertically along the right edge; position survives reloads.
+  const [fabY, setFabY] = useState(() => readFabY(window.innerHeight))
+  const dragRef = useRef<{ startY: number; startFabY: number; moved: boolean } | null>(null)
+  // Browsers synthesize a click after pointerup — swallow it when it ended a drag.
+  const movedRef = useRef(false)
+
+  useEffect(() => {
+    const reclamp = () => setFabY((y) => clampFabY(y, window.innerHeight))
+    window.addEventListener('resize', reclamp)
+    return () => window.removeEventListener('resize', reclamp)
+  }, [])
+
+  const onFabPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    movedRef.current = false // a fresh interaction never inherits a stale drag flag
+    dragRef.current = { startY: e.clientY, startFabY: fabY, moved: false }
+    try {
+      // Keeps fast drags glued to the FAB even when the cursor outruns it.
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* pointer not capturable (synthetic events) — drag still works while over the FAB */
+    }
+  }
+  const onFabPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const d = dragRef.current
+    if (!d) return
+    if ((e.buttons & 1) === 0) {
+      dragRef.current = null // lost the pointerup — don't chase the cursor
+      return
+    }
+    if (Math.abs(e.clientY - d.startY) > DRAG_THRESHOLD) d.moved = true
+    if (d.moved) setFabY(clampFabY(d.startFabY + (e.clientY - d.startY), window.innerHeight))
+  }
+  const onFabPointerUp = () => {
+    if (dragRef.current?.moved) {
+      movedRef.current = true
+      setFabY((y) => {
+        writeFabY(y)
+        return y
+      })
+    }
+    dragRef.current = null
+  }
+  const onFabClick = () => {
+    if (movedRef.current) {
+      movedRef.current = false // this "click" was the tail of a drag
+      return
+    }
+    toggle()
+  }
 
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -38,15 +91,25 @@ export function CopilotWidget() {
   return (
     <>
       <button
-        onClick={toggle}
+        onClick={onFabClick}
+        onPointerDown={onFabPointerDown}
+        onPointerMove={onFabPointerMove}
+        onPointerUp={onFabPointerUp}
+        onPointerCancel={() => {
+          dragRef.current = null
+        }}
         aria-label={t('copilotWidget.assistantAria')}
-        className="fixed bottom-6 right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-accent text-bg shadow-pop transition hover:bg-accent-press active:translate-y-px"
+        style={{ top: fabY }}
+        className="fixed right-6 z-40 grid h-14 w-14 cursor-grab touch-none select-none place-items-center rounded-full bg-accent text-bg shadow-pop transition hover:bg-accent-press active:cursor-grabbing"
       >
         {open ? <X size={22} /> : <Sparkles size={22} strokeWidth={2.5} />}
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-6 z-40 flex h-[32rem] w-[calc(100vw-3rem)] max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-pop">
+        <div
+          style={panelAnchor(fabY, window.innerHeight)}
+          className="fixed right-6 z-40 flex h-[32rem] max-h-[calc(100vh-6rem)] w-[calc(100vw-3rem)] max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-pop"
+        >
           <header className="flex items-center gap-2 border-b border-line px-4 py-3">
             <Sparkles size={18} className="text-accent" />
             <h3 className="font-display text-base font-bold text-ink">{t('copilotWidget.title')}</h3>
