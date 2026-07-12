@@ -803,6 +803,7 @@
   },
   "title": {
     "branding": "Брендинг",
+    "chat": "Командный чат",
     "dashboards": "Дашборды",
     "decisions": "Решения",
     "fallback": "NexusBI",
@@ -1169,10 +1170,19 @@
     "noChannels": "Пока нет каналов",
     "noMessages": "Пока нет сообщений. Будьте первым.",
     "noPeers": "Пока нет коллег",
+    "noResults": "Ничего не найдено",
     "noWorkspace": "Сначала создайте рабочее пространство",
+    "online": "{{count}} онлайн",
+    "onlineNow": "в сети",
     "pickRoom": "Выберите канал или беседу",
+    "searchPlaceholder": "Поиск чатов…",
     "send": "Отправить",
     "title": "Командный чат",
-    "workspace": "Рабочее пространство"
+    "today": "Сегодня",
+    "typing": "{{name}} печатает…",
+    "typingMany": "{{count}} человек печатают…",
+    "workspace": "Рабочее пространство",
+    "yesterday": "Вчера",
+    "you": "Вы"
   }
 }

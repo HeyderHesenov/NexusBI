@@ -1,5 +1,12 @@
 import { client } from './client'
 
+export interface LastMessage {
+  author_id: string
+  author_name: string
+  content: string
+  created_at: string
+}
+
 export interface Channel {
   id: string
   workspace_id: string
@@ -7,6 +14,7 @@ export interface Channel {
   created_by: string
   created_at: string
   unread: number
+  last_message?: LastMessage | null
 }
 
 export interface ChatMessage {
@@ -22,6 +30,8 @@ export interface DMPeer {
   user_id: string
   email: string
   full_name: string | null
+  unread?: number
+  last_message?: LastMessage | null
 }
 
 export async function listChannels(workspaceId: string): Promise<Channel[]> {

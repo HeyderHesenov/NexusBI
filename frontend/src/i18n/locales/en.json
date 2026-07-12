@@ -803,6 +803,7 @@
   },
   "title": {
     "branding": "Branding",
+    "chat": "Team chat",
     "dashboards": "Dashboards",
     "decisions": "Decisions",
     "fallback": "NexusBI",
@@ -1169,10 +1170,19 @@
     "noChannels": "No channels yet",
     "noMessages": "No messages yet. Be the first.",
     "noPeers": "No teammates yet",
+    "noResults": "Nothing found",
     "noWorkspace": "Create a workspace first",
+    "online": "{{count}} online",
+    "onlineNow": "online",
     "pickRoom": "Pick a channel or conversation",
+    "searchPlaceholder": "Search chats…",
     "send": "Send",
     "title": "Team chat",
-    "workspace": "Workspace"
+    "today": "Today",
+    "typing": "{{name}} is typing…",
+    "typingMany": "{{count}} people are typing…",
+    "workspace": "Workspace",
+    "yesterday": "Yesterday",
+    "you": "You"
   }
 }

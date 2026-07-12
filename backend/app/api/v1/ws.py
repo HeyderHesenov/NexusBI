@@ -215,6 +215,14 @@ async def room_ws(ws: WebSocket, room_key: str) -> None:
                     await db.commit()
                     payload = ChatMessageResponse.model_validate(message).model_dump(mode="json")
                 await hub.broadcast(room_key, {"type": "chat", "message": payload})
+            elif kind == "typing":
+                # Ephemeral — no DB, no persistence; peers age it out client-side.
+                if check_ip("ws_typing", ip, limit=30, window_seconds=10):
+                    await hub.broadcast(
+                        room_key,
+                        {"type": "typing", "user_id": user_id, "name": name},
+                        exclude=conn,
+                    )
             elif kind == "ping":
                 await ws.send_json({"type": "pong"})
     except WebSocketDisconnect:

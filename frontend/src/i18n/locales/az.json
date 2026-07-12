@@ -803,6 +803,7 @@
   },
   "title": {
     "branding": "Brendinq",
+    "chat": "Komanda söhbəti",
     "dashboards": "Dashboardlar",
     "decisions": "Qərarlar",
     "fallback": "NexusBI",
@@ -1169,10 +1170,19 @@
     "noChannels": "Hələ kanal yoxdur",
     "noMessages": "Hələ mesaj yoxdur. İlk yazan ol.",
     "noPeers": "Komanda yoldaşı yoxdur",
+    "noResults": "Heç nə tapılmadı",
     "noWorkspace": "Əvvəlcə komanda sahəsi yarat",
+    "online": "{{count}} nəfər onlayn",
+    "onlineNow": "onlayn",
     "pickRoom": "Bir kanal və ya söhbət seç",
+    "searchPlaceholder": "Söhbət axtar…",
     "send": "Göndər",
     "title": "Komanda söhbəti",
-    "workspace": "İş sahəsi"
+    "today": "Bu gün",
+    "typing": "{{name}} yazır…",
+    "typingMany": "{{count}} nəfər yazır…",
+    "workspace": "İş sahəsi",
+    "yesterday": "Dünən",
+    "you": "Sən"
   }
 }

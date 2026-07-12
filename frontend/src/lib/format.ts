@@ -45,14 +45,16 @@ export interface FormatDateOptions {
    *  locale (see useFormatDate); lib-level callers get the default. */
   locale?: string
   /** 'datetime' (default) → date + HH:mm; 'date' → date only; 'short' → the
-   *  compact numeric date+time used by audit/notification logs. */
-  mode?: 'datetime' | 'date' | 'short'
+   *  compact numeric date+time used by audit/notification logs; 'time' → HH:mm
+   *  only (chat bubbles). */
+  mode?: 'datetime' | 'date' | 'short' | 'time'
 }
 
 const DATE_CONFIG: Record<NonNullable<FormatDateOptions['mode']>, Intl.DateTimeFormatOptions> = {
   datetime: { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' },
   date: { year: 'numeric', month: 'short', day: '2-digit' },
   short: { dateStyle: 'short', timeStyle: 'short' },
+  time: { hour: '2-digit', minute: '2-digit' },
 }
 
 /** Single date/time formatter for the whole app — locale-aware via the same
@@ -63,6 +65,19 @@ export const formatDate = (value: string | number | Date, opts: FormatDateOption
   const d = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(d.getTime())) return '—'
   return new Intl.DateTimeFormat(locale, DATE_CONFIG[mode]).format(d)
+}
+
+export const isSameDay = (a: Date, b: Date): boolean =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate()
+
+/** Chat-style day bucketing for separators and rail timestamps. */
+export const dayBucket = (d: Date, now = new Date()): 'today' | 'yesterday' | 'other' => {
+  if (isSameDay(d, now)) return 'today'
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  return isSameDay(d, yesterday) ? 'yesterday' : 'other'
 }
 
 /** Shared KPI number formatter — keep the metric-tree editor and the Digital Twin

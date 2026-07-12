@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendUnit, formatDate, formatNumber, formatMetricValue, formatSignedPct, localeFor } from './format'
+import { appendUnit, dayBucket, formatDate, formatNumber, formatMetricValue, formatSignedPct, isSameDay, localeFor } from './format'
 
 describe('formatNumber', () => {
   it('formats plain numbers with the default locale', () => {
@@ -64,6 +64,12 @@ describe('formatDate', () => {
     expect(en).not.toBe(ru)
   })
 
+  it('time mode renders HH:mm only (no date component)', () => {
+    const time = formatDate(iso, { locale: 'en-US', mode: 'time' })
+    expect(time).toContain(':')
+    expect(time).not.toContain('2024')
+  })
+
   it('accepts Date and epoch inputs', () => {
     expect(formatDate(new Date(iso), { locale: 'en-US', mode: 'date' })).toContain('2024')
     expect(formatDate(Date.parse(iso), { locale: 'en-US', mode: 'date' })).toContain('2024')
@@ -101,5 +107,24 @@ describe('appendUnit', () => {
     expect(appendUnit('42', 'ədəd')).toBe('42 ədəd')
     expect(appendUnit('42')).toBe('42')
     expect(appendUnit('42', null)).toBe('42')
+  })
+})
+
+describe('day helpers', () => {
+  it('isSameDay compares calendar days, not 24h windows', () => {
+    expect(isSameDay(new Date('2024-03-05T00:10:00'), new Date('2024-03-05T23:50:00'))).toBe(true)
+    expect(isSameDay(new Date('2024-03-05T23:50:00'), new Date('2024-03-06T00:10:00'))).toBe(false)
+  })
+
+  it('dayBucket classifies today, yesterday and older dates', () => {
+    const now = new Date('2024-03-05T12:00:00')
+    expect(dayBucket(new Date('2024-03-05T01:00:00'), now)).toBe('today')
+    expect(dayBucket(new Date('2024-03-04T23:00:00'), now)).toBe('yesterday')
+    expect(dayBucket(new Date('2024-03-01T12:00:00'), now)).toBe('other')
+  })
+
+  it('dayBucket handles month boundaries', () => {
+    const now = new Date('2024-03-01T09:00:00')
+    expect(dayBucket(new Date('2024-02-29T20:00:00'), now)).toBe('yesterday')
   })
 })

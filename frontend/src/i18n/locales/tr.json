@@ -803,6 +803,7 @@
   },
   "title": {
     "branding": "Marka",
+    "chat": "Ekip sohbeti",
     "dashboards": "Panolar",
     "decisions": "Kararlar",
     "fallback": "NexusBI",
@@ -1169,10 +1170,19 @@
     "noChannels": "Henüz kanal yok",
     "noMessages": "Henüz mesaj yok. İlk yazan sen ol.",
     "noPeers": "Henüz takım arkadaşı yok",
+    "noResults": "Hiçbir şey bulunamadı",
     "noWorkspace": "Önce bir çalışma alanı oluştur",
+    "online": "{{count}} kişi çevrimiçi",
+    "onlineNow": "çevrimiçi",
     "pickRoom": "Bir kanal veya sohbet seç",
+    "searchPlaceholder": "Sohbet ara…",
     "send": "Gönder",
     "title": "Ekip sohbeti",
-    "workspace": "Çalışma alanı"
+    "today": "Bugün",
+    "typing": "{{name}} yazıyor…",
+    "typingMany": "{{count}} kişi yazıyor…",
+    "workspace": "Çalışma alanı",
+    "yesterday": "Dün",
+    "you": "Sen"
   }
 }

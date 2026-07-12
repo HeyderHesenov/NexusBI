@@ -197,40 +197,56 @@ async def mark_read(db: AsyncSession, user_id: str, room_key: str) -> None:
     await db.flush()
 
 
-async def unread_counts(db: AsyncSession, workspace_id: str, user_id: str) -> dict[str, int]:
-    """Per-channel unread counts for a workspace (messages by OTHERS after the
-    user's read marker). Keyed by room_key."""
-    await workspace_service.require_role(db, workspace_id, user_id, "viewer")
-    channels = (
-        await db.execute(select(Channel).where(Channel.workspace_id == workspace_id))
-    ).scalars().all()
-    if not channels:
+async def room_summaries(
+    db: AsyncSession, user_id: str, room_keys: list[str]
+) -> dict[str, tuple[ChatMessage | None, int]]:
+    """Per-room (last message, unread count) for a conversation list, in two
+    queries regardless of how many rooms are asked for.
+
+    Unread = messages by OTHERS created after the user's read marker (all of
+    them when no marker exists). Rooms with no activity are simply absent."""
+    if not room_keys:
         return {}
-    rooms = {channel_room(workspace_id, c.id): c.id for c in channels}
-    markers = {
-        m.room_key: m.last_read_at
-        for m in (
-            await db.execute(
-                select(ChatReadMarker).where(
-                    ChatReadMarker.user_id == user_id,
-                    ChatReadMarker.room_key.in_(list(rooms.keys())),
-                )
-            )
-        ).scalars()
-    }
-    out: dict[str, int] = {}
-    for room in rooms:
-        q = (
-            select(func.count())
-            .select_from(ChatMessage)
-            .where(ChatMessage.room_key == room, ChatMessage.author_id != user_id)
+    rn = (
+        func.row_number()
+        .over(
+            partition_by=ChatMessage.room_key,
+            order_by=(ChatMessage.created_at.desc(), ChatMessage.id.desc()),
         )
-        marker = markers.get(room)
-        if marker is not None:
-            q = q.where(ChatMessage.created_at > marker)
-        count = (await db.execute(q)).scalar_one()
-        if count:
-            out[room] = int(count)
+        .label("rn")
+    )
+    ranked = (
+        select(ChatMessage.id, rn).where(ChatMessage.room_key.in_(room_keys)).subquery()
+    )
+    latest = (
+        await db.execute(
+            select(ChatMessage).where(
+                ChatMessage.id.in_(select(ranked.c.id).where(ranked.c.rn == 1))
+            )
+        )
+    ).scalars()
+    out: dict[str, tuple[ChatMessage | None, int]] = {m.room_key: (m, 0) for m in latest}
+
+    unread_rows = await db.execute(
+        select(ChatMessage.room_key, func.count())
+        .outerjoin(
+            ChatReadMarker,
+            (ChatReadMarker.room_key == ChatMessage.room_key)
+            & (ChatReadMarker.user_id == user_id),
+        )
+        .where(
+            ChatMessage.room_key.in_(room_keys),
+            ChatMessage.author_id != user_id,
+            or_(
+                ChatReadMarker.last_read_at.is_(None),
+                ChatMessage.created_at > ChatReadMarker.last_read_at,
+            ),
+        )
+        .group_by(ChatMessage.room_key)
+    )
+    for room, count in unread_rows:
+        last, _ = out.get(room, (None, 0))
+        out[room] = (last, int(count))
     return out
 
 

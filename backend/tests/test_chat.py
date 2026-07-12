@@ -173,3 +173,53 @@ async def test_dm_peers_lists_co_members(client: AsyncClient, auth: dict):
 
     peers = (await client.get("/api/v1/chat/dm/peers", headers=auth)).json()
     assert any(p["email"] == "peer@nexusbi.io" for p in peers)
+
+
+async def test_channels_carry_last_message_and_sort_by_activity(
+    client: AsyncClient, auth: dict, db_session
+):
+    ws_id = await _ws(client, auth)
+    ids = await _members(client, auth, ws_id)
+    owner_id = ids["test@nexusbi.io"]
+    ch1 = (
+        await client.post(f"/api/v1/workspaces/{ws_id}/channels", json={"name": "birinci"}, headers=auth)
+    ).json()["id"]
+    ch2 = (
+        await client.post(f"/api/v1/workspaces/{ws_id}/channels", json={"name": "ikinci"}, headers=auth)
+    ).json()["id"]
+
+    # Activity in ch1 only: a long message that must be truncated for the rail.
+    long_text = "x" * 500
+    await chat_service.post_message(
+        db_session, chat_service.channel_room(ws_id, ch1), owner_id, "Owner", long_text
+    )
+    await db_session.commit()
+
+    chans = (await client.get(f"/api/v1/workspaces/{ws_id}/channels", headers=auth)).json()
+    # The active channel sorts first; the quiet one still lists (creation = activity).
+    assert chans[0]["id"] == ch1 and any(c["id"] == ch2 for c in chans)
+    preview = chans[0]["last_message"]
+    assert preview["author_name"] == "Owner" and len(preview["content"]) == 140
+    assert next(c for c in chans if c["id"] == ch2)["last_message"] is None
+
+
+async def test_dm_peers_carry_unread_and_last_message(client: AsyncClient, auth: dict, db_session):
+    ws_id = await _ws(client, auth)
+    await _register(client, "dm@nexusbi.io", name="Dima")
+    await _add(client, auth, ws_id, "dm@nexusbi.io", "viewer")
+    ids = await _members(client, auth, ws_id)
+    owner_id, dm_id = ids["test@nexusbi.io"], ids["dm@nexusbi.io"]
+    room = chat_service.dm_room(owner_id, dm_id)
+
+    await chat_service.post_message(db_session, room, dm_id, "Dima", "salam, vaxtın var?")
+    await db_session.commit()
+
+    peers = (await client.get("/api/v1/chat/dm/peers", headers=auth)).json()
+    peer = next(p for p in peers if p["user_id"] == dm_id)
+    assert peer["unread"] == 1
+    assert peer["last_message"]["content"] == "salam, vaxtın var?"
+
+    # Reading the DM clears the badge.
+    await client.post("/api/v1/chat/read", json={"room_key": room}, headers=auth)
+    peers2 = (await client.get("/api/v1/chat/dm/peers", headers=auth)).json()
+    assert next(p for p in peers2 if p["user_id"] == dm_id)["unread"] == 0

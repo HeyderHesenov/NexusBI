@@ -6,16 +6,29 @@ from fastapi import APIRouter, Response, status
 from app.core.exceptions import SchemaNotFoundError
 from app.core.security import create_room_ticket
 from app.dependencies import CurrentUser, DbDep
+from app.models.chat import ChatMessage
 from app.schemas.chat import (
     ChannelCreate,
     ChannelResponse,
     ChatMessageResponse,
     DMPeer,
+    LastMessage,
     RoomRequest,
 )
 from app.services import audit_service, chat_service
 
 router = APIRouter(tags=["chat"])
+
+_SNIPPET_LEN = 140
+
+
+def _preview(msg: ChatMessage | None) -> LastMessage | None:
+    if msg is None:
+        return None
+    return LastMessage(
+        author_id=msg.author_id, author_name=msg.author_name,
+        content=msg.content[:_SNIPPET_LEN], created_at=msg.created_at,
+    )
 
 
 @router.get("/workspaces/{workspace_id}/channels", response_model=list[ChannelResponse])
@@ -23,15 +36,23 @@ async def list_channels(
     workspace_id: str, user: CurrentUser, db: DbDep
 ) -> list[ChannelResponse]:
     channels = await chat_service.list_channels(db, workspace_id, user.id)
-    unread = await chat_service.unread_counts(db, workspace_id, user.id)
-    return [
-        ChannelResponse(
-            id=c.id, workspace_id=c.workspace_id, name=c.name, created_by=c.created_by,
-            created_at=c.created_at,
-            unread=unread.get(chat_service.channel_room(workspace_id, c.id), 0),
+    rooms = {c.id: chat_service.channel_room(workspace_id, c.id) for c in channels}
+    summaries = await chat_service.room_summaries(db, user.id, list(rooms.values()))
+    out = []
+    for c in channels:
+        last, unread = summaries.get(rooms[c.id], (None, 0))
+        out.append(
+            ChannelResponse(
+                id=c.id, workspace_id=c.workspace_id, name=c.name, created_by=c.created_by,
+                created_at=c.created_at, unread=unread, last_message=_preview(last),
+            )
         )
-        for c in channels
-    ]
+    # Most recently active first (channel creation counts as activity).
+    out.sort(
+        key=lambda c: c.last_message.created_at if c.last_message else c.created_at,
+        reverse=True,
+    )
+    return out
 
 
 @router.post(
@@ -73,4 +94,23 @@ async def mark_read(payload: RoomRequest, user: CurrentUser, db: DbDep) -> Respo
 @router.get("/chat/dm/peers", response_model=list[DMPeer])
 async def dm_peers(user: CurrentUser, db: DbDep) -> list[DMPeer]:
     peers = await chat_service.dm_peers(db, user.id)
-    return [DMPeer(user_id=p.id, email=p.email, full_name=p.full_name) for p in peers]
+    rooms = {p.id: chat_service.dm_room(user.id, p.id) for p in peers}
+    summaries = await chat_service.room_summaries(db, user.id, list(rooms.values()))
+    out = []
+    for p in peers:
+        last, unread = summaries.get(rooms[p.id], (None, 0))
+        out.append(
+            DMPeer(
+                user_id=p.id, email=p.email, full_name=p.full_name,
+                unread=unread, last_message=_preview(last),
+            )
+        )
+    # Active conversations first (newest activity), quiet peers after, alphabetical.
+    out.sort(
+        key=lambda p: (
+            p.last_message is None,
+            -(p.last_message.created_at.timestamp() if p.last_message else 0),
+            (p.full_name or p.email).lower(),
+        )
+    )
+    return out

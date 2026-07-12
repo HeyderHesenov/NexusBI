@@ -17,6 +17,7 @@ const TITLE_KEYS: Array<[string, string]> = [
   ['/workspaces', 'title.workspaces'],
   ['/targets', 'title.targets'],
   ['/branding', 'title.branding'],
+  ['/chat', 'title.chat'],
   ['/notifications', 'title.notifications'],
   ['/dashboards', 'title.dashboards'],
   ['/history', 'title.history'],
