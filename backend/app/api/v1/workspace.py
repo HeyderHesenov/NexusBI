@@ -80,6 +80,15 @@ async def remove_member(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.delete("/workspaces/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_workspace(workspace_id: str, user: CurrentUser, db: DbDep) -> Response:
+    await svc.delete(db, workspace_id, user.id)
+    await audit_service.log(
+        db, user.id, "workspace.delete", entity="workspace", entity_id=workspace_id
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get("/audit", response_model=list[AuditEntry])
 async def list_audit(user: CurrentUser, db: DbDep) -> list[AuditEntry]:
     return [AuditEntry.model_validate(a) for a in await audit_service.list_for_user(db, user.id)]

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { History, Plus, Shield, Trash2, UserPlus, Users } from 'lucide-react'
 import { useWorkspaceStore } from '../store/workspaceStore'
 import { Field, FIELD, Select } from '../components/ui/form'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { useFormatDate } from '../hooks/useFormatDate'
 
 const ROLES = ['viewer', 'editor', 'owner']
@@ -15,12 +16,13 @@ export function WorkspacePage() {
   const fmtAudit = (ts: string) =>
     fmtDate(/[zZ]|[+-]\d{2}:?\d{2}$/.test(ts) ? ts : `${ts}Z`, { mode: 'short' })
   const {
-    workspaces, members, audit, load, create, loadMembers, addMember, removeMember, loadAudit,
+    workspaces, members, audit, load, create, remove, loadMembers, addMember, removeMember, loadAudit,
   } = useWorkspaceStore()
   const [name, setName] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('viewer')
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     load().catch(() => undefined)
@@ -85,14 +87,26 @@ export function WorkspacePage() {
         <ul className="space-y-3">
           {workspaces.map((w) => (
             <li key={w.id} className="rounded-2xl border border-line bg-surface p-4">
-              <button onClick={() => toggle(w.id)} className="flex w-full items-center justify-between gap-3 text-left">
-                <span className="flex items-center gap-2 font-medium text-ink">
+              <div className="flex items-center justify-between gap-3">
+                <button onClick={() => toggle(w.id)} className="flex flex-1 items-center gap-2 text-left font-medium text-ink">
                   <Users size={16} className="text-accent" /> {w.name}
+                </button>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+                    {t(`workspacePage.role_${w.role}`, w.role ?? '')}
+                  </span>
+                  {w.role === 'owner' && (
+                    <button
+                      onClick={() => setDeleteId(w.id)}
+                      title={t('workspacePage.deleteWorkspace')}
+                      aria-label={t('workspacePage.deleteWorkspace')}
+                      className="rounded-md border border-line p-1 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </span>
-                <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-                  {t(`workspacePage.role_${w.role}`, w.role ?? '')}
-                </span>
-              </button>
+              </div>
 
               {openId === w.id && (
                 <div className="mt-3 space-y-2 border-t border-line pt-3">
@@ -189,6 +203,16 @@ export function WorkspacePage() {
           </ul>
         )}
       </section>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => remove(deleteId!)}
+        title={t('workspacePage.deleteTitle')}
+        message={t('workspacePage.deleteConfirm', {
+          name: workspaces.find((w) => w.id === deleteId)?.name ?? '',
+        })}
+      />
     </div>
   )
 }

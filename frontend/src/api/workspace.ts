@@ -34,6 +34,10 @@ export async function createWorkspace(name: string): Promise<Workspace> {
   return data
 }
 
+export async function deleteWorkspace(id: string): Promise<void> {
+  await client.delete(`/workspaces/${id}`)
+}
+
 export async function listMembers(id: string): Promise<WorkspaceMember[]> {
   const { data } = await client.get<WorkspaceMember[]>(`/workspaces/${id}/members`)
   return data

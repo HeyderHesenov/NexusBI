@@ -1,7 +1,7 @@
 """Team workspaces + role-based membership (RBAC)."""
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError, SchemaNotFoundError
@@ -54,6 +54,21 @@ async def require_role(
     if _rank(role) < _rank(min_role):
         raise ForbiddenError("Bu əməliyyat üçün icazən yoxdur.")
     return role
+
+
+async def delete(db: AsyncSession, workspace_id: str, actor_id: str) -> None:
+    """Delete a workspace and all its memberships (owner only).
+
+    Members are removed explicitly (not relying on DB-level FK cascade, which
+    SQLite only honours with ``PRAGMA foreign_keys=ON``). RLS rules are keyed by
+    datasource/user, not workspace, so they are untouched.
+    """
+    await require_role(db, workspace_id, actor_id, "owner")
+    await db.execute(
+        sa_delete(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id)
+    )
+    await db.execute(sa_delete(Workspace).where(Workspace.id == workspace_id))
+    await db.flush()
 
 
 async def add_member(

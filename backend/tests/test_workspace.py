@@ -70,6 +70,33 @@ async def test_workspace_rbac_flow(client: AsyncClient, auth: dict):
     assert any(w["id"] == ws["id"] for w in mine2)
 
 
+async def test_workspace_delete(client: AsyncClient, auth: dict):
+    ws = (await client.post("/api/v1/workspaces", json={"name": "Silinəcək"}, headers=auth)).json()
+
+    # A non-owner member cannot delete the workspace.
+    t2 = await _register(client, "member2@nexusbi.io")
+    auth2 = {"Authorization": f"Bearer {t2}"}
+    await client.post(
+        f"/api/v1/workspaces/{ws['id']}/members",
+        json={"email": "member2@nexusbi.io", "role": "viewer"},
+        headers=auth,
+    )
+    forbidden = await client.delete(f"/api/v1/workspaces/{ws['id']}", headers=auth2)
+    assert forbidden.status_code == 403, forbidden.text
+
+    # The owner can — 204, and it disappears for every member (memberships cascade).
+    resp = await client.delete(f"/api/v1/workspaces/{ws['id']}", headers=auth)
+    assert resp.status_code == 204, resp.text
+
+    mine = (await client.get("/api/v1/workspaces", headers=auth)).json()
+    assert all(w["id"] != ws["id"] for w in mine)
+    mine2 = (await client.get("/api/v1/workspaces", headers=auth2)).json()
+    assert all(w["id"] != ws["id"] for w in mine2)
+
+    audit = (await client.get("/api/v1/audit", headers=auth)).json()
+    assert any(a["action"] == "workspace.delete" for a in audit)
+
+
 async def test_audit_log_records_actions(client: AsyncClient, auth: dict):
     await client.post("/api/v1/workspaces", json={"name": "Audit WS"}, headers=auth)
     audit = (await client.get("/api/v1/audit", headers=auth)).json()

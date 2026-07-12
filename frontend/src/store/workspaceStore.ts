@@ -9,6 +9,7 @@ interface WorkspaceState {
   audit: AuditEntry[]
   load: () => Promise<void>
   create: (name: string) => Promise<void>
+  remove: (id: string) => Promise<void>
   loadMembers: (id: string) => Promise<void>
   addMember: (id: string, email: string, role: string) => Promise<void>
   removeMember: (id: string, memberId: string) => Promise<void>
@@ -24,6 +25,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     await api.createWorkspace(name)
     await get().load()
     toast.success('İş sahəsi yaradıldı.')
+  },
+  remove: async (id) => {
+    await api.deleteWorkspace(id)
+    set((s) => {
+      const members = { ...s.members }
+      delete members[id]
+      return { workspaces: s.workspaces.filter((w) => w.id !== id), members }
+    })
+    await get().loadAudit()
+    toast.success('İş sahəsi silindi.')
   },
   loadMembers: async (id) => {
     const members = await api.listMembers(id)
