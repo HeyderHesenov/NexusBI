@@ -303,7 +303,10 @@ export function BrandingPage() {
 
 const PREVIEW_BARS = [42, 60, 48, 74, 64, 88, 78, 96]
 const PREVIEW_SPARK = [6, 9, 7, 12, 10, 15, 13, 18]
-const PREVIEW_STATS = ['1 284', '18.6%']
+const PREVIEW_STATS = [
+  { value: '1 284', labelKey: 'brandingPage.previewStatOrders' },
+  { value: '18.6%', labelKey: 'brandingPage.previewStatMargin' },
+]
 
 // The sparkline path is a fixed decorative shape — compute it once at module load.
 // It's drawn in a 0..60 × 0..22 viewBox but inset vertically to [3,19] so the
@@ -407,10 +410,10 @@ function BrandPreview({
                 +12.4%
               </span>
             </div>
-            {PREVIEW_STATS.map((v) => (
-              <div key={v} className="rounded-xl border border-line bg-surface p-3">
-                <div className="mb-1.5 h-1.5 w-10 rounded-full bg-line" />
-                <p className="font-display text-lg font-bold text-accent">{v}</p>
+            {PREVIEW_STATS.map((s) => (
+              <div key={s.value} className="overflow-hidden rounded-xl border border-line bg-surface p-3">
+                <p className="eyebrow truncate text-[9px]">{t(s.labelKey)}</p>
+                <p className="mt-1 font-display text-lg font-bold text-accent">{s.value}</p>
               </div>
             ))}
           </div>
