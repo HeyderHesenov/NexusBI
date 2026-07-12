@@ -161,8 +161,21 @@ async def _notify_mentions(
 
 
 async def post_message(
-    db: AsyncSession, room_key: str, author_id: str, author_name: str, content: str
+    db: AsyncSession,
+    room_key: str,
+    author_id: str,
+    author_name: str,
+    content: str,
+    *,
+    meta: dict | None = None,
 ) -> ChatMessage:
+    """Persist a message AS a human member (plain text or a server-built card).
+
+    ``meta.ai`` is exclusive to ai_chat_service (which bypasses this function) —
+    rejecting it here makes the "AI cards are unspoofable" invariant mechanical
+    instead of a docstring promise."""
+    if meta and "ai" in meta:
+        raise ValueError("meta.ai yalnız ai_chat_service tərəfindən yazılır")
     if not await can_access_room(db, author_id, room_key):
         raise SchemaNotFoundError("Otağa giriş yoxdur.")
     text = content.strip()[:2000]
@@ -170,7 +183,7 @@ async def post_message(
         raise ForbiddenError("Mesaj boş ola bilməz.")
     msg = ChatMessage(
         room_key=room_key, author_id=author_id, author_name=author_name[:120] or "İstifadəçi",
-        content=text,
+        content=text, meta=meta,
     )
     db.add(msg)
     await db.flush()

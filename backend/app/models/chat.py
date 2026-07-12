@@ -44,8 +44,10 @@ class ChatMessage(Base, TimestampMixin):
     )
     author_name: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    # Structured payload written ONLY server-side (AI plan/actions cards); the
-    # public post path never sets it, so `meta.ai` can't be spoofed by users.
+    # Structured payload written ONLY server-side (AI plan/actions cards and
+    # share cards); user input never reaches it directly, and post_message
+    # REJECTS `meta.ai` — only ai_chat_service (which bypasses post_message)
+    # writes that flag, so AI cards can't be spoofed by users.
     meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 

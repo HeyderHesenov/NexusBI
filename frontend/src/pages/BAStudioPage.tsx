@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { Compass, Grid2x2, Loader2, Shield, Sparkles, Workflow } from 'lucide-react'
 import { SavedCard } from '../components/ui/SavedCard'
+import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { useOpenParam } from '../hooks/useOpenParam'
 import { useFormatDate } from '../hooks/useFormatDate'
 import { BCGMatrix } from '../components/ba/BCGMatrix'
@@ -200,6 +201,14 @@ export function BAStudioPage() {
                   onSelect={() => select(a.id)}
                   onDelete={() =>
                     remove(a.id).then(() => toast.success(t('baStudio.deleted'))).catch(() => undefined)
+                  }
+                  actions={
+                    <ShareToChatButton
+                      resourceType="ba_artifact"
+                      resourceId={a.id}
+                      variant="row"
+                      iconSize={14}
+                    />
                   }
                 />
               </li>

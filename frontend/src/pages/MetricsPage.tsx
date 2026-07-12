@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { BadgeCheck, Plus, ShieldCheck, Tag, Trash2 } from 'lucide-react'
 import { useMetricStore } from '../store/metricStore'
 import { useDatasourceStore } from '../store/datasourceStore'
+import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { ModalShell } from '../components/ui/ModalShell'
 import { Field, Select } from '../components/ui/form'
 import { SkeletonRows } from '../components/ui/Skeleton'
@@ -95,6 +96,7 @@ export function MetricsPage() {
                   >
                     <ShieldCheck size={15} />
                   </button>
+                  <ShareToChatButton resourceType="metric" resourceId={m.id} />
                   <button
                     onClick={() => remove(m.id)}
                     title={t('metricsPage.delete')}

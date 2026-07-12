@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Plus, Play, ShieldCheck, Trash2, X, XCircle } from 'lucide-react'
 import { useDataContractStore } from '../store/dataContractStore'
 import { useDatasourceStore } from '../store/datasourceStore'
+import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { ModalShell } from '../components/ui/ModalShell'
 import { Field, Select } from '../components/ui/form'
 import type { ContractRule, DataContract, Expectation } from '../types'
@@ -138,6 +139,7 @@ function ContractCard({
           <button onClick={doRun} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-60">
             <Play size={13} /> {busy ? t('dataContractsPage.checking') : t('dataContractsPage.check')}
           </button>
+          <ShareToChatButton resourceType="contract" resourceId={contract.id} iconSize={13} />
           <button onClick={onRemove} aria-label={t('dataContractsPage.delete')} className="rounded-lg border border-line p-1.5 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]">
             <Trash2 size={13} />
           </button>

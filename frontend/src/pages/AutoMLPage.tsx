@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { BrainCircuit, Loader2, Sparkles } from 'lucide-react'
 import { Field, FIELD, Select } from '../components/ui/form'
 import { SavedCard } from '../components/ui/SavedCard'
+import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { ModelDiagnostics } from '../components/automl/ModelDiagnostics'
 import { WeightBars } from '../components/automl/WeightBars'
 import { useOpenParam } from '../hooks/useOpenParam'
@@ -262,6 +263,14 @@ export function AutoMLPage() {
                   onSelect={() => select(m.id)}
                   onDelete={() =>
                     remove(m.id).then(() => toast.success(t('automl.deleted'))).catch(() => undefined)
+                  }
+                  actions={
+                    <ShareToChatButton
+                      resourceType="ml_model"
+                      resourceId={m.id}
+                      variant="row"
+                      iconSize={14}
+                    />
                   }
                 />
               </li>

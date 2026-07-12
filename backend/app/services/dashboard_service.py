@@ -271,7 +271,7 @@ async def render_dashboard_for_viewer(
                         log, db, viewer_id, cache, owner_id=owner_id
                     )
                     chart = _chart_snapshot(
-                        log, columns, query_service._snapshot_rows(rows_data), ds_names
+                        log, columns, query_service.snapshot_rows(rows_data), ds_names
                     )
                 except Exception as exc:  # noqa: BLE001 — no data beats leaking owner rows
                     _log.warning(
@@ -568,7 +568,7 @@ async def refresh_widget_data(
         if await rls_service.datasource_has_rules(db, log.datasource_id):
             return None
     columns, rows = await query_service.reexecute_logged_query(log, db, user_id, cache)
-    log.result_data = {"columns": columns, "rows": query_service._snapshot_rows(rows)}
+    log.result_data = {"columns": columns, "rows": query_service.snapshot_rows(rows)}
     await db.flush()
 
     ds_names: dict[str, str] = {}
@@ -657,7 +657,7 @@ async def apply_global_filter(
                 log, db, user_id, cache, filter_spec=widget_spec
             )
             chart = _chart_snapshot(
-                log, columns, query_service._snapshot_rows(rows_data), ds_names
+                log, columns, query_service.snapshot_rows(rows_data), ds_names
             )
         except Exception as exc:  # fail-open: keep the widget on its stored data
             _log.warning("widget_filter_failed", widget_id=w.id, error=str(exc))

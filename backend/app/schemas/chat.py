@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -52,6 +52,27 @@ class RoomRequest(BaseModel):
 
 class AiActionRequest(BaseModel):
     message_id: str = Field(min_length=1, max_length=36)
+
+
+ShareResourceType = Literal[
+    "query_log",
+    "dashboard",
+    "saved_query",
+    "ml_model",
+    "ba_artifact",
+    "decision",
+    "contract",
+    "metric",
+]
+
+
+class ShareRequest(BaseModel):
+    """Share one of YOUR artifacts into a room you can access, as a rich card."""
+
+    room_key: str = Field(min_length=1, max_length=120)
+    resource_type: ShareResourceType
+    resource_id: str = Field(min_length=1, max_length=36)
+    caption: str = Field(default="", max_length=500)
 
 
 class DMPeer(BaseModel):

@@ -767,6 +767,30 @@
     "title": "Share dashboard",
     "whiteLabelEmbed": "White-label embed (signed token)"
   },
+  "shareCard": {
+    "open": "Open",
+    "truncated": "Showing first {{count}} rows",
+    "type_ba_artifact": "BA artifact",
+    "type_contract": "Data contract",
+    "type_dashboard": "Dashboard",
+    "type_decision": "Decision",
+    "type_metric": "Metric",
+    "type_ml_model": "ML model",
+    "type_query_log": "Query result",
+    "type_saved_query": "Report"
+  },
+  "shareDialog": {
+    "cancel": "Cancel",
+    "captionLabel": "Note",
+    "captionPlaceholder": "Optional note…",
+    "empty": "No rooms to share into — create a channel or add teammates first.",
+    "share": "Share",
+    "shared": "Shared to chat.",
+    "sharing": "Sharing…",
+    "subtitle": "Send the card to a team channel or direct message",
+    "title": "Share to chat",
+    "toChat": "Share to chat"
+  },
   "storyMode": {
     "close": "Close",
     "dataStory": "Data story",

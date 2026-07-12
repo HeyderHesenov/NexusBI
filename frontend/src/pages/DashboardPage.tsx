@@ -13,6 +13,7 @@ import { DashboardGrid } from '../components/dashboard/DashboardGrid'
 import { GenerateDashboardModal } from '../components/dashboard/GenerateDashboardModal'
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
 import { ShareDashboardModal } from '../components/dashboard/ShareDashboardModal'
+import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { SnapshotTimeline } from '../components/dashboard/SnapshotTimeline'
 import { SnapshotView } from '../components/dashboard/SnapshotView'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
@@ -210,6 +211,15 @@ export function DashboardPage() {
             >
               <Share2 size={16} /> {t('dashboardPage.share')}
             </button>
+          )}
+          {current && canEdit && (
+            <ShareToChatButton
+              resourceType="dashboard"
+              resourceId={current.id}
+              variant="header"
+              label={t('shareDialog.toChat')}
+              iconSize={16}
+            />
           )}
           {current && canEdit && (
             <button

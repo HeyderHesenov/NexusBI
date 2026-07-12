@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { BellPlus, Clock, Mail, Play, Trash2, BookMarked } from 'lucide-react'
 import { useSavedQueryStore } from '../store/savedQueryStore'
+import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { ModalShell } from '../components/ui/ModalShell'
 import { Field, Select } from '../components/ui/form'
 import { SkeletonRows } from '../components/ui/Skeleton'
@@ -98,6 +99,7 @@ export function ReportsPage() {
                   >
                     <Mail size={15} />
                   </button>
+                  <ShareToChatButton resourceType="saved_query" resourceId={s.id} />
                   <button
                     onClick={() => remove(s.id)}
                     title={t('reportsPage.delete')}

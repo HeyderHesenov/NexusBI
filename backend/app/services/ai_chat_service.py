@@ -105,7 +105,8 @@ async def post_assistant_message(
     """Persist a message AS the assistant.
 
     Deliberately bypasses ``post_message``'s access guard (the assistant is not a
-    workspace member) and mention fan-out; only this module writes ``meta``."""
+    workspace member), mention fan-out, and its ``meta.ai`` rejection — only this
+    module may set ``meta.ai``."""
     assistant = await get_or_create_assistant(db)
     msg = ChatMessage(
         room_key=room_key,

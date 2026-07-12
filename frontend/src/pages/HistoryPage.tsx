@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronUp, RotateCw, Search, Trash2 } from 'lucide-react'
+import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { getHistory } from '../api/query'
 import { useQueryStore } from '../store/queryStore'
 import { useFormatDate } from '../hooks/useFormatDate'
@@ -207,6 +208,11 @@ export function HistoryPage() {
                           >
                             <RotateCw size={15} />
                           </button>
+                          <ShareToChatButton
+                            resourceType="query_log"
+                            resourceId={h.id}
+                            variant="list"
+                          />
                           <button
                             onClick={() => setConfirmId(h.id)}
                             aria-label={t('historyPage.deleteQuery')}

@@ -767,6 +767,30 @@
     "title": "Поделиться дашбордом",
     "whiteLabelEmbed": "White-label встраивание (подписанный токен)"
   },
+  "shareCard": {
+    "open": "Открыть",
+    "truncated": "Показаны первые {{count}} строк",
+    "type_ba_artifact": "BA-артефакт",
+    "type_contract": "Контракт данных",
+    "type_dashboard": "Дашборд",
+    "type_decision": "Решение",
+    "type_metric": "Метрика",
+    "type_ml_model": "ML-модель",
+    "type_query_log": "Результат запроса",
+    "type_saved_query": "Отчёт"
+  },
+  "shareDialog": {
+    "cancel": "Отмена",
+    "captionLabel": "Заметка",
+    "captionPlaceholder": "Необязательная заметка…",
+    "empty": "Некуда отправить — сначала создайте канал или добавьте коллег.",
+    "share": "Поделиться",
+    "shared": "Отправлено в чат.",
+    "sharing": "Отправка…",
+    "subtitle": "Отправьте карточку в канал команды или личное сообщение",
+    "title": "Поделиться в чате",
+    "toChat": "В чат"
+  },
   "storyMode": {
     "close": "Закрыть",
     "dataStory": "История данных",

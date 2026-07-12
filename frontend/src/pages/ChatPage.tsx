@@ -8,6 +8,7 @@ import { useChatStore } from '../store/chatStore'
 import * as chatApi from '../api/chat'
 import { isAiMessage } from '../api/chat'
 import type { ChatMessage, LastMessage } from '../api/chat'
+import { ShareCard } from '../components/chat/ShareCard'
 import { Avatar, avatarHue } from '../components/ui/Avatar'
 import { Field, FIELD, Select } from '../components/ui/form'
 import { useCopilotAction } from '../hooks/useCopilotAction'
@@ -482,6 +483,7 @@ export function ChatPage() {
                     const ai = isAiMessage(msg)
                     const meta = ai ? msg.meta : null
                     const plan = meta?.kind === 'plan' ? meta : null
+                    const share = msg.meta?.kind === 'share' ? msg.meta : null
                     const actionable =
                       plan?.status === 'pending' && plan.requester_id === userId
                     return (
@@ -518,7 +520,12 @@ export function ChatPage() {
                               {ai ? <span className="text-accent">{msg.author_name}</span> : msg.author_name}
                             </p>
                           )}
-                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          {/* No caption → content is just the title fallback, which the card already shows. */}
+                          {(!share || share.caption) && (
+                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          )}
+
+                          {share && <ShareCard meta={share} canOpen={own} onOpen={runAction} />}
 
                           {plan && (plan.plan?.length ?? 0) > 0 && (
                             <div className="mt-2 rounded-xl border border-line bg-surface p-3">

@@ -767,6 +767,30 @@
     "title": "Panoyu paylaş",
     "whiteLabelEmbed": "White-label yerleştirme (imzalı token)"
   },
+  "shareCard": {
+    "open": "Aç",
+    "truncated": "İlk {{count}} satır gösteriliyor",
+    "type_ba_artifact": "BA artefaktı",
+    "type_contract": "Veri sözleşmesi",
+    "type_dashboard": "Pano",
+    "type_decision": "Karar",
+    "type_metric": "Metrik",
+    "type_ml_model": "ML modeli",
+    "type_query_log": "Sorgu sonucu",
+    "type_saved_query": "Rapor"
+  },
+  "shareDialog": {
+    "cancel": "Vazgeç",
+    "captionLabel": "Not",
+    "captionPlaceholder": "İsteğe bağlı not…",
+    "empty": "Paylaşılacak oda yok — önce bir kanal oluştur veya ekip arkadaşı ekle.",
+    "share": "Paylaş",
+    "shared": "Sohbette paylaşıldı.",
+    "sharing": "Paylaşılıyor…",
+    "subtitle": "Kartı ekip kanalına veya özel mesaja gönder",
+    "title": "Sohbette paylaş",
+    "toChat": "Sohbette paylaş"
+  },
   "storyMode": {
     "close": "Kapat",
     "dataStory": "Veri hikayesi",

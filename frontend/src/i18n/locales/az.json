@@ -767,6 +767,30 @@
     "title": "Dashboard-u paylaş",
     "whiteLabelEmbed": "White-label embed (imzalı token)"
   },
+  "shareCard": {
+    "open": "Aç",
+    "truncated": "İlk {{count}} sətir göstərilir",
+    "type_ba_artifact": "BA artefaktı",
+    "type_contract": "Data müqaviləsi",
+    "type_dashboard": "Dashboard",
+    "type_decision": "Qərar",
+    "type_metric": "Metrik",
+    "type_ml_model": "ML modeli",
+    "type_query_log": "Sorğu nəticəsi",
+    "type_saved_query": "Hesabat"
+  },
+  "shareDialog": {
+    "cancel": "İmtina",
+    "captionLabel": "Qeyd",
+    "captionPlaceholder": "İstəyə bağlı qeyd…",
+    "empty": "Paylaşmaq üçün otaq yoxdur — əvvəlcə kanal yarat və ya komanda yoldaşı əlavə et.",
+    "share": "Paylaş",
+    "shared": "Çata paylaşıldı.",
+    "sharing": "Paylaşılır…",
+    "subtitle": "Kartı komanda kanalına və ya şəxsi mesaja göndər",
+    "title": "Çata paylaş",
+    "toChat": "Çata paylaş"
+  },
   "storyMode": {
     "close": "Bağla",
     "dataStory": "Data hekayəsi",

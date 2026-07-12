@@ -72,15 +72,22 @@ _SNAPSHOT_MAX_ROWS = 1000
 _SNAPSHOT_MAX_BYTES = 256 * 1024  # cap the persisted JSON snapshot at ~256 KB
 
 
-def _snapshot_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Bound the persisted result snapshot by both row count and byte size."""
+def snapshot_rows(
+    rows: list[dict[str, Any]],
+    *,
+    max_rows: int = _SNAPSHOT_MAX_ROWS,
+    max_bytes: int = _SNAPSHOT_MAX_BYTES,
+) -> list[dict[str, Any]]:
+    """Bound a result snapshot by both row count and byte size.
+
+    Also reused with tighter caps for chat share cards, which embed a copy."""
     import json
 
     capped: list[dict[str, Any]] = []
     size = 0
-    for row in rows[:_SNAPSHOT_MAX_ROWS]:
+    for row in rows[:max_rows]:
         size += len(json.dumps(row, default=str))
-        if size > _SNAPSHOT_MAX_BYTES:
+        if size > max_bytes:
             break
         capped.append(row)
     return capped
@@ -188,7 +195,7 @@ async def process_nl_query(
     elapsed_ms = int((time.perf_counter() - started) * 1000)
 
     # Snapshot once; reuse for both the cache payload and the persisted log.
-    snapped = _snapshot_rows(rows)
+    snapped = snapshot_rows(rows)
     await cache.set(
         key,
         {
@@ -386,7 +393,7 @@ async def run_user_sql(
     # root-cause) still work later off the persisted query_log_id + result_data.
     chart_config = rule_based_chart(columns, rows)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
-    snapped = _snapshot_rows(rows)
+    snapped = snapshot_rows(rows)
 
     return await _finalize(
         db, user_id, datasource_id, _sql_label(label, clean_sql),

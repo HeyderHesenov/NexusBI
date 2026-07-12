@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Activity, ChevronDown, Lightbulb, Target, TrendingDown, TrendingUp, Trash2 } from 'lucide-react'
 import { useDecisionStore } from '../store/decisionStore'
+import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { formatNumber } from '../lib/format'
 import { Sparkline } from '../components/charts/Sparkline'
 import { RevealText } from '../components/charts/RevealText'
@@ -155,6 +156,7 @@ function DecisionCard({
               <option key={s.value} value={s.value}>{t(s.labelKey)}</option>
             ))}
           </select>
+          <ShareToChatButton resourceType="decision" resourceId={d.id} />
           <button
             onClick={() => onRemove(d.id)}
             title={t('decisionsPage.delete')}

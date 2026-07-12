@@ -1,5 +1,6 @@
 import { client } from './client'
 import type { CopilotAction } from './copilot'
+import type { WidgetChart } from '../types'
 
 export interface LastMessage {
   author_id: string
@@ -34,6 +35,42 @@ export interface AiMeta {
   actions?: CopilotAction[]
 }
 
+export type ShareResourceType =
+  | 'query_log'
+  | 'dashboard'
+  | 'saved_query'
+  | 'ml_model'
+  | 'ba_artifact'
+  | 'decision'
+  | 'contract'
+  | 'metric'
+
+/** The widget-snapshot shape, minus fields a chat card deliberately omits
+ * (sql, natural_language, datasource) — screenshot semantics. */
+export type ShareChartPayload = Pick<
+  WidgetChart,
+  'chart_type' | 'chart_config' | 'columns' | 'data'
+> & {
+  insight?: string
+  /** Server set this when the embedded snapshot dropped rows to fit the card. */
+  truncated?: boolean
+}
+
+/** Server-built card for an artifact a member shared into the room. */
+export interface ShareMeta {
+  ai?: never // shares are human messages — keeps isAiMessage() narrowing sound
+  kind: 'share'
+  resource_type: ShareResourceType
+  resource_id: string
+  /** The sharer's note, "" when none — content falls back to title then. */
+  caption: string
+  title: string
+  subtitle?: string
+  chart?: ShareChartPayload | null
+}
+
+export type MessageMeta = AiMeta | ShareMeta
+
 export interface ChatMessage {
   id: string
   room_key: string
@@ -41,7 +78,7 @@ export interface ChatMessage {
   author_name: string
   content: string
   created_at: string
-  meta?: AiMeta | null
+  meta?: MessageMeta | null
 }
 
 export interface DMPeer {
@@ -81,6 +118,26 @@ export async function markRead(roomKey: string): Promise<void> {
 export async function dmPeers(): Promise<DMPeer[]> {
   const { data } = await client.get<DMPeer[]>('/chat/dm/peers')
   return data
+}
+
+export async function shareToChat(payload: {
+  room_key: string
+  resource_type: ShareResourceType
+  resource_id: string
+  caption?: string
+}): Promise<ChatMessage> {
+  const { data } = await client.post<ChatMessage>('/chat/share', payload)
+  return data
+}
+
+/** A share card's "open" chip navigates exactly like a copilot action chip.
+ * Every CopilotAction id field is mechanically `${resource_type}_id`. */
+export function shareNavAction(meta: ShareMeta): CopilotAction {
+  return {
+    type: meta.resource_type,
+    label: meta.title,
+    [`${meta.resource_type}_id`]: meta.resource_id,
+  } as CopilotAction
 }
 
 export async function approveAi(messageId: string): Promise<void> {

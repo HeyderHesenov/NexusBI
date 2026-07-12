@@ -1,10 +1,10 @@
 """Team chat HTTP endpoints: channels, history, tickets, read markers, DM peers, AI."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.core.exceptions import SchemaNotFoundError
-from app.core.rate_limit import _client_ip
+from app.core.rate_limit import _client_ip, rate_limit
 from app.core.security import create_room_ticket
 from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.models.chat import ChatMessage
@@ -17,8 +17,9 @@ from app.schemas.chat import (
     DMPeer,
     LastMessage,
     RoomRequest,
+    ShareRequest,
 )
-from app.services import ai_chat_service, audit_service, chat_service
+from app.services import ai_chat_service, audit_service, chat_service, chat_share_service
 
 router = APIRouter(tags=["chat"])
 
@@ -92,6 +93,37 @@ async def room_ticket(payload: RoomRequest, user: CurrentUser, db: DbDep) -> dic
 async def mark_read(payload: RoomRequest, user: CurrentUser, db: DbDep) -> Response:
     await chat_service.mark_read(db, user.id, payload.room_key)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/chat/share",
+    response_model=ChatMessageResponse,
+    status_code=status.HTTP_201_CREATED,
+    # The WS post path throttles room floods (check_ip "ws_chat"); this is the
+    # only other message-creating path and each card can carry a ~32KB snapshot.
+    dependencies=[Depends(rate_limit("chat_share", limit=10, window_seconds=60))],
+)
+async def share_resource(
+    payload: ShareRequest, user: CurrentUser, db: DbDep
+) -> ChatMessageResponse:
+    """Post one of YOUR artifacts into a room as a rich card (chart snapshot for
+    query results, reference card for everything else)."""
+    msg = await chat_share_service.share(db, user, payload)
+    await audit_service.log(
+        db, user.id, "chat.share", entity="chat_message", entity_id=msg.id,
+        meta={
+            "resource_type": payload.resource_type,
+            "resource_id": payload.resource_id,
+            "room_key": payload.room_key,
+        },
+    )
+    # Persist before broadcasting so a member's history refetch can't miss it.
+    await db.commit()
+    resp = ChatMessageResponse.model_validate(msg)
+    await hub.broadcast(
+        msg.room_key, {"type": "chat", "message": resp.model_dump(mode="json")}
+    )
+    return resp
 
 
 async def _broadcast_update(msg: ChatMessage) -> None:

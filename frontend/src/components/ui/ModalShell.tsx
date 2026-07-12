@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 interface Props {
   open: boolean
@@ -16,7 +17,9 @@ const FOCUSABLE =
 
 /** Shared modal chrome: overlay, centered card, header, outside-click + Escape
  * close, plus a full WAI-ARIA dialog contract — focus trap, initial focus,
- * focus restoration on close, body scroll-lock, and aria-modal labelling. */
+ * focus restoration on close, body scroll-lock, and aria-modal labelling.
+ * Portaled to <body> so triggers inside hover-reveal / overflow / opacity
+ * containers can't leak those styles onto the open dialog. */
 export function ModalShell({ open, onClose, title, subtitle, children, footer, wide }: Props) {
   const cardRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -74,7 +77,7 @@ export function ModalShell({ open, onClose, title, subtitle, children, footer, w
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
@@ -101,6 +104,7 @@ export function ModalShell({ open, onClose, title, subtitle, children, footer, w
         <div className="min-h-0 flex-1 overflow-auto">{children}</div>
         {footer && <div className="border-t border-line p-4">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
