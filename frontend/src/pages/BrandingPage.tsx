@@ -305,13 +305,14 @@ const PREVIEW_BARS = [42, 60, 48, 74, 64, 88, 78, 96]
 const PREVIEW_SPARK = [6, 9, 7, 12, 10, 15, 13, 18]
 const PREVIEW_STATS = ['1 284', '18.6%']
 
-// The sparkline path is a fixed decorative shape — compute it once at module load
-// (60×22 viewBox), not on every count-up frame.
+// The sparkline path is a fixed decorative shape — compute it once at module load.
+// It's drawn in a 0..60 × 0..22 viewBox but inset vertically to [3,19] so the
+// stroke never touches the top/bottom edge (no clip once the tile clips overflow).
 const SPARK_MIN = Math.min(...PREVIEW_SPARK)
 const SPARK_MAX = Math.max(...PREVIEW_SPARK)
 const SPARK_PATH = PREVIEW_SPARK.map((v, i) => {
   const x = (i / (PREVIEW_SPARK.length - 1)) * 60
-  const y = 22 - ((v - SPARK_MIN) / (SPARK_MAX - SPARK_MIN || 1)) * 22
+  const y = 19 - ((v - SPARK_MIN) / (SPARK_MAX - SPARK_MIN || 1)) * 16
   return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
 }).join(' ')
 
@@ -380,12 +381,26 @@ function BrandPreview({
         <div className="min-w-0 flex-1 space-y-3 p-4">
           <div className="grid grid-cols-3 gap-3">
             {/* Rich KPI tile with count-up + brand sparkline */}
-            <div className="plot-grid rounded-xl border border-line bg-surface p-3">
+            <div className="plot-grid overflow-hidden rounded-xl border border-line bg-surface p-3">
               <p className="eyebrow text-[9px]">{t('brandingPage.previewKpiLabel')}</p>
-              <div className="mt-1 flex items-end justify-between gap-1">
-                <span className="font-display text-lg font-bold tabular-nums text-accent">{kpi.toFixed(1)}k</span>
-                <svg width={60} height={22} className="overflow-visible" aria-hidden="true">
-                  <path d={SPARK_PATH} fill="none" stroke="rgb(var(--accent))" strokeWidth={1.6} strokeLinecap="round" />
+              <div className="mt-1 flex items-end gap-2">
+                <span className="shrink-0 font-display text-lg font-bold tabular-nums text-accent">{kpi.toFixed(1)}k</span>
+                {/* Responsive: fills the remaining width and shrinks with the tile
+                    (min-w-0 + flex-1) so it can never spill past the card edge. */}
+                <svg
+                  viewBox="0 0 60 22"
+                  preserveAspectRatio="none"
+                  className="h-5 min-w-0 flex-1"
+                  aria-hidden="true"
+                >
+                  <path
+                    d={SPARK_PATH}
+                    fill="none"
+                    stroke="rgb(var(--accent))"
+                    strokeWidth={1.6}
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
                 </svg>
               </div>
               <span className="mt-1 inline-flex rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-accent">
