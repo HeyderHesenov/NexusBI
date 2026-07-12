@@ -51,4 +51,13 @@ describe('BrandingPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('#RRGGBB')
     expect(screen.getByRole('button', { name: /Yadda saxla/ })).toBeDisabled()
   })
+
+  it('warns on a low-contrast color with an icon, not an emoji', async () => {
+    renderPage()
+    const color = await screen.findByLabelText('Əsas rəng')
+    // Valid hex, but fails the 3:1 both-themes check (yellow disappears on white).
+    fireEvent.change(color, { target: { value: '#FFFF00' } })
+    expect(screen.getByText('Zəif kontrast')).toBeInTheDocument()
+    expect(screen.queryByText(/[⚠✓]/)).toBeNull()
+  })
 })
