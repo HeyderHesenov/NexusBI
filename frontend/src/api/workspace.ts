@@ -56,6 +56,31 @@ export async function removeMember(id: string, memberId: string): Promise<void> 
   await client.delete(`/workspaces/${id}/members/${memberId}`)
 }
 
+export async function renameWorkspace(id: string, name: string): Promise<Workspace> {
+  const { data } = await client.patch<Workspace>(`/workspaces/${id}`, { name })
+  return data
+}
+
+export async function changeMemberRole(
+  id: string,
+  memberId: string,
+  role: string,
+): Promise<WorkspaceMember> {
+  const { data } = await client.patch<WorkspaceMember>(
+    `/workspaces/${id}/members/${memberId}`,
+    { role },
+  )
+  return data
+}
+
+export async function transferOwnership(id: string, memberId: string): Promise<void> {
+  await client.post(`/workspaces/${id}/transfer`, { member_id: memberId })
+}
+
+export async function leaveWorkspace(id: string): Promise<void> {
+  await client.post(`/workspaces/${id}/leave`)
+}
+
 export async function listAudit(): Promise<AuditEntry[]> {
   const { data } = await client.get<AuditEntry[]>('/audit')
   return data

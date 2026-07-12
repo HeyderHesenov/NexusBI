@@ -56,6 +56,121 @@ async def require_role(
     return role
 
 
+async def rename(db: AsyncSession, workspace_id: str, actor_id: str, name: str) -> Workspace:
+    """Rename a workspace (owner only)."""
+    await require_role(db, workspace_id, actor_id, "owner")
+    ws = (
+        await db.execute(select(Workspace).where(Workspace.id == workspace_id))
+    ).scalar_one_or_none()
+    if ws is None:
+        raise SchemaNotFoundError("İş sahəsi tapılmadı.")
+    ws.name = name.strip()[:255]
+    await db.flush()
+    await db.refresh(ws)
+    return ws
+
+
+async def change_role(
+    db: AsyncSession, workspace_id: str, actor_id: str, member_id: str, role: str
+) -> WorkspaceMember:
+    """Set a member's role directly (owner only).
+
+    Only ``viewer``/``editor`` may be set here — promoting to ``owner`` is the job
+    of ``transfer_ownership`` (which also demotes the previous owner) so there is
+    always exactly one owner. The workspace owner can't be demoted this way either
+    (avoids self-lockout); ownership only moves via transfer.
+    """
+    await require_role(db, workspace_id, actor_id, "owner")
+    if role not in ("viewer", "editor"):
+        raise ForbiddenError("Bu rol yalnız sahiblik ötürülməsi ilə təyin edilə bilər.")
+    member = (
+        await db.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.id == member_id,
+                WorkspaceMember.workspace_id == workspace_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if member is None:
+        raise SchemaNotFoundError("Üzv tapılmadı.")
+    ws = (
+        await db.execute(select(Workspace).where(Workspace.id == workspace_id))
+    ).scalar_one_or_none()
+    if ws and member.user_id == ws.owner_id:
+        raise ForbiddenError("İş sahəsinin sahibinin rolu bu yolla dəyişdirilə bilməz.")
+    member.role = role
+    await db.flush()
+    await db.refresh(member)
+    return member
+
+
+async def transfer_ownership(
+    db: AsyncSession, workspace_id: str, actor_id: str, new_owner_member_id: str
+) -> str:
+    """Transfer ownership to another member (owner only).
+
+    The target member becomes ``owner`` and the previous owner is demoted to
+    ``editor`` — leaving exactly one owner. Returns the new owner's ``user_id``
+    (so the audit entry records a user id, like the other workspace actions).
+    """
+    await require_role(db, workspace_id, actor_id, "owner")
+    ws = (
+        await db.execute(select(Workspace).where(Workspace.id == workspace_id))
+    ).scalar_one_or_none()
+    if ws is None:
+        raise SchemaNotFoundError("İş sahəsi tapılmadı.")
+    target = (
+        await db.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.id == new_owner_member_id,
+                WorkspaceMember.workspace_id == workspace_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if target is None:
+        raise SchemaNotFoundError("Üzv tapılmadı.")
+    if target.user_id == ws.owner_id:
+        raise ForbiddenError("Bu üzv artıq sahibdir.")
+    # Demote the current owner's membership to editor.
+    old_owner = (
+        await db.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.user_id == ws.owner_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if old_owner is not None:
+        old_owner.role = "editor"
+    ws.owner_id = target.user_id
+    target.role = "owner"
+    await db.flush()
+    return target.user_id
+
+
+async def leave(db: AsyncSession, workspace_id: str, actor_id: str) -> None:
+    """Remove yourself from a workspace (any non-owner member).
+
+    The owner can't leave — they must transfer ownership or delete the workspace
+    first (otherwise the workspace would be left ownerless).
+    """
+    await require_role(db, workspace_id, actor_id, "viewer")  # membership check
+    ws = (
+        await db.execute(select(Workspace).where(Workspace.id == workspace_id))
+    ).scalar_one_or_none()
+    if ws and actor_id == ws.owner_id:
+        raise ForbiddenError(
+            "İş sahəsinin sahibi çıxa bilməz — əvvəlcə sahibliyi ötür və ya sahəni sil."
+        )
+    await db.execute(
+        sa_delete(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == actor_id,
+        )
+    )
+    await db.flush()
+
+
 async def delete(db: AsyncSession, workspace_id: str, actor_id: str) -> None:
     """Delete a workspace and all its memberships (owner only).
 

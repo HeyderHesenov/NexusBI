@@ -97,6 +97,124 @@ async def test_workspace_delete(client: AsyncClient, auth: dict):
     assert any(a["action"] == "workspace.delete" for a in audit)
 
 
+async def test_workspace_rename(client: AsyncClient, auth: dict):
+    ws = (await client.post("/api/v1/workspaces", json={"name": "Köhnə ad"}, headers=auth)).json()
+
+    # A non-owner viewer cannot rename.
+    t2 = await _register(client, "renamer@nexusbi.io")
+    auth2 = {"Authorization": f"Bearer {t2}"}
+    await client.post(
+        f"/api/v1/workspaces/{ws['id']}/members",
+        json={"email": "renamer@nexusbi.io", "role": "viewer"},
+        headers=auth,
+    )
+    forbidden = await client.patch(
+        f"/api/v1/workspaces/{ws['id']}", json={"name": "Oğurlanmış"}, headers=auth2
+    )
+    assert forbidden.status_code == 403, forbidden.text
+
+    renamed = await client.patch(
+        f"/api/v1/workspaces/{ws['id']}", json={"name": "Yeni ad"}, headers=auth
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["name"] == "Yeni ad"
+
+    audit = (await client.get("/api/v1/audit", headers=auth)).json()
+    assert any(a["action"] == "workspace.rename" for a in audit)
+
+
+async def test_workspace_change_role(client: AsyncClient, auth: dict):
+    ws = (await client.post("/api/v1/workspaces", json={"name": "Rollar"}, headers=auth)).json()
+    t2 = await _register(client, "rolemate@nexusbi.io")
+    await client.post(
+        f"/api/v1/workspaces/{ws['id']}/members",
+        json={"email": "rolemate@nexusbi.io", "role": "viewer"},
+        headers=auth,
+    )
+    members = (await client.get(f"/api/v1/workspaces/{ws['id']}/members", headers=auth)).json()
+    mate = next(m for m in members if m["email"] == "rolemate@nexusbi.io")
+    owner = next(m for m in members if m["email"] == "test@nexusbi.io")
+
+    # Owner promotes the viewer to editor.
+    promoted = await client.patch(
+        f"/api/v1/workspaces/{ws['id']}/members/{mate['id']}",
+        json={"role": "editor"}, headers=auth,
+    )
+    assert promoted.status_code == 200, promoted.text
+    assert promoted.json()["role"] == "editor"
+
+    # Setting "owner" via this endpoint is rejected by validation (transfer only).
+    bad = await client.patch(
+        f"/api/v1/workspaces/{ws['id']}/members/{mate['id']}",
+        json={"role": "owner"}, headers=auth,
+    )
+    assert bad.status_code == 422, bad.text
+
+    # The owner's own membership can't be demoted this way (self-lockout guard).
+    demote = await client.patch(
+        f"/api/v1/workspaces/{ws['id']}/members/{owner['id']}",
+        json={"role": "viewer"}, headers=auth,
+    )
+    assert demote.status_code == 403, demote.text
+
+
+async def test_workspace_transfer_ownership(client: AsyncClient, auth: dict):
+    ws = (await client.post("/api/v1/workspaces", json={"name": "Ötürmə"}, headers=auth)).json()
+    t2 = await _register(client, "newowner@nexusbi.io")
+    auth2 = {"Authorization": f"Bearer {t2}"}
+    await client.post(
+        f"/api/v1/workspaces/{ws['id']}/members",
+        json={"email": "newowner@nexusbi.io", "role": "viewer"},
+        headers=auth,
+    )
+    members = (await client.get(f"/api/v1/workspaces/{ws['id']}/members", headers=auth)).json()
+    mate = next(m for m in members if m["email"] == "newowner@nexusbi.io")
+
+    resp = await client.post(
+        f"/api/v1/workspaces/{ws['id']}/transfer", json={"member_id": mate["id"]}, headers=auth
+    )
+    assert resp.status_code == 204, resp.text
+
+    # The new owner sees themselves as owner; the previous owner is now editor.
+    after = (await client.get(f"/api/v1/workspaces/{ws['id']}/members", headers=auth2)).json()
+    roles = {m["email"]: m["role"] for m in after}
+    assert roles["newowner@nexusbi.io"] == "owner"
+    assert roles["test@nexusbi.io"] == "editor"
+
+    # A member id that isn't in this workspace is rejected.
+    missing = await client.post(
+        f"/api/v1/workspaces/{ws['id']}/transfer", json={"member_id": "nope"}, headers=auth2
+    )
+    assert missing.status_code == 404, missing.text
+
+    audit = (await client.get("/api/v1/audit", headers=auth)).json()
+    assert any(a["action"] == "workspace.transfer" for a in audit)
+
+
+async def test_workspace_leave(client: AsyncClient, auth: dict):
+    ws = (await client.post("/api/v1/workspaces", json={"name": "Ayrılma"}, headers=auth)).json()
+    t2 = await _register(client, "leaver@nexusbi.io")
+    auth2 = {"Authorization": f"Bearer {t2}"}
+    await client.post(
+        f"/api/v1/workspaces/{ws['id']}/members",
+        json={"email": "leaver@nexusbi.io", "role": "viewer"},
+        headers=auth,
+    )
+
+    # The owner can't leave (would orphan the workspace).
+    owner_leave = await client.post(f"/api/v1/workspaces/{ws['id']}/leave", headers=auth)
+    assert owner_leave.status_code == 403, owner_leave.text
+
+    # A regular member can — the workspace vanishes from their list.
+    resp = await client.post(f"/api/v1/workspaces/{ws['id']}/leave", headers=auth2)
+    assert resp.status_code == 204, resp.text
+    mine2 = (await client.get("/api/v1/workspaces", headers=auth2)).json()
+    assert all(w["id"] != ws["id"] for w in mine2)
+    # But it still exists for the owner.
+    mine = (await client.get("/api/v1/workspaces", headers=auth)).json()
+    assert any(w["id"] == ws["id"] for w in mine)
+
+
 async def test_audit_log_records_actions(client: AsyncClient, auth: dict):
     await client.post("/api/v1/workspaces", json={"name": "Audit WS"}, headers=auth)
     audit = (await client.get("/api/v1/audit", headers=auth)).json()

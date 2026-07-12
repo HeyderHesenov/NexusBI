@@ -8,7 +8,10 @@ from app.schemas.workspace import (
     AuditEntry,
     MemberAdd,
     MemberResponse,
+    MemberRoleUpdate,
+    TransferOwnership,
     WorkspaceCreate,
+    WorkspaceRename,
     WorkspaceResponse,
 )
 from app.services import audit_service
@@ -76,6 +79,59 @@ async def remove_member(
     await audit_service.log(
         db, user.id, "workspace.member_remove", entity="workspace", entity_id=workspace_id,
         meta={"member": member_id},
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/workspaces/{workspace_id}", response_model=WorkspaceResponse)
+async def rename_workspace(
+    workspace_id: str, payload: WorkspaceRename, user: CurrentUser, db: DbDep
+) -> WorkspaceResponse:
+    ws = await svc.rename(db, workspace_id, user.id, payload.name)
+    await audit_service.log(
+        db, user.id, "workspace.rename", entity="workspace", entity_id=ws.id
+    )
+    role = await svc.get_role(db, ws.id, user.id)
+    return WorkspaceResponse(
+        id=ws.id, name=ws.name, owner_id=ws.owner_id, role=role, created_at=ws.created_at
+    )
+
+
+@router.patch(
+    "/workspaces/{workspace_id}/members/{member_id}", response_model=MemberResponse
+)
+async def change_member_role(
+    workspace_id: str, member_id: str, payload: MemberRoleUpdate, user: CurrentUser, db: DbDep
+) -> MemberResponse:
+    member = await svc.change_role(db, workspace_id, user.id, member_id, payload.role)
+    await audit_service.log(
+        db, user.id, "workspace.member_role", entity="workspace", entity_id=workspace_id,
+        meta={"member": member.user_id, "role": member.role},
+    )
+    email = next(
+        (m["email"] for m in await svc.list_members(db, workspace_id, user.id) if m["id"] == member.id),
+        "",
+    )
+    return MemberResponse(id=member.id, user_id=member.user_id, email=email, role=member.role)
+
+
+@router.post("/workspaces/{workspace_id}/transfer", status_code=status.HTTP_204_NO_CONTENT)
+async def transfer_workspace(
+    workspace_id: str, payload: TransferOwnership, user: CurrentUser, db: DbDep
+) -> Response:
+    new_owner_id = await svc.transfer_ownership(db, workspace_id, user.id, payload.member_id)
+    await audit_service.log(
+        db, user.id, "workspace.transfer", entity="workspace", entity_id=workspace_id,
+        meta={"new_owner": new_owner_id},
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/workspaces/{workspace_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
+async def leave_workspace(workspace_id: str, user: CurrentUser, db: DbDep) -> Response:
+    await svc.leave(db, workspace_id, user.id)
+    await audit_service.log(
+        db, user.id, "workspace.leave", entity="workspace", entity_id=workspace_id
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { formatUsage } from '../../lib/usageFormat'
 import { useAuthStore } from '../../store/authStore'
 import { useBillingStore } from '../../store/billingStore'
+import { Avatar } from '../ui/Avatar'
 
 /** Bottom-left account footer (Claude-desktop style): plan + usage limit ABOVE the
  * user's name, with logout. Single source of account/plan info (not in TopBar). */
@@ -17,7 +18,6 @@ export function SidebarAccount() {
 
   const u = formatUsage(usage)
   const name = user?.full_name || user?.email || ''
-  const initial = name.charAt(0).toUpperCase() || '?'
 
   return (
     <div className="shrink-0 border-t border-line px-3 py-3">
@@ -48,9 +48,7 @@ export function SidebarAccount() {
 
       {/* Account row */}
       <div className="flex items-center gap-2.5 px-1">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-bg">
-          {initial}
-        </span>
+        <Avatar name={user?.full_name} email={user?.email} size="md" />
         <div className="min-w-0 flex-1 leading-tight">
           <p className="truncate text-sm font-medium text-ink">{name}</p>
           {user?.full_name && <p className="truncate text-[11px] text-ink-faint">{user.email}</p>}

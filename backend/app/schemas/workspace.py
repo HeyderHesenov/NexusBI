@@ -35,6 +35,19 @@ class MemberResponse(BaseModel):
     role: str
 
 
+class WorkspaceRename(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+
+
+class MemberRoleUpdate(BaseModel):
+    # Promotion to owner goes through the transfer endpoint, not here.
+    role: Literal["viewer", "editor"]
+
+
+class TransferOwnership(BaseModel):
+    member_id: str = Field(min_length=1)
+
+
 class RLSRuleCreate(BaseModel):
     member_email: str = Field(min_length=3, max_length=255)
     column: str = Field(min_length=1, max_length=255)
