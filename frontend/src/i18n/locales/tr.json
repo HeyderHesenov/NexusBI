@@ -511,7 +511,8 @@
     "graph": "Bilgi grafiği",
     "twin": "Dijital İkiz",
     "baStudio": "BA Studio",
-    "automl": "AutoML"
+    "automl": "AutoML",
+    "chat": "Sohbet"
   },
   "notificationsPage": {
     "briefingLoading": "Hazırlanıyor…",
@@ -1156,5 +1157,22 @@
         "hint": "Sonuçları panele ekle"
       }
     }
+  },
+  "chatPage": {
+    "channels": "Kanallar",
+    "connected": "Bağlı",
+    "connecting": "Bağlanıyor…",
+    "directMessages": "Doğrudan mesajlar",
+    "messagePlaceholder": "Bir mesaj yaz…",
+    "newChannel": "Yeni kanal",
+    "newChannelPlaceholder": "kanal adı",
+    "noChannels": "Henüz kanal yok",
+    "noMessages": "Henüz mesaj yok. İlk yazan sen ol.",
+    "noPeers": "Henüz takım arkadaşı yok",
+    "noWorkspace": "Önce bir çalışma alanı oluştur",
+    "pickRoom": "Bir kanal veya sohbet seç",
+    "send": "Gönder",
+    "title": "Ekip sohbeti",
+    "workspace": "Çalışma alanı"
   }
 }

@@ -67,6 +67,16 @@ def create_ws_ticket(user_id: str, dashboard_id: str, ttl_seconds: int = 60) -> 
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
+def create_room_ticket(user_id: str, room_key: str, ttl_seconds: int = 60) -> str:
+    """Short-lived ticket for the team-chat WebSocket, bound to one room.
+
+    Carries a distinct ``room`` claim (not ``ws``) so a dashboard ticket can't be
+    replayed on a chat room and vice-versa."""
+    expire = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+    payload = {"sub": user_id, "room": room_key, "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
 def create_embed_token(dashboard_id: str, ttl_days: int = 30) -> str:
     """Signed, read-only embed token for a single dashboard (no user identity)."""
     expire = datetime.now(timezone.utc) + timedelta(days=ttl_days)

@@ -3,6 +3,7 @@ from app.db.base import Base
 from app.models.alert import Alert, Notification
 from app.models.ba_artifact import BAArtifact
 from app.models.brand import BrandConfig
+from app.models.chat import Channel, ChatMessage, ChatReadMarker
 from app.models.comment import DashboardComment
 from app.models.dashboard import Dashboard, Widget
 from app.models.dashboard_snapshot import DashboardSnapshot
@@ -62,4 +63,7 @@ __all__ = [
     "ContractRun",
     "BAArtifact",
     "MLModel",
+    "Channel",
+    "ChatMessage",
+    "ChatReadMarker",
 ]

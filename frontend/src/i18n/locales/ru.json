@@ -511,7 +511,8 @@
     "graph": "Граф знаний",
     "twin": "Цифровой двойник",
     "baStudio": "BA Studio",
-    "automl": "AutoML"
+    "automl": "AutoML",
+    "chat": "Чат"
   },
   "notificationsPage": {
     "briefingLoading": "Готовится…",
@@ -1156,5 +1157,22 @@
         "hint": "Добавьте результаты на панель"
       }
     }
+  },
+  "chatPage": {
+    "channels": "Каналы",
+    "connected": "Подключено",
+    "connecting": "Подключение…",
+    "directMessages": "Личные сообщения",
+    "messagePlaceholder": "Напишите сообщение…",
+    "newChannel": "Новый канал",
+    "newChannelPlaceholder": "название канала",
+    "noChannels": "Пока нет каналов",
+    "noMessages": "Пока нет сообщений. Будьте первым.",
+    "noPeers": "Пока нет коллег",
+    "noWorkspace": "Сначала создайте рабочее пространство",
+    "pickRoom": "Выберите канал или беседу",
+    "send": "Отправить",
+    "title": "Командный чат",
+    "workspace": "Рабочее пространство"
   }
 }

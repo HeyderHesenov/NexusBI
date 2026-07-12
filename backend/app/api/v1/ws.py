@@ -13,8 +13,9 @@ from app.db.session import AsyncSessionLocal
 from app.models.dashboard import Dashboard
 from app.models.user import User
 from app.realtime.hub import Connection, Participant, hub
+from app.schemas.chat import ChatMessageResponse
 from app.schemas.comment import CommentResponse
-from app.services import comment_service
+from app.services import chat_service, comment_service
 
 router = APIRouter()
 _log = get_logger("nexusbi.realtime")
@@ -140,3 +141,85 @@ async def dashboard_ws(ws: WebSocket, dashboard_id: str) -> None:
         _log.warning("ws_error", error=type(exc).__name__, detail=str(exc)[:200])
     finally:
         await hub.disconnect(dashboard_id, conn)
+
+
+async def _resolve_room_access(
+    room_key: str, ticket: str | None, token: str | None
+) -> tuple[str, str] | None:
+    """Return (user_id, display_name) for a team-chat room, or None.
+
+    Members only — no share-token / guest path. A room ticket (preferred) is bound
+    to this exact ``room_key``; a legacy JWT is accepted as a fallback. Either way
+    the user must pass ``chat_service.can_access_room``.
+    """
+    async with AsyncSessionLocal() as db:
+        for cred, scoped in ((ticket, True), (token, False)):
+            if not cred:
+                continue
+            try:
+                payload = decode_access_token(cred)
+            except Exception:  # noqa: BLE001 — bad cred just isn't valid auth
+                continue
+            if payload.get("rt"):  # a refresh token is not a valid credential here
+                continue
+            if scoped and payload.get("room") != room_key:  # ticket bound to one room
+                continue
+            user = (
+                await db.execute(select(User).where(User.id == payload.get("sub")))
+            ).scalar_one_or_none()
+            if user and await chat_service.can_access_room(db, user.id, room_key):
+                return user.id, (user.full_name or user.email)
+        return None
+
+
+@router.websocket("/room/{room_key}")
+async def room_ws(ws: WebSocket, room_key: str) -> None:
+    """Team-chat WebSocket for a workspace channel or a 1:1 DM room."""
+    ip = ws.client.host if ws.client else "unknown"
+    if not check_ip("ws_connect", ip, limit=30, window_seconds=60):
+        await ws.close(code=4429)
+        return
+    access = await _resolve_room_access(
+        room_key, ws.query_params.get("ticket"), ws.query_params.get("token")
+    )
+    if access is None:
+        await ws.close(code=4401)
+        return
+
+    await ws.accept()
+    user_id, name = access
+    conn_id = uuid.uuid4().hex[:8]
+    color = _COLORS[hash(conn_id) % len(_COLORS)]
+    conn = Connection(
+        ws=ws, participant=Participant(conn_id=conn_id, user_id=user_id, name=name, color=color)
+    )
+    await hub.connect(room_key, conn)
+    try:
+        while True:
+            try:
+                msg = await ws.receive_json()
+            except WebSocketDisconnect:
+                raise
+            except Exception:  # noqa: BLE001 — skip a malformed frame, keep the session
+                continue
+            kind = msg.get("type")
+            if kind == "chat":
+                text = (msg.get("text") or "").strip()
+                if not text:
+                    continue
+                if not check_ip("ws_chat", ip, limit=20, window_seconds=10):
+                    await ws.send_json({"type": "throttled"})
+                    continue
+                async with AsyncSessionLocal() as db:
+                    message = await chat_service.post_message(db, room_key, user_id, name, text)
+                    await db.commit()
+                    payload = ChatMessageResponse.model_validate(message).model_dump(mode="json")
+                await hub.broadcast(room_key, {"type": "chat", "message": payload})
+            elif kind == "ping":
+                await ws.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:  # noqa: BLE001 — never let a bad frame crash the socket
+        _log.warning("ws_error", error=type(exc).__name__, detail=str(exc)[:200])
+    finally:
+        await hub.disconnect(room_key, conn)

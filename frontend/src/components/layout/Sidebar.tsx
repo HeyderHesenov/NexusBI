@@ -1,4 +1,4 @@
-import { BookMarked, BrainCircuit, Compass, CreditCard, Database, FileText, Gauge, History, LayoutDashboard, MessageSquare, Network, Palette, ShieldCheck, SlidersHorizontal, Tag, Target, Users } from 'lucide-react'
+import { BookMarked, BrainCircuit, Compass, CreditCard, Database, FileText, Gauge, History, LayoutDashboard, MessageSquare, MessagesSquare, Network, Palette, ShieldCheck, SlidersHorizontal, Tag, Target, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { NexusMark } from '../brand/NexusMark'
@@ -45,6 +45,7 @@ const groups = [
     titleKey: 'nav.groups.admin',
     items: [
       { to: '/workspaces', labelKey: 'nav.workspaces', icon: Users },
+      { to: '/chat', labelKey: 'nav.chat', icon: MessagesSquare },
       { to: '/branding', labelKey: 'nav.branding', icon: Palette },
       { to: '/pricing', labelKey: 'nav.pricing', icon: CreditCard },
     ],

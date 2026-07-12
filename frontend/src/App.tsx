@@ -64,6 +64,7 @@ const RequirementsPage = lazy(() =>
 const WorkspacePage = lazy(() =>
   import('./pages/WorkspacePage').then((m) => ({ default: m.WorkspacePage })),
 )
+const ChatPage = lazy(() => import('./pages/ChatPage').then((m) => ({ default: m.ChatPage })))
 const TargetsPage = lazy(() =>
   import('./pages/TargetsPage').then((m) => ({ default: m.TargetsPage })),
 )
@@ -130,6 +131,7 @@ export default function App() {
               <Route path="/metrics" element={<MetricsPage />} />
               <Route path="/requirements" element={<RequirementsPage />} />
               <Route path="/workspaces" element={<WorkspacePage />} />
+              <Route path="/chat" element={<ChatPage />} />
               <Route path="/targets" element={<TargetsPage />} />
               <Route path="/branding" element={<BrandingPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />

@@ -511,7 +511,8 @@
     "graph": "Biliklər qrafı",
     "twin": "Digital Twin",
     "baStudio": "BA Studio",
-    "automl": "AutoML"
+    "automl": "AutoML",
+    "chat": "Söhbət"
   },
   "notificationsPage": {
     "briefingLoading": "Hazırlanır…",
@@ -1156,5 +1157,22 @@
         "hint": "Nəticələri panelə əlavə et"
       }
     }
+  },
+  "chatPage": {
+    "channels": "Kanallar",
+    "connected": "Qoşulu",
+    "connecting": "Qoşulur…",
+    "directMessages": "Şəxsi mesajlar",
+    "messagePlaceholder": "Mesaj yaz…",
+    "newChannel": "Yeni kanal",
+    "newChannelPlaceholder": "kanal adı",
+    "noChannels": "Hələ kanal yoxdur",
+    "noMessages": "Hələ mesaj yoxdur. İlk yazan ol.",
+    "noPeers": "Komanda yoldaşı yoxdur",
+    "noWorkspace": "Əvvəlcə komanda sahəsi yarat",
+    "pickRoom": "Bir kanal və ya söhbət seç",
+    "send": "Göndər",
+    "title": "Komanda söhbəti",
+    "workspace": "İş sahəsi"
   }
 }

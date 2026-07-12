@@ -88,6 +88,15 @@ def auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest_asyncio.fixture
+async def db_session() -> AsyncGenerator:
+    """A raw session on the test DB, for exercising service functions whose only
+    production entry point is a WebSocket (e.g. chat_service.post_message)."""
+    async with _Session() as session:
+        yield session
+        await session.commit()
+
+
 def seed_sqlite_file(schema_sql: str = "CREATE TABLE t (x INTEGER)") -> str:
     """Create an on-disk SQLite DB inside UPLOAD_DIR → its async conn string.
 
