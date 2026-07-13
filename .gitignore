@@ -53,3 +53,6 @@ logs/
 
 # TS build cache
 *.tsbuildinfo
+
+# Local agent/editor config
+.claude/
