@@ -2,21 +2,68 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Expand, Minimize2, RefreshCw } from 'lucide-react'
 import { GraphCanvas } from '../components/graph/GraphCanvas'
-import { impactSet, selectedNode, useGraphStore } from '../store/graphStore'
+import { PageHeader } from '../components/ui/PageHeader'
+import { GraphViewSwitcher } from '../components/graph/GraphViewSwitcher'
+import { GraphContextMenus } from '../components/graph/GraphContextMenus'
+import { useGraphViewMenu } from '../hooks/useGraphViewMenu'
+import {
+  activeViewConfig,
+  impactSet,
+  pathBetween,
+  selectedNode,
+  upstreamSet,
+  useGraphStore,
+  viewGraph,
+} from '../store/graphStore'
 import type { GraphNodeType } from '../types'
 
 export function GraphPage() {
   const { t } = useTranslation()
-  const { data, loading, error, selectedId, impactMode, load, select, toggleImpact } =
-    useGraphStore()
+  const {
+    data,
+    loading,
+    error,
+    selectedId,
+    impactMode,
+    impactDir,
+    pathMode,
+    pathSource,
+    pathTarget,
+    views,
+    activeViewId,
+    fullHidden,
+    load,
+    select,
+    toggleImpact,
+    setImpactDir,
+    togglePathMode,
+    pickPathNode,
+    clearPath,
+    loadViews,
+    setActiveView,
+    showAll,
+  } = useGraphStore()
+  const vm = useGraphViewMenu()
 
   const [hiddenTypes, setHiddenTypes] = useState<Set<GraphNodeType>>(new Set())
+  const [hiddenKinds, setHiddenKinds] = useState<Set<string>>(new Set())
+  const [unhealthyOnly, setUnhealthyOnly] = useState(false)
   const [fs, setFs] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     void load()
-  }, [load])
+    void loadViews()
+  }, [load, loadViews])
+
+  // The active view is a pure filter over the single derived graph. Everything
+  // below (canvas, impact/path, aside) works on this filtered subgraph; the full
+  // `data` is used only for the empty-state guard and the asset picker.
+  const viewConfig = activeViewConfig({ views, activeViewId, fullHidden })
+  const viewData = useMemo(
+    () => (data ? viewGraph(data, viewConfig) : null),
+    [data, viewConfig],
+  )
 
   // Fullscreen overlay: lock body scroll, move focus into the dialog, and close
   // on Esc — but let Esc clear/blur the search input first (don't close then).
@@ -37,11 +84,32 @@ export function GraphPage() {
     }
   }, [fs])
 
-  const node = selectedNode(data, selectedId)
+  const node = selectedNode(viewData, selectedId)
+
+  const pathActive = pathMode && !!pathSource && !!pathTarget
+  // {nodes, edges} when connected, null when the two picks don't reach each other.
+  const path = useMemo(() => {
+    if (!viewData || !pathSource || !pathTarget) return null
+    return pathBetween(viewData, pathSource, pathTarget)
+  }, [viewData, pathSource, pathTarget])
+
   const highlight = useMemo(() => {
-    if (!impactMode || !data || !selectedId) return null
-    return impactSet(data, selectedId)
-  }, [impactMode, data, selectedId])
+    // Path highlight wins; a disconnected pair dims nothing (the aside says why).
+    if (pathActive) return path ? new Set(path.nodes) : null
+    if (!impactMode || !viewData || !selectedId) return null
+    if (impactDir === 'up') return upstreamSet(viewData, selectedId)
+    if (impactDir === 'both')
+      return new Set([...impactSet(viewData, selectedId), ...upstreamSet(viewData, selectedId)])
+    return impactSet(viewData, selectedId)
+  }, [pathActive, path, impactMode, viewData, selectedId, impactDir])
+
+  const pathEdgeKeys = pathActive && path ? path.edges : null
+
+  // While picking a path, a node click chooses an endpoint instead of selecting.
+  const onSelectNode = (id: string | null) => {
+    if (pathMode && id) pickPathNode(id)
+    else select(id)
+  }
 
   const toggleType = (type: GraphNodeType) => {
     // Hiding the selected node's type would strand an off-canvas selection
@@ -51,6 +119,15 @@ export function GraphPage() {
       const next = new Set(prev)
       if (next.has(type)) next.delete(type)
       else next.add(type)
+      return next
+    })
+  }
+
+  const toggleKind = (kind: string) => {
+    setHiddenKinds((prev) => {
+      const next = new Set(prev)
+      if (next.has(kind)) next.delete(kind)
+      else next.add(kind)
       return next
     })
   }
@@ -78,26 +155,54 @@ export function GraphPage() {
     </button>
   )
 
+  const viewSwitcher = (
+    <GraphViewSwitcher
+      views={views}
+      activeViewId={activeViewId}
+      fullHasHidden={fullHidden.nodes.length > 0 || fullHidden.edges.length > 0}
+      onSelect={setActiveView}
+      onNew={() => vm.openModal('new')}
+      onAddAssets={() => vm.openModal('add')}
+      onRename={vm.startRename}
+      onDelete={vm.askDeleteGraph}
+      onShowAll={() => void showAll()}
+    />
+  )
+
   const sharedProps = {
-    data: data!,
+    data: viewData!,
     selectedId,
     highlight,
+    pathEdgeKeys,
     impactMode,
+    impactDir,
+    pathMode,
+    pathActive,
+    pathLength: path ? path.nodes.length : null,
     hiddenTypes,
-    onSelect: select,
+    hiddenKinds,
+    unhealthyOnly,
+    onSelect: onSelectNode,
     onToggleImpact: toggleImpact,
+    onSetImpactDir: setImpactDir,
+    onTogglePathMode: togglePathMode,
+    onClearPath: clearPath,
+    onToggleUnhealthy: () => setUnhealthyOnly((v) => !v),
     onToggleType: toggleType,
+    onToggleKind: toggleKind,
+    viewSwitcher,
+    onNodeContextMenu: vm.openNodeMenu,
+    onEdgeContextMenu: vm.openEdgeMenu,
+    onCanvasContextMenu: vm.openCanvasMenu,
   }
 
   return (
     <div className="mx-auto w-full">
-      <header className="mb-6">
-        <p className="eyebrow">{t('graphPage.eyebrow')}</p>
-        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
-          {t('graphPage.title')}
-        </h1>
-        <p className="mt-1 text-sm text-ink-soft">{t('graphPage.subtitle')}</p>
-      </header>
+      <PageHeader
+        eyebrow={t('graphPage.eyebrow')}
+        title={t('graphPage.title')}
+        subtitle={t('graphPage.subtitle')}
+      />
 
       {loading && !data ? (
         <div className="grid min-h-[55vh] place-items-center text-sm text-ink-faint">
@@ -147,6 +252,8 @@ export function GraphPage() {
           </div>
         </div>
       )}
+
+      <GraphContextMenus vm={vm} />
     </div>
   )
 }

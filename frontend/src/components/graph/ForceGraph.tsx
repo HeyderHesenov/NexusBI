@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import {
   BarChart3,
   CheckCircle2,
+  Columns3,
   Database,
   FileText,
   Gauge,
@@ -20,20 +21,45 @@ import {
   type LucideProps,
 } from 'lucide-react'
 import { truncateLabel } from '../../lib/format'
-import { neighborSet } from '../../store/graphStore'
+import { neighborSet, pathEdgeKey } from '../../store/graphStore'
 import type { GraphData, GraphNode, GraphNodeType } from '../../types'
-import { GRAPH_TYPE_COLORS, useChartTheme } from '../charts/theme'
-import { LAYOUT_H, LAYOUT_W, useForceLayout } from './useForceLayout'
+import { GRAPH_TYPE_COLORS, HEALTH_COLOR, useChartTheme } from '../charts/theme'
+import { LAYOUT_H, LAYOUT_W, useForceLayout, type LayoutPoint } from './useForceLayout'
+import {
+  downloadBlob,
+  loadPins,
+  mergePositions,
+  miniToWorld,
+  savePins,
+  serializeSvg,
+} from './graphView'
 
 interface Props {
   data: GraphData
   selectedId: string | null
   /** Nodes to highlight (impact mode); null = highlight everything. */
   highlight: Set<string> | null
+  /** Canonical keys (see pathEdgeKey) of edges on the current path — drawn active. */
+  pathEdgeKeys?: Set<string> | null
   /** Types the user filtered out via the legend — hidden from the canvas. */
   hiddenTypes: Set<GraphNodeType>
+  /** Edge kinds the user filtered out via the edge legend. */
+  hiddenKinds?: Set<string>
+  /** Trust filter: show only nodes with a warn/danger/unknown status. */
+  unhealthyOnly?: boolean
+  /** Show the overview mini-map (default true; off in tests / tiny embeds). */
+  showMiniMap?: boolean
   onSelect: (id: string | null) => void
-  /** Sizing utility for the <svg> (height); default is the inline card height. */
+  /** Right-click a node → open a context menu at the cursor position. */
+  onNodeContextMenu?: (id: string, e: React.MouseEvent) => void
+  /** Right-click an edge → open a context menu at the cursor position. */
+  onEdgeContextMenu?: (
+    edge: { source: string; target: string; kind: string },
+    e: React.MouseEvent,
+  ) => void
+  /** Right-click empty canvas → open a context menu at the cursor position. */
+  onCanvasContextMenu?: (e: React.MouseEvent) => void
+  /** Sizing utility for the wrapper (height); default is the inline card height. */
   className?: string
 }
 
@@ -42,7 +68,14 @@ export interface GraphHandle {
   zoomBy: (factor: number) => void
   fit: () => void
   focus: (id: string) => void
+  /** Download the current view as an image. */
+  exportImage: (format: 'svg' | 'png') => void
+  /** Clear all manually-pinned node positions. */
+  resetPins: () => void
 }
+
+const MINI_W = 168
+const MINI_H = Math.round((MINI_W / LAYOUT_W) * LAYOUT_H)
 
 export const TYPE_ICON: Record<GraphNodeType, ComponentType<LucideProps>> = {
   ds: Database,
@@ -53,12 +86,14 @@ export const TYPE_ICON: Record<GraphNodeType, ComponentType<LucideProps>> = {
   widget: BarChart3,
   squery: FileText,
   decision: CheckCircle2,
+  column: Columns3,
 }
 
 // Radius carries real hierarchy: sources and dashboards read as hubs, leaves
 // stay small. (Old range was a barely-legible 9–14.)
 const TYPE_RADIUS: Record<GraphNodeType, number> = {
   ds: 24, dash: 22, table: 18, decision: 18, metric: 16, mnode: 15, squery: 14, widget: 13,
+  column: 10,
 }
 const DEFAULT_RADIUS = 12
 
@@ -79,7 +114,21 @@ const clampW = (w: number) => Math.min(Math.max(w, LAYOUT_W / MAX_ZOOM), LAYOUT_
  * hover neighbor-emphasis + tooltip, directional curved edges, type filtering.
  */
 export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
-  { data, selectedId, highlight, hiddenTypes, onSelect, className = 'h-[560px]' },
+  {
+    data,
+    selectedId,
+    highlight,
+    pathEdgeKeys = null,
+    hiddenTypes,
+    hiddenKinds,
+    unhealthyOnly = false,
+    showMiniMap = true,
+    onSelect,
+    onNodeContextMenu,
+    onEdgeContextMenu,
+    onCanvasContextMenu,
+    className = 'h-[560px]',
+  },
   ref,
 ) {
   const { t } = useTranslation()
@@ -92,6 +141,14 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const drag = useRef<{ startX: number; startY: number; view: typeof view; moved: boolean } | null>(null)
 
+  // Manual node positions layered over the force layout — persisted by node id.
+  const [pinned, setPinned] = useState<Map<string, LayoutPoint>>(() => loadPins())
+  const nodeDrag = useRef<{ id: string; startX: number; startY: number; moved: boolean } | null>(null)
+  const pos = useMemo(() => mergePositions(layout, pinned), [layout, pinned])
+  // Effective positions for use inside imperative callbacks / event handlers.
+  const posRef = useRef(pos)
+  posRef.current = pos
+
   useImperativeHandle(ref, () => ({
     zoomBy: (factor) =>
       setView((v) => {
@@ -103,12 +160,51 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
       }),
     fit: () => setView({ x: 0, y: 0, w: LAYOUT_W, h: LAYOUT_H }),
     focus: (id) => {
-      const p = layout.get(id)
+      const p = posRef.current.get(id)
       if (!p) return
       const w = clampW(LAYOUT_W / 2.2)
       const h = (w / LAYOUT_W) * LAYOUT_H
       setView({ x: p.x - w / 2, y: p.y - h / 2, w, h })
       onSelect(id)
+    },
+    exportImage: (format) => {
+      const svg = svgRef.current
+      if (!svg) return
+      // The canvas background is a CSS class (not serialized) — inject an explicit
+      // surface rect so the exported image isn't transparent.
+      const clone = svg.cloneNode(true) as SVGSVGElement
+      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      bg.setAttribute('x', String(view.x))
+      bg.setAttribute('y', String(view.y))
+      bg.setAttribute('width', String(view.w))
+      bg.setAttribute('height', String(view.h))
+      bg.setAttribute('fill', theme.SURFACE)
+      clone.insertBefore(bg, clone.firstChild)
+      const src = serializeSvg(clone)
+      if (format === 'svg') {
+        downloadBlob(new Blob([src], { type: 'image/svg+xml;charset=utf-8' }), 'knowledge-graph.svg')
+        return
+      }
+      const img = new Image()
+      img.onload = () => {
+        const scale = 2 // export at 2× for crisp raster output
+        const canvas = document.createElement('canvas')
+        canvas.width = view.w * scale
+        canvas.height = view.h * scale
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.fillStyle = theme.SURFACE
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob((blob) => {
+          if (blob) downloadBlob(blob, 'knowledge-graph.png')
+        }, 'image/png')
+      }
+      img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(src)))}`
+    },
+    resetPins: () => {
+      setPinned(new Map())
+      savePins(new Map())
     },
   }))
 
@@ -140,6 +236,29 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
     drag.current = { startX: e.clientX, startY: e.clientY, view, moved: false }
   }
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    // Dragging a node repositions it (a pin) instead of panning the canvas. Node
+    // moves bubble to the svg, so we branch here on the nodeDrag ref.
+    const nd = nodeDrag.current
+    if (nd) {
+      if ((e.buttons & 1) === 0) {
+        nodeDrag.current = null
+        return
+      }
+      const dx = ((e.clientX - nd.startX) / rect.width) * view.w
+      const dy = ((e.clientY - nd.startY) / rect.height) * view.h
+      if (Math.abs(e.clientX - nd.startX) + Math.abs(e.clientY - nd.startY) > 4) nd.moved = true
+      if (nd.moved) {
+        const base = posRef.current.get(nd.id)
+        if (base) {
+          setPinned((prev) => new Map(prev).set(nd.id, { x: base.x + dx, y: base.y + dy }))
+          // Incremental: fold this delta into the base, restart from here.
+          nd.startX = e.clientX
+          nd.startY = e.clientY
+        }
+      }
+      return
+    }
     const d = drag.current
     // Only pan while the primary button is held — a lost pointerup (e.g.
     // released outside the svg) must not leave the canvas following the mouse.
@@ -147,7 +266,6 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
       drag.current = null
       return
     }
-    const rect = e.currentTarget.getBoundingClientRect()
     const dx = ((e.clientX - d.startX) / rect.width) * d.view.w
     const dy = ((e.clientY - d.startY) / rect.height) * d.view.h
     if (Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 4) d.moved = true
@@ -156,10 +274,26 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
   const onPointerUp = () => {
     const wasDrag = drag.current?.moved
     drag.current = null
+    nodeDrag.current = null
     if (!wasDrag) onSelect(null) // click on empty canvas clears the selection
   }
   const onPointerCancel = () => {
     drag.current = null
+    nodeDrag.current = null
+  }
+
+  // Persist pins whenever they change (bounded graph → cheap; guarantees a drag
+  // survives reload even if the pointerup lands off-canvas).
+  useEffect(() => {
+    savePins(pinned)
+  }, [pinned])
+
+  // Mini-map click/drag → recenter the main view on the picked world point.
+  const onMiniPoint = (e: React.PointerEvent<SVGSVGElement>) => {
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const world = miniToWorld(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height)
+    setView((v) => ({ x: world.x - v.w / 2, y: world.y - v.h / 2, w: v.w, h: v.h }))
   }
 
   const nodeById = useMemo(() => {
@@ -171,8 +305,14 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
     TYPE_RADIUS[nodeById.get(id)?.type ?? 'widget'] ?? DEFAULT_RADIUS
 
   const visible = useMemo(
-    () => data.nodes.filter((n) => !hiddenTypes.has(n.type)),
-    [data, hiddenTypes],
+    () =>
+      data.nodes.filter(
+        (n) =>
+          !hiddenTypes.has(n.type) &&
+          // "Only unhealthy": drop nodes that are healthy or carry no status.
+          (!unhealthyOnly || (n.status != null && n.status !== 'ok')),
+      ),
+    [data, hiddenTypes, unhealthyOnly],
   )
   const visibleIds = useMemo(() => new Set(visible.map((n) => n.id)), [visible])
 
@@ -191,8 +331,8 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
   const edgeGeom = useMemo(
     () =>
       data.edges.map((e) => {
-        const a = layout.get(e.source)
-        const b = layout.get(e.target)
+        const a = pos.get(e.source)
+        const b = pos.get(e.target)
         if (!a || !b) return null
         const dx = b.x - a.x
         const dy = b.y - a.y
@@ -218,7 +358,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
           cyp,
         }
       }),
-    [data, layout, nodeById],
+    [data, pos, nodeById],
   )
 
   // Dim precedence: hover neighbors win, then impact-mode highlight.
@@ -228,6 +368,8 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
     return false
   }
   const edgeActive = (source: string, target: string) => {
+    // Path edges stay lit regardless of hover/selection so the route reads clearly.
+    if (pathEdgeKeys?.has(pathEdgeKey(source, target))) return true
     if (hoverId) return source === hoverId || target === hoverId
     if (selectedId) return source === selectedId || target === selectedId
     return false
@@ -236,14 +378,15 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
   const zoom = LAYOUT_W / view.w // 1 = fit; >1 zoomed in; <1 zoomed out
   const tipScale = view.w / LAYOUT_W // keeps the in-SVG tooltip a constant on-screen size
 
-  const hovered = hoverId ? layout.get(hoverId) : null
+  const hovered = hoverId ? pos.get(hoverId) : null
   const hoveredNode = hoverId ? nodeById.get(hoverId) : null
 
   return (
+    <div className={`relative ${className}`}>
     <svg
       ref={svgRef}
       viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-      className={`${className} w-full cursor-grab touch-none select-none rounded-2xl border border-line bg-surface shadow-[0_16px_50px_-24px_rgba(40,32,24,0.45)] active:cursor-grabbing`}
+      className="h-full w-full cursor-grab touch-none select-none rounded-2xl border border-line bg-surface shadow-[0_16px_50px_-24px_rgba(40,32,24,0.45)] active:cursor-grabbing"
       data-testid="force-graph"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -252,6 +395,11 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
       onPointerLeave={() => {
         onPointerCancel()
         setHoveredId(null)
+      }}
+      onContextMenu={(e) => {
+        // Node/edge handlers stopPropagation, so this only fires on empty canvas.
+        e.preventDefault()
+        onCanvasContextMenu?.(e)
       }}
     >
       <defs>
@@ -289,10 +437,30 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
       {edgeGeom.map((g, i) => {
         if (!g) return null
         if (!visibleIds.has(g.source) || !visibleIds.has(g.target)) return null
+        if (hiddenKinds?.has(g.kind)) return null
         const dimmed = dim(g.source) || dim(g.target)
         const active = !dimmed && edgeActive(g.source, g.target)
         return (
-          <g key={i}>
+          <g key={i} data-edge-kind={g.kind}>
+            {/* Invisible wide band captures right-clicks on the thin curve. Only
+                present when an edge menu is wired so it never intercepts pointers
+                otherwise. */}
+            {onEdgeContextMenu && (
+              <path
+                d={g.d}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={12}
+                pointerEvents="stroke"
+                className="cursor-context-menu"
+                data-edge-hit={`${g.source}|${g.target}|${g.kind}`}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onEdgeContextMenu({ source: g.source, target: g.target, kind: g.kind }, e)
+                }}
+              />
+            )}
             <path
               d={g.d}
               fill="none"
@@ -300,6 +468,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               strokeWidth={active ? 2 : dimmed ? 0.7 : 1.4}
               opacity={dimmed ? 0.28 : active ? 0.95 : 0.75}
               markerEnd={active ? 'url(#graph-arrow-active)' : 'url(#graph-arrow)'}
+              pointerEvents="none"
             />
             {active && (
               <text
@@ -322,7 +491,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
       })}
 
       {visible.map((n) => {
-        const p = layout.get(n.id)
+        const p = pos.get(n.id)
         if (!p) return null
         const dimmed = dim(n.id)
         const r = TYPE_RADIUS[n.type] ?? DEFAULT_RADIUS
@@ -340,13 +509,33 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
             opacity={dimmed ? 0.2 : 1}
             className="cursor-pointer"
             data-node-id={n.id}
+            onContextMenu={(e) => {
+              // stopPropagation so the svg's canvas menu doesn't also fire.
+              e.preventDefault()
+              e.stopPropagation()
+              onNodeContextMenu?.(n.id, e)
+            }}
+            onPointerDown={(e) => {
+              // Claim the drag for this node so the svg starts a reposition, not a
+              // pan. stopPropagation keeps the canvas pan from also starting.
+              e.stopPropagation()
+              nodeDrag.current = { id: n.id, startX: e.clientX, startY: e.clientY, moved: false }
+            }}
             onPointerEnter={() => {
-              // Skip while panning — the cursor sweeping over nodes mid-drag
-              // must not fire hover emphasis/tooltip flicker.
-              if (!drag.current) setHoveredId(n.id)
+              // Skip while panning or dragging a node — the cursor sweeping over
+              // nodes mid-drag must not fire hover emphasis/tooltip flicker.
+              if (!drag.current && !nodeDrag.current) setHoveredId(n.id)
             }}
             onPointerLeave={() => setHoveredId((cur) => (cur === n.id ? null : cur))}
             onPointerUp={(e) => {
+              const nd = nodeDrag.current
+              nodeDrag.current = null
+              if (nd?.moved) {
+                // Finished repositioning → keep the current selection, don't let
+                // the svg's pointerup fire its empty-canvas deselect.
+                e.stopPropagation()
+                return
+              }
               if (!drag.current?.moved) {
                 e.stopPropagation()
                 drag.current = null
@@ -355,6 +544,18 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
             }}
           >
             {emphasized && <circle r={r + 9} fill={color} opacity={0.18} style={{ pointerEvents: 'none' }} />}
+            {/* Trust ring: a thin colored halo for non-ok health (verified metrics
+                and fresh sources read as clean, unringed nodes). */}
+            {n.status && n.status !== 'ok' && (
+              <circle
+                r={r + 3.5}
+                fill="none"
+                stroke={HEALTH_COLOR[n.status]}
+                strokeWidth={2.5}
+                opacity={dimmed ? 0.4 : 0.9}
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
             <circle
               r={r}
               fill={color}
@@ -434,5 +635,46 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
         )
       })()}
     </svg>
+
+      {/* Overview mini-map: whole canvas in world coords + the current viewport;
+          click or drag to recenter. Sits over the bottom-right of the canvas. */}
+      {showMiniMap && (
+        <svg
+          width={MINI_W}
+          height={MINI_H}
+          viewBox={`0 0 ${LAYOUT_W} ${LAYOUT_H}`}
+          className="absolute bottom-3 right-3 cursor-pointer touch-none rounded-lg border border-line bg-surface/85 shadow-[0_8px_24px_-12px_rgba(40,32,24,0.4)] backdrop-blur"
+          aria-hidden
+          onPointerDown={onMiniPoint}
+          onPointerMove={(e) => {
+            if ((e.buttons & 1) !== 0) onMiniPoint(e)
+          }}
+        >
+          {visible.map((n) => {
+            const p = pos.get(n.id)
+            if (!p) return null
+            return (
+              <circle
+                key={n.id}
+                cx={p.x}
+                cy={p.y}
+                r={8}
+                fill={GRAPH_TYPE_COLORS[n.type] ?? theme.ACCENT}
+              />
+            )
+          })}
+          <rect
+            x={view.x}
+            y={view.y}
+            width={view.w}
+            height={view.h}
+            fill={theme.ACCENT}
+            fillOpacity={0.12}
+            stroke={theme.ACCENT}
+            strokeWidth={6}
+          />
+        </svg>
+      )}
+    </div>
   )
 })

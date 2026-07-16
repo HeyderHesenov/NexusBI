@@ -596,12 +596,25 @@ export type GraphNodeType =
   | 'squery'
   | 'decision'
   | 'ds'
+  | 'column'
+
+export type GraphHealthStatus = 'ok' | 'warn' | 'danger' | 'unknown'
+export type GraphHealthReason =
+  | 'verified'
+  | 'unverified'
+  | 'fresh'
+  | 'stale'
+  | 'unknown'
 
 export interface GraphNode {
   id: string
   type: GraphNodeType
   label: string
   ref_id: string | null
+  /** Trust overlay severity (metric verification / datasource freshness); null when N/A. */
+  status?: GraphHealthStatus | null
+  /** Machine reason code localized on the FE via graphPage.health.<reason>. */
+  reason?: GraphHealthReason | null
 }
 
 export interface GraphEdge {
@@ -613,6 +626,32 @@ export interface GraphEdge {
 export interface GraphData {
   nodes: GraphNode[]
   edges: GraphEdge[]
+}
+
+/** A saved, user-curated view of the derived graph. `included_node_ids === null`
+ *  means "start from the full graph"; a list means "only these nodes". */
+export interface GraphView {
+  id: string
+  name: string
+  included_node_ids: string[] | null
+  hidden_node_ids: string[]
+  hidden_edge_keys: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface GraphViewCreate {
+  name: string
+  included_node_ids?: string[] | null
+  hidden_node_ids?: string[]
+  hidden_edge_keys?: string[]
+}
+
+export interface GraphViewUpdate {
+  name?: string
+  included_node_ids?: string[] | null
+  hidden_node_ids?: string[]
+  hidden_edge_keys?: string[]
 }
 
 export type BAFramework = 'swot' | 'porter' | 'bcg' | 'bpmn'

@@ -60,6 +60,11 @@ MESSAGES: dict[str, dict[str, str]] = {
         "ru": "Запрос не найден.",
         "tr": "Sorgu bulunamadı.",
     },
+    "Qrafik görünüşü tapılmadı.": {
+        "en": "Graph view not found.",
+        "ru": "Представление графа не найдено.",
+        "tr": "Grafik görünümü bulunamadı.",
+    },
     "Çox sayda cəhd. Bir az sonra yenidən yoxlayın.": {
         "en": "Too many attempts. Please try again shortly.",
         "ru": "Слишком много попыток. Повторите чуть позже.",

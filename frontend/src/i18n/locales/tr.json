@@ -254,7 +254,7 @@
     "preview": "Önizle",
     "previewing": "Hazırlanıyor…",
     "saveAsSource": "Kaynak olarak kaydet",
-    "savedToast": "Yeni kaynak kaydedildi 📦",
+    "savedToast": "Yeni kaynak kaydedildi",
     "saving": "Kaydediliyor…",
     "sourceLabel": "Kaynak",
     "subtitle": "Doğal dilde yazın — NexusBI birleştirir (join), gruplar ve sonucu hazırlar.",
@@ -939,7 +939,8 @@
       "widget": "Bileşen",
       "dash": "Pano",
       "squery": "Rapor",
-      "decision": "Karar"
+      "decision": "Karar",
+      "column": "Sütun"
     },
     "zoomIn": "Yakınlaştır",
     "zoomOut": "Uzaklaştır",
@@ -951,10 +952,78 @@
       "feeds": "besler",
       "informs": "bilgilendirir",
       "contains": "içerir",
-      "rolls_up": "toplanır"
+      "rolls_up": "toplanır",
+      "references": "referans verir",
+      "has_column": "sütuna sahip"
     },
     "fullscreen": "Tam ekran",
-    "exitFullscreen": "Tam ekrandan çık"
+    "exitFullscreen": "Tam ekrandan çık",
+    "unhealthyOnly": "Yalnızca sorunlu",
+    "health": {
+      "verified": "Doğrulandı",
+      "unverified": "Doğrulanmadı",
+      "fresh": "Güncel",
+      "stale": "Bayat (SLA aşıldı)",
+      "unknown": "Tazelik SLA yok"
+    },
+    "impactDir": {
+      "down": "Aşağı akış",
+      "up": "Yukarı akış",
+      "both": "Her iki yön"
+    },
+    "upstreamCount": "{{count}} yukarı akış kaynağı",
+    "pathMode": "Yol",
+    "pathHint": "Aralarındaki yolu izlemek için iki düğüm seç",
+    "pathNone": "Bu düğümler arasında yol yok",
+    "pathLength": "Yol {{count}} düğümden geçiyor",
+    "pathClear": "Yolu temizle",
+    "exportPng": "PNG dışa aktar",
+    "exportSvg": "SVG dışa aktar",
+    "resetLayout": "Konumları sıfırla",
+    "edgeLegend": "Bağlantılar:",
+    "options": {
+      "label": "Seçenekler",
+      "filters": "Filtreler",
+      "export": "Dışa aktar",
+      "layout": "Düzen"
+    },
+    "views": {
+      "label": "Görünümler",
+      "full": "Tam grafik",
+      "manage": "Görünümler",
+      "new": "Yeni grafik",
+      "rename": "Yeniden adlandır",
+      "delete": "Grafiği sil",
+      "save": "Kaydet",
+      "showAll": "Tümünü göster",
+      "addAssets": "Varlık ekle",
+      "nameLabel": "Grafik adı",
+      "namePlaceholder": "örn. Satış kökeni"
+    },
+    "menu": {
+      "removeNode": "Görünümden kaldır",
+      "removeEdge": "Bağlantıyı görünümden kaldır",
+      "addAssets": "Varlık ekle…",
+      "newGraph": "Yeni grafik…"
+    },
+    "addAssets": {
+      "title": "Varlık ekle",
+      "subtitle": "Bu grafiğe eklemek için varlıkları seçin.",
+      "empty": "Eklenecek başka varlık yok.",
+      "confirm": "Ekle",
+      "selected": "{{count}} seçildi",
+      "added": "{{count}} varlık eklendi."
+    },
+    "newGraph": {
+      "title": "Yeni grafik",
+      "subtitle": "Ad verin ve başlangıç için varlıkları seçin.",
+      "confirm": "Oluştur",
+      "created": "Grafik oluşturuldu."
+    },
+    "deleteGraphConfirm": {
+      "title": "Grafik silinsin mi?",
+      "message": "Bu yalnızca kaydedilmiş görünümü siler. Verileriniz etkilenmez."
+    }
   },
   "twinPage": {
     "eyebrow": "Planlama",

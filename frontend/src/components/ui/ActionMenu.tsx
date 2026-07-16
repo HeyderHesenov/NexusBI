@@ -14,6 +14,9 @@ export interface ActionMenuItem {
   active?: boolean
   /** Not selectable (gate unmet, or in-flight — the label reads as loading). */
   disabled?: boolean
+  /** Keep the menu open after selecting — for multi-toggle filters where the
+   *  user flips several in a row. Default closes (one-shot actions). */
+  keepOpen?: boolean
 }
 
 export interface ActionMenuSection {
@@ -29,6 +32,9 @@ interface ActionMenuProps {
   /** Count badge on the trigger (e.g. how many panels are open). */
   count?: number
   className?: string
+  /** Override the trigger's sizing base (default: CHART_BTN). Lets a toolbar
+   *  match a taller control (e.g. h-9) without changing chart-toolbar usages. */
+  triggerClassName?: string
 }
 
 /**
@@ -46,6 +52,7 @@ export function ActionMenu({
   sections,
   count,
   className,
+  triggerClassName,
 }: ActionMenuProps) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0) // keyboard-highlighted flat index
@@ -133,6 +140,7 @@ export function ActionMenu({
   const fire = (item: ActionMenuItem) => {
     if (item.disabled) return
     item.onSelect()
+    if (item.keepOpen) return // multi-toggle filters stay open
     setOpen(false)
     triggerRef.current?.focus()
   }
@@ -190,7 +198,7 @@ export function ActionMenu({
         aria-activedescendant={open && active >= 0 ? `${baseId}-item-${active}` : undefined}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onTriggerKey}
-        className={`${CHART_BTN} border ${
+        className={`${triggerClassName ?? CHART_BTN} border ${
           count ? 'border-accent text-accent' : 'border-line text-ink-soft hover:text-ink'
         }`}
       >

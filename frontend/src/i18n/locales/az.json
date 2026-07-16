@@ -254,7 +254,7 @@
     "preview": "Önizlə",
     "previewing": "Hazırlanır…",
     "saveAsSource": "Mənbə kimi saxla",
-    "savedToast": "Yeni mənbə saxlanıldı 📦",
+    "savedToast": "Yeni mənbə saxlanıldı",
     "saving": "Saxlanır…",
     "sourceLabel": "Mənbə",
     "subtitle": "Təbii dillə yaz — NexusBI birləşdirib (join), qruplayıb nəticəni hazırlayır.",
@@ -939,7 +939,8 @@
       "widget": "Widget",
       "dash": "Dashboard",
       "squery": "Hesabat",
-      "decision": "Qərar"
+      "decision": "Qərar",
+      "column": "Sütun"
     },
     "zoomIn": "Yaxınlaşdır",
     "zoomOut": "Uzaqlaşdır",
@@ -951,10 +952,78 @@
       "feeds": "qidalandırır",
       "informs": "məlumat verir",
       "contains": "daxildir",
-      "rolls_up": "yığılır"
+      "rolls_up": "yığılır",
+      "references": "istinad edir",
+      "has_column": "sütuna malik"
     },
     "fullscreen": "Tam ekran",
-    "exitFullscreen": "Tam ekrandan çıx"
+    "exitFullscreen": "Tam ekrandan çıx",
+    "unhealthyOnly": "Yalnız problemli",
+    "health": {
+      "verified": "Təsdiqlənib",
+      "unverified": "Təsdiqlənməyib",
+      "fresh": "Təzə",
+      "stale": "Köhnəlib (SLA aşıb)",
+      "unknown": "Təzəlik SLA yoxdur"
+    },
+    "impactDir": {
+      "down": "Aşağı axın",
+      "up": "Yuxarı axın",
+      "both": "Hər iki istiqamət"
+    },
+    "upstreamCount": "{{count}} yuxarı axın mənbəyi",
+    "pathMode": "Yol",
+    "pathHint": "Aralarındakı yolu izləmək üçün iki node seç",
+    "pathNone": "Bu node-lar arasında yol yoxdur",
+    "pathLength": "Yol {{count}} node-dan keçir",
+    "pathClear": "Yolu təmizlə",
+    "exportPng": "PNG ixrac et",
+    "exportSvg": "SVG ixrac et",
+    "resetLayout": "Mövqeləri sıfırla",
+    "edgeLegend": "Əlaqələr:",
+    "options": {
+      "label": "Seçimlər",
+      "filters": "Filtrlər",
+      "export": "İxrac",
+      "layout": "Düzülüş"
+    },
+    "views": {
+      "label": "Görünüşlər",
+      "full": "Tam qraf",
+      "manage": "Görünüşlər",
+      "new": "Yeni qraf",
+      "rename": "Adını dəyiş",
+      "delete": "Qrafı sil",
+      "save": "Yadda saxla",
+      "showAll": "Hamısını göstər",
+      "addAssets": "Asset əlavə et",
+      "nameLabel": "Qrafın adı",
+      "namePlaceholder": "məs. Satış nəsil xətti"
+    },
+    "menu": {
+      "removeNode": "Görünüşdən sil",
+      "removeEdge": "Əlaqəni görünüşdən sil",
+      "addAssets": "Asset əlavə et…",
+      "newGraph": "Yeni qraf…"
+    },
+    "addAssets": {
+      "title": "Asset əlavə et",
+      "subtitle": "Bu qrafa əlavə etmək üçün assetlər seçin.",
+      "empty": "Əlavə etmək üçün başqa asset yoxdur.",
+      "confirm": "Əlavə et",
+      "selected": "{{count}} seçildi",
+      "added": "{{count}} asset əlavə edildi."
+    },
+    "newGraph": {
+      "title": "Yeni qraf",
+      "subtitle": "Ad verin və başlanğıc üçün assetləri seçin.",
+      "confirm": "Yarat",
+      "created": "Qraf yaradıldı."
+    },
+    "deleteGraphConfirm": {
+      "title": "Qraf silinsin?",
+      "message": "Bu yalnız saxlanmış görünüşü silir. Datanıza toxunulmur."
+    }
   },
   "twinPage": {
     "eyebrow": "Planlama",

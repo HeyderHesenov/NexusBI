@@ -1,10 +1,20 @@
 import { useThemeStore } from '../../store/themeStore'
-import type { GraphNodeType } from '../../types'
+import type { GraphHealthStatus, GraphNodeType } from '../../types'
 
 type Mode = 'light' | 'dark'
 
 // App-wide danger/negative color (same hex the rest of the UI uses inline).
 export const DANGER = '#D87C6B'
+
+// Trust-overlay ring color per health severity. Extracted (not inline) so the
+// mapping is unit-testable. `ok` never renders a ring (see ForceGraph), but is
+// included so the record is exhaustive.
+export const HEALTH_COLOR: Record<GraphHealthStatus, string> = {
+  ok: '#0E9F6E', // emerald
+  warn: '#CBB25E', // gold
+  danger: DANGER, // clay red
+  unknown: '#8C877E', // neutral grey
+}
 
 // Emerald-led categorical palette — reads well on both themes.
 export const SERIES = [
@@ -29,6 +39,7 @@ export const GRAPH_TYPE_COLORS: Record<GraphNodeType, string> = {
   widget: '#4FAFA6', // teal
   squery: '#CE8CA8', // rose
   decision: '#6E7BB8', // indigo
+  column: '#A9BBD0', // muted slate — a lighter sibling of table's dusty blue
 }
 
 interface ChartTheme {

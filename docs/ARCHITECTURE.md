@@ -28,8 +28,8 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 |-------|------|----------------|
 | API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, **snapshot**, metric, **metric_tree**, saved_query, billing, branding, decision, integration, copilot, requirement, **ba**, **automl**, scenario, workspace, **data_contract**, **alert**, **search**, **graph**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
-| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, ba_service, automl_service** |
-| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly/explain), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding)**, sql_guard, schema_introspector, **schema_linking (wide-schema table selection: embed+cosine top-K + FK closure, metadata-only)**, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed)** |
+| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, graph_view_service, ba_service, automl_service** |
+| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding)**, sql_guard, schema_introspector, **schema_linking (wide-schema table selection: embed+cosine top-K + FK closure, metadata-only)**, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit |
 | Realtime | `realtime/*` | hub (collab WS pub/sub), live_refresh (canlı dashboard loop) |
@@ -64,7 +64,7 @@ first (cheap DML/DDL/multi-statement reject), then the shared **`_guarded_execut
 the single source of truth for the live-source guard chain, reused by `_live_pipeline`,
 `reexecute_logged_query`, and `run_user_sql`, so a guard can't drift onto one path only.
 Charts are picked **rule-based** (`chart_selector.rule_based_chart`), no insight is generated,
-and the run persists a `QueryLog` (label `✎ …` in `natural_language`; no migration) so history,
+and the run persists a `QueryLog` (label `[SQL] …` in `natural_language`; no migration) so history,
 dashboards, and the analysis panels keep working. Demo/no-datasource is gated on `DEMO_MODE`
 (rejected in prod) and the demo executor caps rows (`fetchmany`). Power BI sources are rejected
 (DAX ≠ SQL). Rate-limited per-IP (`sql_run`, no AI quota).
@@ -102,13 +102,12 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
 - **Alerts & notifications:** an `alerts` row (threshold on a saved query's column) is
   evaluated by `alert_service` whenever that saved query runs (scheduler or manual); a
   breach writes a `notifications` row (bell + Notifications page).
-- **Augmented analytics:** `analysis.explain` (flat root-cause drivers) and
-  `root_cause.decompose` (hierarchical "Why?" tree, AI shape validated inside the service
-  with a deterministic fallback) are on-demand AI calls; `lineage_service` derives source
+- **Augmented analytics:** `root_cause.decompose` (hierarchical "Why?" tree, AI shape validated inside the service
+  with a deterministic fallback) is an on-demand AI call; `lineage_service` derives source
   tables/columns/metrics from the stored SQL deterministically (no AI). What-if is client-side.
 - **Proactive AI digest:** `digest_service` scans a user's recent distinct queries
   (`insight_service.scan_recent_distinct`, shared helper) and rolls notable changes — with a
-  driver/reason — into ONE "🌅 Səhər brifi" notification. The scheduler runs it once/day past
+  driver/reason — into ONE "Səhər brifi" notification. The scheduler runs it once/day past
   `DIGEST_HOUR_UTC`; also on-demand via `POST /notifications/digest`. Rule-based fallback offline.
 - **Agentic copilot (universal executor):** `ai/copilot` is a bounded tool-calling loop
   (`COPILOT_MAX_STEPS`) with a **24-tool registry that drives every product feature**: discovery
@@ -215,7 +214,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   deterministic, no cost — identical to CI; new suites: test_snapshots, test_graph,
   test_ba, test_automl). Frontend Vitest (305) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, the advanced-analytics
-  stores/panels — insight/metric-tree/data-contract/Dropdown/color — and the studio round:
+  stores/panels — metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
   Playwright). E2E: `frontend/e2e/smoke.spec.ts` over login → query → dashboards against the preview.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus
@@ -228,7 +227,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
 `alerts`, `notifications`, `decisions`, **`requirement_docs`, `kpi_targets`,
 `integration_channels`, `workspaces`, `workspace_members`, `rls_rules`, `audit_logs`,
 `brand_configs` (1:1), `refresh_tokens`, `query_embeddings`,
-**`insights`, `metric_nodes` (self-FK tree), `data_contracts`**,
+**`metric_nodes` (self-FK tree), `data_contracts`**,
 **`ba_artifacts`, `ml_models`**; `dashboards`
 (1)─<(N) `widgets`, `dashboard_comments` and **`dashboard_snapshots`**; `data_contracts` (1)─<(N) `contract_runs`;
 `decisions` (1)─<(N) `decision_measurements`; `alerts` → `saved_queries`; `widgets.query_log_id`
@@ -265,9 +264,17 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   the scheduler adds an hourly scheduled capture for live dashboards);
   `POST/GET /dashboard/{id}/snapshots`, `GET/DELETE .../snapshots/{sid}`; FE toggle + snapshot
   timeline + diff badges (`lib/snapshotDiff`). (2) **Knowledge graph** — `graph_service.build`
-  assembles namespaced nodes (table/metric/mnode/dash/widget/squery/decision/ds) reusing the
-  lineage parser; `GET /graph`; FE `/graph` is a hand-rolled SVG force layout with an
-  impact-mode BFS highlight. (3) **Digital Twin** — frontend-ONLY `/twin`, a **3-surface simulator
+  assembles namespaced nodes (table/metric/mnode/dash/widget/squery/decision/ds/column) reusing the
+  lineage parser, with a trust overlay (metric `verified` + datasource freshness SLA) and FK
+  `references` edges from `schema_cache`; `GET /graph` (opt `?columns=`), read-only + deterministic.
+  **User-curated Graph Views** sit on top: `graph_view_service` + `GraphView` model (migration
+  `f5a6b7c8d9e0`; `included`/`hidden_node`/`hidden_edge` id-sets as JSON) with
+  `GET/POST/PATCH/DELETE /graph/views` — the FE derives every subgraph locally from the single
+  `/graph` payload (`viewGraph` pure helper), so there's no per-view backend compute. FE `/graph` is
+  a hand-rolled SVG force layout: 4-direction impact/path BFS highlight, right-click remove-from-view
+  + create-graph / add-assets modals (full-graph removals persist to localStorage, named views PATCH
+  the backend), drag-pin, mini-map, PNG/SVG export; the toolbar collapses secondary controls into one
+  options menu (`ActionMenu` + count badge). (3) **Digital Twin** — frontend-ONLY `/twin`, a **3-surface simulator
   (Model · Simulyator · Risk)**. `lib/metricTreeMath.ts` is an exact port of the backend metric-tree
   `_combine` semantics. **Model** = metric-tree editor; **Simulyator** = KPI hero (sparkline + optional
   P10–P90 uncertainty band), leaf ±% sliders, cumulative waterfall, ±10% tornado, goal-seek, scenario
@@ -317,16 +324,15 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   copy-pasted across `_live_pipeline` and `reexecute_logged_query` is now a single
   `query_service._guarded_execute` helper reused by all three callers (no security drift). Manual
   runs are DEMO_MODE-gated for the no-datasource case, demo execution is row-capped (`fetchmany`),
-  and history rows are marked with a `✎` label (no migration). Frontend: CodeMirror 6 lazy chunk
+  and history rows are marked with a `[SQL]` label (no migration). Frontend: CodeMirror 6 lazy chunk
   (`SQLEditor`→`SQLEditorInner`, schema-aware autocomplete) — kept out of the initial route bundle
   like recharts; `lib/sqlLabel.ts` centralizes the marker.
-- **Advanced-analytics subsystem (6 features, deterministic stats — scipy added).**
+- **Advanced-analytics subsystem (5 features, deterministic stats — scipy added).**
   `services/stats.py` is the shared statistical core (Welch t-test + Cohen's d, two-proportion
   z-test, Pearson, Benjamini-Hochberg FDR, MAD outliers, summary-stats t-test); `services/tabular.py`
   holds the shared numeric-column/row-alignment helpers. Built on it: **statistical guard** (`ai/stats_guard`
   + `POST /query/{id}/significance`), **causal driver analysis** (`services/causal` + `/causal`),
-  **insight engine** (`insight_engine.scan` — discovery +
-  impact ranking + idempotent dedup, reuses `scan_recent_distinct`), **metric tree** (`metric_tree_service`
+  **metric tree** (`metric_tree_service`
   bottom-up roll-up, recursive subtree delete since SQLite cascade is inert), and **data contracts**
   (`data_contract_service` reuses `profiling_service` for safe sample-based checks + schema-hash drift +
   freshness; fail-CLOSED on unknown rules). Per-query analytics surface as lazy ChartView panels;

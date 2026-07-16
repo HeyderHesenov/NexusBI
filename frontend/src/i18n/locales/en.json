@@ -254,7 +254,7 @@
     "preview": "Preview",
     "previewing": "Preparing…",
     "saveAsSource": "Save as source",
-    "savedToast": "New source saved 📦",
+    "savedToast": "New source saved",
     "saving": "Saving…",
     "sourceLabel": "Source",
     "subtitle": "Write in natural language — NexusBI joins, groups and prepares the result.",
@@ -939,7 +939,8 @@
       "widget": "Widget",
       "dash": "Dashboard",
       "squery": "Report",
-      "decision": "Decision"
+      "decision": "Decision",
+      "column": "Column"
     },
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
@@ -951,10 +952,78 @@
       "feeds": "feeds",
       "informs": "informs",
       "contains": "contains",
-      "rolls_up": "rolls up"
+      "rolls_up": "rolls up",
+      "references": "references",
+      "has_column": "has column"
     },
     "fullscreen": "Fullscreen",
-    "exitFullscreen": "Exit fullscreen"
+    "exitFullscreen": "Exit fullscreen",
+    "unhealthyOnly": "Only unhealthy",
+    "health": {
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "fresh": "Fresh",
+      "stale": "Stale (past SLA)",
+      "unknown": "No freshness SLA"
+    },
+    "impactDir": {
+      "down": "Downstream",
+      "up": "Upstream",
+      "both": "Both directions"
+    },
+    "upstreamCount": "{{count}} upstream sources",
+    "pathMode": "Path",
+    "pathHint": "Pick two nodes to trace the path between them",
+    "pathNone": "No path connects these nodes",
+    "pathLength": "Path spans {{count}} nodes",
+    "pathClear": "Clear path",
+    "exportPng": "Export PNG",
+    "exportSvg": "Export SVG",
+    "resetLayout": "Reset positions",
+    "edgeLegend": "Links:",
+    "options": {
+      "label": "Options",
+      "filters": "Filters",
+      "export": "Export",
+      "layout": "Layout"
+    },
+    "views": {
+      "label": "Views",
+      "full": "Full graph",
+      "manage": "Views",
+      "new": "New graph",
+      "rename": "Rename",
+      "delete": "Delete graph",
+      "save": "Save",
+      "showAll": "Show all",
+      "addAssets": "Add assets",
+      "nameLabel": "Graph name",
+      "namePlaceholder": "e.g. Sales lineage"
+    },
+    "menu": {
+      "removeNode": "Remove from view",
+      "removeEdge": "Remove link from view",
+      "addAssets": "Add assets…",
+      "newGraph": "New graph…"
+    },
+    "addAssets": {
+      "title": "Add assets",
+      "subtitle": "Pick assets to add to this graph.",
+      "empty": "No more assets to add.",
+      "confirm": "Add",
+      "selected": "{{count}} selected",
+      "added": "Added {{count}} assets."
+    },
+    "newGraph": {
+      "title": "New graph",
+      "subtitle": "Name it and pick the assets to start from.",
+      "confirm": "Create",
+      "created": "Graph created."
+    },
+    "deleteGraphConfirm": {
+      "title": "Delete graph?",
+      "message": "This deletes the saved view only. Your data stays untouched."
+    }
   },
   "twinPage": {
     "eyebrow": "Planning",

@@ -15,33 +15,32 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 ## Nə edir
 
 ### Sorğu & vizuallaşdırma
-- 🗣️ **Natural language sorğu** — "Regionlar üzrə satış payı" yaz, cavabı al.
-- 💬 **Chat-with-your-data** — çoxdönüşlü follow-up: "bunu aya görə böl", "yalnız 2024";
+- **Natural language sorğu** — "Regionlar üzrə satış payı" yaz, cavabı al.
+- **Chat-with-your-data** — çoxdönüşlü follow-up: "bunu aya görə böl", "yalnız 2024";
   əvvəlki sual+SQL kontekst kimi saxlanılır.
-- 🧠 **Text2SQL** — sual təhlükəsiz `SELECT`-ə çevrilir (guard + re-validation). Geniş
+- **Text2SQL** — sual təhlükəsiz `SELECT`-ə çevrilir (guard + re-validation). Geniş
   sxemlərdə (>8 cədvəl) **sxem-linking** modelə yalnız suala aid cədvəlləri (+ FK
   hədəfləri) göndərir — embedding-cosine top-K, samples HEÇ VAXT (tenant-leak); kiçik
   sxem və ya xəta → tam sxemə fail-open, repair loop tam sxemdə işləyir.
-- ⌨️ **SQL power-user rejimi** — analitik təbii dil əvəzinə **öz SQL-ini yazır və ya
+- ⌨**SQL power-user rejimi** — analitik təbii dil əvəzinə **öz SQL-ini yazır və ya
   AI-nin SQL-ini redaktə edib yenidən işlədir** (CodeMirror, sxem-bilən autocomplete).
   Tamamilə **AI-siz** (kvota yemir); eyni təhlükəsizlik zənciri (SELECT-only → cədvəl
   allowlist → RLS fail-closed). `POST /query/run`.
-- 📊 **Avtomatik chart + əl ilə keçid** — bar · line · area · pie · scatter · cədvəl · **pivot**;
+- **Avtomatik chart + əl ilə keçid** — bar · line · area · pie · scatter · cədvəl · **pivot**;
   CSV export, drill-down filtr (qrafik elementinə klik).
-- 🔲 **Pivot cədvəl explorer** — nəticə üzərində sürüklə-seç çarpaz analiz (sətir/sütun/ölçü/
+- **Pivot cədvəl explorer** — nəticə üzərində sürüklə-seç çarpaz analiz (sətir/sütun/ölçü/
   aqreqat: cəm·orta·say·min·maks), SQL-siz — Excel PivotTable eqvivalenti, tam client-side.
-- 💡 **AI insight** — nəticədən qısa biznes təhlili (sorğunun dilində).
-- 🔮 **Proqnoz (forecast)** + 🚨 **anomaliya aşkarlama** — AI mühərriki ilə.
-- 🧭 **"Bunu izah et" (kök-səbəb)** — nəticəni ən böyük driver-lərə parçalayır (seqment + töhfə %).
-- 🌳 **"Niyə?" iyerarxik kök-səbəb ağacı** — metrikanı çoxsəviyyəli driver ağacına böl
+- **AI insight** — nəticədən qısa biznes təhlili (sorğunun dilində).
+- **Proqnoz (forecast)** + **anomaliya aşkarlama** — AI mühərriki ilə.
+- **"Niyə?" iyerarxik kök-səbəb ağacı** — metrikanı çoxsəviyyəli driver ağacına böl
   (interaktiv, töhfə %); AI çatmayanda determinik fallback.
-- 🧬 **Mənşə (lineage)** — nəticənin arxasındakı cədvəl/sütun/metriklər (determinik SQL parse).
+- **Mənşə (lineage)** — nəticənin arxasındakı cədvəl/sütun/metriklər (determinik SQL parse).
 
 ### Proaktiv AI
-- 🌅 **Səhər brifi (digest)** — app özü son sorğularını skan edir, ən vacib dəyişiklikləri
+- **Səhər brifi (digest)** — app özü son sorğularını skan edir, ən vacib dəyişiklikləri
   səbəbi ilə bir bildirişdə toplayır (planlı + on-demand).
-- ✨ **Smart insight bildirişləri** — saxlanan sorğu nəticələrindəki diqqətəlayiq dəyişikliklər.
-- 🤖 **Agentik Copilot (plan → təsdiq → icra)** — köməkçi əvvəl addım planı göstərir, sən
+- **Smart insight bildirişləri** — saxlanan sorğu nəticələrindəki diqqətəlayiq dəyişikliklər.
+- **Agentik Copilot (plan → təsdiq → icra)** — köməkçi əvvəl addım planı göstərir, sən
   təsdiqləyirsən, sonra icra edir. **24 alətlə platformanın HƏR funksiyasını çatdan idarə edir:**
   sorğu · dashboard qur/paylaş · **AutoML modeli öyrət/proqnoz** · **SWOT/Porter/BCG/BPMN** ·
   snapshot · qərar yaz/ölç · kəşf skanı · data
@@ -50,119 +49,121 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   ağır alətlər (train/generate) alət başına 2/söhbət ilə məhdudlaşır.
 
 ### Ssenari & FP&A
-- 🎯 **KPI hədəf + pacing** — hədəfə çatma sürəti (tempo markeri ilə gauge).
-- 🎯 **Goal-seek** — "hədəfə çatmaq üçün neçə % lazımdır?".
-- 🎲 **Monte Carlo** — tarixi gəlirlərdən P10/P50/P90 qeyri-müəyyənlik diapazonu (determinik seed).
-- 🎚️ **What-if ssenari** — metrikə % düzəliş → faktiki vs proqnoz.
+- **KPI hədəf + pacing** — hədəfə çatma sürəti (tempo markeri ilə gauge).
+- **Goal-seek** — "hədəfə çatmaq üçün neçə % lazımdır?".
+- **Monte Carlo** — tarixi gəlirlərdən P10/P50/P90 qeyri-müəyyənlik diapazonu (determinik seed).
+- **What-if ssenari** — metrikə % düzəliş → faktiki vs proqnoz.
 
 ### BA workflow
-- 📝 **Tələbnamədən dashboard** — BRD / user story yapışdır və ya yüklə → AI ölçülə bilən
+- **Tələbnamədən dashboard** — BRD / user story yapışdır və ya yüklə → AI ölçülə bilən
   KPI çıxarır → təsdiqlədikdən sonra tam dashboard qurur (tələb→KPI izlənilirlik).
-- 🧰 **BA Framework Studio** — bir kliklə **SWOT · Porter 5 qüvvə · BCG matrisi · BPMN proses
+- **BA Framework Studio** — bir kliklə **SWOT · Porter 5 qüvvə · BCG matrisi · BPMN proses
   xəritəsi** (AI-first + deterministik fallback; BCG nüvəsi tam deterministik — bazar payı =
   gəlir payı, artım H2-vs-H1, AI yalnız tövsiyə verir); BPMN mermaid diaqramı server-side
   **fail-closed sanitizer**-dən keçir. `/ba-studio` (SWOT 2×2 grid · Porter · BCG SVG · mermaid).
 
 ### Qərarlar & izləmə
-- 🎯 **Qərar İntellekti Döngüsü (closed-loop ROI)** — qərarı **ölçülə bilən metrikə bağla**,
+- **Qərar İntellekti Döngüsü (closed-loop ROI)** — qərarı **ölçülə bilən metrikə bağla**,
   qərar anında **baseline** tutulur, real təsir **avtomatik ölçülür** (saxlanmış SQL-i AI-siz
   reexecute; cadence ilə planlı) və **proqnozla müqayisə** edilir (baseline→proqnoz→real +
   trayektoriya sparkline). **"Qərar dəqiqliyi"** istifadəçinin proqnozlarını reallıqla tutuşduraraq
   AI tövsiyələrini kalibrlər. (insight → action → outcome jurnalı + status izləmə üstündə qurulub.)
-- 🔔 **Alert-lər & monitorlar** — saxlanan sorğuya threshold bağla → şərt pozulanda bildiriş mərkəzi.
-- 🔌 **Workflow inteqrasiyaları** — brif/alert-ləri Slack · Teams · email-ə göndər (mock-first,
+- **Alert-lər & monitorlar** — saxlanan sorğuya threshold bağla → şərt pozulanda bildiriş mərkəzi.
+- **Workflow inteqrasiyaları** — brif/alert-ləri Slack · Teams · email-ə göndər (mock-first,
   config-gated); dashboard chat-də **@mention** → bildiriş.
 
 ### Data mənbələri & hazırlıq
-- 🔌 **Öz SQL bazanı qoş** — PostgreSQL / MySQL / SQLite (connection string, şifrəli saxlanılır).
-- 📁 **CSV / Excel yüklə** — fayl avtomatik sorğulana bilən SQLite cədvəlinə çevrilir.
-- 🔁 **Data yenilə (replace-in-place)** — fayl mənbəsinə təzə CSV/Excel yüklə → **eyni datasource
+- **Öz SQL bazanı qoş** — PostgreSQL / MySQL / SQLite (connection string, şifrəli saxlanılır).
+- **CSV / Excel yüklə** — fayl avtomatik sorğulana bilən SQLite cədvəlinə çevrilir.
+- **Data yenilə (replace-in-place)** — fayl mənbəsinə təzə CSV/Excel yüklə → **eyni datasource
   sətri** üzərinə yazılır (id qalır, sorğular/widget-lər/RLS bağlı qalır); köhnə engine evict olunur,
   schema/profile/query keşləri təmizlənir, sxem-itkisi xəbərdarlığı qaytarılır. `PATCH
   /datasource/{id}/data` (yalnız sqlite).
-- 🩻 **Bir kliklə Kəşf (One-click Explore)** — mənbədən **AI-siz** avtomatik X-ray dashboard:
+- **Bir kliklə Kəşf (One-click Explore)** — mənbədən **AI-siz** avtomatik X-ray dashboard:
   ölçü/kəsim/zaman sütunları guard-lu nümunədən təsnif olunur → KPI · zaman seriyası · top-N · say
   widget-ləri (≤8, eyni guard zənciri). `POST /datasource/{id}/explore` ("Kəşf et" düyməsi; Power BI
   istisna).
-- 🪄 **NL data-prep + çoxcədvəli join** — "orders ilə customers-i birləşdir, aylıq qrupla"
+- **NL data-prep + çoxcədvəli join** — "orders ilə customers-i birləşdir, aylıq qrupla"
   → AI transform planı → önizləmə → yeni törəmə mənbə kimi saxla (SELECT-only guard).
-- 📊 **Data profiling** — sütun üzrə null % · distinct · min/max · tip (nümunə əsaslı).
-- 🔎 **Schema browser + schema-bilən nümunə sorğular**.
-- 🔵 **Power BI inteqrasiyası** — NL→DAX (mock-first; real Azure AD ilə canlı executeQueries).
-- 🧪 **Demo mode** — real DB olmadan seeded SQLite üzərində işləyir.
+- **Data profiling** — sütun üzrə null % · distinct · min/max · tip (nümunə əsaslı).
+- **Schema browser + schema-bilən nümunə sorğular**.
+- **Power BI inteqrasiyası** — NL→DAX (mock-first; real Azure AD ilə canlı executeQueries).
+- **Demo mode** — real DB olmadan seeded SQLite üzərində işləyir.
 
 ### Semantik qat, etibar & dashboardlar
-- 🏷️ **Metrik kataloqu (semantik qat)** — biznes metriklərini bir dəfə təyin et
+- **Metrik kataloqu (semantik qat)** — biznes metriklərini bir dəfə təyin et
   (ad, ifadə, sinonimlər); AI sorğularda tutarlı işlədir.
-- ✅ **Etibar qatı** — metrikləri **sertifikatla** (verified badge + sahib), nəticə **lineage**-i,
+- **Etibar qatı** — metrikləri **sertifikatla** (verified badge + sahib), nəticə **lineage**-i,
   datasource **freshness SLA** (təzə / köhnəlib nişanı). "Tək həqiqət mənbəyi".
-- 🛡️ **Cavab etibar nişanı (Trust Badge)** — hər cavabda pipeline-in artıq hesabladığı **güvən +
+- **Cavab etibar nişanı (Trust Badge)** — hər cavabda pipeline-in artıq hesabladığı **güvən +
   mənşə** göstərilir: `llm` · `self_repaired` (DB xətasından təmir) · `deterministic_fallback`
   (offline rule-based) · `user_sql` (analitikin öz SQL-i). Sorğu və Tarixçə səhifələrində çip
   (`QueryLog.confidence`/`provenance`).
-- 🧩 **İnteraktiv dashboard** — widget-ləri sürüklə/ölç (react-grid-layout), auto-save,
+- **İnteraktiv dashboard** — widget-ləri sürüklə/ölç (react-grid-layout), auto-save,
   per-widget mənbə nişanı + yenilə, **cross-filter** (bir widget-də klik → bütün panel filtrlənir).
-- 🔴 **Canlı (real-time) dashboard** + 🎬 **AI Data Story** (kinematik təqdimat) + 🤖 **Copilot**.
+- **Canlı (real-time) dashboard** + **AI Data Story** (kinematik təqdimat) + **Copilot**.
 - ⏳ **Zaman Maşını (dashboard snapshotları)** — dashboardın vəziyyəti snapshot kimi saxlanılır
   (əl ilə + canlı dashboardlar üçün scheduler-də saatlıq avtomatik; widget başına ≤200 sətir,
   50 snapshot retention); timeline üzrə keçmişə qayıt + indiki ilə müqayisədə **diff badge**-lər.
-- 🕸️ **Biznes biliklər qrafı** — cədvəl · metrik · metrik-node · dashboard · widget · saxlanan
-  sorğu · qərar · mənbə aktivlərinin interaktiv əlaqə xəritəsi (hand-rolled SVG force layout);
-  **impact rejimi** seçilən node-dan təsirlənənləri BFS ilə işıqlandırır. `/graph`.
-- 🔖 **Saxlanan sorğular + cədvəlli (cron) avto-yeniləmə** ("Hesabatlar").
-- 📧 **Planlı PDF/Excel hesabat çatdırılması** — saxlanan sorğunu cədvəl üzrə (saatlıq/gündəlik/
+- **Biznes biliklər qrafı** — cədvəl · metrik · metrik-node · dashboard · widget · saxlanan
+  sorğu · qərar · mənbə · sütun aktivlərinin interaktiv əlaqə xəritəsi (hand-rolled SVG force layout).
+  **Analiz**: impact rejimi (aşağı / yuxarı / hər iki istiqamət BFS) + iki node arası **yol (path)**;
+  **etibar qatı** (verified metrik + mənbə təzəliyi rəng halqaları); FK və sütun-səviyyə lineage.
+  **Redaktə (yeni)**: sağ-klik ilə node/əlaqəni **görünüşdən çıxar** (real data silinmir), **0-dan
+  xüsusi qraf yarat** və istənilən aktivi əlavə/çıxar — adlı görünüşlər hesabda saxlanılır
+  (`graph_views`); alət paneli ikincili idarəetmələri bir "Seçimlər" menyusuna yığır. `/graph`.
+- **Saxlanan sorğular + cədvəlli (cron) avto-yeniləmə** ("Hesabatlar").
+- **Planlı PDF/Excel hesabat çatdırılması** — saxlanan sorğunu cədvəl üzrə (saatlıq/gündəlik/
   həftəlik) **email-ə PDF (reportlab) və ya Excel (openpyxl) əlavəsi** kimi göndər (mock-first,
   `INTEGRATIONS_LIVE` gated). BA-ların #1 paylama ehtiyacı.
 
 ### Komanda & idarəetmə (enterprise)
-- 👥 **Workspace + rollar (RBAC)** — owner / editor / viewer; e-poçtla dəvət.
-- 🔒 **Row-level security (RLS)** — üzv yalnız icazəli sətirləri görür (fail-closed; canlı +
+- **Workspace + rollar (RBAC)** — owner / editor / viewer; e-poçtla dəvət.
+- **Row-level security (RLS)** — üzv yalnız icazəli sətirləri görür (fail-closed; canlı +
   refresh yollarında tətbiq olunur).
-- 🧾 **Audit jurnalı** — təhlükəsizlik-əhəmiyyətli əməllərin izi (kim/nə/nə vaxt).
+- **Audit jurnalı** — təhlükəsizlik-əhəmiyyətli əməllərin izi (kim/nə/nə vaxt).
 
 ### Embed & white-label
-- 🧩 **Embedded analytics** — imzalı read-only embed token; iframe + yüngül `embed.js` SDK
+- **Embedded analytics** — imzalı read-only embed token; iframe + yüngül `embed.js` SDK
   (auto-mount); söndürmə dərhal bütün tokenləri ləğv edir.
-- 🎨 **White-label brendinq** — ad · əsas rəng · loqo (embed görünüşünə tətbiq olunur).
-- 🔗 **Paylaşma** — tokenli read-only public dashboard linki + komanda chat.
+- **White-label brendinq** — ad · əsas rəng · loqo (embed görünüşünə tətbiq olunur).
+- **Paylaşma** — tokenli read-only public dashboard linki + komanda chat.
 
 ### Hesab & platforma
-- 🔐 **Auth** — email/şifrə (JWT) + **Google Sign-In**; **refresh-token rotation**
+- **Auth** — email/şifrə (JWT) + **Google Sign-In**; **refresh-token rotation**
   (reuse-detection + family-revoke) və `/auth/logout`.
-- 💳 **Abunə planları + per-user rate limiting** — Free/Pro/Max/Max+ aylıq AI limiti;
+- **Abunə planları + per-user rate limiting** — Free/Pro/Max/Max+ aylıq AI limiti;
   demo-da mock upgrade, prod-da **config-gated Stripe Checkout**.
-- 🔎 **Qlobal semantik axtarış (⌘K)** — "churn-u harda izləyirik?" → dashboard/metrik/hesabat
+- **Qlobal semantik axtarış (⌘K)** — "churn-u harda izləyirik?" → dashboard/metrik/hesabat
   mənası ilə tapılır (embedding vektor store reuse, keyless offline fallback; komanda-paleti).
-- 🎨 **Claude-ilhamlı UI** — light/dark toggle, emerald accent, Source Serif 4 başlıqlar.
-- ⚡ **Performans** — Redis nəticə keşi (user-scoped), per-datasource connection pooling,
+- **Claude-ilhamlı UI** — light/dark toggle, emerald accent, Source Serif 4 başlıqlar.
+- **Performans** — Redis nəticə keşi (user-scoped), per-datasource connection pooling,
   **lazy chart bundle** (ağır recharts yalnız qrafik render olunanda yüklənir — ilk açılış yüngül).
-- 📈 **Müşahidə** — Prometheus `/metrics`, struktur loglar.
-- 🧠 **RAG grounding** — keçmiş sorğular + verified metriklər portativ vektor store (SQLite+numpy)
+- **Müşahidə** — Prometheus `/metrics`, struktur loglar.
+- **RAG grounding** — keçmiş sorğular + verified metriklər portativ vektor store (SQLite+numpy)
   ilə Text2SQL generation prompt-una inject olunur (result-cache açarına yox); keyless offline (hash)
   fallback, hər NL→SQL cütü **index-on-write**. Bu, generation dəqiqliyini artırır.
-- ✅ **Keyfiyyət darvazası** — backend pytest, frontend Vitest, **bloklayıcı Playwright E2E smoke** (CI).
+- **Keyfiyyət darvazası** — backend pytest, frontend Vitest, **bloklayıcı Playwright E2E smoke** (CI).
 
 ### Qabaqcıl analitika & statistik etibar (differensiator)
 Determinist statistik təməl (**scipy + numpy**; AutoML üçün **scikit-learn**) — saf riyaziyyat /
 klassik ML, LLM yox:
-- 🛡️ **Statistik mühafiz** — sorğu nəticəsinə etibar yoxlamaları (nümunə həcmi, dəyər yayılması,
+- **Statistik mühafiz** — sorğu nəticəsinə etibar yoxlamaları (nümunə həcmi, dəyər yayılması,
   saxta korrelyasiya). `POST /query/{id}/significance` → ChartView "Statistik yoxlama" paneli.
-- 🔗 **Kauzal nəticə** — hədəf metriklə ən güclü əlaqəli sütunlar (Pearson r + p-dəyər + **BH-FDR**
+- **Kauzal nəticə** — hədəf metriklə ən güclü əlaqəli sütunlar (Pearson r + p-dəyər + **BH-FDR**
   çox-müqayisə düzəlişi), dürüst caveat-larla. `POST /query/{id}/causal` → "Səbəb analizi" paneli.
-- 🔍 **Insight mühərriki** — son nəticələri avtomatik tarayır (dominantlıq, konsentrasiya, MAD-əsaslı
-  anomaliya), **təsirə görə** sıralayır, dedup edir. `/insights` · **Analiz → Kəşflər**.
-- 🌳 **Metrik ağacı** — KPI dekompozisiyası (Gəlir = Qiymət × Həcm), dəyərlər aşağıdan-yuxarı
+- **Metrik ağacı** — KPI dekompozisiyası (Gəlir = Qiymət × Həcm), dəyərlər aşağıdan-yuxarı
   toplanır + valideynə töhfə %. `/metric-tree` · **Məlumat → Metrik ağacı**.
-- 📋 **Data müqavilələri** — mənbə cədvəllərinə keyfiyyət zəmanəti (boş-deyil, unikal, diapazon,
+- **Data müqavilələri** — mənbə cədvəllərinə keyfiyyət zəmanəti (boş-deyil, unikal, diapazon,
   sxem-sabitliyi, təzəlik SLA); pozulmada bildiriş. `/contracts` · **Məlumat → Data müqavilələri**.
-- 🎛️ **Digital Twin simulyatoru (3 səth: Model · Simulyator · Risk)** — metrik ağacının tam
+- **Digital Twin simulyatoru (3 səth: Model · Simulyator · Risk)** — metrik ağacının tam
   **client-side** "rəqəmsal əkizi" (`lib/metricTreeMath.ts` — backend `_combine` semantikasının dəqiq
   portu). **Model**: metrik ağacı redaktoru. **Simulyator**: KPI hero (count-up + delta + sparkline +
   P10–P90 qeyri-müəyyənlik zolağı), leaf ±% sliderlər, kumulyativ waterfall, ±10% tornado, goal-seek,
   ssenari müqayisəsi, KPI-hədəf pacing nişanı və "nə dəyişdi" driver narrativi. **Risk**:
   2000-iterasiyalı Monte Carlo (per-lever diapazon → P10/P50/P90 + histoqram). Tam client-side,
   backend dəyişikliyi yox. `/twin`.
-- 🤖 **AutoML Studiyası** — cədvəldən bir kliklə model öyrət (**scikit-learn**: Linear/LogReg vs
+- **AutoML Studiyası** — cədvəldən bir kliklə model öyrət (**scikit-learn**: Linear/LogReg vs
   RandomForest, holdout üzrə yaxşısı seçilir) + **dərin diaqnostika**: model reytinqi
   (leaderboard), **k-fold çarpaz yoxlama**, qarışıqlıq matrisi / faktiki-vs-proqnoz + qalıq
   histoqramı, permutasiya əhəmiyyəti və **per-proqnoz izahları** (orijinal sütun adı ilə).
@@ -210,7 +211,7 @@ metrik+söhbət kontekstindədir) → miss-də **RAG grounding** (`ai/retrieval`
 sorğular + verified metriklər yalnız generation prompt-una; result-cache açarına yox) →
 Text2SQL → SQL guard → pooled engine ilə icra → **RLS filtri** → chart + insight (paralel) →
 QueryLog + cache + **index-on-write** (yeni NL→SQL cütü embed olunur) → QueryResult. On-demand
-AI təhlilləri (`root-cause`, `forecast`, `anomaly`, `explain`) və determinik hesablamalar
+AI təhlilləri (`root-cause`, `forecast`, `anomaly`) və determinik hesablamalar
 (`goal-seek`, `monte-carlo`, `lineage`, `profiling`) ayrıca endpoint-lərdir.
 
 Ətraflı: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -250,7 +251,7 @@ brew install redis && brew services start redis
 
 Aç: **http://localhost:5173**  ·  API docs: **http://localhost:8000/docs**
 
-> ⚠️ Brauzerdə **`localhost`** işlət, `127.0.0.1` yox — CORS yalnız `localhost`-a icazə verir.
+> Brauzerdə **`localhost`** işlət, `127.0.0.1` yox — CORS yalnız `localhost`-a icazə verir.
 
 Demo rejimində (`DEMO_MODE=true`) əlavə konfiqurasiya tələb olunmur — AI mühərriki
 açarı boş olsa da tətbiq determinik offline rule-based mühərriklə işləyir; `DATABASE_URL`
@@ -274,7 +275,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST | `/api/v1/query/ask` | NL sorğu (+ `previous_query_log_id` follow-up) → QueryResult |
 | POST | `/api/v1/query/run` | Power-user əl-SQL (AI-siz; SELECT-only + allowlist + RLS) → QueryResult |
 | GET | `/api/v1/query/history` · `/{id}` | Tarixçə · saxlanmış nəticə |
-| POST | `/api/v1/query/{id}/retry` · `/anomalies` · `/forecast` · `/explain` | Yenidən · anomaliya · proqnoz · kök-səbəb |
+| POST | `/api/v1/query/{id}/retry` · `/anomalies` · `/forecast` | Yenidən · anomaliya · proqnoz |
 | POST/GET | `/api/v1/query/{id}/root-cause` · `/goal-seek` · `/monte-carlo` · `/lineage` | Kök-səbəb ağacı · goal-seek · Monte Carlo · mənşə |
 | POST | `/api/v1/query/{id}/significance` · `/causal` | Statistik mühafiz (etibar yoxlamaları) · kauzal driver analizi (Pearson + BH-FDR) |
 | POST/GET/PUT/DELETE | `/api/v1/dashboard/...` | Dashboard CRUD + widget (+ refresh / story / live) |
@@ -291,12 +292,12 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST | `/api/v1/copilot/chat` (mode=plan/execute) | Agentik copilot (plan → icra) |
 | POST/GET/DELETE | `/api/v1/saved/...` · `/alerts` · `/notifications` (+ `/digest`) | Saxlanan sorğular · monitorlar · brif |
 | POST/GET/PUT/DELETE | `/api/v1/decisions/...` (+ `/{id}/measure` · `/roi` · `/trajectory` · `/accuracy`) | Qərar İntellekti Döngüsü — jurnal + metrik baseline/realized ölçmə · ROI · trayektoriya · dəqiqlik |
-| GET/POST | `/api/v1/insights/...` (+ `/generate` · `/{id}/dismiss`) | Insight mühərriki — avtomatik kəşf + təsir reytinqi |
 | GET/POST/PATCH/DELETE | `/api/v1/metric-tree/...` (+ `/evaluate`) | Metrik ağacı — KPI dekompozisiya + roll-up |
 | POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
 | POST/GET/DELETE | `/api/v1/dashboard/{id}/snapshots` (+ `/{sid}`) | Zaman Maşını — snapshot çək · siyahı · bax · sil |
 | PATCH | `/api/v1/dashboard/{id}/filter` | Qlobal dashboard filtri — tarix aralığı + dimension slicer, hər widget-in SQL-inə server-side WHERE kimi qatılır (RLS içində, data-only) |
-| GET | `/api/v1/graph` | Biznes biliklər qrafı — aktivlərin əlaqə xəritəsi (lineage reuse) |
+| GET | `/api/v1/graph` | Biznes biliklər qrafı — aktivlərin əlaqə xəritəsi (lineage reuse); `?columns=` sütun node-ları |
+| GET/POST/PATCH/DELETE | `/api/v1/graph/views` (+ `/{id}`) | İstifadəçinin saxladığı xüsusi qraf görünüşləri (included/hidden id-lər) |
 | POST/GET/DELETE | `/api/v1/ba/generate` · `/ba` · `/ba/{id}` | BA Framework Studio — SWOT/Porter/BCG/BPMN artefaktları (AI kvota) |
 | GET/POST/DELETE | `/api/v1/automl/tables` · `/train` · `/models` (+ `/{id}/predict`) | AutoML — cədvəllər · model öyrət · siyahı · proqnoz · sil (per-IP limit) |
 | GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` · `/checkout` | Planlar · istifadə · mock upgrade · Stripe (gated) |
@@ -343,7 +344,7 @@ cd backend && pytest        # 466 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
-rotation/reuse-detect** · rate-limit & tiers · datasource & CSV upload · anomaly/forecast/explain ·
+rotation/reuse-detect** · rate-limit & tiers · datasource & CSV upload · anomaly/forecast ·
 **root-cause · requirements→dashboard · NL data-prep & profiling · agentik copilot
 (plan/execute) · trust (verified/lineage/SLA) · workspace RBAC + SQL-səviyyə RLS + audit · scenario
 (goal-seek/Monte Carlo/pacing) · integrations (+ @mention) · embed/white-label/Stripe gate** ·
@@ -351,7 +352,7 @@ saved-query & scheduler · engine pool · metric catalog · chat context · aler
 **Qərar Döngüsü (baseline/measure/ROI/accuracy/impact-math/cascade) · RAG retrieval (user-scoped,
 offline embed determinizmi, dedup)** ·
 **qabaqcıl analitika: statistik mühafiz (t-test/z-test/Pearson/BH-FDR/MAD) · kauzal driver ·
-insight mühərriki (kəşf+reytinq) · metrik ağacı (roll-up) · data müqavilələri
+metrik ağacı (roll-up) · data müqavilələri
 (profiling-əsaslı keyfiyyət)** · **dashboard snapshotları
 (test_snapshots) · biliklər qrafı (test_graph) · BA frameworks + mermaid sanitizer (test_ba) ·
 AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
@@ -361,7 +362,7 @@ AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest f
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
-collab epoch-guard · decision measure · **insight · metric-tree ·
+collab epoch-guard · decision measure · **metric-tree ·
 data-contract · snapshot · graph · twinStore · baStore · automlStore**) ·
 **UI primitivləri (ModalShell a11y · ErrorBoundary · Dropdown · StatsGuard/Causal panel ·
 BCGMatrix)**.
