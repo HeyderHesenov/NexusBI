@@ -9,6 +9,8 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 > Daxili **AI mühərriki** ilə işləyir (Text2SQL · chart seçimi · insight · proqnoz ·
 > anomaliya · kök-səbəb · proaktiv digest · agentik copilot). Üstəlik komanda idarəetməsi
 > (RBAC + row-level security), embedded analytics + white-label, FP&A ssenari planlaması.
+>
+> **Final layihə — 2/3** (üç final layihədən ikincisi).
 
 ---
 
