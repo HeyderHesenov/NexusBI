@@ -39,20 +39,41 @@ describe('notificationStore.load', () => {
     expect(useNotificationStore.getState().unread).toBe(1)
   })
 
-  it('stays silent on the first poll, then toasts only newly arrived unread insights', async () => {
+  it('never toasts — it is a reconcile now; the mailbox socket does the announcing', async () => {
     list.mockResolvedValue([note('a', false)] as never)
     await useNotificationStore.getState().load()
-    expect(mockToast).not.toHaveBeenCalled() // first load establishes the baseline
     list.mockResolvedValue([note('a', false), note('b', false)] as never)
     await useNotificationStore.getState().load()
+    expect(mockToast).not.toHaveBeenCalled()
+  })
+})
+
+describe('notificationStore.receive', () => {
+  it('prepends a pushed notification, bumps unread, and toasts it', () => {
+    useNotificationStore.getState().receive(note('new'))
+    const s = useNotificationStore.getState()
+    expect(s.items[0].id).toBe('new')
+    expect(s.unread).toBe(1)
     expect(mockToast).toHaveBeenCalledTimes(1)
   })
 
-  it('does not toast digest (brief) notifications', async () => {
-    list.mockResolvedValue([note('x', false)] as never)
+  it('ignores a notification load() already has, so a race cannot double-count', async () => {
+    list.mockResolvedValue([note('a', false)] as never)
     await useNotificationStore.getState().load()
-    list.mockResolvedValue([note('x', false), note('brief', false, 'digest')] as never)
-    await useNotificationStore.getState().load()
+    useNotificationStore.getState().receive(note('a'))
+    expect(useNotificationStore.getState().items).toHaveLength(1)
+    expect(useNotificationStore.getState().unread).toBe(1)
+  })
+
+  it('does not toast a digest — generateDigest already announces it', () => {
+    useNotificationStore.getState().receive(note('brief', false, 'digest'))
+    expect(useNotificationStore.getState().unread).toBe(1)
+    expect(mockToast).not.toHaveBeenCalled()
+  })
+
+  it('does not toast a chat mention — it already toasted as a chat message', () => {
+    useNotificationStore.getState().receive(note('m', false, 'mention'))
+    expect(useNotificationStore.getState().unread).toBe(1)
     expect(mockToast).not.toHaveBeenCalled()
   })
 })

@@ -41,6 +41,25 @@ def decode_access_token(token: str) -> dict[str, Any]:
         raise AuthError("Token etibarsızdır və ya vaxtı bitib.") from exc
 
 
+# Every claim that marks a token as SCOPED to one purpose. All are signed with the
+# same key, so only this list separates "may authenticate" from "may not".
+# Adding a mint below without adding its claim here silently widens every gate —
+# that is exactly how "room" became a valid Bearer token.
+_SCOPED_CLAIMS = ("rt", "ws", "room", "emb")
+
+
+def assert_access_token(payload: dict[str, Any]) -> None:
+    """Raise unless the payload is a genuine, unscoped access token.
+
+    Refresh ("rt"), WS-ticket ("ws"), room-ticket ("room") and embed ("emb")
+    tokens all carry a subject but must never be replayed where an access token is
+    expected — a 30-day refresh token would bypass the short access TTL and all
+    server-side revocation, and a room ticket would become a general credential.
+    """
+    if any(payload.get(claim) for claim in _SCOPED_CLAIMS):
+        raise AuthError("Bu token API girişi üçün etibarlı deyil.")
+
+
 def create_refresh_token(user_id: str, jti: str, family_id: str) -> tuple[str, datetime]:
     """Mint a long-lived refresh token (claim type "rt"). Returns (token, expiry)."""
     expire = datetime.now(timezone.utc) + timedelta(

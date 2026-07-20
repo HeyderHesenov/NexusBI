@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { AlertTriangle, Check, Lock, Palette, RotateCcw, Save, Sparkles } from 'lucide-react'
+import { AlertTriangle, Check, Code2, Lock, Palette, RotateCcw, Save, Sparkles } from 'lucide-react'
 import * as branding from '../api/branding'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
@@ -342,17 +342,12 @@ function BrandPreview({
 
   return (
     <div style={style} className="reveal reveal-d1 overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-card">
-      {/* Window chrome */}
+      {/* Embed-frame caption — the brand re-skins embedded dashboards and shared
+          links, NOT the whole app, so the preview depicts that surface (no fake
+          app URL bar / no app nav). */}
       <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
-        <span className="flex gap-1.5" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <span key={i} className="h-2.5 w-2.5 rounded-full bg-line" />
-          ))}
-        </span>
-        <span className="ml-2 min-w-0 flex-1 truncate rounded-md bg-surface px-3 py-1 font-mono text-[10px] text-ink-faint">
-          app.{(appName || 'nexusbi').toLowerCase().replace(/\s+/g, '')}.io
-        </span>
-        <span className="eyebrow shrink-0 text-[9px]">{t('brandingPage.previewLabel')}</span>
+        <Code2 size={13} className="shrink-0 text-ink-faint" aria-hidden="true" />
+        <span className="eyebrow text-[9px] text-ink-faint">{t('brandingPage.previewLabel')}</span>
       </div>
 
       {/* Topbar */}
@@ -370,18 +365,9 @@ function BrandPreview({
         </span>
       </div>
 
-      {/* Sidebar + content */}
-      <div className="flex">
-        <div className="hidden w-28 shrink-0 space-y-1.5 border-r border-line bg-surface p-3 sm:block">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${i === 0 ? 'bg-accent-soft' : ''}`}>
-              <span className={`h-2 w-2 shrink-0 rounded-full ${i === 0 ? 'bg-accent' : 'bg-line'}`} />
-              <span className={`h-1.5 flex-1 rounded-full ${i === 0 ? 'bg-accent/70' : 'bg-line'}`} />
-            </div>
-          ))}
-        </div>
-
-        <div className="min-w-0 flex-1 space-y-3 p-4">
+      {/* Dashboard content — an embedded dashboard has no app nav, so the preview
+          shows the branded dashboard surface directly. */}
+      <div className="space-y-3 p-4">
           <div className="grid grid-cols-3 gap-3">
             {/* Rich KPI tile with count-up + brand sparkline */}
             <div className="plot-grid overflow-hidden rounded-xl border border-line bg-surface p-3">
@@ -443,7 +429,6 @@ function BrandPreview({
             ))}
           </div>
         </div>
-      </div>
     </div>
   )
 }

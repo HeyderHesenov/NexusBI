@@ -18,6 +18,11 @@ interface Props {
   /** Visible label next to the icon (the labelled `header` variant). */
   label?: string
   iconSize?: number
+  /** Controlled mode: when `onOpenChange` is passed, the modal's open state is
+   *  driven by the host (e.g. an overflow-menu item) and the built-in trigger
+   *  button is not rendered. Uncontrolled callers omit both and get the button. */
+  controlledOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const VARIANTS = {
@@ -42,12 +47,22 @@ export function ShareToChatButton({
   variant = 'chip',
   label,
   iconSize = 15,
+  controlledOpen,
+  onOpenChange,
 }: Props) {
   const { t } = useTranslation()
   const userId = useAuthStore((s) => s.user?.id)
   const { workspaces, load: loadWorkspaces } = useWorkspaceStore()
 
-  const [open, setOpen] = useState(false)
+  // Controlled when the host passes onOpenChange (drive from an overflow menu);
+  // otherwise self-managed with the built-in trigger button.
+  const isControlled = onOpenChange !== undefined
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = isControlled ? !!controlledOpen : internalOpen
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v)
+    else setInternalOpen(v)
+  }
   const [wsId, setWsId] = useState('')
   const [channels, setChannels] = useState<Channel[]>([])
   const [peers, setPeers] = useState<DMPeer[]>([])
@@ -124,18 +139,20 @@ export function ShareToChatButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title={t('shareDialog.title')}
-        aria-label={t('shareDialog.title')}
-        className={VARIANTS[variant]}
-      >
-        <span className="flex items-center gap-1.5">
-          <Share2 size={iconSize} />
-          {label}
-        </span>
-      </button>
+      {!isControlled && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          title={t('shareDialog.title')}
+          aria-label={t('shareDialog.title')}
+          className={VARIANTS[variant]}
+        >
+          <span className="flex items-center gap-1.5">
+            <Share2 size={iconSize} />
+            {label}
+          </span>
+        </button>
+      )}
 
       <ModalShell
         open={open}

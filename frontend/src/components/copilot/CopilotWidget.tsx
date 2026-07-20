@@ -194,7 +194,7 @@ export function CopilotWidget() {
                         onClick={() => runAction(a)}
                         className="flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-2.5 py-1.5 text-xs font-medium text-accent transition hover:border-accent"
                       >
-                        <span>✓ {a.label}</span>
+                        <Check size={12} /><span>{a.label}</span>
                         {copilotNavTarget(a) && <ArrowRight size={12} />}
                       </button>
                     ))}

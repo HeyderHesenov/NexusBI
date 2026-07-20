@@ -16,7 +16,7 @@
     "othersLabel": "Другие"
   },
   "brandingPage": {
-    "appliesNote": "Применяется к встроенному представлению (iframe / SDK).",
+    "appliesNote": "Применяется к встроенным панелям и ссылкам для общего доступа.",
     "colorPickerLabel": "Выбор цвета",
     "contrastLow": "Низкий контраст",
     "contrastOk": "Контраст AA",
@@ -43,7 +43,7 @@
     "saving": "Сохранение…",
     "sectionColor": "Цвет",
     "sectionIdentity": "Идентичность",
-    "subtitle": "Задайте название, цвет и логотип, отображаемые во встроенных панелях.",
+    "subtitle": "Задайте название, цвет и логотип, отображаемые во встроенных панелях и по ссылкам общего доступа.",
     "title": "Брендинг",
     "upgradeCta": "Перейти на Pro",
     "upsellBody": "Перейдите на план Pro или выше, чтобы показывать своё название, цвет и логотип во встроенных панелях.",
@@ -200,9 +200,14 @@
     "generatedToast": "«{{name}}» готов — {{count}} виджетов.",
     "live": "В реальном времени",
     "liveMode": "Режим реального времени",
+    "moreActions": "Другие действия",
     "new": "Новый",
+    "open": "Открыть",
     "preparing": "Подготовка…",
     "refreshAll": "Обновить всё",
+    "sectionDanger": "Опасная зона",
+    "sectionShare": "Поделиться",
+    "sectionView": "Вид и данные",
     "share": "Поделиться",
     "story": "История",
     "team": "Команда",
@@ -323,7 +328,9 @@
     "emptyDashboard": "Эта панель пуста.",
     "loading": "Загрузка…",
     "noResults": "Нет результатов.",
-    "notFoundOrDisabled": "Встраивание не найдено или отключено."
+    "notFoundOrDisabled": "Встраивание не найдено или отключено.",
+    "readOnly": "Только просмотр",
+    "widget": "Виджет"
   },
   "errorBoundary": {
     "panelDescription": "В этом разделе произошла непредвиденная ошибка. Попробуйте снова.",
@@ -378,7 +385,7 @@
   "integrationsPanel": {
     "add": "Добавить",
     "deleteTooltip": "Удалить",
-    "description": "Отправляйте брифы и оповещения в Slack, Teams или на email. (Демо: mock-режим.)",
+    "description": "Отправляйте брифы и оповещения в Slack, Teams или на email. В демо-режиме — симуляция.",
     "hintEmail": "адрес эл. почты",
     "hintWebhook": "webhook URL",
     "targetLabel": "Адрес",
@@ -409,7 +416,6 @@
     "eyebrowRegister": "Начните",
     "fullNamePlaceholder": "Имя и фамилия",
     "googleContinue": "Продолжить с Google",
-    "googleNotConfigured": "Вход через Google ещё не настроен.",
     "heroDescription": "Общайтесь с данными, не зная SQL. NexusBI превращает ваш вопрос в запрос, выполняет его и отвечает наиболее подходящим графиком.",
     "heroLine1": "Задай вопрос.",
     "heroLine2": "Увидь ответ.",
@@ -512,7 +518,8 @@
     "twin": "Цифровой двойник",
     "baStudio": "BA Studio",
     "automl": "AutoML",
-    "chat": "Чат"
+    "chat": "Чат",
+    "chatUnread": "Непрочитанных сообщений: {{count}}"
   },
   "notificationsPage": {
     "briefingLoading": "Готовится…",
@@ -572,6 +579,7 @@
     "loading": "Загрузка…",
     "noResult": "Нет результатов.",
     "notFound": "Общий дашборд не найден.",
+    "readOnly": "Только просмотр",
     "team": "Команда",
     "widget": "Виджет"
   },
@@ -768,7 +776,10 @@
     "whiteLabelEmbed": "White-label встраивание (подписанный токен)"
   },
   "shareCard": {
+    "expand": "{{title}} — развернуть график",
+    "morePreview": "+{{count}} ещё",
     "open": "Открыть",
+    "tableSummary": "{{rows}} строк × {{cols}} столбцов",
     "truncated": "Показаны первые {{count}} строк",
     "type_ba_artifact": "BA-артефакт",
     "type_contract": "Контракт данных",
@@ -1266,15 +1277,18 @@
     "channels": "Каналы",
     "connected": "Подключено",
     "connecting": "Подключение…",
+    "createWorkspace": "Создать пространство",
     "directMessages": "Личные сообщения",
     "messagePlaceholder": "Напишите сообщение…",
     "newChannel": "Новый канал",
     "newChannelPlaceholder": "название канала",
+    "newWorkspacePlaceholder": "название пространства",
     "noChannels": "Пока нет каналов",
     "noMessages": "Пока нет сообщений. Будьте первым.",
     "noPeers": "Пока нет коллег",
     "noResults": "Ничего не найдено",
     "noWorkspace": "Сначала создайте рабочее пространство",
+    "noWorkspaceHint": "Создайте командное пространство, чтобы начать общение.",
     "online": "{{count}} онлайн",
     "onlineNow": "в сети",
     "pickRoom": "Выберите канал или беседу",
@@ -1286,6 +1300,7 @@
     "typingMany": "{{count}} человек печатают…",
     "workspace": "Рабочее пространство",
     "yesterday": "Вчера",
-    "you": "Вы"
+    "you": "Вы",
+    "sharedToast": "{{name}} поделился карточкой"
   }
 }

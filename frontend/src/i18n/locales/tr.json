@@ -16,7 +16,7 @@
     "othersLabel": "Diğer"
   },
   "brandingPage": {
-    "appliesNote": "Gömme (iframe / SDK) görünümüne uygulanır.",
+    "appliesNote": "Gömülü panellere ve paylaşım bağlantılarına uygulanır.",
     "colorPickerLabel": "Renk seçici",
     "contrastLow": "Düşük kontrast",
     "contrastOk": "AA kontrast",
@@ -43,7 +43,7 @@
     "saving": "Kaydediliyor…",
     "sectionColor": "Renk",
     "sectionIdentity": "Kimlik",
-    "subtitle": "Gömülü panellerde görünen adı, rengi ve logoyu ayarlayın.",
+    "subtitle": "Gömülü panellerde ve paylaşım bağlantılarında görünen adı, rengi ve logoyu ayarlayın.",
     "title": "Markalama",
     "upgradeCta": "Pro'ya geç",
     "upsellBody": "Gömülü panellerde kendi adınızı, renginizi ve logonuzu göstermek için Pro veya daha üst plana geçin.",
@@ -200,9 +200,14 @@
     "generatedToast": "“{{name}}” hazır — {{count}} widget.",
     "live": "Canlı",
     "liveMode": "Canlı mod",
+    "moreActions": "Diğer işlemler",
     "new": "Yeni",
+    "open": "Aç",
     "preparing": "Hazırlanıyor…",
     "refreshAll": "Tümünü yenile",
+    "sectionDanger": "Tehlikeli bölge",
+    "sectionShare": "Paylaşım",
+    "sectionView": "Görünüm ve veri",
     "share": "Paylaş",
     "story": "Hikâye",
     "team": "Ekip",
@@ -323,7 +328,9 @@
     "emptyDashboard": "Bu pano boş.",
     "loading": "Yükleniyor…",
     "noResults": "Sonuç yok.",
-    "notFoundOrDisabled": "Gömme bulunamadı veya devre dışı."
+    "notFoundOrDisabled": "Gömme bulunamadı veya devre dışı.",
+    "readOnly": "Salt okunur",
+    "widget": "Widget"
   },
   "errorBoundary": {
     "panelDescription": "Bu bölümde beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
@@ -378,7 +385,7 @@
   "integrationsPanel": {
     "add": "Ekle",
     "deleteTooltip": "Sil",
-    "description": "Brief ve uyarıları Slack, Teams veya e-postaya gönderin. (Demo: mock modu.)",
+    "description": "Brief ve uyarıları Slack, Teams veya e-postaya gönderin. Demo modunda simüle edilir.",
     "hintEmail": "e-posta adresi",
     "hintWebhook": "webhook URL",
     "targetLabel": "Adres",
@@ -409,7 +416,6 @@
     "eyebrowRegister": "Başla",
     "fullNamePlaceholder": "Ad Soyad",
     "googleContinue": "Google ile devam et",
-    "googleNotConfigured": "Google girişi henüz yapılandırılmadı.",
     "heroDescription": "SQL bilmeden verinizle konuşun. NexusBI sorunuzu bir sorguya dönüştürür, çalıştırır ve en uygun grafikle yanıtlar.",
     "heroLine1": "Soru sor.",
     "heroLine2": "Cevabı gör.",
@@ -512,7 +518,8 @@
     "twin": "Dijital İkiz",
     "baStudio": "BA Studio",
     "automl": "AutoML",
-    "chat": "Sohbet"
+    "chat": "Sohbet",
+    "chatUnread": "{{count}} okunmamış mesaj"
   },
   "notificationsPage": {
     "briefingLoading": "Hazırlanıyor…",
@@ -572,6 +579,7 @@
     "loading": "Yükleniyor…",
     "noResult": "Sonuç yok.",
     "notFound": "Paylaşılan pano bulunamadı.",
+    "readOnly": "Salt okunur",
     "team": "Ekip",
     "widget": "Widget"
   },
@@ -768,7 +776,10 @@
     "whiteLabelEmbed": "White-label yerleştirme (imzalı token)"
   },
   "shareCard": {
+    "expand": "{{title}} — grafiği büyüt",
+    "morePreview": "+{{count}} daha",
     "open": "Aç",
+    "tableSummary": "{{rows}} satır × {{cols}} sütun",
     "truncated": "İlk {{count}} satır gösteriliyor",
     "type_ba_artifact": "BA artefaktı",
     "type_contract": "Veri sözleşmesi",
@@ -1266,15 +1277,18 @@
     "channels": "Kanallar",
     "connected": "Bağlı",
     "connecting": "Bağlanıyor…",
+    "createWorkspace": "Çalışma alanı oluştur",
     "directMessages": "Doğrudan mesajlar",
     "messagePlaceholder": "Bir mesaj yaz…",
     "newChannel": "Yeni kanal",
     "newChannelPlaceholder": "kanal adı",
+    "newWorkspacePlaceholder": "çalışma alanı adı",
     "noChannels": "Henüz kanal yok",
     "noMessages": "Henüz mesaj yok. İlk yazan sen ol.",
     "noPeers": "Henüz takım arkadaşı yok",
     "noResults": "Hiçbir şey bulunamadı",
     "noWorkspace": "Önce bir çalışma alanı oluştur",
+    "noWorkspaceHint": "Sohbete başlamak için bir ekip çalışma alanı oluşturun.",
     "online": "{{count}} kişi çevrimiçi",
     "onlineNow": "çevrimiçi",
     "pickRoom": "Bir kanal veya sohbet seç",
@@ -1286,6 +1300,7 @@
     "typingMany": "{{count}} kişi yazıyor…",
     "workspace": "Çalışma alanı",
     "yesterday": "Dün",
-    "you": "Sen"
+    "you": "Sen",
+    "sharedToast": "{{name}} bir kart paylaştı"
   }
 }

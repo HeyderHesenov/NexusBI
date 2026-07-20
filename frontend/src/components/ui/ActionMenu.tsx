@@ -17,6 +17,9 @@ export interface ActionMenuItem {
   /** Keep the menu open after selecting — for multi-toggle filters where the
    *  user flips several in a row. Default closes (one-shot actions). */
   keepOpen?: boolean
+  /** Destructive action — renders the row + icon in the danger colour so it
+   *  reads as such even tucked in a menu. Ignored while disabled/active. */
+  danger?: boolean
 }
 
 export interface ActionMenuSection {
@@ -203,7 +206,7 @@ export function ActionMenu({
         }`}
       >
         {TriggerIcon && <TriggerIcon size={14} />}
-        <span>{triggerLabel}</span>
+        {triggerLabel && <span>{triggerLabel}</span>}
         {count != null && count > 0 && (
           <span className="grid h-4 min-w-4 place-items-center rounded-full bg-accent-soft px-1 text-[10px] font-semibold text-accent">
             {count > 9 ? '9+' : count}
@@ -262,13 +265,21 @@ export function ActionMenu({
                         ? 'cursor-not-allowed text-ink-faint opacity-60'
                         : item.active
                           ? 'text-accent'
-                          : 'text-ink-soft'
+                          : item.danger
+                            ? 'text-[#D87C6B]'
+                            : 'text-ink-soft'
                     }`}
                   >
                     {Icon && (
                       <Icon
                         size={15}
-                        className={`shrink-0 ${item.active ? 'text-accent' : 'text-ink-faint'}`}
+                        className={`shrink-0 ${
+                          item.active
+                            ? 'text-accent'
+                            : item.danger
+                              ? 'text-[#D87C6B]'
+                              : 'text-ink-faint'
+                        }`}
                       />
                     )}
                     <span className="truncate">{item.label}</span>

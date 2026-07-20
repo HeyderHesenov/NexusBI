@@ -1,12 +1,23 @@
 import axios, { type AxiosRequestConfig } from 'axios'
 import toast from 'react-hot-toast'
 
+// Any request may set `silent: true` to opt out of the global error toast — used by
+// background polls so a transient/offline failure never spams the user with a toast.
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    silent?: boolean
+  }
+}
+
 const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
 
 const TOKEN_KEY = 'nexusbi_token'
 const REFRESH_KEY = 'nexusbi_refresh'
 
 export const tokenStore = {
+  /** Exposed so a tab can notice ANOTHER tab logging out via the `storage` event —
+   * logout is an in-page state change, so nothing else would tell it. */
+  KEY: TOKEN_KEY,
   access: () => localStorage.getItem(TOKEN_KEY),
   refresh: () => localStorage.getItem(REFRESH_KEY),
   set(access: string, refresh?: string | null) {
@@ -52,14 +63,37 @@ function forceLogout() {
   if (!window.location.pathname.includes('/login')) window.location.href = '/login'
 }
 
+// Decide the toast for a request that reached the generic branch (not a handled 401 /
+// ai_quota 429 / inline path). Pure + exported so the behaviour is unit-testable without
+// mocking the transport. Returns null when nothing should be shown.
+export function networkOrErrorToast(error: {
+  response?: { data?: { message?: unknown; detail?: unknown } }
+}): { message: string; id?: string } | null {
+  // No response at all → the server is unreachable (backend down / network blip). Give it
+  // a stable id so repeated failures (60s poll, rapid navigation) collapse into ONE toast
+  // that gets replaced, instead of stacking a fresh one each time.
+  if (!error?.response) {
+    return { message: 'Serverə qoşulmaq mümkün olmadı.', id: 'network-error' }
+  }
+  const detail =
+    error.response?.data?.message ?? error.response?.data?.detail ?? 'Naməlum xəta baş verdi.'
+  return { message: typeof detail === 'string' ? detail : 'Xəta baş verdi.' }
+}
+
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Benign: the request was torn down (navigation / AbortController), not a real error.
+    if (axios.isCancel(error) || error.code === 'ERR_CANCELED') {
+      return Promise.reject(error)
+    }
+
     const status = error.response?.status
     const original = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined
     const url: string = original?.url ?? ''
     const noRefresh = NO_REFRESH_PATHS.some((p) => url.includes(p))
     const isInlineError = INLINE_ERROR_PATHS.some((p) => url.includes(p))
+    const silent = original?.silent === true
 
     // Expired access token on a protected call → try one refresh, then retry once.
     if (status === 401 && original && !noRefresh && !original._retry && tokenStore.refresh()) {
@@ -85,12 +119,9 @@ client.interceptors.response.use(
       // error toast below; an upgrade wouldn't fix those.
       toast.error('Aylıq AI limitiniz doldu. Planınızı yüksəldin.')
       if (!window.location.pathname.includes('/pricing')) window.location.href = '/pricing'
-    } else if (!noRefresh && !isInlineError) {
-      const detail =
-        error.response?.data?.message ??
-        error.response?.data?.detail ??
-        'Naməlum xəta baş verdi.'
-      toast.error(typeof detail === 'string' ? detail : 'Xəta baş verdi.')
+    } else if (!noRefresh && !isInlineError && !silent) {
+      const t = networkOrErrorToast(error)
+      if (t) toast.error(t.message, t.id ? { id: t.id } : undefined)
     }
     return Promise.reject(error)
   },

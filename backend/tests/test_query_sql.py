@@ -33,7 +33,7 @@ async def test_run_labels_history_with_marker(client: AsyncClient, auth: dict):
     )
     hist = await client.get("/api/v1/query/history", headers=auth)
     titles = [it["natural_language"] for it in hist.json()["items"]]
-    assert any(t.startswith("✎ ") and "stok baxışı" in t for t in titles)
+    assert any(t.startswith("[SQL] ") and "stok baxışı" in t for t in titles)
 
 
 async def test_run_falls_back_to_sql_first_line_label(client: AsyncClient, auth: dict):
@@ -44,7 +44,7 @@ async def test_run_falls_back_to_sql_first_line_label(client: AsyncClient, auth:
     )
     hist = await client.get("/api/v1/query/history", headers=auth)
     titles = [it["natural_language"] for it in hist.json()["items"]]
-    assert any(t.startswith("✎ SELECT category") for t in titles)
+    assert any(t.startswith("[SQL] SELECT category") for t in titles)
 
 
 @pytest.mark.parametrize(

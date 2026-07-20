@@ -16,7 +16,9 @@ export async function removeAlert(id: string): Promise<void> {
 }
 
 export async function listNotifications(): Promise<AppNotification[]> {
-  const { data } = await client.get<AppNotification[]>('/notifications')
+  // Background poll (TopBar, every 60s): stay silent so a transient/offline failure
+  // never spams the global error toast; the store already swallows the rejection.
+  const { data } = await client.get<AppNotification[]>('/notifications', { silent: true })
   return data
 }
 

@@ -22,7 +22,7 @@ export const useRequirementStore = create<RequirementState>((set, get) => ({
     try {
       const doc = await api.extractRequirements(name, text)
       set({ doc })
-      if (!doc.kpis.length) toast('KPI tapılmadı — mətni dəqiqləşdir.', { icon: 'ℹ️' })
+      if (!doc.kpis.length) toast('KPI tapılmadı — mətni dəqiqləşdir.')
     } catch {
       /* interceptor toast */
     } finally {
@@ -35,7 +35,7 @@ export const useRequirementStore = create<RequirementState>((set, get) => ({
     set({ building: true })
     try {
       const dash = await api.buildFromRequirement(doc.id, datasourceId, questions)
-      toast.success('Dashboard quruldu 🎉')
+      toast.success('Dashboard quruldu')
       return dash
     } catch {
       return null

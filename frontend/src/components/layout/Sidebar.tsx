@@ -2,7 +2,9 @@ import { BookMarked, BrainCircuit, Compass, CreditCard, Database, FileText, Gaug
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { NexusMark } from '../brand/NexusMark'
+import { ChatNavBadge } from './ChatNavBadge'
 import { SidebarAccount } from './SidebarAccount'
+import { useAuthStore } from '../../store/authStore'
 import { useDatasourceStore } from '../../store/datasourceStore'
 import { useQueryStore } from '../../store/queryStore'
 
@@ -45,7 +47,9 @@ const groups = [
     titleKey: 'nav.groups.admin',
     items: [
       { to: '/workspaces', labelKey: 'nav.workspaces', icon: Users },
-      { to: '/chat', labelKey: 'nav.chat', icon: MessagesSquare },
+      // `badge` is a leaf component, not a number: Sidebar must not subscribe to
+      // unread state or every message would re-render all 18 nav items.
+      { to: '/chat', labelKey: 'nav.chat', icon: MessagesSquare, badge: ChatNavBadge },
       { to: '/branding', labelKey: 'nav.branding', icon: Palette },
       { to: '/pricing', labelKey: 'nav.pricing', icon: CreditCard },
     ],
@@ -57,6 +61,9 @@ export function Sidebar() {
   const datasourceId = useQueryStore((s) => s.datasourceId)
   const sources = useDatasourceStore((s) => s.sources)
   const active = sources.find((s) => s.id === datasourceId)
+  // White-label (Branding) is a paid capability — hide its nav link from users who
+  // can't use it, so it isn't a link that only leads to an upsell wall.
+  const whiteLabel = useAuthStore((s) => s.user?.white_label)
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-line bg-surface">
       <div className="flex shrink-0 items-center gap-2.5 px-6 py-6">
@@ -78,7 +85,9 @@ export function Sidebar() {
           <div key={group.titleKey} className={gi === 0 ? '' : 'mt-5'}>
             <span className="eyebrow block px-3 pb-1.5">{t(group.titleKey)}</span>
             <div className="flex flex-col gap-0.5">
-              {group.items.map(({ to, labelKey, icon: Icon }) => (
+              {group.items
+                .filter((it) => it.to !== '/branding' || whiteLabel)
+                .map(({ to, labelKey, icon: Icon, badge: Badge }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -102,6 +111,7 @@ export function Sidebar() {
                         className={isActive ? 'text-accent' : ''}
                       />
                       <span className="font-medium">{t(labelKey)}</span>
+                      {Badge && <Badge />}
                     </>
                   )}
                 </NavLink>

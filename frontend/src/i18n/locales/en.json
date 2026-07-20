@@ -16,7 +16,7 @@
     "othersLabel": "Others"
   },
   "brandingPage": {
-    "appliesNote": "Applies to the embed (iframe / SDK) view.",
+    "appliesNote": "Applies to embedded dashboards and shared links.",
     "colorPickerLabel": "Color picker",
     "contrastLow": "Low contrast",
     "contrastOk": "AA contrast",
@@ -43,7 +43,7 @@
     "saving": "Saving…",
     "sectionColor": "Color",
     "sectionIdentity": "Identity",
-    "subtitle": "Set the name, color, and logo shown in embedded dashboards.",
+    "subtitle": "Set the name, color, and logo shown on embedded dashboards and shared links.",
     "title": "Branding",
     "upgradeCta": "Upgrade to Pro",
     "upsellBody": "Upgrade to Pro or higher to show your own name, color, and logo in embedded dashboards.",
@@ -200,9 +200,14 @@
     "generatedToast": "“{{name}}” is ready — {{count}} widgets.",
     "live": "Live",
     "liveMode": "Live mode",
+    "moreActions": "More actions",
     "new": "New",
+    "open": "Open",
     "preparing": "Preparing…",
     "refreshAll": "Refresh all",
+    "sectionDanger": "Danger zone",
+    "sectionShare": "Share",
+    "sectionView": "View & data",
     "share": "Share",
     "story": "Story",
     "team": "Team",
@@ -323,7 +328,9 @@
     "emptyDashboard": "This dashboard is empty.",
     "loading": "Loading…",
     "noResults": "No results.",
-    "notFoundOrDisabled": "Embed not found or disabled."
+    "notFoundOrDisabled": "Embed not found or disabled.",
+    "readOnly": "Read-only",
+    "widget": "Widget"
   },
   "errorBoundary": {
     "panelDescription": "An unexpected error occurred in this section. Please try again.",
@@ -378,7 +385,7 @@
   "integrationsPanel": {
     "add": "Add",
     "deleteTooltip": "Delete",
-    "description": "Send briefs and alerts to Slack, Teams or email. (Demo: mock mode.)",
+    "description": "Send briefs and alerts to Slack, Teams or email. Simulated in demo mode.",
     "hintEmail": "email address",
     "hintWebhook": "webhook URL",
     "targetLabel": "Destination",
@@ -409,7 +416,6 @@
     "eyebrowRegister": "Get started",
     "fullNamePlaceholder": "Full name",
     "googleContinue": "Continue with Google",
-    "googleNotConfigured": "Google sign-in is not configured yet.",
     "heroDescription": "Talk to your data without knowing SQL. NexusBI turns your question into a query, runs it, and answers with the most fitting chart.",
     "heroLine1": "Ask a question.",
     "heroLine2": "See the answer.",
@@ -512,7 +518,8 @@
     "twin": "Digital Twin",
     "baStudio": "BA Studio",
     "automl": "AutoML",
-    "chat": "Chat"
+    "chat": "Chat",
+    "chatUnread": "{{count}} unread messages"
   },
   "notificationsPage": {
     "briefingLoading": "Preparing…",
@@ -572,6 +579,7 @@
     "loading": "Loading…",
     "noResult": "No result.",
     "notFound": "Shared dashboard not found.",
+    "readOnly": "Read-only",
     "team": "Team",
     "widget": "Widget"
   },
@@ -768,7 +776,10 @@
     "whiteLabelEmbed": "White-label embed (signed token)"
   },
   "shareCard": {
+    "expand": "{{title}} — expand chart",
+    "morePreview": "+{{count}} more",
     "open": "Open",
+    "tableSummary": "{{rows}} rows × {{cols}} columns",
     "truncated": "Showing first {{count}} rows",
     "type_ba_artifact": "BA artifact",
     "type_contract": "Data contract",
@@ -1266,15 +1277,18 @@
     "channels": "Channels",
     "connected": "Connected",
     "connecting": "Connecting…",
+    "createWorkspace": "Create workspace",
     "directMessages": "Direct messages",
     "messagePlaceholder": "Write a message…",
     "newChannel": "New channel",
     "newChannelPlaceholder": "channel name",
+    "newWorkspacePlaceholder": "workspace name",
     "noChannels": "No channels yet",
     "noMessages": "No messages yet. Be the first.",
     "noPeers": "No teammates yet",
     "noResults": "Nothing found",
     "noWorkspace": "Create a workspace first",
+    "noWorkspaceHint": "Create a team workspace to start chatting.",
     "online": "{{count}} online",
     "onlineNow": "online",
     "pickRoom": "Pick a channel or conversation",
@@ -1286,6 +1300,7 @@
     "typingMany": "{{count}} people are typing…",
     "workspace": "Workspace",
     "yesterday": "Yesterday",
-    "you": "You"
+    "you": "You",
+    "sharedToast": "{{name}} shared a card"
   }
 }

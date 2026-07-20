@@ -1,43 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { FakeWS, installFakeWebSocket } from '../test/fakeWebSocket'
 import { useCollabStore } from './collabStore'
 
-// Minimal fake WebSocket: records instances, never auto-fires handlers so tests
-// drive onopen/onmessage/onclose explicitly.
-class FakeWS {
-  static OPEN = 1
-  static instances: FakeWS[] = []
-  url: string
-  readyState = FakeWS.OPEN
-  onopen: (() => void) | null = null
-  onmessage: ((ev: { data: string }) => void) | null = null
-  onclose: (() => void) | null = null
-  onerror: (() => void) | null = null
-  sent: string[] = []
-  constructor(url: string) {
-    this.url = url
-    FakeWS.instances.push(this)
-  }
-  send(d: string) {
-    this.sent.push(d)
-  }
-  close() {
-    this.readyState = 3
-  }
-}
-
-const origWS = globalThis.WebSocket
+let harness: ReturnType<typeof installFakeWebSocket>
 
 beforeEach(() => {
-  FakeWS.instances = []
-  globalThis.WebSocket = FakeWS as unknown as typeof WebSocket
+  harness = installFakeWebSocket()
   useCollabStore.getState().disconnect()
 })
-afterEach(() => {
-  globalThis.WebSocket = origWS
-})
+afterEach(() => harness.restore())
 
-const last = () => FakeWS.instances[FakeWS.instances.length - 1]
-const msg = (ws: FakeWS, obj: unknown) => ws.onmessage?.({ data: JSON.stringify(obj) })
+const last = () => harness.last()
+const msg = (ws: FakeWS, obj: unknown) => harness.emit(ws, obj)
 
 describe('collabStore', () => {
   it('opens a socket and marks connected on open', () => {

@@ -23,11 +23,10 @@ depends_on: str | Sequence[str] | None = None
 # matches none (e.g. an old "Smart Insight: …") intentionally keeps the
 # server_default 'insight'.
 _BACKFILL = [
-    ("digest", "🌅%"),
+    ("digest", "Səhər brifi%"),
     ("kpi_alert", "Alert:%"),
-    ("ai_quality", "⚠️ AI%"),
-    ("decision", "🎯%"),
-    ("decision", "⚠️ Qərar%"),
+    ("decision", "Qərar nəticə%"),
+    ("decision", "Qərar geriləyir%"),
     ("mention", "Səni qeyd%"),
 ]
 

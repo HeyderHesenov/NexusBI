@@ -102,7 +102,7 @@ async def check_saved_query(db: AsyncSession, sq: SavedQuery, result: QueryResul
     res = await db.execute(
         select(Alert).where(Alert.saved_query_id == sq.id, Alert.active.is_(True))
     )
-    from app.services import integration_service
+    from app.services import integration_service, notify_service
 
     fired = 0
     for alert in res.scalars().all():
@@ -119,11 +119,10 @@ async def check_saved_query(db: AsyncSession, sq: SavedQuery, result: QueryResul
                     f"“{sq.name}” sorğusunda {alert.column} {alert.operator} "
                     f"{alert.threshold} şərti pozuldu."
                 )
-            db.add(Notification(
-                user_id=alert.user_id, alert_id=alert.id, title=title, body=body,
-                category=NotificationCategory.KPI_ALERT,
-            ))
-            await db.flush()
+            await notify_service.create(
+                db, alert.user_id, title, body, NotificationCategory.KPI_ALERT,
+                alert_id=alert.id,
+            )
             # Push to the user's workflow channels too (mock-first).
             await integration_service.dispatch(db, alert.user_id, title, body)
             fired += 1

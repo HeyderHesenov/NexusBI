@@ -3,7 +3,7 @@
 > Bu sənəd səni **NexusBI-ı başqalarına təqdim etməyə** hazırlayır. Onu bir dəfə baştan-sona oxu — sonra vizual prezentasiyanı (`presentation.html`) açıb hər bölmədə öz sözlərinlə danışa bilərsən.
 
 ## Necə istifadə etməli
-- Aşağıdakı **15 “Slayd”** vizual prezentasiyadakı 15 bölmə ilə **eyni ardıcıllıqdadır**. Sən scroll edib slaydı göstərirsən, bu mətn isə həmin slaydda **nə deyəcəyini** deyir.
+- Aşağıdakı **16 “Slayd”** vizual prezentasiyadakı 16 bölmə ilə **eyni ardıcıllıqdadır**. Sən scroll edib slaydı göstərirsən, bu mətn isə həmin slaydda **nə deyəcəyini** deyir.
 - Hər texniki söz **ilk dəfə keçəndə mötərizədə** izah olunub (məs. “KPI (Key Performance Indicator — əsas performans göstəricisi)”). Hamısı sondakı **Terminlər lüğəti**ndə də var — səhnədən əvvəl bir də oradan keçə bilərsən.
 - Mətni əzbərləmə — **mənasını** tut, öz dilinlə de. Sonda **“Ola biləcək suallar”** bölməsi səni gözlənilməz suallara hazırlayır.
 
@@ -84,7 +84,7 @@ Qısaca stack-i (texnologiya yığını) göstər ki, texniki auditoriya güvən
 **Nə deməli:**
 İstifadəçini dörd daimi alətlə tanış et:
 - **⌘K semantik axtarış** — dashboard, metrik, hesabatları **mənaya görə** tap (adı dəqiq bilməsən də).
-- **Copilot köməkçi** — **agentic** (yəni özü plan qurub addım-addım icra edən) AI: plan qurur → sən təsdiqləyirsən → icra edir (24 alət).
+- **Copilot köməkçi** — **agentic** (yəni özü plan qurub addım-addım icra edən) AI: plan qurur → sən təsdiqləyirsən → icra edir (24 alət). Düyməni ekranın sağ kənarında istədiyin yerə sürüklə — mövqeyi yadda qalır. Eyni köməkçi komanda chat-ində “Nexus AI” adı ilə də var (növbəti bölmələrdə görəcəyik).
 - **Bildiriş mərkəzi** — alert (xəbərdarlıq) pozuntuları, smart-insight-lar və “Səhər brifi”.
 - **Tema və dil** — işıq/qaranlıq və 4 dil arasında ani keçid.
 
@@ -106,7 +106,7 @@ Bu qrupda üç səhifə var:
 Beş səhifə — datanın idarəsi:
 - **Mənbələr** — Postgres/MySQL/SQLite qoşmaq, CSV/Excel yükləmək, Power BI. Hər mənbədə: **Explore (bir kliklə oflayn avto-dashboard)**, Schema, **Profil (hər sütunun boşluq faizi, unikal dəyər sayı, min-maks)**, RLS, yerində Refresh (datanı eyni mənbəyə yeniləmək), **freshness SLA (təzəlik zəmanəti — datanın nə vaxt köhnəldiyini bildirən müddət)**.
 - **Metriklər** — biznes metriklərini **bir dəfə** təyin edirsən (ad, SQL ifadəsi, sinonimlər); AI onları hər yerdə eyni cür işlədir. **Certify (verified — təsdiqlənmiş nişan)** ilə etibarı artırırsan.
-- **Biliklər qrafı** — bütün asset-lərin (mənbə → cədvəl → metrik → widget → dashboard → qərar) interaktiv qrafı. **Impact rejimi** — seçdiyin node-un bütün **downstream (ondan asılı, aşağı axın)** təsirlərini göstərir.
+- **Biliklər qrafı** — bütün asset-lərin (mənbə → cədvəl → metrik → widget → dashboard → qərar) interaktiv qrafı. Qraf artıq **redaktə olunandır**: sağ-klik ilə node/əlaqəni görünüşdən çıxar, **sıfırdan öz qrafını qur**, adlandırıb **saved view (yadda saxlanmış görünüş)** kimi saxla. **Təsir analizi** üç istiqamətdə işləyir — **downstream (aşağı axın — ondan asılı olanlar)**, **upstream (yuxarı axın — onun asılı olduqları)** və hər ikisi; üstəlik iki node arasında **ən qısa yolu** göstərir.
 - **Data müqavilələri (data contracts)** — cədvəllər üçün keyfiyyət zəmanətləri: Not-null (boş olmasın), Unique (təkrarsız), Range (aralıqda), Schema (quruluş dəyişməsin), Freshness. “Yoxla” → Pass/Fail.
 - **Tələblər** — **BRD (Business Requirements Document — biznes tələbləri sənədi)** yükləyirsən, sistem ölçüləbilən **KPI (Key Performance Indicator — əsas performans göstəricisi)**-ları çıxarır və onlardan tam dashboard qurur.
 
@@ -134,17 +134,30 @@ Dörd səhifə — analitikadan qərara körpü:
 
 ---
 
-## Slayd 12 — Bölmə 05: İDARƏETMƏ
+## Slayd 12 — Bölmə 05: ƏMƏKDAŞLIQ
 **Nə deməli:**
-Dörd səhifə — komanda və inzibati işlər:
-- **Komanda** — **workspace (iş sahəsi)** + RBAC: **owner/editor/viewer (sahib/redaktor/baxıcı)** rolları; **audit log (kim, nəyi, nə vaxt etdi — təhlükəsizlik jurnalı)**.
-- **Brendinq** — embed dashboard-lar üçün **white-label** (ad, rəng, loqo) + AA-kontrast yoxlaması (əlçatanlıq üçün rəng kontrastı standartı).
-- **Planlar** — abunə planları (Free/Pro/Max/Max+), aylıq AI-sorğu **kvotası**, istifadə.
-- **Bildirişlər** — bildiriş mərkəzi + **“Səhər brifi” (digest — son dəyişiklikləri bir icmalda toplayan qısa hesabat)**.
+Analitika komanda işidir — ona görə söhbət də NexusBI-ın içindədir, heç kim WhatsApp-a keçmir:
+- **Komanda söhbəti** — workspace daxilində **kanallar** (mövzu üzrə ümumi otaqlar) və **DM (Direct Message — iki nəfər arasında şəxsi yazışma)**. Tanış messencer hissi: mesaj balonları, “yazır…” göstəricisi, oxunmamış mesaj sayğacı, onlayn status. Yalnız komanda üzvləri girə bilir.
+- **Nexus AI** — chat-in içindəki AI köməkçi. Ona öz “Nexus AI” otağında yazırsan və ya kanalda **@ai** ilə çağırırsan. Copilot ilə eyni qaydada: **plan qurur → sən təsdiqləyirsən → icra edir**. Vacib təhlükəsizlik nöqtəsi: AI hər tapşırığı **sualı verən istifadəçinin öz icazələri ilə** icra edir — başqasının datasını görə bilməz. (Max/Max+ planlarında açılır.)
+- **Kart paylaşımı** — istənilən sorğu nəticəsini, dashboard-u və ya hesabatı **bir kliklə** chat-ə **zəngin kart** kimi atırsan: qrafik, rəqəmlər və öz qeydinlə. Kart “şəkil” məntiqi ilə işləyir — baxan tərəf canlı dataya, SQL-ə çıxış almır.
+- **@Mention (işarələmə)** — mesajda **@ad** yazanda həmin şəxsə bildiriş gedir; vacib tapıntı itmir.
+
+> **İpucu:** bir cümlə ilə bağla: “Tapıntı, müzakirə və qərar — hamısı eyni pəncərədə.”
 
 ---
 
-## Slayd 13 — İstənilən nəticə üzərində: Analiz panelləri
+## Slayd 13 — Bölmə 06: İDARƏETMƏ
+**Nə deməli:**
+Üç səhifə — komanda və inzibati işlər:
+- **Komanda** — **workspace (iş sahəsi)** + RBAC: **owner/editor/viewer (sahib/redaktor/baxıcı)** rolları; **audit log (kim, nəyi, nə vaxt etdi — təhlükəsizlik jurnalı)**. Üstəlik **resurs paylaşımı**: dashboard və ya data mənbəyini komandaya **yalnız-oxu** paylaş — üzvlər görür, dəyişə bilmir, RLS qaydaları hər baxan üçün ayrıca qüvvədə qalır.
+- **Brendinq** — embed dashboard-lar üçün **white-label** (ad, rəng, loqo) + AA-kontrast yoxlaması (əlçatanlıq üçün rəng kontrastı standartı).
+- **Planlar** — abunə planları (Free/Pro/Max/Max+), aylıq AI-sorğu **kvotası**, istifadə.
+
+> **İpucu (təqdimatçı üçün):** 01–06 bölmələri təqdimatın mövzu qruplaşdırmasıdır; tətbiqin sol menyusunda **5 qrup** var — **Söhbət** “İdarəetmə” qrupundadır, **Bildirişlər** isə yuxarı paneldəki zəng ikonasındadır (qlobal alət — Slayd 7).
+
+---
+
+## Slayd 14 — İstənilən nəticə üzərində: Analiz panelləri
 **Nə deməli:**
 Bu güclü tərəfi vurğula: hər sorğu nəticəsinə **ayrı səhifə açmadan, tək kliklə** dərin analizlər qoşulur:
 - **Qrafik & Pivot** — 8 qrafik tipi + CSV, zoom, drill-down (dərinə klik). **Pivot (cross-tab — sətir/sütun/ölçü üzrə çarpaz cədvəl, Excel PivotTable kimi)**.
@@ -156,7 +169,7 @@ Bu güclü tərəfi vurğula: hər sorğu nəticəsinə **ayrı səhifə açmada
 
 ---
 
-## Slayd 14 — Təhlükəsizlik & etibar
+## Slayd 15 — Təhlükəsizlik & etibar
 **Nə deməli:**
 “Fail-closed dizayn” — yəni şübhə olanda sistem **bağlayır, açmır**. Beş sütun:
 - **Yalnız-SELECT SQL guard** — DML/DDL (dəyişdirən/silən əmrlər) və çox-ifadəli sorğular verilənlər bazasına çatmadan rədd olunur.
@@ -167,9 +180,9 @@ Bu güclü tərəfi vurğula: hər sorğu nəticəsinə **ayrı səhifə açmada
 
 ---
 
-## Slayd 15 — Yekun / Demo
+## Slayd 16 — Yekun / Demo
 **Nə deməli:**
-Güclü bağla: *“Sualını yaz — qalanını NexusBI edir.”* Rəqəmləri xatırlat: **17 funksional bölmə, 4 dil, 5 data mənbəyi tipi, demo rejimində limitsiz sorğu.** Sonra canlı demoya keç:
+Güclü bağla: *“Sualını yaz — qalanını NexusBI edir.”* Rəqəmləri xatırlat: **18 funksional bölmə, 4 dil, 5 data mənbəyi tipi, demo rejimində limitsiz sorğu.** Sonra canlı demoya keç:
 - URL: `http://localhost:5173`
 - Email: `demo@nexusbi.io`
 - Şifrə: `demo1234`
@@ -194,6 +207,7 @@ Güclü bağla: *“Sualını yaz — qalanını NexusBI edir.”* Rəqəmləri 
 - **BPMN** — biznes proseslərini axın diaqramı ilə təsvir edən standart.
 - **BRD (Business Requirements Document)** — layihənin biznes tələblərini yazan sənəd.
 - **Cache (keş)** — təkrar sorğuları sürətləndirmək üçün nəticənin müvəqqəti saxlanması.
+- **Channel (kanal)** — komanda chat-ində mövzu üzrə ümumi söhbət otağı.
 - **Confidence (əminlik)** — AI-nin cavaba nə qədər əmin olduğu (0–1).
 - **Confidence interval (etibar aralığı)** — proqnozun ehtimal olunan diapazonu.
 - **Confusion matrix** — təsnifatda doğru/yanlış proqnozların cədvəli.
@@ -206,6 +220,7 @@ Güclü bağla: *“Sualını yaz — qalanını NexusBI edir.”* Rəqəmləri 
 - **Demo mode** — AI açarı olmadan, seed data ilə işləyən tam funksional rejim.
 - **Deterministik** — eyni girişə həmişə eyni, təkrarlana bilən nəticə (təsadüfi deyil).
 - **Dimension / Measure** — ölçü oxu (kateqoriya, məs. region) / ədədi göstərici (məs. gəlir).
+- **DM (Direct Message)** — iki nəfər arasında şəxsi yazışma.
 - **Downstream** — seçilən elementdən asılı olan, aşağı axındakı asset-lər.
 - **Drill-down** — ümumidən detala doğru dərinə enmək.
 - **Embed** — dashboard-u başqa sayta/sistemə yerləşdirmək.
@@ -222,8 +237,10 @@ Güclü bağla: *“Sualını yaz — qalanını NexusBI edir.”* Rəqəmləri 
 - **KPI (Key Performance Indicator)** — biznesin əsas performans göstəricisi (məs. aylıq gəlir).
 - **Lineage (mənşə izi)** — nəticənin arxasındakı cədvəl/sütun/metriklərin izi.
 - **LLM (Large Language Model)** — ChatGPT tipli böyük dil modeli.
+- **Mention (@ad)** — mesajda kimisə işarələmək; həmin şəxsə avtomatik bildiriş gedir.
 - **Metrik ağacı** — KPI-ı komponentlərinə parçalayan iyerarxiya (Gəlir = Qiymət × Say).
 - **Monte Carlo** — çoxlu təsadüfi ssenari ilə nəticə paylanmasını hesablama üsulu.
+- **Nexus AI** — komanda chat-indəki AI köməkçi; Copilot ilə eyni “plan → təsdiq → icra” qaydası ilə işləyir.
 - **NL→SQL / Text2SQL** — adi dildəki sualı SQL sorğusuna çevirmə.
 - **P10 / median / P90** — nəticələrin pis / orta / yaxşı ssenariləri (ehtimal həddləri).
 - **Pearson korrelyasiya** — iki ədədi dəyişən arasında əlaqənin gücü (−1…+1).
@@ -236,9 +253,11 @@ Güclü bağla: *“Sualını yaz — qalanını NexusBI edir.”* Rəqəmləri 
 - **RBAC (Role-Based Access Control)** — rola görə giriş nəzarəti (kim nəyi edə bilər).
 - **Regression / Classification** — ədədi qiymət proqnozu / kateqoriya proqnozu.
 - **Residual** — proqnozla real dəyər arasındakı fərq.
+- **Rich card (zəngin kart)** — chat-ə paylaşılan qrafik/KPI kartı; canlı dataya yox, sabit “şəkil”-snapshot-a əsaslanır.
 - **RLS (Row-Level Security)** — hər istifadəçinin yalnız icazəli sətirləri görməsi.
 - **Roll-up** — aşağı səviyyəli dəyərləri yuxarıya doğru toplama.
 - **R²** — regresiya modelinin dəyişkənliyi nə qədər izah etdiyi (1-ə yaxın = yaxşı).
+- **Saved view (yadda saxlanmış görünüş)** — Biliklər qrafının adlandırılıb saxlanan fərdi görünüşü.
 - **Schema** — verilənlər bazasının cədvəl/sütun quruluşu.
 - **Self-host** — proqramı öz serverində qurub işlətmək.
 - **Self-serve** — istifadəçinin cavabı özü, aralıqçısız alması.
@@ -249,6 +268,7 @@ Güclü bağla: *“Sualını yaz — qalanını NexusBI edir.”* Rəqəmləri 
 - **Stat-chip** — nəticənin kiçik fakt nişanları (cəmi, dövr dəyişimi, anomaliya).
 - **SWOT** — güclü/zəif tərəf, imkan/təhdid analizi.
 - **TrustBadge** — hər cavaba əminlik + mənşə göstərən etibar nişanı.
+- **Typing indicator (“yazır…”)** — qarşı tərəfin hazırda mesaj yazdığını göstərən canlı siqnal.
 - **White-label** — məhsulu öz brendinlə (ad/rəng/loqo) göstərmək.
 - **Widget** — dashboard-dakı tək qrafik/göstərici bloku.
 - **Workspace** — komandanın asset-lərini qruplaşdıran iş sahəsi.
@@ -275,3 +295,12 @@ C: NexusBI ümumi çat deyil — sənin datana bağlı, təhlükəsiz (RLS), eti
 
 **S: Böyük komanda üçün uyğundur?**
 C: Bəli — workspace-lər, RBAC rolları, audit log, sətir-səviyyə təhlükəsizlik, embed və white-label enterprise üçün nəzərdə tutulub.
+
+**S: Komanda chat-i Slack və ya WhatsApp-ı əvəz edir?**
+C: Məqsəd ümumi messencer deyil — datanın ətrafındakı danışıqdır: qrafiki kart kimi birbaşa müzakirəyə atırsan, @ai ilə analiz istəyirsən, @ad ilə həmkarını çağırırsan. Hamısı BI-ın içində, əlavə alət olmadan.
+
+**S: Nexus AI başqa istifadəçinin datasını görə bilər?**
+C: Xeyr. AI hər tapşırığı sorğunu verən istifadəçinin öz icazələri ilə icra edir — RLS və rollar eynilə qüvvədədir. Üstəlik hər əməliyyatdan əvvəl plan göstərib təsdiq gözləyir.
+
+**S: Chat-ə paylaşılan kart canlı dataya çıxış verir?**
+C: Xeyr — kart “şəkil” məntiqi ilə işləyir: göndərilən an sabitlənmiş məhdud snapshot (SQL yox, mənbəyə giriş yox, yenidən icra yox).

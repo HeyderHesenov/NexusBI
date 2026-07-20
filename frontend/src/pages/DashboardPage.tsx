@@ -1,4 +1,4 @@
-import { Eye, History, LayoutGrid, MessageCircle, Plus, Presentation, Radio, RefreshCw, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { Eye, History, LayoutGrid, MessageCircle, MoreHorizontal, Plus, Presentation, Radio, RefreshCw, Send, Share2, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +16,8 @@ import { ShareDashboardModal } from '../components/dashboard/ShareDashboardModal
 import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { SnapshotTimeline } from '../components/dashboard/SnapshotTimeline'
 import { SnapshotView } from '../components/dashboard/SnapshotView'
+import { ActionMenu } from '../components/ui/ActionMenu'
+import type { ActionMenuSection } from '../components/ui/ActionMenu'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { buildStory, getComments, getWsTicket } from '../api/dashboard'
 import { useCollabStore } from '../store/collabStore'
@@ -35,12 +37,14 @@ export function DashboardPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [generateOpen, setGenerateOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  const [pillMenu, setPillMenu] = useState<{ x: number; y: number; id: string; name: string } | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [story, setStory] = useState<DataStory | null>(null)
   const [storyLoading, setStoryLoading] = useState(false)
   const [timeMachineOpen, setTimeMachineOpen] = useState(false)
+  const [shareToChatOpen, setShareToChatOpen] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const { participants, connect, disconnect } = useCollabStore()
   const snapshots = useSnapshotStore()
@@ -110,15 +114,68 @@ export function DashboardPage() {
     }, 800)
   }
 
+  // Overflow "Actions" menu — the lower-frequency / destructive controls, grouped
+  // into sections so the toolbar stays a single row. Each section is pushed only
+  // when its gate is met; ActionMenu self-hides when every section is empty
+  // (read-only shared view / no dashboard open).
+  const actionSections: ActionMenuSection[] = []
+  if (current && canEdit && current.widgets.length > 0) {
+    actionSections.push({
+      header: t('dashboardPage.sectionView'),
+      items: [
+        {
+          key: 'story',
+          label: storyLoading ? t('dashboardPage.preparing') : t('dashboardPage.story'),
+          Icon: Presentation,
+          onSelect: openStory,
+          disabled: storyLoading,
+        },
+        {
+          key: 'refresh',
+          label: t('dashboardPage.refreshAll'),
+          Icon: RefreshCw,
+          onSelect: () => refreshAll(current.id),
+          disabled: refreshing,
+        },
+      ],
+    })
+  }
+  if (current && canEdit) {
+    actionSections.push({
+      header: t('dashboardPage.sectionShare'),
+      items: [
+        { key: 'share', label: t('dashboardPage.share'), Icon: Share2, onSelect: () => setShareOpen(true) },
+        {
+          key: 'share-chat',
+          label: t('shareDialog.toChat'),
+          Icon: Send,
+          onSelect: () => setShareToChatOpen(true),
+        },
+      ],
+    })
+    actionSections.push({
+      header: t('dashboardPage.sectionDanger'),
+      items: [
+        {
+          key: 'delete',
+          label: t('dashboardPage.delete'),
+          Icon: Trash2,
+          onSelect: () => current && setDeleteTarget({ id: current.id, name: current.name }),
+          danger: true,
+        },
+      ],
+    })
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-end justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="eyebrow">{t('dashboardPage.collections')}</p>
-          <div className="mt-1 flex items-center gap-3">
-            <h2 className="font-display text-3xl font-bold text-ink">{t('dashboardPage.dashboards')}</h2>
+          <div className="mt-1 flex min-w-0 items-center gap-3">
+            <h2 className="truncate font-display text-3xl font-bold text-ink">{t('dashboardPage.dashboards')}</h2>
             {live && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-accent">
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/40 bg-accent-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-accent">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
@@ -127,120 +184,113 @@ export function DashboardPage() {
               </span>
             )}
             {current && !canEdit && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px] font-medium text-ink-soft">
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px] font-medium text-ink-soft">
                 <Eye size={12} /> {t('dashboardPage.sharedReadOnly')}
               </span>
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {current && canEdit && current.widgets.length > 0 && (
-            <button
-              onClick={() => toggleLive(current.id, !live).catch(() => undefined)}
-              className={`flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                live
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-ink-soft hover:border-accent hover:text-ink'
-              }`}
-            >
-              <Radio size={16} className={live ? 'animate-pulse' : ''} />
-              {live ? t('dashboardPage.live') : t('dashboardPage.liveMode')}
-            </button>
-          )}
-          {current && canEdit && current.widgets.length > 0 && (
-            <button
-              onClick={() => {
-                const next = !timeMachineOpen
-                setTimeMachineOpen(next)
-                if (next) snapshots.load(current.id).catch(() => undefined)
-                else snapshots.clearSelection()
-              }}
-              className={`flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                timeMachineOpen
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-ink-soft hover:border-accent hover:text-ink'
-              }`}
-            >
-              <History size={16} /> {t('timeMachine.title')}
-            </button>
-          )}
-          {current && canEdit && current.widgets.length > 0 && (
-            <button
-              onClick={openStory}
-              disabled={storyLoading}
-              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-50"
-            >
-              <Presentation size={16} className={storyLoading ? 'animate-pulse' : ''} />
-              {storyLoading ? t('dashboardPage.preparing') : t('dashboardPage.story')}
-            </button>
-          )}
-          {current && canEdit && current.widgets.length > 0 && (
-            <button
-              onClick={() => refreshAll(current.id)}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink disabled:opacity-50"
-            >
-              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> {t('dashboardPage.refreshAll')}
-            </button>
+            <div className="flex h-9 shrink-0 items-center rounded-xl border border-line bg-surface">
+              <button
+                type="button"
+                onClick={() => toggleLive(current.id, !live).catch(() => undefined)}
+                aria-pressed={live}
+                aria-label={live ? t('dashboardPage.live') : t('dashboardPage.liveMode')}
+                title={live ? t('dashboardPage.live') : t('dashboardPage.liveMode')}
+                className={`grid h-full w-9 place-items-center rounded-l-xl transition ${
+                  live ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink'
+                }`}
+              >
+                <Radio size={16} className={live ? 'animate-pulse' : ''} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !timeMachineOpen
+                  setTimeMachineOpen(next)
+                  if (next) snapshots.load(current.id).catch(() => undefined)
+                  else snapshots.clearSelection()
+                }}
+                aria-pressed={timeMachineOpen}
+                aria-label={t('timeMachine.title')}
+                title={t('timeMachine.title')}
+                className={`grid h-full w-9 place-items-center rounded-r-xl border-l border-line transition ${
+                  timeMachineOpen ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink'
+                }`}
+              >
+                <History size={16} />
+              </button>
+            </div>
           )}
           {current && canEdit && (
             <button
+              type="button"
               onClick={() => setAddOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+              aria-label={t('dashboardPage.addWidget')}
+              title={t('dashboardPage.addWidget')}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line text-ink-soft transition hover:border-accent hover:text-accent"
             >
-              <Plus size={16} /> {t('dashboardPage.widget')}
+              <Plus size={16} />
             </button>
           )}
           {current && canEdit && (
             <button
+              type="button"
               onClick={() => setChatOpen((v) => !v)}
-              className="relative flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+              aria-pressed={chatOpen}
+              aria-label={t('dashboardPage.team')}
+              title={t('dashboardPage.team')}
+              className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition ${
+                chatOpen
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-ink-soft hover:border-accent hover:text-accent'
+              }`}
             >
-              <MessageCircle size={16} /> {t('dashboardPage.team')}
+              <MessageCircle size={16} />
               {participants.length > 1 && (
-                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg">
+                <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg">
                   {participants.length}
                 </span>
               )}
             </button>
           )}
-          {current && canEdit && (
-            <button
-              onClick={() => setShareOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-ink"
-            >
-              <Share2 size={16} /> {t('dashboardPage.share')}
-            </button>
-          )}
+          <ActionMenu
+            triggerLabel=""
+            triggerIcon={MoreHorizontal}
+            ariaLabel={t('dashboardPage.moreActions')}
+            triggerClassName="flex h-9 shrink-0 items-center gap-1 rounded-xl px-2.5"
+            sections={actionSections}
+          />
+          <button
+            type="button"
+            onClick={() => setGenerateOpen(true)}
+            aria-label={t('dashboardPage.buildWithAi')}
+            title={t('dashboardPage.buildWithAi')}
+            className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-accent/40 bg-accent-soft px-3 text-sm font-semibold text-accent transition hover:border-accent active:translate-y-px"
+          >
+            <Sparkles size={16} strokeWidth={2.5} />
+            <span className="hidden lg:inline">{t('dashboardPage.buildWithAi')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            aria-label={t('dashboardPage.new')}
+            title={t('dashboardPage.new')}
+            className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-accent px-3 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            <span className="hidden sm:inline">{t('dashboardPage.new')}</span>
+          </button>
           {current && canEdit && (
             <ShareToChatButton
               resourceType="dashboard"
               resourceId={current.id}
-              variant="header"
-              label={t('shareDialog.toChat')}
-              iconSize={16}
+              controlledOpen={shareToChatOpen}
+              onOpenChange={setShareToChatOpen}
             />
           )}
-          {current && canEdit && (
-            <button
-              onClick={() => setDeleteOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
-            >
-              <Trash2 size={16} /> {t('dashboardPage.delete')}
-            </button>
-          )}
-          <button
-            onClick={() => setGenerateOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent active:translate-y-px"
-          >
-            <Sparkles size={16} strokeWidth={2.5} /> {t('dashboardPage.buildWithAi')}
-          </button>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px"
-          >
-            <Plus size={16} strokeWidth={2.5} /> {t('dashboardPage.new')}
-          </button>
         </div>
       </div>
 
@@ -250,6 +300,10 @@ export function DashboardPage() {
             <button
               key={d.id}
               onClick={() => open(d.id)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setPillMenu({ x: e.clientX, y: e.clientY, id: d.id, name: d.name })
+              }}
               className={`rounded-full border px-4 py-1.5 text-sm transition ${
                 current?.id === d.id
                   ? 'border-accent bg-accent-soft text-ink'
@@ -333,13 +387,29 @@ export function DashboardPage() {
         />
       )}
 
-      {current && (
-        <ConfirmDialog
-          open={deleteOpen}
-          onClose={() => setDeleteOpen(false)}
-          onConfirm={() => remove(current.id)}
-          title={t('dashboardPage.deleteTitle')}
-          message={t('dashboardPage.deleteMessage', { name: current.name })}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={async () => {
+          if (deleteTarget) await remove(deleteTarget.id)
+        }}
+        title={t('dashboardPage.deleteTitle')}
+        message={t('dashboardPage.deleteMessage', { name: deleteTarget?.name ?? '' })}
+      />
+
+      {pillMenu && (
+        <PillContextMenu
+          x={pillMenu.x}
+          y={pillMenu.y}
+          onOpen={() => {
+            open(pillMenu.id).catch(() => undefined)
+            setPillMenu(null)
+          }}
+          onDelete={() => {
+            setDeleteTarget({ id: pillMenu.id, name: pillMenu.name })
+            setPillMenu(null)
+          }}
+          onClose={() => setPillMenu(null)}
         />
       )}
 
@@ -380,6 +450,74 @@ function EmptyDashboard({ onAdd }: { onAdd: () => void }) {
         className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press"
       >
         <Plus size={16} strokeWidth={2.5} /> {t('dashboardPage.addWidget')}
+      </button>
+    </div>
+  )
+}
+
+/** Cursor-anchored right-click menu for a dashboard pill: open or delete it.
+ *  Closes on outside click, Escape, scroll, or resize. */
+function PillContextMenu({
+  x,
+  y,
+  onOpen,
+  onDelete,
+  onClose,
+}: {
+  x: number
+  y: number
+  onOpen: () => void
+  onDelete: () => void
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onPointer = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onClose, true)
+    window.addEventListener('resize', onClose)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onClose, true)
+      window.removeEventListener('resize', onClose)
+    }
+  }, [onClose])
+
+  // Keep the menu inside the viewport when the click lands near an edge.
+  const MENU_W = 160
+  const MENU_H = 92
+  const left = Math.min(x, window.innerWidth - MENU_W - 8)
+  const top = Math.min(y, window.innerHeight - MENU_H - 8)
+
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      style={{ position: 'fixed', top, left, zIndex: 60, minWidth: MENU_W }}
+      className="overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-lg"
+    >
+      <button
+        role="menuitem"
+        onClick={onOpen}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink transition hover:bg-surface-2"
+      >
+        <Eye size={14} /> {t('dashboardPage.open')}
+      </button>
+      <button
+        role="menuitem"
+        onClick={onDelete}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#D87C6B] transition hover:bg-surface-2"
+      >
+        <Trash2 size={14} /> {t('dashboardPage.delete')}
       </button>
     </div>
   )

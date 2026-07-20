@@ -42,3 +42,14 @@ class BrandConfigResponse(BaseModel):
 class EmbeddedDashboard(BaseModel):
     dashboard: DashboardResponse
     brand: BrandConfigResponse
+
+
+class SharedDashboard(BaseModel):
+    """A shared (public link) dashboard plus the owner's white-label brand.
+
+    Same shape as :class:`EmbeddedDashboard`; kept distinct so the two public
+    surfaces can diverge later. ``brand`` falls back to NexusBI defaults for
+    owners without white-label."""
+
+    dashboard: DashboardResponse
+    brand: BrandConfigResponse

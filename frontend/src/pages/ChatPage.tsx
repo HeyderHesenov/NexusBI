@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useWorkspaceStore } from '../store/workspaceStore'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
+import { useChatUnreadStore } from '../store/chatUnreadStore'
 import * as chatApi from '../api/chat'
 import { isAiMessage } from '../api/chat'
 import type { ChatMessage, LastMessage } from '../api/chat'
@@ -80,16 +81,24 @@ export function ChatPage() {
   const runAction = useCopilotAction()
   const userId = useAuthStore((s) => s.user?.id)
   const aiChat = useAuthStore((s) => s.user?.ai_chat)
-  const { workspaces, load: loadWorkspaces } = useWorkspaceStore()
+  const { workspaces, load: loadWorkspaces, create: createWorkspace } = useWorkspaceStore()
   const {
     activeRoom, connected, messages, participants, typing, channels, dmPeers,
     openRoom, send, sendTyping, close, loadChannels, loadDmPeers,
   } = useChatStore()
 
+  // The rail reads unread from the SAME store as the Sidebar badge. Two sources
+  // for one number means the two disagree on screen, inches apart.
+  const unreadRooms = useChatUnreadStore((s) => s.rooms)
+  const viewing = useChatUnreadStore((s) => s.viewing)
+  const setViewing = useChatUnreadStore((s) => s.setViewing)
+  const clearRoom = useChatUnreadStore((s) => s.clearRoom)
+
   const [wsId, setWsId] = useState('')
   const [active, setActive] = useState<ActiveMeta | null>(null)
   const [query, setQuery] = useState('')
   const [newChannel, setNewChannel] = useState('')
+  const [newWorkspace, setNewWorkspace] = useState('')
   const [draft, setDraft] = useState('')
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
@@ -120,14 +129,35 @@ export function ChatPage() {
     endRef.current?.scrollIntoView({ behavior })
   }, [messages, activeRoom])
 
-  // Reading along: silence the marker while the room is open (debounced).
+  // `viewing` is the single condition for "this room is actually on screen": it
+  // drives BOTH the read marker and the badge suppression, so the two can never
+  // disagree. A backgrounded tab keeps its socket open and keeps appending
+  // messages, and a 1s timer still fires — without the visibility check it would
+  // mark messages read that the user never saw.
   useEffect(() => {
-    if (!activeRoom || messages.length === 0) return
+    const sync = () =>
+      setViewing(activeRoom && document.visibilityState === 'visible' ? activeRoom : null)
+    sync()
+    document.addEventListener('visibilitychange', sync)
+    return () => {
+      document.removeEventListener('visibilitychange', sync)
+      setViewing(null)
+    }
+  }, [activeRoom, setViewing])
+
+  // Reading along: advance the marker while the room is open (debounced).
+  useEffect(() => {
+    if (!viewing || messages.length === 0) return
     const id = setTimeout(() => {
-      chatApi.markRead(activeRoom).catch(() => undefined)
+      // up_to = the newest message actually rendered, so the watermark stays on the
+      // DB clock. Sending nothing lets the server fall back to "everything here".
+      chatApi
+        .markRead(viewing, messages[messages.length - 1]?.created_at)
+        .then(() => clearRoom(viewing))
+        .catch(() => undefined)
     }, 1000)
     return () => clearTimeout(id)
-  }, [activeRoom, messages.length])
+  }, [viewing, messages, clearRoom])
 
   const enterRoom = async (roomKey: string, meta: ActiveMeta) => {
     try {
@@ -137,13 +167,10 @@ export function ChatPage() {
       ])
       openRoom(roomKey, ticket, hist)
       setActive(meta)
-      chatApi
-        .markRead(roomKey)
-        .then(() => {
-          if (wsId) loadChannels(wsId).catch(() => undefined)
-          loadDmPeers().catch(() => undefined)
-        })
-        .catch(() => undefined)
+      // Unread comes from the mailbox store now, but the rail's preview snippets
+      // still come from these — refresh them on a room switch as before.
+      if (wsId) loadChannels(wsId).catch(() => undefined)
+      loadDmPeers().catch(() => undefined)
     } catch {
       /* interceptor toast */
     }
@@ -157,6 +184,19 @@ export function ChatPage() {
       await chatApi.createChannel(wsId, name)
       setNewChannel('')
       await loadChannels(wsId)
+    } catch {
+      /* interceptor toast */
+    }
+  }
+
+  const submitNewWorkspace = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const name = newWorkspace.trim()
+    if (!name) return
+    try {
+      await createWorkspace(name)
+      setNewWorkspace('')
+      // store.create() reloads workspaces; the empty state falls away once the list is non-empty.
     } catch {
       /* interceptor toast */
     }
@@ -237,13 +277,12 @@ export function ChatPage() {
     room: string
     avatar: React.ReactNode
     name: string
-    unread: number
     last?: LastMessage | null
     onSelect: () => void
   }) => {
     const isActive = opts.room === activeRoom
     const snippet = snippetFor(opts.room, opts.last)
-    const unread = isActive ? 0 : opts.unread
+    const unread = opts.room === viewing ? 0 : (unreadRooms[opts.room] ?? 0)
     return (
       <li key={opts.key}>
         <button
@@ -283,9 +322,27 @@ export function ChatPage() {
   if (workspaces.length === 0) {
     return (
       <div className="grid min-h-[50vh] flex-1 place-items-center rounded-2xl border border-dashed border-line px-6 py-12 text-center">
-        <div>
+        <div className="max-w-sm">
           <Users size={22} className="mx-auto text-ink-faint" />
           <p className="mt-2 font-display text-lg text-ink">{t('chatPage.noWorkspace')}</p>
+          <p className="mt-1 text-sm text-ink-faint">{t('chatPage.noWorkspaceHint')}</p>
+          <form onSubmit={submitNewWorkspace} className="mt-4 flex items-center gap-1.5">
+            <input
+              value={newWorkspace}
+              onChange={(e) => setNewWorkspace(e.target.value)}
+              placeholder={t('chatPage.newWorkspacePlaceholder')}
+              className={`${FIELD} py-1.5 text-sm`}
+              aria-label={t('chatPage.createWorkspace')}
+            />
+            <button
+              type="submit"
+              disabled={!newWorkspace.trim()}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
+            >
+              <Plus size={15} />
+              {t('chatPage.createWorkspace')}
+            </button>
+          </form>
         </div>
       </div>
     )
@@ -373,7 +430,6 @@ export function ChatPage() {
                     </span>
                   ),
                   name: c.name,
-                  unread: c.unread,
                   last: c.last_message,
                   onSelect: () =>
                     enterRoom(chatApi.channelRoom(c.workspace_id, c.id), {
@@ -420,7 +476,6 @@ export function ChatPage() {
                     <Avatar name={p.full_name} email={p.email} size="lg" colorSeed={p.user_id} />
                   ),
                   name: p.full_name || p.email,
-                  unread: p.unread ?? 0,
                   last: p.last_message,
                   onSelect: () =>
                     userId &&
@@ -580,7 +635,7 @@ export function ChatPage() {
                                   onClick={() => runAction(a)}
                                   className="flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-2.5 py-1.5 text-xs font-medium text-accent transition hover:border-accent"
                                 >
-                                  <span>✓ {a.label}</span>
+                                  <Check size={12} /><span>{a.label}</span>
                                   {copilotNavTarget(a) && <ArrowRight size={12} />}
                                 </button>
                               ))}

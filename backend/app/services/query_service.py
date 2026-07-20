@@ -321,12 +321,12 @@ async def _guarded_execute(
 
 
 def _sql_label(label: str | None, sql: str) -> str:
-    """Short, non-empty history label for a manual SQL run (marked with ✎)."""
+    """Short, non-empty history label for a manual SQL run (marked with [SQL])."""
     text = (label or "").strip()
     if not text:
         # First non-blank line of the query, trimmed for the history list.
         text = next((ln.strip() for ln in sql.splitlines() if ln.strip()), "SQL")
-    return f"✎ {text[:180]}"
+    return f"[SQL] {text[:180]}"
 
 
 async def guarded_read(

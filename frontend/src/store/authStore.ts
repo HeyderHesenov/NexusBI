@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import type { AuthUser } from '../types'
 import * as authApi from '../api/auth'
 import { tokenStore } from '../api/client'
+import { useChatUnreadStore } from './chatUnreadStore'
+import { resetNotificationBaseline } from './notificationStore'
 
 interface AuthState {
   token: string | null
@@ -44,6 +46,11 @@ export const useAuthStore = create<AuthState>((set) => {
       const refresh = tokenStore.refresh()
       if (refresh) authApi.logout(refresh).catch(() => undefined)
       tokenStore.clear()
+      // No page reload happens here, and stores are module singletons — anything
+      // holding the departing user's data must be cleared by hand or the next
+      // person to sign in on this tab sees it.
+      useChatUnreadStore.getState().stop()
+      resetNotificationBaseline()
       set({ token: null, user: null })
     },
   }

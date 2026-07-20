@@ -89,8 +89,12 @@
   ul.checks { margin-top: 26px; list-style: none; display: grid; gap: 13px; max-width: 56ch; }
   ul.checks li { position: relative; padding-left: 32px; font-size: 16px; line-height: 1.5; color: rgb(var(--ink-soft)); }
   ul.checks li::before {
-    content: "✓"; position: absolute; left: 0; top: 1px; color: rgb(var(--accent)); font-weight: 700;
-    width: 21px; height: 21px; border-radius: 50%; background: rgb(var(--accent-soft)); display: grid; place-items: center; font-size: 12px;
+    content: ""; position: absolute; left: 0; top: 1px;
+    width: 21px; height: 21px; border-radius: 50%; background: rgb(var(--accent-soft));
+  }
+  ul.checks li::after {
+    content: ""; position: absolute; left: 7px; top: 6px; width: 5px; height: 9px;
+    border: solid rgb(var(--accent)); border-width: 0 2px 2px 0; transform: rotate(45deg);
   }
   ul.checks li b { color: rgb(var(--ink)); font-weight: 600; }
 
@@ -251,8 +255,8 @@
       <div class="card r" style="--i:2"><div class="ct">Oflayn / demo-first</div><div class="cb">AI açarı olmadan da işləyir — deterministik qayda-əsaslı mühərrik + seed demo.</div></div>
       <div class="card r" style="--i:3"><div class="ct">Deterministik fallback</div><div class="cb">Text2SQL, RAG, forecast, anomaliya — hamısının AI-siz ehtiyat yolu var.</div></div>
       <div class="card r" style="--i:4"><div class="ct">Etibar siqnalları</div><div class="cb">Hər cavabda <mark>TrustBadge</mark> (əminlik + mənşə), metrik sertifikasiyası, lineage.</div></div>
-      <div class="card r" style="--i:5"><div class="ct">Statistik nüvə</div><div class="cb">scipy / numpy — səbəb analizi, Monte Carlo, metrik roll-up (LLM yox).</div></div>
-      <div class="card r" style="--i:6"><div class="ct">RAG grounding</div><div class="cb">Portativ vektor store; sənin schema-na uyğun, daha dəqiq SQL.</div></div>
+      <div class="card r" style="--i:5"><div class="ct">Statistik nüvə</div><div class="cb">scipy / numpy — səbəb analizi, Monte Carlo, metrik yığımı (roll-up) — LLM olmadan.</div></div>
+      <div class="card r" style="--i:6"><div class="ct">RAG grounding</div><div class="cb">AI sənin cədvəl quruluşunu tanıyır → daha dəqiq SQL (daxili vektor bazası ilə).</div></div>
       <div class="card r" style="--i:7"><div class="ct">Təhlükəsizlik</div><div class="cb">Yalnız-SELECT guard, fail-closed RLS, şifrələnmiş sirlər, imzalı embed.</div></div>
       <div class="card r" style="--i:8"><div class="ct">Çoxdilli</div><div class="cb">Azərbaycan, ingilis, rus, türk — interfeys və insight-lar.</div></div>
       <div class="card r" style="--i:9"><div class="ct">Self-host + Copilot</div><div class="cb">docker-compose ilə öz serverində; 24 alətli agentic Copilot.</div></div>
@@ -281,7 +285,7 @@
     <h2 class="serif r" style="--i:1">Qlobal alətlər.</h2>
     <div class="grid g2">
       <div class="card r" style="--i:2"><div class="ct"><span class="dot">⌘K</span>Semantik axtarış</div><div class="cb">Dashboard, metrik və hesabatları məna üzrə tap — bir qısayolla.</div></div>
-      <div class="card r" style="--i:3"><div class="ct"><span class="dot">✦</span>Copilot köməkçi</div><div class="cb">Agentic assistent: plan qur → təsdiqlə → icra et (24 platforma aləti).</div></div>
+      <div class="card r" style="--i:3"><div class="ct"><span class="dot">◆</span>Copilot köməkçi</div><div class="cb">Agentic assistent: plan qur → təsdiqlə → icra et (24 platforma aləti). Düyməsi ekranın sağ kənarında sürüklənir, yeri yadda qalır; eyni köməkçi chat-də “Nexus AI” kimi də var.</div></div>
       <div class="card r" style="--i:4"><div class="ct"><span class="dot">◉</span>Bildiriş mərkəzi</div><div class="cb">Alert breach-ləri, smart-insight-lar və “Səhər brifi” bir yerdə.</div></div>
       <div class="card r" style="--i:5"><div class="ct"><span class="dot">◐</span>Tema & dil</div><div class="cb">İşıq/qaranlıq tema və 4 dil arasında ani keçid.</div></div>
     </div>
@@ -296,7 +300,7 @@
     <div class="grid g3">
       <div class="card r" style="--i:2"><div class="ct">Soruş<span class="route">/</span></div><div class="cb">Adi dildə sual; çox-turlu söhbət (davam sualları); SQL power-user rejimi + AI SQL-ini redaktə; TrustBadge; insight + stat-chip-lər; nəticəni dashboard-a saxla və ya qərara çevir.</div></div>
       <div class="card r" style="--i:3"><div class="ct">Tarixçə<span class="route">/history</span></div><div class="cb">Bütün sorğuların jurnalı: axtar, qrafik tipinə görə filtrlə, bir kliklə yenidən işlət.</div></div>
-      <div class="card r" style="--i:4"><div class="ct">AutoML<span class="route">/automl</span></div><div class="cb">Cədvəl + hədəf seç → Linear/Logistic vs Random Forest avtomatik müqayisə; R²/Accuracy/F1, feature importance, CV, per-prediction “əsas drayverlər”.</div></div>
+      <div class="card r" style="--i:4"><div class="ct">AutoML<span class="route">/automl</span></div><div class="cb">Cədvəl + hədəf seç → Linear/Logistic vs Random Forest avtomatik müqayisə; R²/Accuracy/F1, feature importance, çarpaz yoxlama (CV), per-prediction “əsas drayverlər”.</div></div>
     </div>
   </div>
 </section>
@@ -309,7 +313,7 @@
     <div class="grid g3">
       <div class="card r" style="--i:2"><div class="ct">Mənbələr<span class="route">/sources</span></div><div class="cb">Postgres/MySQL/SQLite, CSV/Excel, Power BI. Explore (oflayn avto-dashboard), Schema, Profil, RLS, yerində Refresh, freshness SLA.</div></div>
       <div class="card r" style="--i:3"><div class="ct">Metriklər<span class="route">/metrics</span></div><div class="cb">Biznes metriklərini bir dəfə təyin et; AI onları ardıcıl işlədir. Certify / verified nişanı.</div></div>
-      <div class="card r" style="--i:4"><div class="ct">Biliklər qrafı<span class="route">/graph</span></div><div class="cb">Asset-lərin interaktiv qrafı. Impact rejimi: seçilən node-un bütün downstream təsirləri.</div></div>
+      <div class="card r" style="--i:4"><div class="ct">Biliklər qrafı<span class="route">/graph</span></div><div class="cb">Asset-lərin interaktiv, redaktə olunan qrafı: sağ-klik ilə node/əlaqəni gizlət, sıfırdan öz qrafını qur, adlı görünüşləri (saved views) saxla. Təsir analizi: aşağı / yuxarı / hər iki istiqamət + iki node arası ən qısa yol.</div></div>
       <div class="card r" style="--i:5"><div class="ct">Data müqavilələri<span class="route">/contracts</span></div><div class="cb">Not-null, Unique, Range, Schema, Freshness qaydaları. Yoxla → Pass/Fail.</div></div>
       <div class="card r" style="--i:6"><div class="ct">Tələblər<span class="route">/requirements</span></div><div class="cb">BRD yüklə → ölçüləbilən KPI-ları çıxar → onlardan tam dashboard qur.</div></div>
     </div>
@@ -342,21 +346,34 @@
   </div>
 </section>
 
-<!-- 12 · Administration -->
-<section class="panel" data-label="İdarəetmə">
+<!-- 12 · Collaboration -->
+<section class="panel" data-label="Əməkdaşlıq">
   <div class="inner">
-    <div class="eyebrow r" style="--i:0">Bölmə 05 — İdarəetmə</div>
-    <h2 class="serif r" style="--i:1">Komanda, brend və planlar.</h2>
+    <div class="eyebrow r" style="--i:0">Bölmə 05 — Əməkdaşlıq</div>
+    <h2 class="serif r" style="--i:1">Müzakirə, paylaşım və AI — bir pəncərədə.</h2>
     <div class="grid g4">
-      <div class="card r" style="--i:2"><div class="ct">Komanda<span class="route">/workspaces</span></div><div class="cb">Workspace-lər + RBAC (owner/editor/viewer), audit log.</div></div>
-      <div class="card r" style="--i:3"><div class="ct">Brendinq<span class="route">/branding</span></div><div class="cb">Embed dashboard-lar üçün white-label (ad, rəng, loqo) + AA-kontrast yoxlaması.</div></div>
-      <div class="card r" style="--i:4"><div class="ct">Planlar<span class="route">/pricing</span></div><div class="cb">Abunə planları (Free/Pro/Max/Max+), aylıq AI-sorğu kvotası, istifadə.</div></div>
-      <div class="card r" style="--i:5"><div class="ct">Bildirişlər<span class="route">/notifications</span></div><div class="cb">Bildiriş mərkəzi + “Səhər brifi” — dəyişiklikləri bir icmalda toplayır.</div></div>
+      <div class="card r" style="--i:2"><div class="ct">Komanda söhbəti<span class="route">/chat</span></div><div class="cb">Daxili messencer: workspace kanalları + DM (Direct Message — şəxsi yazışma). Mesaj balonları, “yazır…” göstəricisi, oxunmamış sayğac, onlayn status. Yalnız komanda üzvləri üçün.</div></div>
+      <div class="card r" style="--i:3"><div class="ct"><span class="dot">◆</span>Nexus AI</div><div class="cb">Chat-in içində AI köməkçi: öz “Nexus AI” otağında yaz və ya kanalda @ai ilə çağır. Plan qurur → təsdiqləyirsən → icra edir. Yalnız sənin data icazələrinlə işləyir.</div></div>
+      <div class="card r" style="--i:4"><div class="ct"><span class="dot">◆</span>Kart paylaşımı</div><div class="cb">İstənilən qrafik və ya nəticəni bir kliklə chat-ə zəngin kart kimi at — qrafik + rəqəm + qeyd. Kart “şəkil” məntiqi ilə işləyir: baxan canlı dataya çıxış almır.</div></div>
+      <div class="card r" style="--i:5"><div class="ct"><span class="dot">◆</span>@Mention</div><div class="cb">Mesajda @ad yazanda həmin şəxsə bildiriş gedir — vacib tapıntı komandadan yan keçmir.</div></div>
     </div>
   </div>
 </section>
 
-<!-- 13 · Analysis panels -->
+<!-- 13 · Administration -->
+<section class="panel" data-label="İdarəetmə">
+  <div class="inner">
+    <div class="eyebrow r" style="--i:0">Bölmə 06 — İdarəetmə</div>
+    <h2 class="serif r" style="--i:1">Komanda, brend və planlar.</h2>
+    <div class="grid g3">
+      <div class="card r" style="--i:2"><div class="ct">Komanda<span class="route">/workspaces</span></div><div class="cb">Workspace-lər + RBAC (owner/editor/viewer), audit log. Dashboard və data mənbəyini komandaya yalnız-oxu paylaş — RLS qorunur.</div></div>
+      <div class="card r" style="--i:3"><div class="ct">Brendinq<span class="route">/branding</span></div><div class="cb">Embed dashboard-lar üçün white-label (ad, rəng, loqo) + AA-kontrast yoxlaması.</div></div>
+      <div class="card r" style="--i:4"><div class="ct">Planlar<span class="route">/pricing</span></div><div class="cb">Abunə planları (Free/Pro/Max/Max+), aylıq AI-sorğu kvotası, istifadə.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · Analysis panels -->
 <section class="panel" data-label="Analiz panelləri">
   <div class="inner">
     <div class="eyebrow r" style="--i:0">İstənilən nəticə üzərində</div>
@@ -365,19 +382,19 @@
     <div class="grid g4">
       <div class="card r" style="--i:3"><div class="ct">Qrafik & Pivot</div><div class="cb">8 qrafik tipi + CSV, zoom, drill-down. Client-side cross-tab pivot explorer.</div></div>
       <div class="card r" style="--i:4"><div class="ct">Proqnoz & Ssenari</div><div class="cb">Forecast (etibar intervalı) + goal-seek, Monte Carlo, what-if % düzəlişi.</div></div>
-      <div class="card r" style="--i:5"><div class="ct">Diaqnostika</div><div class="cb">Anomaliyalar (IsolationForest), Səbəb analizi (Pearson + BH-FDR), Etibarlılıq yoxlaması, Lineage.</div></div>
+      <div class="card r" style="--i:5"><div class="ct">Diaqnostika</div><div class="cb">Anomaliyalar (IsolationForest), Səbəb analizi (korrelyasiya + saxta-kəşf süzgəci), Etibarlılıq yoxlaması, Lineage.</div></div>
       <div class="card r" style="--i:6"><div class="ct">“Niyə?”</div><div class="cb">Çoxsəviyyəli root-cause ağacı — drayverlər + töhfə %; AI oflayn olanda deterministik fallback.</div></div>
     </div>
   </div>
 </section>
 
-<!-- 14 · Security -->
+<!-- 15 · Security -->
 <section class="panel" data-label="Təhlükəsizlik">
   <div class="inner">
     <div class="eyebrow r" style="--i:0">Təhlükəsizlik & etibar</div>
     <h2 class="serif r" style="--i:1">Fail-closed dizayn.</h2>
     <ul class="checks">
-      <li class="r" style="--i:2"><b>Yalnız-SELECT SQL guard</b> — DML/DDL/çox-ifadəli sorğular DB-yə çatmadan rədd olunur.</li>
+      <li class="r" style="--i:2"><b>Yalnız-SELECT SQL guard</b> — DML/DDL (dəyişdirən/silən əmrlər) və çox-ifadəli sorğular DB-yə çatmadan rədd olunur.</li>
       <li class="r" style="--i:3"><b>SQL-səviyyə RLS</b> — aqreqasiyadan əvvəl tətbiq olunur, cəm/qrup total-larını sızdırmır.</li>
       <li class="r" style="--i:4"><b>User-scoped cache</b> — nəticə keşi istifadəçiyə bağlıdır, sızma yoxdur.</li>
       <li class="r" style="--i:5"><b>Şifrələnmə & rotasiya</b> — Fernet ilə sirlər, SSRF guard, refresh-token reuse aşkarı.</li>
@@ -386,13 +403,13 @@
   </div>
 </section>
 
-<!-- 15 · Close -->
+<!-- 16 · Close -->
 <section class="panel" data-label="Yekun">
   <div class="inner">
     <div class="eyebrow r" style="--i:0">Yekun</div>
     <h2 class="serif r" style="--i:1">Sualını yaz — qalanını<br/><span class="accent">NexusBI edir.</span></h2>
     <div class="kpirow">
-      <div class="k r" style="--i:2"><div class="v">17</div><div class="l">funksional bölmə</div></div>
+      <div class="k r" style="--i:2"><div class="v">18</div><div class="l">funksional bölmə</div></div>
       <div class="k r" style="--i:3"><div class="v">4</div><div class="l">dil (az/en/ru/tr)</div></div>
       <div class="k r" style="--i:4"><div class="v">5</div><div class="l">data mənbəyi tipi</div></div>
       <div class="k r" style="--i:5"><div class="v">∞</div><div class="l">demo rejimində sorğu</div></div>

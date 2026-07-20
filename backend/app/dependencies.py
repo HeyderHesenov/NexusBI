@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AuthError
-from app.core.security import decode_access_token
+from app.core.security import assert_access_token, decode_access_token
 from app.db.session import get_db
 from app.models.user import User
 from app.services.cache_service import CacheService
@@ -32,12 +32,9 @@ async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)], db: DbDep
 ) -> User:
     payload = decode_access_token(token)
-    # Only genuine ACCESS tokens authenticate API calls. Refresh ("rt"),
-    # WS-ticket ("ws"), and embed ("emb") tokens carry "sub" but must never be
-    # replayed as a bearer access token — a 30-day refresh token would otherwise
-    # bypass the short access TTL and all server-side revocation.
-    if payload.get("rt") or payload.get("ws") or payload.get("emb"):
-        raise AuthError("Bu token API girişi üçün etibarlı deyil.")
+    # Only genuine ACCESS tokens authenticate API calls. The scoped-claim list
+    # lives in core.security so a new ticket type can't forget to join it.
+    assert_access_token(payload)
     user_id = payload.get("sub")
     if not user_id:
         raise AuthError("Token subyekti yoxdur.")

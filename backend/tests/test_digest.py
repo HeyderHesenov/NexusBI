@@ -84,7 +84,7 @@ async def test_digest_endpoint_ai(client, auth, monkeypatch):
     assert resp.json()["created"] == 1
 
     notifs = (await client.get("/api/v1/notifications", headers=auth)).json()
-    brief = next((n for n in notifs if n["title"].startswith("🌅")), None)
+    brief = next((n for n in notifs if n["title"].startswith("Səhər brifi")), None)
     assert brief is not None
     assert brief["category"] == "digest"
     assert "Gəlir 12% artıb." in brief["body"]
@@ -101,7 +101,7 @@ async def test_digest_endpoint_fallback(client, auth, monkeypatch):
     resp = await client.post("/api/v1/notifications/digest", headers=auth)
     assert resp.json()["created"] == 1
     notifs = (await client.get("/api/v1/notifications", headers=auth)).json()
-    brief = next((n for n in notifs if n["title"].startswith("🌅")), None)
+    brief = next((n for n in notifs if n["title"].startswith("Səhər brifi")), None)
     assert brief is not None
     assert "Lider:" in brief["body"]
 

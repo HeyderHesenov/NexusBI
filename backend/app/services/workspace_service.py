@@ -7,10 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ForbiddenError, SchemaNotFoundError
 from app.models.user import User
 from app.models.workspace import ROLES, Workspace, WorkspaceMember
+from app.realtime.hub import hub
 
 
 def _rank(role: str) -> int:
     return ROLES.index(role) if role in ROLES else -1
+
+
+def _channel_prefix(workspace_id: str) -> str:
+    """Matches chat_service.channel_room()'s ``ws:{id}:channel:{id}`` grammar."""
+    return f"ws:{workspace_id}:channel:"
 
 
 async def create(db: AsyncSession, owner_id: str, name: str) -> Workspace:
@@ -184,6 +190,7 @@ async def delete(db: AsyncSession, workspace_id: str, actor_id: str) -> None:
     )
     await db.execute(sa_delete(Workspace).where(Workspace.id == workspace_id))
     await db.flush()
+    await hub.evict(_channel_prefix(workspace_id))
 
 
 async def add_member(
@@ -261,3 +268,7 @@ async def remove_member(
         raise ForbiddenError("İş sahəsinin sahibini çıxarmaq olmaz.")
     await db.delete(member)
     await db.flush()
+    # Deleting the row is not enough: a chat socket they already have open was
+    # authorised at connect and is never re-checked, so it would keep delivering
+    # this workspace's messages until they disconnected on their own.
+    await hub.evict(_channel_prefix(workspace_id), {member.user_id})

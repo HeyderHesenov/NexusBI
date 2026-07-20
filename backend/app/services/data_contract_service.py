@@ -16,9 +16,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.notification_types import NotificationCategory
-from app.models.alert import Notification
 from app.models.data_contract import ContractRun, DataContract
-from app.services import datasource_service, profiling_service
+from app.services import datasource_service, notify_service, profiling_service
 from app.services.cache_service import CacheService
 from app.core.exceptions import SchemaNotFoundError
 
@@ -135,11 +134,12 @@ async def run(db: AsyncSession, cache: CacheService, user_id: str, contract_id: 
 
     if status == "fail":
         failed = [r["rule"] for r in results if not r["passed"]]
-        db.add(Notification(
-            user_id=user_id, category=NotificationCategory.KPI_ALERT,
-            title=f"Data müqaviləsi pozuldu: {contract.name}",
-            body=f"«{contract.table_name}» — uğursuz: {', '.join(failed)}.",
-        ))
+        await notify_service.create(
+            db, user_id,
+            f"Data müqaviləsi pozuldu: {contract.name}",
+            f"«{contract.table_name}» — uğursuz: {', '.join(failed)}.",
+            NotificationCategory.KPI_ALERT,
+        )
     await db.flush()
     await db.refresh(contract)
     return contract

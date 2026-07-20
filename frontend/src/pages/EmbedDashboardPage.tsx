@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChartRenderer } from '../components/charts/LazyChartRenderer'
 import { DashboardFilterBar } from '../components/dashboard/DashboardFilterBar'
+import { PublicWidgetGrid } from '../components/dashboard/PublicWidgetGrid'
 import * as branding from '../api/branding'
 import * as dashApi from '../api/dashboard'
 import type { EmbeddedDashboardView } from '../api/branding'
@@ -93,24 +93,37 @@ export function EmbedDashboardPage() {
   const { dashboard, brand } = view
   return (
     <div className="min-h-screen bg-bg">
-      <header className="flex items-center gap-2.5 border-b border-line px-6 py-3">
-        {brand.logo_url && !logoBroken ? (
-          <img
-            src={brand.logo_url}
-            alt={brand.app_name}
-            className="h-6 w-auto"
-            onError={() => setLogoBroken(true)}
-          />
-        ) : (
-          <span className="font-display text-base font-bold tracking-tight text-ink">
-            {brand.app_name}
-          </span>
-        )}
-        <span className="mx-2 h-4 w-px bg-line" />
-        <span className="text-sm text-ink-soft">{dashboard.name}</span>
-        <span className="ml-auto rounded-full border border-line px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-          read-only
-        </span>
+      {/* Publisher's-plate masthead: nameplate → brand-accent rule → serif headline.
+          The inner div shares <main>'s max-w-6xl/px-5 column so logo, rule, h1 and
+          the chart grid all sit on one left edge. The rule is the single colored
+          gesture — it wears the owner's runtime --accent, reading as authorship. */}
+      <header className="border-b border-line bg-surface">
+        <div className="reveal mx-auto max-w-6xl px-5 pb-3 pt-3">
+          <div className="flex items-center justify-between gap-4">
+            {brand.logo_url && !logoBroken ? (
+              <img
+                src={brand.logo_url}
+                alt={brand.app_name}
+                className="h-8 w-auto max-w-[200px] object-contain object-left"
+                onError={() => setLogoBroken(true)}
+              />
+            ) : (
+              <span className="min-w-0 truncate font-display text-lg font-semibold tracking-tight text-ink">
+                {brand.app_name}
+              </span>
+            )}
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-surface-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+              {t('embedDashboardPage.readOnly')}
+            </span>
+          </div>
+          <div aria-hidden className="mt-1.5 h-0.5 w-10 rounded-full bg-accent" />
+          <h1
+            title={dashboard.name}
+            className="mt-1 truncate font-display text-[22px] font-semibold leading-7 tracking-tight text-ink"
+          >
+            {dashboard.name}
+          </h1>
+        </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-5 py-6">
@@ -124,29 +137,12 @@ export function EmbedDashboardPage() {
             busy={filtering}
             onApply={applyFilter}
           />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {dashboard.widgets.map((w) => (
-              <div
-                key={w.id}
-                className="flex h-80 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
-              >
-                <div className="border-b border-line px-4 py-2.5">
-                  <span className="truncate text-sm font-medium text-ink">
-                    {w.title || w.chart?.natural_language || 'Widget'}
-                  </span>
-                </div>
-                <div className="min-h-0 flex-1 p-3">
-                  {w.chart && w.chart.data.length ? (
-                    <ChartRenderer data={w.chart.data} config={w.chart.chart_config} height="100%" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-ink-faint">
-                      {t('embedDashboardPage.noResults')}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          <PublicWidgetGrid
+            widgets={dashboard.widgets}
+            layout={dashboard.layout}
+            widgetFallback={t('embedDashboardPage.widget')}
+            noResult={t('embedDashboardPage.noResults')}
+          />
           </>
         )}
       </main>

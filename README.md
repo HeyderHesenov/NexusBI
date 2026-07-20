@@ -342,7 +342,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 466 test
+cd backend && pytest        # 538 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -360,7 +360,7 @@ metrik ağacı (roll-up) · data müqavilələri
 AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
 `AI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
 
-**Frontend Vitest (305 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (512 test):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·

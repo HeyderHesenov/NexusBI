@@ -12,7 +12,7 @@ from app.models.dashboard import Dashboard
 from app.models.user import User
 from app.schemas.comment import CommentResponse
 from app.schemas.dashboard import DashboardFilterResponse, DashboardFilterSpec, DashboardResponse
-from app.schemas.embed import BrandConfigResponse, EmbeddedDashboard
+from app.schemas.embed import BrandConfigResponse, EmbeddedDashboard, SharedDashboard
 from app.services import brand_service, comment_service, embed_service
 from app.services import dashboard_service as svc
 from app.services.cache_service import CacheService
@@ -82,16 +82,33 @@ async def _shared_filter(
     return DashboardFilterResponse(global_filter=spec, widgets=filtered)
 
 
-@router.get("/dashboard/{token}", response_model=DashboardResponse, dependencies=[_share_limit])
-async def shared_dashboard(token: str, db: DbDep) -> DashboardResponse:
-    """Serve a shared dashboard's read-only snapshot. No auth — token is the secret."""
+async def _owner_brand(db: AsyncSession, user_id: str) -> BrandConfigResponse:
+    """The owner's white-label brand, or NexusBI defaults.
+
+    White-label only renders for owners on a tier that includes it; otherwise we
+    serve default branding — so a downgrade silently reverts, and a stored config
+    from a former paid period is never leaked to anonymous viewers.
+    """
+    owner_tier = await db.scalar(select(User.subscription_tier).where(User.id == user_id))
+    brand = await brand_service.get(db, user_id) if has_white_label(owner_tier) else None
+    return BrandConfigResponse(**brand_service.as_dict(brand))
+
+
+@router.get("/dashboard/{token}", response_model=SharedDashboard, dependencies=[_share_limit])
+async def shared_dashboard(token: str, db: DbDep) -> SharedDashboard:
+    """Serve a shared dashboard's read-only snapshot + the owner's white-label brand.
+
+    No auth — the token is the secret. Non-white-label owners get NexusBI defaults."""
     dash = await svc.get_by_token(db, token)
-    return DashboardResponse(
-        id=dash.id,
-        name=dash.name,
-        description=dash.description,
-        layout=dash.layout,
-        widgets=await svc.widgets_to_response(db, list(dash.widgets), dash.user_id),
+    return SharedDashboard(
+        dashboard=DashboardResponse(
+            id=dash.id,
+            name=dash.name,
+            description=dash.description,
+            layout=dash.layout,
+            widgets=await svc.widgets_to_response(db, list(dash.widgets), dash.user_id),
+        ),
+        brand=await _owner_brand(db, dash.user_id),
     )
 
 
@@ -99,11 +116,6 @@ async def shared_dashboard(token: str, db: DbDep) -> DashboardResponse:
 async def embedded_dashboard(token: str, db: DbDep) -> EmbeddedDashboard:
     """Serve a read-only embedded dashboard + the owner's white-label brand."""
     dash = await embed_service.resolve(db, token)  # validates token + embed_enabled
-    # White-label only renders for owners on a tier that includes it; otherwise the
-    # embed falls back to default NexusBI branding (so a downgrade silently reverts,
-    # and a stored config from a former paid period is never leaked).
-    owner_tier = await db.scalar(select(User.subscription_tier).where(User.id == dash.user_id))
-    brand = await brand_service.get(db, dash.user_id) if has_white_label(owner_tier) else None
     return EmbeddedDashboard(
         dashboard=DashboardResponse(
             id=dash.id,
@@ -112,7 +124,7 @@ async def embedded_dashboard(token: str, db: DbDep) -> EmbeddedDashboard:
             layout=dash.layout,
             widgets=await svc.widgets_to_response(db, list(dash.widgets), dash.user_id),
         ),
-        brand=BrandConfigResponse(**brand_service.as_dict(brand)),
+        brand=await _owner_brand(db, dash.user_id),
     )
 
 

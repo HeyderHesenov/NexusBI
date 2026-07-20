@@ -73,8 +73,13 @@ export function PieChartWidget({
           data={pieData}
           dataKey={value}
           nameKey={name}
-          innerRadius={62}
-          outerRadius={118}
+          // Percentages, not pixels: recharts resolves these against the
+          // ResponsiveContainer's own min(width, height) / 2, so the donut fits its
+          // box instead of being clipped in short cells and lost in a fullscreen
+          // dialog. 42/80 = 0.525 holds the previous 62/118 = 0.5254 ring
+          // proportion to within a rounding.
+          innerRadius="42%"
+          outerRadius="80%"
           paddingAngle={2}
           stroke="rgb(var(--surface))"
           strokeWidth={2}

@@ -74,7 +74,7 @@ describe('queryStore.deleteHistoryItem', () => {
 })
 
 describe('queryStore.runSql', () => {
-  it('appends a ✎-labelled turn on success and returns null (no global error)', async () => {
+  it('appends a [SQL]-labelled turn on success and returns null (no global error)', async () => {
     runSql.mockResolvedValue({ query_log_id: 'r1', sql: 'SELECT 1' } as never)
     getHistory.mockResolvedValue({ items: [] } as never)
     useQueryStore.setState({ datasourceId: 'ds1', thread: [], error: null })
@@ -85,18 +85,18 @@ describe('queryStore.runSql', () => {
     expect(runSql).toHaveBeenCalledWith('SELECT 1', 'ds1', 'baxış')
     const s = useQueryStore.getState()
     expect(s.thread).toHaveLength(1)
-    expect(s.thread[0].q).toBe('✎ baxış')
+    expect(s.thread[0].q).toBe('[SQL] baxış')
     expect(s.error).toBeNull() // manual SQL never touches the NL error card
     expect(s.loading).toBe(false)
   })
 
-  it('uses a generic ✎ SQL label when none is given', async () => {
+  it('uses a generic [SQL] SQL label when none is given', async () => {
     runSql.mockResolvedValue({ query_log_id: 'r2' } as never)
     getHistory.mockResolvedValue({ items: [] } as never)
     useQueryStore.setState({ thread: [], datasourceId: null })
 
     await useQueryStore.getState().runSql('SELECT 2')
-    expect(useQueryStore.getState().thread[0].q).toBe('✎ SQL')
+    expect(useQueryStore.getState().thread[0].q).toBe('[SQL] SQL')
   })
 
   it('returns the structured error inline and does not append a turn', async () => {

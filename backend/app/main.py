@@ -127,6 +127,11 @@ async def lifespan(app: FastAPI):
         try:
             await _seed_demo_account()
             await _seed_rag_examples()
+            # Populate every page with content so a fresh demo login isn't a wall
+            # of empty states. Self-isolates each phase; safe to await here.
+            from app.db.demo_seed import seed_demo_content
+
+            await seed_demo_content()
         except Exception as exc:  # noqa: BLE001 — never block startup on seeding
             log.warning("demo_seed_failed", error=str(exc))
     # The chat assistant user exists in EVERY mode (paid tiers use it outside
@@ -205,12 +210,15 @@ def create_app() -> FastAPI:
             metrics.http_request_duration_seconds.labels(
                 request.method, route_label
             ).observe(elapsed_s)
-            log.info(
-                "request",
-                method=request.method,
-                path=request.url.path,
-                execution_time_ms=int(elapsed_s * 1000),
-            )
+            # Metrics always record; the per-request log line is silenced in DEMO_MODE
+            # so a live-demo terminal stays quiet (Prometheus still has the data).
+            if not settings.DEMO_MODE:
+                log.info(
+                    "request",
+                    method=request.method,
+                    path=request.url.path,
+                    execution_time_ms=int(elapsed_s * 1000),
+                )
             structlog.contextvars.clear_contextvars()
         response.headers["X-Request-ID"] = request_id
         _apply_security_headers(response)
