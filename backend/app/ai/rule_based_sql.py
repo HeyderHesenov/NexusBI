@@ -37,6 +37,11 @@ _DIMENSIONS: list[tuple[tuple[str, ...], str, str]] = [
     (("type", "növ", "nov", "mərhələ", "merhele", "step"), "event_type", "event_type"),
 ]
 
+# Dimensions that form a time axis — a trend over these must read left→right in
+# calendar order, so it is ORDER BY the dimension ASC, not ranked by its measure.
+# (event_date is the events table's own daily axis, remapped in _pick_dimension.)
+_TIME_LABELS = {"month", "sale_date", "event_date"}
+
 _DESC_WORDS = ("top", "ən çox", "en cox", "highest", "most", "biggest", "ən böyük")
 _ASC_WORDS = ("bottom", "ən az", "en az", "lowest", "least", "smallest", "ən kiçik")
 _COUNT_WORDS = ("count", "say", "neçə", "nece", "number of", "how many")
@@ -132,10 +137,12 @@ def generate_sql_fallback(nl_query: str) -> Text2SQLResult:
         else:
             agg, agg_label = _metric(table)
         limit = _pick_limit(q, 20)
+        # Time trend → chronological; every other dimension → top-N by measure.
+        order_by = f"ORDER BY {expr} ASC" if label in _TIME_LABELS else f"ORDER BY {agg} {direction}"
         sql = (
             f"SELECT {expr} AS {label}, {agg} AS {agg_label} "
             f"FROM {table} GROUP BY {expr} "
-            f"ORDER BY {agg} {direction} LIMIT {limit}"
+            f"{order_by} LIMIT {limit}"
         )
         return _result(sql, f"{label} üzrə {agg_label} (offline fallback).")
 

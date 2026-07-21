@@ -55,6 +55,27 @@ def test_revenue_by_category_groups():
     assert 1 <= len(rows) <= 5
 
 
+@pytest.mark.parametrize("nl", ["revenue by month", "ay üzrə gəlir"])
+def test_revenue_by_month_is_chronological(nl):
+    """A time trend must read left→right in calendar order, not ranked by revenue."""
+    result, columns, rows = _run(nl)
+    assert "month" in columns
+    assert "order by substr(sale_date, 1, 7) asc" in result.sql.lower()
+    months = [r["month"] for r in rows]
+    assert months == sorted(months)  # ISO YYYY-MM sorts lexicographically = chronologically
+    assert months == sorted(set(months))  # one row per month, still ascending
+
+
+@pytest.mark.parametrize("nl", ["visits by date", "ziyarətlər gün üzrə"])
+def test_events_by_date_is_chronological(nl):
+    """A daily events trend must read chronologically, not ranked by count."""
+    result, columns, rows = _run(nl)
+    assert "event_date" in columns
+    assert "order by event_date asc" in result.sql.lower()
+    dates = [r["event_date"] for r in rows]
+    assert dates == sorted(dates)  # ISO YYYY-MM-DD sorts lexicographically = chronologically
+
+
 def test_count_customers():
     _, columns, rows = _run("how many customers")
     assert len(rows) == 1

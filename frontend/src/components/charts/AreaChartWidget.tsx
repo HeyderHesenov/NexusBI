@@ -13,6 +13,7 @@ import {
 } from 'recharts'
 import type { ChartConfig } from '../../types'
 import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
+import { collapseByX, sortByX } from '../../lib/series'
 import { TruncatedTick } from './axis'
 import { targetLineProps } from './targetLine'
 import { useMultiSeries } from './useMultiSeries'
@@ -36,7 +37,9 @@ export function AreaChartWidget({ data, config, height = 320, targetValue }: Pro
   const gid = `nx-area-${useId()}`
 
   const multi = useMultiSeries(data, x, y, config)
-  const rows = multi ? multi.rows : data
+  // Collapse duplicate-x rows into one point per x, then order a time/numeric
+  // axis chronologically (recharts plots rows in array order).
+  const rows = multi ? sortByX(multi.rows, x) : sortByX(collapseByX(data, x, y), x)
   const longX = rows.some((d) => String(d[x] ?? '').length > 10)
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -52,6 +55,8 @@ export function AreaChartWidget({ data, config, height = 320, targetValue }: Pro
           dataKey={x}
           stroke={AXIS}
           tickLine={false}
+          interval="preserveStartEnd"
+          minTickGap={24}
           tick={longX ? <TruncatedTick max={10} anchor="middle" /> : { fontSize: 12, fill: AXIS }}
           label={
             config.x_label

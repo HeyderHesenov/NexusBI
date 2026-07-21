@@ -12,10 +12,15 @@ import {
 } from 'recharts'
 import type { ChartConfig } from '../../types'
 import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
+import { collapseByX, sortByX } from '../../lib/series'
 import { TruncatedTick } from './axis'
 import { targetLineProps } from './targetLine'
 import { useMultiSeries } from './useMultiSeries'
 import { useChartTheme } from './theme'
+
+/** Above this many points a per-point dot marker just adds noise — draw a clean
+ *  line instead (a sparse series keeps its dots as read-off anchors). */
+const DENSE_POINTS = 30
 
 interface Props {
   data: Record<string, unknown>[]
@@ -34,8 +39,12 @@ export function LineChartWidget({ data, config, height = 320, targetValue }: Pro
   const y = config.y_axis ?? Object.keys(data[0] ?? {})[1]
 
   const multi = useMultiSeries(data, x, y, config)
-  const rows = multi ? multi.rows : data
+  // Collapse un-aggregated rows (many sales per date) into one point per x, then
+  // order a time/numeric axis chronologically — recharts draws rows in array
+  // order, so without this a line zig-zags through un-ordered points.
+  const rows = multi ? sortByX(multi.rows, x) : sortByX(collapseByX(data, x, y), x)
   const longX = rows.some((d) => String(d[x] ?? '').length > 10)
+  const dense = rows.length > DENSE_POINTS
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={rows} margin={{ top: 8, right: 8, bottom: config.x_label ? 16 : 0, left: 0 }}>
@@ -44,6 +53,8 @@ export function LineChartWidget({ data, config, height = 320, targetValue }: Pro
           dataKey={x}
           stroke={AXIS}
           tickLine={false}
+          interval="preserveStartEnd"
+          minTickGap={24}
           tick={longX ? <TruncatedTick max={10} anchor="middle" /> : { fontSize: 12, fill: AXIS }}
           label={
             config.x_label
@@ -92,7 +103,7 @@ export function LineChartWidget({ data, config, height = 320, targetValue }: Pro
             name={config.y_label ?? y}
             stroke={ACCENT}
             strokeWidth={2.5}
-            dot={{ r: 3, fill: ACCENT, strokeWidth: 0 }}
+            dot={dense ? false : { r: 3, fill: ACCENT, strokeWidth: 0 }}
             activeDot={{ r: 5, fill: ACCENT }}
           />
         )}
