@@ -33,15 +33,23 @@ from app.services import datasource_service
 _log = get_logger("nexusbi.automl")
 
 # --- Model-blob integrity (HMAC) ------------------------------------------
-# Stored blob layout: _BLOB_MAGIC + HMAC-SHA256(pickle) + pickle. The key is
-# derived from SECRET_KEY, so rotating SECRET_KEY invalidates blobs (they must be
-# retrained) — the same posture SECURITY.md documents for FERNET_KEY.
+# Stored blob layout: _BLOB_MAGIC + HMAC-SHA256(pickle) + pickle. Rotating the
+# signing key invalidates blobs (they must be retrained) — the same posture
+# SECURITY.md documents for FERNET_KEY.
 _BLOB_MAGIC = b"NXML1\x00"
 _MAC_LEN = 32
 
 
 def _blob_key() -> bytes:
-    return hashlib.sha256(b"automl-blob\x00" + settings.SECRET_KEY.encode()).digest()
+    """Derive the blob HMAC key, preferring MODEL_SIGNING_KEY over SECRET_KEY.
+
+    These are separate settings because they rotate for different reasons:
+    rotating a JWT signing key should log everyone out, not silently delete every
+    trained model. The fallback keeps existing deployments verifying blobs they
+    already wrote, so setting MODEL_SIGNING_KEY is what opts into decoupling them.
+    """
+    key = settings.MODEL_SIGNING_KEY or settings.SECRET_KEY
+    return hashlib.sha256(b"automl-blob\x00" + key.encode()).digest()
 
 
 def _sign_blob(raw: bytes) -> bytes:

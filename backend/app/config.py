@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     # Empty => /metrics is only reachable from loopback.
     METRICS_TOKEN: str = Field(default="")
 
+    # Key for the HMAC over stored AutoML model blobs. Kept separate from
+    # SECRET_KEY because the two rotate for different reasons: rotating a JWT
+    # signing key should log everyone out, not delete every trained model. Empty
+    # => fall back to SECRET_KEY, which is the pre-existing behaviour.
+    MODEL_SIGNING_KEY: str = Field(default="")
+
     # Number of trusted reverse proxies in front of the app. 0 (default) => never
     # trust X-Forwarded-For, so rate-limit keys use the direct peer IP (a client
     # can't spoof the header). Set to the real proxy count in production so per-IP

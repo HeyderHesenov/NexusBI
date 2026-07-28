@@ -49,11 +49,17 @@ Dependabot alerts + security updates, and CodeQL code scanning.
 - AutoML model blobs (`ml_models.model_blob`) are pickles of estimators trained
   by the server itself; they are written only by `automl_service.train`, read back
   only from our own database, never accepted from a client, and excluded from every
-  API schema/response. As defense in depth each blob is HMAC-signed with a
-  SECRET_KEY-derived key on write and verified before every `pickle.loads`, so a
-  DB-write compromise can't smuggle a malicious pickle into code execution.
-  Rotating `SECRET_KEY` invalidates existing blobs (retrain) — the same posture as
-  `FERNET_KEY` — `app/services/automl_service.py`.
+  API schema/response. As defense in depth each blob is HMAC-signed on write and
+  verified before every `pickle.loads`, so a DB-write compromise can't smuggle a
+  malicious pickle into code execution. The key comes from `MODEL_SIGNING_KEY`,
+  falling back to `SECRET_KEY` when unset; rotating whichever one is in use
+  invalidates existing blobs (retrain) — the same posture as `FERNET_KEY`. The two
+  are separate settings because they rotate for different reasons: rotating the
+  JWT key should log everyone out, not delete every trained model. In demo, where
+  an unset `SECRET_KEY` is replaced per boot, the signing key is instead minted
+  once and persisted under `UPLOAD_DIR` so stored models survive a restart —
+  random per installation, never a constant in the repo —
+  `app/services/automl_service.py`, `app/main.py`.
 - The login form remembers only the email address for one-click sign-in; the
   password is never persisted, and any legacy `{email,password}` record is purged
   to email-only on read — `frontend/src/lib/loginHint.ts`.

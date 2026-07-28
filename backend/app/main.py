@@ -52,6 +52,37 @@ def _assert_production_secrets() -> None:
         raise RuntimeError("AI_API_KEY must be set in production.")
 
 
+def _demo_model_signing_key() -> str:
+    """A random-per-installation signing key for demo, persisted beside uploads.
+
+    Trained AutoML models have to outlive a restart or the whole studio is dead
+    on a demo host — but the key that verifies them must not be a constant in the
+    repo, or a DB-write compromise could forge a blob and reach pickle.loads. So
+    mint one on first boot and keep it on disk next to the data it protects.
+
+    A read-only or missing directory is not fatal: fall back to an in-process key
+    and say so. Models then still verify within this process and are refused after
+    a restart, which is the current behaviour, not a regression.
+    """
+    import secrets as _secrets
+    from pathlib import Path
+
+    path = Path(settings.UPLOAD_DIR) / ".model_signing_key"
+    try:
+        if path.exists():
+            existing = path.read_text(encoding="utf-8").strip()
+            if existing:
+                return existing
+        key = _secrets.token_urlsafe(48)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(key, encoding="utf-8")
+        path.chmod(0o600)
+        return key
+    except OSError as exc:
+        log.warning("demo_model_key_unpersisted", error=str(exc)[:200])
+        return _secrets.token_urlsafe(48)
+
+
 def _harden_demo_secrets() -> None:
     """In demo, never fall back to a predictable signing key.
 
@@ -59,6 +90,11 @@ def _harden_demo_secrets() -> None:
     restart — acceptable for demo, far safer than a committed constant). Warn when
     FERNET_KEY is missing since datasource connection strings would then be
     unencryptable.
+
+    MODEL_SIGNING_KEY gets the opposite treatment: it is persisted rather than
+    ephemeral. Keyed off SECRET_KEY it inherited that key's per-boot randomness,
+    so every stored model failed its integrity check after a restart and AutoML
+    Studio has in fact never worked on a restarted demo.
     """
     import secrets as _secrets
 
@@ -67,6 +103,8 @@ def _harden_demo_secrets() -> None:
     if not settings.SECRET_KEY or settings.SECRET_KEY == "dev-insecure-change-me":
         settings.SECRET_KEY = _secrets.token_urlsafe(48)
         log.warning("ephemeral_secret_key", msg="SECRET_KEY boşdur — efemer açar yaradıldı.")
+    if not settings.MODEL_SIGNING_KEY:
+        settings.MODEL_SIGNING_KEY = _demo_model_signing_key()
     if not settings.FERNET_KEY:
         log.warning(
             "fernet_key_missing",

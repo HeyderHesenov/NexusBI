@@ -212,3 +212,101 @@ def test_automl_blob_sign_roundtrip_and_tamper():
     tampered[-1] ^= 0x01
     with pytest.raises(NexusBIException):
         a._unwrap_blob(bytes(tampered))
+
+
+def test_model_signing_key_survives_secret_key_rotation(monkeypatch):
+    """A stored model must outlive a SECRET_KEY change when a signing key is set.
+
+    Keying the blob off SECRET_KEY alone meant every stored model died whenever
+    that value moved -- and in demo it moves on every boot, because an unset
+    SECRET_KEY is replaced with a fresh ephemeral one at startup. AutoML Studio
+    therefore never survived a restart there.
+    """
+    import pickle
+
+    from app.config import settings
+    from app.services import automl_service as a
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "signing-key-independent-of-secret")
+    monkeypatch.setattr(settings, "SECRET_KEY", "secret-before-rotation-0123456789")
+    signed = a._sign_blob(pickle.dumps({"model": 1}))
+
+    monkeypatch.setattr(settings, "SECRET_KEY", "secret-after-rotation-98765432100")
+    assert a._unwrap_blob(signed) == pickle.dumps({"model": 1})
+
+
+def test_model_signing_key_rotation_invalidates_blobs(monkeypatch):
+    """Rotating the signing key itself still invalidates blobs (retrain)."""
+    import pickle
+
+    from app.config import settings
+    from app.core.exceptions import NexusBIException
+    from app.services import automl_service as a
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "key-one")
+    signed = a._sign_blob(pickle.dumps({"model": 1}))
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "key-two")
+    with pytest.raises(NexusBIException):
+        a._unwrap_blob(signed)
+
+
+def test_demo_model_signing_key_persists_across_restarts(monkeypatch, tmp_path):
+    """Two boots of the same demo installation must agree on the key.
+
+    Otherwise every model trained before the restart fails verification and the
+    user is told to retrain -- which is what AutoML Studio did on every demo
+    restart while the key was derived from an ephemeral SECRET_KEY.
+    """
+    from app import main
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "DEMO_MODE", True)
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "")
+    main._harden_demo_secrets()
+    first = settings.MODEL_SIGNING_KEY
+    assert first, "demo boot must mint a signing key"
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "")  # restart: setting empty again
+    main._harden_demo_secrets()
+    assert settings.MODEL_SIGNING_KEY == first
+
+    # Random per installation, not a constant compiled into the repo.
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "")
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path / "other"))
+    main._harden_demo_secrets()
+    assert settings.MODEL_SIGNING_KEY != first
+
+
+def test_configured_model_signing_key_is_never_overwritten(monkeypatch, tmp_path):
+    from app import main
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "DEMO_MODE", True)
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "operator-provided")
+    main._harden_demo_secrets()
+    assert settings.MODEL_SIGNING_KEY == "operator-provided"
+
+
+def test_model_signing_falls_back_to_secret_key(monkeypatch):
+    """With no signing key configured the old SECRET_KEY posture is unchanged.
+
+    Existing deployments keep verifying the blobs they already wrote; setting
+    MODEL_SIGNING_KEY is what opts into decoupling them.
+    """
+    import pickle
+
+    from app.config import settings
+    from app.core.exceptions import NexusBIException
+    from app.services import automl_service as a
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "")
+    monkeypatch.setattr(settings, "SECRET_KEY", "secret-before-rotation-0123456789")
+    signed = a._sign_blob(pickle.dumps({"model": 1}))
+
+    monkeypatch.setattr(settings, "SECRET_KEY", "secret-after-rotation-98765432100")
+    with pytest.raises(NexusBIException):
+        a._unwrap_blob(signed)
