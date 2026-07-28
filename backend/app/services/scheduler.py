@@ -1,14 +1,16 @@
-"""Lightweight in-process scheduler for saved-query refreshes.
+"""Scheduler for saved-query refreshes, digests, decisions and report delivery.
 
-A single asyncio loop wakes every SCHEDULER_INTERVAL_SECONDS and runs any
-scheduled saved query that is due. No external dependency; runs only while the
-server is up (fine for this app's scope).
+One asyncio loop per worker wakes every SCHEDULER_INTERVAL_SECONDS and runs what
+is due — but only on the worker that currently holds the Redis lease, because
+every worker runs this file and the work here has external side effects (emails,
+Slack posts, LLM spend). See `app.core.leader`.
 """
 from __future__ import annotations
 
 import asyncio
 
 from app.config import settings
+from app.core import leader
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
 from app.services import (
@@ -92,5 +94,13 @@ async def run_loop(cache: CacheService) -> None:
         else:
             delay = interval
         await asyncio.sleep(delay)
-        ok = await _tick(cache)
-        consecutive_failures = 0 if ok else consecutive_failures + 1
+        # Exactly one worker per tick. Without this every worker delivered every
+        # due report, measured every due decision and paid for every daily brief.
+        async with leader.elected(cache, "scheduler") as is_leader:
+            if not is_leader:
+                # A follower has no failures of its own to back off from; keep it
+                # polling at the plain interval so it can take over promptly.
+                consecutive_failures = 0
+                continue
+            ok = await _tick(cache)
+            consecutive_failures = 0 if ok else consecutive_failures + 1

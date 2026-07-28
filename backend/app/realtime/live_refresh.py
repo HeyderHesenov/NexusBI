@@ -115,6 +115,18 @@ async def _tick() -> None:
 
 
 async def run_loop() -> None:
+    """Deliberately NOT leader-elected yet — see the ordering note below.
+
+    Electing this loop before broadcasts cross workers would make it worse, not
+    better: the leader would refresh the data and then push it only to the sockets
+    on its own process, so every viewer connected elsewhere would see a board that
+    stopped updating. Today each worker refreshes independently, which wastes
+    database reads but does reach every viewer.
+
+    This becomes a one-line change once `hub.broadcast` publishes through Redis;
+    until then the duplication is the lesser fault, because unlike the scheduler
+    this loop has no external side effects — no email, no LLM spend.
+    """
     log.info("live_refresh_started", tick=settings.LIVE_REFRESH_TICK_SECONDS)
     while True:
         await asyncio.sleep(settings.LIVE_REFRESH_TICK_SECONDS)

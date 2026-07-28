@@ -111,6 +111,12 @@ class Settings(BaseSettings):
 
     # ─── Scheduler (saved-query refresh) ───
     SCHEDULER_ENABLED: bool = Field(default=True)
+    # Every worker runs its own scheduler loop, so without a shared lock an N-worker
+    # deployment delivers each scheduled report N times. Redis provides that lock.
+    # Left True, a deployment with no reachable Redis stands the loops down and says
+    # so, rather than duplicating silently. Set False only when you genuinely run a
+    # single process.
+    SCHEDULER_REQUIRE_LOCK: bool = Field(default=True)
     SCHEDULER_INTERVAL_SECONDS: int = Field(default=60)  # how often due jobs are checked
 
     # ─── Proactive AI digest (morning brief) ───

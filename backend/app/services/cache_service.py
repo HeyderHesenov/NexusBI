@@ -80,6 +80,48 @@ class CacheService:
         except Exception:
             return None
 
+    # Acquire-or-extend in one atomic step. Splitting it into GET then SET leaves a
+    # gap where a competitor can take the key between the two, which is exactly the
+    # window a leader lock must not have.
+    _ACQUIRE_OR_EXTEND = """
+        local cur = redis.call('GET', KEYS[1])
+        if cur == false then
+            redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2])
+            return 1
+        elseif cur == ARGV[1] then
+            redis.call('PEXPIRE', KEYS[1], ARGV[2])
+            return 1
+        end
+        return 0
+    """
+
+    # Compare-and-delete: a worker whose lease already expired must not delete the
+    # lock its successor now holds.
+    _RELEASE_IF_OWNER = """
+        if redis.call('GET', KEYS[1]) == ARGV[1] then
+            return redis.call('DEL', KEYS[1])
+        end
+        return 0
+    """
+
+    async def acquire_or_extend(self, key: str, token: str, ttl_ms: int) -> bool | None:
+        """True if `token` owns `key` after this call. None if Redis did not answer."""
+        if not self._client:
+            return None
+        try:
+            return bool(await self._client.eval(self._ACQUIRE_OR_EXTEND, 1, key, token, ttl_ms))
+        except Exception:
+            return None
+
+    async def release_if_owner(self, key: str, token: str) -> bool:
+        """Delete `key` only when `token` still owns it."""
+        if not self._client:
+            return False
+        try:
+            return bool(await self._client.eval(self._RELEASE_IF_OWNER, 1, key, token))
+        except Exception:
+            return False
+
     async def ping(self) -> bool:
         """True if Redis answers. Used by the readiness probe, never on a hot path."""
         if not self._client:
