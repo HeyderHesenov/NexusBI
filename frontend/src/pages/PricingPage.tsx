@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, Sparkles } from 'lucide-react'
 import { useBillingStore } from '../store/billingStore'
+import { useFormatNumber } from '../hooks/useFormatNumber'
 import type { Plan } from '../types'
 
 const HIGHLIGHT = 'max' // visually featured plan
@@ -76,6 +77,7 @@ function PlanCard({
   onSelect: () => void
 }) {
   const { t } = useTranslation()
+  const fmtNum = useFormatNumber()
   return (
     <div
       className={`relative flex flex-col rounded-2xl border bg-surface p-5 transition-colors ${
@@ -98,7 +100,7 @@ function PlanCard({
         <span className="text-xs text-ink-faint">{t('pricingPage.perMonth')}</span>
       </div>
       <p className="mt-1 font-mono text-[11px] text-ink-soft">
-        {t('pricingPage.quotaPerMonth', { quota: plan.monthly_quota.toLocaleString() })}
+        {t('pricingPage.quotaPerMonth', { quota: fmtNum(plan.monthly_quota) })}
       </p>
 
       <ul className="mt-4 flex-1 space-y-2">

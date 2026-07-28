@@ -3,9 +3,9 @@ import type { SearchHit } from '../api/search'
 export type SearchKind = SearchHit['kind']
 
 // Display order of result groups (and the keyboard-nav order derives from it).
-export const KIND_ORDER: SearchKind[] = ['dashboard', 'metric_asset', 'saved_query']
+const KIND_ORDER: SearchKind[] = ['dashboard', 'metric_asset', 'saved_query']
 
-export const KIND_LABEL: Record<SearchKind, string> = {
+const KIND_LABEL: Record<SearchKind, string> = {
   dashboard: 'Dashboard',
   metric_asset: 'Metrik',
   saved_query: 'Hesabat',

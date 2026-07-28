@@ -2,14 +2,12 @@ import { MessageCircle, Send, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCollabStore } from '../../store/collabStore'
-
-function time(ts: string): string {
-  return new Date(ts).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })
-}
+import { useFormatDate } from '../../hooks/useFormatDate'
 
 /** Slide-in team chat for a dashboard. Messages arrive live over the WS. */
 export function CollabPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation()
+  const fmtTime = useFormatDate()
   const { messages, participants, connected, sendChat } = useCollabStore()
   const [text, setText] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
@@ -71,7 +69,7 @@ export function CollabPanel({ open, onClose }: { open: boolean; onClose: () => v
             <div key={m.id} className="text-sm">
               <div className="flex items-baseline gap-2">
                 <span className="font-semibold text-ink">{m.author_name}</span>
-                <span className="font-mono text-[10px] text-ink-faint">{time(m.created_at)}</span>
+                <span className="font-mono text-[10px] text-ink-faint">{fmtTime(m.created_at, { mode: 'time' })}</span>
               </div>
               <p className="text-ink-soft">{m.content}</p>
             </div>
