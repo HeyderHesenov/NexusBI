@@ -1,0 +1,26 @@
+# Confirmed false positives, pinned by fingerprint (commit:file:rule:line).
+#
+# Fingerprints, not path or rule allowlists: an entry here silences exactly one
+# finding in exactly one commit. A real secret in the same file, or the same
+# pattern in a new commit, still fails the scan. The daily Secret Scan is only
+# worth having if a red run means something, and a scanner that is permanently
+# red is one nobody reads.
+#
+# Both cases below are gitleaks' `generic-api-key` rule matching high-entropy
+# looking prose. They cannot be fixed at the source, because the scan covers the
+# full history and those commits are already written; the current files no longer
+# contain the trigger.
+
+# A docstring: "Deterministic bag-of-hashed-tokens embedding, L2-normalised."
+# The rule reads "L2-normalised." as the credential.
+2c7cea19172320bc2dc4ba7db22bc0ceed0f80c8:backend/app/ai/client.py:generic-api-key:128
+b9dbfd755e3381e6e0f66ba228fa620ab30c557b:backend/app/ai/client.py:generic-api-key:128
+
+# Test fixtures that monkeypatch settings.SECRET_KEY. A literal string next to
+# the name SECRET_KEY reads as a credential; the values were placeholders for a
+# key-rotation test and never existed anywhere. Now named constants, so newer
+# commits no longer trip the rule.
+0ad76407a8e757f65330af4faa328337685c8f79:backend/tests/test_security.py:generic-api-key:231
+0ad76407a8e757f65330af4faa328337685c8f79:backend/tests/test_security.py:generic-api-key:234
+0ad76407a8e757f65330af4faa328337685c8f79:backend/tests/test_security.py:generic-api-key:307
+0ad76407a8e757f65330af4faa328337685c8f79:backend/tests/test_security.py:generic-api-key:310
