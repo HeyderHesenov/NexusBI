@@ -1,8 +1,9 @@
 """NL data-prep endpoints: preview a transform and materialize it as a datasource."""
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
+from app.core.rate_limit import rate_limit
 from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.schemas.datasource import DataSourceResponse
 from app.schemas.dataprep import (
@@ -24,7 +25,17 @@ async def preview(
     return DataPrepPreviewResponse(**result)
 
 
-@router.post("/materialize", response_model=DataSourceResponse, status_code=status.HTTP_201_CREATED)
+# No LLM call here, so the monthly AI quota is the wrong control — but each call
+# runs client-supplied SQL and writes a new SQLite file, so it cannot be unbounded.
+_materialize_limit = rate_limit("dataprep_materialize", limit=10, window_seconds=60)
+
+
+@router.post(
+    "/materialize",
+    response_model=DataSourceResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_materialize_limit)],
+)
 async def materialize(
     payload: DataPrepMaterializeRequest, user: CurrentUser, db: DbDep, cache: CacheDep
 ) -> DataSourceResponse:

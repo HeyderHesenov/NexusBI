@@ -83,3 +83,121 @@ async def test_materialize_rejects_non_select(client, auth):
         headers=auth,
     )
     assert resp.status_code >= 400
+
+
+# ─── Guard chain: data-prep must not be a way around it ───
+#
+# SELECT-only validation was the only guard on this path. It does not check WHICH
+# tables the statement touches and it does not apply row-level security, so an
+# instruction that planned SQL over a table the caller cannot otherwise read used
+# to run. These pin data-prep to the same chain every other read goes through.
+
+
+async def test_preview_rejects_table_outside_demo_schema(client, auth, monkeypatch):
+    """A planned SELECT over a table outside the demo model must be refused.
+
+    The planner is an LLM, so its output is untrusted input: a prompt-injected or
+    hallucinated table name reaches the executor exactly like an attacker-chosen
+    one would.
+    """
+    async def foreign_table_plan(system, user, **kw):
+        return {"sql": "SELECT * FROM injected_secrets", "steps": [], "warnings": []}
+
+    monkeypatch.setattr(data_prep, "chat_json", foreign_table_plan)
+    resp = await client.post(
+        "/api/v1/dataprep/preview",
+        json={"datasource_id": None, "instruction": "hər şeyi göstər"},
+        headers=auth,
+    )
+    assert resp.status_code >= 400, resp.text
+
+
+async def test_materialize_rejects_table_outside_source_schema(client, auth):
+    """Client-supplied SQL is bounded by the chosen source's own schema."""
+    mat = await client.post(
+        "/api/v1/dataprep/materialize",
+        json={"datasource_id": None, "sql": _SQL, "name": "guarded_src"},
+        headers=auth,
+    )
+    assert mat.status_code == 201, mat.text
+    ds_id = mat.json()["id"]
+
+    # `sales` exists in the demo model but NOT in the derived source just created.
+    resp = await client.post(
+        "/api/v1/dataprep/materialize",
+        json={"datasource_id": ds_id, "sql": "SELECT * FROM sales", "name": "escape"},
+        headers=auth,
+    )
+    assert resp.status_code >= 400, resp.text
+
+
+async def test_preview_applies_member_rls(client, auth, monkeypatch):
+    """A member restricted by RLS sees only their scope through data-prep too.
+
+    Row-level security constrains before aggregation in the normal query path; a
+    second execution path that skipped it would make the guarantee worthless,
+    since the same rows are one instruction away.
+    """
+    from tests.test_resource_share import _make_workspace_with_member
+
+    mat = await client.post(
+        "/api/v1/dataprep/materialize",
+        json={"datasource_id": None, "sql": _SQL, "name": "rls_src"},
+        headers=auth,
+    )
+    assert mat.status_code == 201, mat.text
+    ds_id = mat.json()["id"]
+
+    # Re-point the planner at the derived source's own table; the module-level
+    # mock plans over `sales`, which the allowlist correctly refuses here.
+    async def plan_derived(system, user, **kw):
+        return {"sql": "SELECT product_name, total FROM rls_src", "steps": [], "warnings": []}
+
+    monkeypatch.setattr(data_prep, "chat_json", plan_derived)
+
+    owner_view = await client.post(
+        "/api/v1/dataprep/preview",
+        json={"datasource_id": ds_id, "instruction": "hamısı"},
+        headers=auth,
+    )
+    assert owner_view.status_code == 200, owner_view.text
+
+    ws_id, auth2 = await _make_workspace_with_member(client, auth, "prepmate@nexusbi.io")
+    await client.post(
+        f"/api/v1/workspaces/{ws_id}/resources",
+        json={"resource_type": "datasource", "resource_id": ds_id},
+        headers=auth,
+    )
+    allowed = owner_view.json()["rows"][0]["product_name"]
+    rule = await client.post(
+        f"/api/v1/datasource/{ds_id}/rls",
+        json={
+            "member_email": "prepmate@nexusbi.io",
+            "column": "product_name",
+            "allowed_value": str(allowed),
+        },
+        headers=auth,
+    )
+    assert rule.status_code == 201, rule.text
+
+    member_view = await client.post(
+        "/api/v1/dataprep/preview",
+        json={"datasource_id": ds_id, "instruction": "hamısı"},
+        headers=auth2,
+    )
+    assert member_view.status_code == 200, member_view.text
+    products = {r["product_name"] for r in member_view.json()["rows"]}
+    assert products == {allowed}, products
+    assert len(owner_view.json()["rows"]) > len(member_view.json()["rows"])
+
+
+async def test_materialize_is_rate_limited(client, auth):
+    """Each call runs client SQL and writes a new SQLite file — bound the rate."""
+    last = None
+    for i in range(12):
+        last = await client.post(
+            "/api/v1/dataprep/materialize",
+            json={"datasource_id": None, "sql": _SQL, "name": f"flood_{i}"},
+            headers=auth,
+        )
+    assert last.status_code == 429, last.text
