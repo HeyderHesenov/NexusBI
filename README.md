@@ -327,15 +327,17 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | `APP_DB_POOL_SIZE` / `_MAX_OVERFLOW` / `_RECYCLE_SECONDS` | Tətbiq DB-si üçün pool (non-sqlite) |
 | `QUERY_TIMEOUT_SECONDS` / `SQLGEN_CACHE_TTL_SECONDS` | SQL icra timeout-u · NL→SQL generasiya keşi |
 | `UPLOAD_DIR` / `UPLOAD_MAX_BYTES` | CSV/Excel yükləmə qovluğu · limit (10 MB) |
-| `SCHEDULER_ENABLED` / `SCHEDULER_INTERVAL_SECONDS` | Saxlanan sorğu cədvəli |
+| `SCHEDULER_ENABLED` / `SCHEDULER_INTERVAL_SECONDS` / `SCHEDULER_REQUIRE_LOCK` | Saxlanan sorğu cədvəli · tick aralığı · **çox-worker kilidi** (default `true`: Redis yoxdursa dövrələr dayanır, çünki kilidsiz hər worker hesabatı bir dəfə göndərərdi) |
 | `DIGEST_ENABLED` / `DIGEST_HOUR_UTC` / `DIGEST_MAX_ITEMS` | Proaktiv səhər brifi |
 | `LIVE_REFRESH_ENABLED` / `LIVE_REFRESH_TICK_SECONDS` / `LIVE_DEMO_FEED` | Canlı dashboard |
+| `REALTIME_BUS_ENABLED` | Çat/kursor/roster-i Redis üzərindən worker-lər arasında paylaş (default `false`; tək worker üçün lazımsızdır). Üzv çıxarılanda socket bağlama **həmişə** keçir |
 | `COPILOT_MAX_STEPS` | Agentik copilot tool-loop limiti |
 | `INTEGRATIONS_LIVE` / `SMTP_HOST·PORT·USERNAME·PASSWORD·FROM` | Slack/Teams/email (boşdursa mock) |
 | `STRIPE_SECRET_KEY` / `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Stripe Checkout (boşdursa gated/mock) |
 | `POWERBI_TENANT_ID·CLIENT_ID·CLIENT_SECRET` / `POWERBI_API_BASE` / `POWERBI_MAX_ROWS` | Power BI (boşdursa mock provider) · REST baza · sətir cap |
 | `SECRET_KEY` / `ACCESS_TOKEN_EXPIRE_MINUTES` / `REFRESH_TOKEN_EXPIRE_DAYS` | JWT açarı (prod ≥32) · access müddət (default 30 dəq) · refresh müddət |
 | `METRICS_TOKEN` | `/metrics` üçün bearer (prod; demo-da loopback) |
+| `MODEL_SIGNING_KEY` | Saxlanan AutoML modellərinin HMAC açarı. `SECRET_KEY`-dən ayrıdır ki, JWT açarını fırlatmaq bütün öyrədilmiş modelləri silməsin (boşdursa `SECRET_KEY`-ə düşür) |
 | `FERNET_KEY` | Datasource & inteqrasiya sirlərinin şifrələnməsi (prod məcburi) |
 | `DEMO_MODE` / `CORS_ORIGINS` | Demo SQLite (**default `false`**; prod-da açma) · icazəli origin-lər |
 
