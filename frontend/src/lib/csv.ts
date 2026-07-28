@@ -1,3 +1,5 @@
+import { downloadBlob } from './download'
+
 /** Serialize rows to CSV and trigger a browser download. */
 export function downloadCsv(
   rows: Record<string, unknown>[],
@@ -17,10 +19,5 @@ export function downloadCsv(
   ].join('\n')
 
   const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadBlob(blob, filename)
 }

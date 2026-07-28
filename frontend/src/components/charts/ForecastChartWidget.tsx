@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { ForecastResult } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
+import { tooltipStyleProps } from './axis'
 import { useChartTheme } from './theme'
 
 interface Props {
@@ -56,7 +57,7 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
           axisLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
         />
-        <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} itemStyle={tooltipItem} />
+        <Tooltip {...tooltipStyleProps(tooltipStyle, tooltipLabel, tooltipItem)} />
         <Legend wrapperStyle={{ fontSize: 12, color: 'rgb(var(--ink-soft))' }} />
 
         {/* Confidence band: transparent base + accent-soft span stacked on top. */}
