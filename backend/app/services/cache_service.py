@@ -124,6 +124,41 @@ class CacheService:
         except Exception:
             return False
 
+    async def zadd(self, key: str, member: str, score: float) -> None:
+        """Add or re-score a member. Used for time-scored presence records."""
+        if not self._client:
+            return
+        try:
+            await self._client.zadd(key, {member: score})
+        except Exception:
+            pass
+
+    async def zrem(self, key: str, member: str) -> None:
+        if not self._client:
+            return
+        try:
+            await self._client.zrem(key, member)
+        except Exception:
+            pass
+
+    async def zrange_fresh(self, key: str, min_score: float) -> list[str]:
+        """Members scored at or above `min_score`, dropping the older ones as we go.
+
+        Trimming on read rather than on a timer keeps stale entries from
+        accumulating in a room nobody is watching, without a sweeper task whose
+        own failure would be invisible.
+        """
+        if not self._client:
+            return []
+        try:
+            pipe = self._client.pipeline()
+            pipe.zremrangebyscore(key, "-inf", f"({min_score}")
+            pipe.zrangebyscore(key, min_score, "+inf")
+            _, fresh = await pipe.execute()
+            return [m for m in fresh]
+        except Exception:
+            return []
+
     async def publish(self, channel: str, payload: Any) -> bool:
         """Fan a JSON payload out to every subscriber. False if Redis is absent."""
         if not self._client:

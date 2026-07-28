@@ -125,6 +125,13 @@ class Settings(BaseSettings):
     DIGEST_MAX_ITEMS: int = Field(default=5)  # max highlights per brief
 
     # ─── Live dashboards (real-time auto-refresh + WS push) ───
+    # Route realtime delivery and presence through Redis so chat, cursors and
+    # rosters cross workers. Off by default: a single-worker deployment gains
+    # nothing and pays a Redis round trip per message, and this changes delivery
+    # semantics for a feature people use. Turn it on when you run more than one
+    # worker — the production compose does.
+    REALTIME_BUS_ENABLED: bool = Field(default=False)
+
     LIVE_REFRESH_ENABLED: bool = Field(default=True)
     LIVE_REFRESH_TICK_SECONDS: int = Field(default=4)  # loop wake cadence
     LIVE_DEMO_FEED: bool = Field(default=True)  # nudge demo data so numbers visibly move

@@ -194,6 +194,17 @@ async def lifespan(app: FastAPI):
     background_tasks.append(
         asyncio.create_task(bus.run_evict_subscriber(hub, app.state.cache))
     )
+    if settings.REALTIME_BUS_ENABLED:
+        from app.realtime.hub import PRESENCE_HEARTBEAT_SECONDS
+
+        # Delivery and presence cross workers only when asked for: a single-worker
+        # deployment pays a Redis round trip per message for nothing.
+        background_tasks.append(
+            asyncio.create_task(bus.run_room_subscriber(hub, app.state.cache))
+        )
+        background_tasks.append(
+            asyncio.create_task(bus.run_presence_heartbeat(hub, PRESENCE_HEARTBEAT_SECONDS))
+        )
     if settings.SCHEDULER_ENABLED:
         from app.services.scheduler import run_loop
 

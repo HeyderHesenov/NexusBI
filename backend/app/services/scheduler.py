@@ -26,6 +26,7 @@ log = get_logger("nexusbi.scheduler")
 
 
 _MAX_BACKOFF_SECONDS = 600  # cap exponential backoff at 10 minutes
+_MIN_TICK_SECONDS = 0.05  # never spin, whatever the configured interval says
 
 
 async def _tick(cache: CacheService) -> bool:
@@ -93,7 +94,10 @@ async def run_loop(cache: CacheService) -> None:
             delay = min(interval * (2**consecutive_failures), _MAX_BACKOFF_SECONDS)
         else:
             delay = interval
-        await asyncio.sleep(delay)
+        # Floor the wait. A follower does a Redis round trip per turn and does no
+        # other work, so an interval of 0 — read as "run continuously" — is a tight
+        # loop that pins a core and hammers Redis instead of scheduling anything.
+        await asyncio.sleep(max(delay, _MIN_TICK_SECONDS))
         # Exactly one worker per tick. Without this every worker delivered every
         # due report, measured every due decision and paid for every daily brief.
         async with leader.elected(cache, "scheduler") as is_leader:

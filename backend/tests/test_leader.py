@@ -130,7 +130,7 @@ async def _run_scheduler_briefly(monkeypatch, cache, ticks: list[int]) -> None:
     from app.config import settings
     from app.services import scheduler
 
-    monkeypatch.setattr(settings, "SCHEDULER_INTERVAL_SECONDS", 0)
+    monkeypatch.setattr(settings, "SCHEDULER_INTERVAL_SECONDS", 0.01)
 
     async def counting_tick(_cache):
         ticks.append(1)
@@ -138,7 +138,7 @@ async def _run_scheduler_briefly(monkeypatch, cache, ticks: list[int]) -> None:
 
     monkeypatch.setattr(scheduler, "_tick", counting_tick)
     task = asyncio.create_task(scheduler.run_loop(cache))
-    await asyncio.sleep(0.05)
+    await asyncio.sleep(0.3)
     task.cancel()
     try:
         await task
@@ -147,9 +147,14 @@ async def _run_scheduler_briefly(monkeypatch, cache, ticks: list[int]) -> None:
 
 
 async def test_the_scheduler_loop_runs_only_when_it_holds_the_lease(monkeypatch):
+    """Uses the REAL job name, since that is what run_loop asks for — so it has to
+    clear the lease at both ends. `elected` never releases (leadership is sticky),
+    which means a cancelled loop leaves a three-minute lease behind and the next
+    run of this test would find itself locked out by its own predecessor."""
     cache = await _cache()
     other = await _cache()
     job = "scheduler"
+    await leader.release(cache, job, await _owner_of(cache, job))
     try:
         # Someone else is already the leader, so this worker must do nothing.
         assert await leader.acquire(other, job, "another-worker", ttl_ms=5000) is True
@@ -163,8 +168,16 @@ async def test_the_scheduler_loop_runs_only_when_it_holds_the_lease(monkeypatch)
         assert ticks, "the leader must run scheduled work"
     finally:
         await leader.release(cache, job, leader.NODE_ID)
+        await leader.release(other, job, "another-worker")
         await cache.aclose()
         await other.aclose()
+
+
+async def _owner_of(cache, job: str) -> str:
+    """Whoever currently holds the lease, so a leftover from a previous run can be
+    cleared with the compare-and-delete that release() insists on."""
+    raw = await cache._client.get(f"nexusbi:leader:{job}")
+    return raw or ""
 
 
 @pytest.fixture

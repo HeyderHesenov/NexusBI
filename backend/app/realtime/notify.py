@@ -25,13 +25,14 @@ _PREVIEW_LEN = 140
 __all__ = ["online_users", "publish_message", "user_room"]
 
 
-def online_users() -> set[str]:
-    """Users with at least one live mailbox socket."""
-    return {
-        room[len(_USER_PREFIX) :]
-        for room in hub.active_rooms()
-        if room.startswith(_USER_PREFIX)
-    }
+async def online_users() -> set[str]:
+    """Users with at least one live mailbox socket, across workers when the bus is on.
+
+    Per-process this under-counts the moment a second worker exists: a member
+    connected elsewhere reads as offline, and the unread fan-out below skips them
+    silently — no badge, no error, nothing to notice.
+    """
+    return await hub.online_users(_USER_PREFIX)
 
 
 def _kind(message: ChatMessage) -> str:
@@ -60,7 +61,7 @@ async def publish_message(
     if frame != "chat":
         return
 
-    online = online_users()
+    online = await online_users()
     if not online:
         return  # nobody to tell — and, importantly, no membership query either
     # Sized by who is ONLINE, not by membership: a channel has no seat cap and a
