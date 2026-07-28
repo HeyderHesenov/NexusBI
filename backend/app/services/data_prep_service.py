@@ -18,18 +18,19 @@ from app.services.cache_service import CacheService
 _PREVIEW_ROWS = 200
 
 
-async def _schema_text(
+async def _schema_and_dialect(
     db: AsyncSession, user_id: str, datasource_id: str | None, cache: CacheService
-) -> str:
+) -> tuple[str, str]:
+    """Prompt-shaped schema plus the source's dialect (the offline plan quotes with it)."""
     if not datasource_id:
-        return demo_data.format_demo_schema()
+        return demo_data.format_demo_schema(), DBType.sqlite.value
     # Read path, so a workspace member the source is shared with resolves too —
     # the same lookup `guarded_read` uses below. RLS still narrows their rows.
     ds = await datasource_service.get_datasource_for_user(db, user_id, datasource_id)
     if ds.db_type == DBType.powerbi:
         raise SchemaNotFoundError("Power BI mənbələrində data-prep dəstəklənmir.")
     schema = await datasource_service.get_schema_cached(ds, cache)
-    return format_schema_for_prompt(schema)
+    return format_schema_for_prompt(schema), ds.db_type.value
 
 
 async def _run_select(
@@ -60,8 +61,8 @@ async def preview(
     cache: CacheService,
 ) -> dict[str, Any]:
     """Plan an NL transform into SQL and run it, returning a bounded preview."""
-    schema_text = await _schema_text(db, user_id, datasource_id, cache)
-    plan = await data_prep.plan_transform(schema_text, instruction)
+    schema_text, dialect = await _schema_and_dialect(db, user_id, datasource_id, cache)
+    plan = await data_prep.plan_transform(schema_text, instruction, dialect)
     if not plan["sql"]:
         raise NexusBIException("Transform planı yaradıla bilmədi.", detail="; ".join(plan["warnings"]))
     columns, rows = await _run_select(db, user_id, datasource_id, plan["sql"], cache)

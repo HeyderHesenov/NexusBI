@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.exceptions import NexusBIException, SchemaNotFoundError
 from app.core.logging import get_logger
+from app.core.sql_ident import quote_ident
 from app.db.demo_data import demo_table_names, execute_demo_snapshot
 from app.models.ml_model import MLModel
 from app.schemas.automl import MLModelOut
@@ -121,10 +122,10 @@ async def _load_rows(
 ) -> list[dict[str, Any]]:
     if not _TABLE_RE.match(source_table or ""):
         raise NexusBIException("Yanlış cədvəl adı.")
-    sql = f'SELECT * FROM "{source_table}" LIMIT {MAX_TRAIN_ROWS}'
     if datasource_id is None:
         if source_table not in demo_table_names():
             raise NexusBIException("Cədvəl demo modelində yoxdur.")
+        sql = f'SELECT * FROM {quote_ident(source_table, "sqlite")} LIMIT {MAX_TRAIN_ROWS}'
         rows = (await asyncio.to_thread(execute_demo_snapshot, [sql]))[0]
         return rows or []
     # Live sources go through the SAME guard chain as /query (table allowlist +
@@ -134,6 +135,12 @@ async def _load_rows(
 
     ds = await datasource_service.get_datasource(db, user_id, datasource_id)
     schema = await datasource_service.get_schema_cached(ds, cache)
+    # Quote for the source's own dialect: MySQL reads "x" as a string literal, so
+    # a double-quoted table name there trains the model on the word instead.
+    sql = (
+        f"SELECT * FROM {quote_ident(source_table, ds.db_type.value)} "
+        f"LIMIT {MAX_TRAIN_ROWS}"
+    )
     _, rows = await query_service._guarded_execute(ds, sql, schema, db, user_id)
     return rows
 

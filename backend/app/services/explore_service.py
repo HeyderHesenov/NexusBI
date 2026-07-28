@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai import sql_guard
 from app.core.exceptions import DataSourceConnectionError, SchemaNotFoundError
 from app.core.logging import get_logger
+from app.core.sql_ident import quote_ident
 from app.db import demo_data
 from app.models.dashboard import Dashboard
 from app.models.datasource import DBType
@@ -80,15 +81,10 @@ def _classify(
     return measures, dims, temporals
 
 
-def quote_ident(ident: str, dialect: str) -> str:
-    """Quote a schema identifier for ``dialect`` (schema-sourced, never free text).
-
-    MySQL uses backtick identifiers — its default sql_mode reads ``"x"`` as a string
-    literal, so double-quoting there would silently break every composed query.
-    """
-    if dialect == "mysql":
-        return "`" + ident.replace("`", "``") + "`"
-    return '"' + ident.replace('"', '""') + '"'
+# Re-exported: BA evidence and BCG already import it from here, and it now lives
+# in core so profiling/AutoML/data-prep don't have to import a service to quote
+# a table name.
+__all__ = ["SourceProfile", "build_explore_dashboard", "profile_source", "quote_ident"]
 
 
 def _compose_queries(

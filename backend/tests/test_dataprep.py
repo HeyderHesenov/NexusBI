@@ -191,6 +191,57 @@ async def test_preview_applies_member_rls(client, auth, monkeypatch):
     assert len(owner_view.json()["rows"]) > len(member_view.json()["rows"])
 
 
+async def test_profile_applies_member_rls_and_does_not_share_its_cache(client, auth):
+    """Profiling is a read of the same rows, so it obeys the same rules.
+
+    It used to call execute_select directly: a member restricted to one product
+    got min/max/distinct across everyone's rows. The cache key was per-source too,
+    so whoever profiled first decided what the other one saw.
+    """
+    from tests.test_resource_share import _make_workspace_with_member
+
+    mat = await client.post(
+        "/api/v1/dataprep/materialize",
+        json={"datasource_id": None, "sql": _SQL, "name": "prof_src"},
+        headers=auth,
+    )
+    assert mat.status_code == 201, mat.text
+    ds_id = mat.json()["id"]
+
+    def distinct_products(body: dict) -> int:
+        return next(c["distinct"] for c in body["columns"] if c["column"] == "product_name")
+
+    owner = await client.get(
+        f"/api/v1/datasource/{ds_id}/profile", params={"table": "prof_src"}, headers=auth
+    )
+    assert owner.status_code == 200, owner.text
+    assert distinct_products(owner.json()) > 1
+
+    ws_id, auth2 = await _make_workspace_with_member(client, auth, "profmate@nexusbi.io")
+    await client.post(
+        f"/api/v1/workspaces/{ws_id}/resources",
+        json={"resource_type": "datasource", "resource_id": ds_id},
+        headers=auth,
+    )
+    rule = await client.post(
+        f"/api/v1/datasource/{ds_id}/rls",
+        json={
+            "member_email": "profmate@nexusbi.io",
+            "column": "product_name",
+            "allowed_value": "Product A0",
+        },
+        headers=auth,
+    )
+    assert rule.status_code == 201, rule.text
+
+    member = await client.get(
+        f"/api/v1/datasource/{ds_id}/profile", params={"table": "prof_src"}, headers=auth2
+    )
+    assert member.status_code == 200, member.text
+    assert distinct_products(member.json()) == 1
+    assert member.json()["row_sample"] < owner.json()["row_sample"]
+
+
 async def test_materialize_is_rate_limited(client, auth):
     """Each call runs client SQL and writes a new SQLite file — bound the rate."""
     last = None
