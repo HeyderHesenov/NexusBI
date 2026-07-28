@@ -15,6 +15,7 @@ import json
 import re
 from typing import Any
 
+from app.ai import ba_bcg, ba_evidence
 from app.ai.client import chat_json
 from app.ai.prompt_templates import (
     BCG_ADVICE_PROMPT,
@@ -28,13 +29,14 @@ from app.ai.prompt_templates import (
 )
 from app.ai.textparse import clean, split_lines
 from app.core.logging import get_logger
-from app.db.demo_data import execute_demo_snapshot
 
 _log = get_logger("nexusbi.ai")
 
 _MAX_CONTEXT = 8000
 _MAX_ITEMS = 6  # per SWOT bucket
+_MAX_ACTIONS = 5
 _LEVELS = {"low", "medium", "high"}
+_DIRECTIONS = {"increase", "decrease"}
 PORTER_KEYS = ("rivalry", "new_entrants", "supplier_power", "buyer_power", "substitutes")
 
 # Offline SWOT fallback: bucket context lines by AZ/EN/RU/TR keyword hints.
@@ -50,23 +52,80 @@ def _clean(text: str) -> str:
     return clean(text, _MAX_CONTEXT)
 
 
-def _str_list(v: Any, cap: int = _MAX_ITEMS) -> list[str]:
+def _items(v: Any, cap: int = _MAX_ITEMS) -> list[dict[str, Any]]:
+    """Normalise a bucket into ``{text, evidence, derived}`` items.
+
+    Model-authored bullets never carry evidence (``derive_items`` is the only
+    source of fact ids — see the ba_evidence module docstring), so they are marked
+    ``derived: False`` and the UI labels them a judgement. Accepts both a bare
+    string and an object, so a model that volunteers ``{"text": ...}`` still parses.
+    """
     if not isinstance(v, list):
         return []
-    return [str(x).strip()[:300] for x in v if str(x).strip()][:cap]
+    out: list[dict[str, Any]] = []
+    for x in v:
+        text = str(x.get("text") if isinstance(x, dict) else x).strip()
+        if text:
+            out.append({"text": text[:300], "evidence": [], "derived": False})
+    return out[:cap]
+
+
+def _int_1_5(v: Any) -> int:
+    """Clamp an AI-supplied score into 1..5; anything non-numeric reads as middling."""
+    try:
+        return max(1, min(5, int(float(v))))
+    except (TypeError, ValueError):
+        return 3
+
+
+def _actions(v: Any, cap: int = _MAX_ACTIONS) -> list[dict[str, Any]]:
+    """Normalise the prioritised action list, pinning every field to a safe range."""
+    if not isinstance(v, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for x in v:
+        if not isinstance(x, dict):
+            continue
+        text = str(x.get("text") or "").strip()
+        if not text:
+            continue
+        direction = str(x.get("direction") or "").lower()
+        out.append({
+            "text": text[:300],
+            "impact": _int_1_5(x.get("impact")),
+            "effort": _int_1_5(x.get("effort")),
+            "metric_hint": str(x.get("metric_hint") or "").strip()[:300],
+            "direction": direction if direction in _DIRECTIONS else "increase",
+            "derived": False,
+        })
+    return out[:cap]
+
+
+def _merge_actions(
+    ai: list[dict[str, Any]],
+    derived: list[dict[str, Any]],
+    structural: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Fact-derived first (provably data-backed), then AI, then the structural backstop.
+
+    Structural actions come last so a good AI response is never diluted by generic
+    ones — they only surface when there is room, which is exactly the keyless case.
+    """
+    return (derived + ai + (structural or []))[:_MAX_ACTIONS]
 
 
 # ─── SWOT ───
 
+_SWOT_BUCKETS = ("strengths", "weaknesses", "opportunities", "threats")
+
+
 def _swot_rule_based(context: str) -> dict[str, Any]:
-    buckets: dict[str, list[str]] = {
-        "strengths": [], "weaknesses": [], "opportunities": [], "threats": [],
-    }
+    buckets: dict[str, list[dict[str, Any]]] = {k: [] for k in _SWOT_BUCKETS}
     for line in split_lines(context):
         for key, hint in _SWOT_HINTS:
             if hint.search(line):
                 if len(buckets[key]) < _MAX_ITEMS:
-                    buckets[key].append(line)
+                    buckets[key].append({"text": line[:300], "evidence": [], "derived": False})
                 break
     return {
         **buckets,
@@ -77,19 +136,43 @@ def _swot_rule_based(context: str) -> dict[str, Any]:
     }
 
 
-async def swot(context: str) -> dict[str, Any]:
+def _merge_derived(
+    buckets: dict[str, list[dict[str, Any]]], facts: list[dict[str, Any]]
+) -> dict[str, list[dict[str, Any]]]:
+    """Prepend the rule-derived, fact-backed bullets to each bucket."""
+    derived = ba_evidence.derive_items(facts)
+    return {k: (derived.get(k, []) + buckets.get(k, []))[:_MAX_ITEMS] for k in _SWOT_BUCKETS}
+
+
+async def swot(
+    context: str, facts: list[dict[str, Any]], core: dict[str, Any] | None = None
+) -> dict[str, Any]:
     cleaned = _clean(context)
+    facts_json = json.dumps(facts, ensure_ascii=False)
+    out: dict[str, Any] | None = None
     try:
         raw = await chat_json(
-            SWOT_PROMPT, SWOT_USER_PROMPT.format(context=cleaned), localize=True
+            SWOT_PROMPT,
+            SWOT_USER_PROMPT.format(context=cleaned, facts=facts_json),
+            localize=True,
         )
-        out = {k: _str_list(raw.get(k)) for k in ("strengths", "weaknesses", "opportunities", "threats")}
-        if any(out.values()):
-            out["advice"] = str(raw.get("advice") or "")[:1000]
-            return out
+        parsed: dict[str, Any] = {k: _items(raw.get(k)) for k in _SWOT_BUCKETS}
+        if any(parsed.values()):
+            parsed["advice"] = str(raw.get("advice") or "")[:1000]
+            parsed["actions"] = _actions(raw.get("actions"))
+            out = parsed
     except Exception as exc:  # noqa: BLE001 — fall back, never fatal
         _log.warning("ba_swot_failed", error=type(exc).__name__, detail=str(exc)[:200])
-    return _swot_rule_based(cleaned)
+    if out is None:
+        out = _swot_rule_based(cleaned)
+        out["actions"] = []
+    out.update(_merge_derived(out, facts))
+    out["actions"] = _merge_actions(
+        out["actions"],
+        ba_evidence.derive_actions(facts, "swot"),
+        ba_evidence.derive_structural_actions("swot", out, facts),
+    )
+    return out
 
 
 # ─── Porter 5 Forces ───
@@ -104,11 +187,17 @@ def _porter_rule_based() -> dict[str, Any]:
     }
 
 
-async def porter(context: str) -> dict[str, Any]:
+async def porter(
+    context: str, facts: list[dict[str, Any]], core: dict[str, Any] | None = None
+) -> dict[str, Any]:
     cleaned = _clean(context)
+    facts_json = json.dumps(facts, ensure_ascii=False)
+    out: dict[str, Any] | None = None
     try:
         raw = await chat_json(
-            PORTER_PROMPT, PORTER_USER_PROMPT.format(context=cleaned), localize=True
+            PORTER_PROMPT,
+            PORTER_USER_PROMPT.format(context=cleaned, facts=facts_json),
+            localize=True,
         )
         by_key = {
             f.get("key"): f for f in raw.get("forces", []) if isinstance(f, dict)
@@ -123,69 +212,32 @@ async def porter(context: str) -> dict[str, Any]:
                     "level": level if level in _LEVELS else "medium",
                     "rationale": str(f.get("rationale") or "")[:500],
                 })
-            return {"forces": forces, "advice": str(raw.get("advice") or "")[:1000]}
+            out = {
+                "forces": forces,
+                "advice": str(raw.get("advice") or "")[:1000],
+                "actions": _actions(raw.get("actions")),
+            }
     except Exception as exc:  # noqa: BLE001
         _log.warning("ba_porter_failed", error=type(exc).__name__, detail=str(exc)[:200])
-    return _porter_rule_based()
+    if out is None:
+        out = _porter_rule_based()
+        out["actions"] = []
+    # Porter levels are NOT forced from the fact pack: there is no honest mapping
+    # from a sales table to "supplier power", and inventing one would be exactly
+    # the unverifiable grounding this feature exists to avoid. The facts inform the
+    # model's judgement and show as artifact-level chips instead.
+    out["actions"] = _merge_actions(
+        out["actions"],
+        ba_evidence.derive_actions(facts, "porter"),
+        ba_evidence.derive_structural_actions("porter", out, facts),
+    )
+    return out
 
 
-# ─── BCG matrix (deterministic core, AI advice only) ───
+# ─── BCG matrix (deterministic core in ba_bcg, AI advice only) ───
 
-_BCG_SQL = """
-SELECT category,
-  SUM(CASE WHEN CAST(substr(sale_date,6,2) AS INT) <= 6 THEN revenue ELSE 0 END) AS h1,
-  SUM(CASE WHEN CAST(substr(sale_date,6,2) AS INT) >  6 THEN revenue ELSE 0 END) AS h2,
-  SUM(revenue) AS total
-FROM sales GROUP BY category ORDER BY total DESC
-""".strip()
-
-
-def _quadrant(high_share: bool, high_growth: bool) -> str:
-    if high_share and high_growth:
-        return "star"
-    if high_share:
-        return "cash_cow"
-    if high_growth:
-        return "question"
-    return "dog"
-
-
-def _median(values: list[float]) -> float:
-    n = len(values)
-    if not n:
-        return 0.0
-    mid = n // 2
-    return values[mid] if n % 2 else (values[mid - 1] + values[mid]) / 2
-
-
-def compute_bcg() -> dict[str, Any]:
-    """Rule-based BCG over ONE demo snapshot (single seed per call).
-
-    share = category's revenue share of total; growth = H2-vs-H1 revenue change.
-    Thresholds: share ≥ median share → high; growth > 0 → high. Per-category
-    live factors scale a category's H1 and H2 equally, so the growth SIGN is
-    factor-invariant; shares can drift slightly between calls as the demo feed
-    walks the factors (quadrants near the median may differ across runs).
-    """
-    rows = execute_demo_snapshot([_BCG_SQL])[0] or []
-    total = sum(r["total"] for r in rows) or 1.0
-    items = []
-    for r in rows:
-        share = r["total"] / total * 100
-        # h1 == 0 with h2 > 0 is a category that LAUNCHED in H2 — the fastest
-        # grower there is, not a flat one. Cap it at +100% instead of ∞.
-        if r["h1"]:
-            growth = (r["h2"] - r["h1"]) / r["h1"] * 100
-        else:
-            growth = 100.0 if r["h2"] > 0 else 0.0
-        items.append({"label": str(r["category"]), "share_pct": round(share, 1), "growth_pct": round(growth, 1)})
-    share_thr = _median(sorted(i["share_pct"] for i in items))
-    for i in items:
-        i["quadrant"] = _quadrant(i["share_pct"] >= share_thr, i["growth_pct"] > 0)
-    return {
-        "items": items,
-        "thresholds": {"share_pct": round(share_thr, 1), "growth_pct": 0.0},
-    }
+# Keys ba_bcg puts on the core for the service/evidence layer, not for the artifact.
+_CORE_INTERNAL = frozenset({"source_name", "metric"})
 
 
 def _bcg_advice_rule_based(items: list[dict[str, Any]]) -> str:
@@ -204,8 +256,21 @@ def _bcg_advice_rule_based(items: list[dict[str, Any]]) -> str:
     return " ".join(parts) or "Portfel datası tapılmadı."
 
 
-async def bcg(context: str) -> dict[str, Any]:
-    core = await asyncio.to_thread(compute_bcg)  # sqlite seed off the event loop
+async def bcg(
+    context: str, facts: list[dict[str, Any]], core: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    # The matrix is computed by the caller (ba_service) because it needs the db /
+    # cache to reach a live source. Demo-only callers may omit it.
+    if core is None:
+        core = await asyncio.to_thread(ba_bcg.compute_bcg)
+    # `core` also carries provenance fields (source_name / metric) that feed evidence
+    # and labelling but are NOT artifact content: ba_service is the single writer of
+    # `content["source_name"]`, and it deliberately writes nothing for the demo model
+    # so the UI can render its own localized label. Copying core wholesale would ship
+    # ba_bcg's hardcoded "Demo" instead.
+    out = {k: v for k, v in core.items() if k not in _CORE_INTERNAL}
+    ai_actions: list[dict[str, Any]] = []
+    advice = ""
     try:
         raw = await chat_json(
             BCG_ADVICE_PROMPT,
@@ -214,12 +279,13 @@ async def bcg(context: str) -> dict[str, Any]:
             ),
             localize=True,
         )
-        advice = str(raw.get("advice") or "").strip()
-        if advice:
-            return {**core, "advice": advice[:1500]}
+        advice = str(raw.get("advice") or "").strip()[:1500]
+        ai_actions = _actions(raw.get("actions"))
     except Exception as exc:  # noqa: BLE001
         _log.warning("ba_bcg_advice_failed", error=type(exc).__name__, detail=str(exc)[:200])
-    return {**core, "advice": _bcg_advice_rule_based(core["items"])}
+    out["advice"] = advice or _bcg_advice_rule_based(core["items"])
+    out["actions"] = _merge_actions(ai_actions, ba_evidence.derive_actions(facts, "bcg", core))
+    return out
 
 
 # ─── BPMN (Mermaid) ───
@@ -272,26 +338,44 @@ def _bpmn_rule_based(context: str) -> dict[str, Any]:
     }
 
 
-async def bpmn(context: str) -> dict[str, Any]:
+async def bpmn(
+    context: str, facts: list[dict[str, Any]], core: dict[str, Any] | None = None
+) -> dict[str, Any]:
     cleaned = _clean(context)
+    out: dict[str, Any] | None = None
     try:
         raw = await chat_json(
             BPMN_PROMPT, BPMN_USER_PROMPT.format(context=cleaned), localize=True
         )
         safe = sanitize_mermaid(str(raw.get("mermaid") or ""))
         if safe:
-            return {"mermaid": safe, "summary": str(raw.get("summary") or "")[:500]}
-        _log.warning("ba_bpmn_rejected_by_sanitizer")
+            out = {
+                "mermaid": safe,
+                "summary": str(raw.get("summary") or "")[:500],
+                "actions": _actions(raw.get("actions")),
+            }
+        else:
+            _log.warning("ba_bpmn_rejected_by_sanitizer")
     except Exception as exc:  # noqa: BLE001
         _log.warning("ba_bpmn_failed", error=type(exc).__name__, detail=str(exc)[:200])
-    # The fallback goes through the SAME sanitizer — no mermaid leaves this
-    # module unchecked, whatever its origin. (Its label whitelist strips every
-    # forbidden char, so this only trips if the two ever drift apart.)
-    out = _bpmn_rule_based(cleaned)
-    if sanitize_mermaid(out["mermaid"]) is None:  # pragma: no cover — drift guard
-        _log.error("ba_bpmn_fallback_failed_sanitizer")
-        out["mermaid"] = "flowchart TD\n  N0[Proses]"
+    if out is None:
+        # The fallback goes through the SAME sanitizer — no mermaid leaves this
+        # module unchecked, whatever its origin. (Its label whitelist strips every
+        # forbidden char, so this only trips if the two ever drift apart.)
+        out = _bpmn_rule_based(cleaned)
+        out["actions"] = []
+        if sanitize_mermaid(out["mermaid"]) is None:  # pragma: no cover — drift guard
+            _log.error("ba_bpmn_fallback_failed_sanitizer")
+            out["mermaid"] = "flowchart TD\n  N0[Proses]"
+    out["actions"] = _merge_actions(
+        out["actions"],
+        ba_evidence.derive_actions(facts, "bpmn"),
+        ba_evidence.derive_structural_actions("bpmn", out, facts),
+    )
     return out
 
 
 GENERATORS = {"swot": swot, "porter": porter, "bcg": bcg, "bpmn": bpmn}
+
+# Re-exported so existing importers (and tests) keep reaching the demo matrix here.
+compute_bcg = ba_bcg.compute_bcg

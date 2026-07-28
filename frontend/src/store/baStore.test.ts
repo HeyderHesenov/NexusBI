@@ -5,6 +5,7 @@ vi.mock('../api/ba', () => ({
   generate: vi.fn(),
   list: vi.fn(),
   remove: vi.fn(),
+  promote: vi.fn(),
 }))
 
 import * as api from '../api/ba'
@@ -44,6 +45,48 @@ describe('baStore', () => {
     useBAStore.setState({ items: [art('1'), art('2')], current: null })
     useBAStore.getState().select('2')
     expect(useBAStore.getState().current?.id).toBe('2')
+  })
+
+  it('generate passes the picked source, and null for demo', async () => {
+    vi.mocked(api.generate).mockResolvedValue(art('1'))
+    await useBAStore.getState().generate('swot', 'T', 'ctx', 'ds-9')
+    expect(vi.mocked(api.generate).mock.calls[0][0]).toMatchObject({ datasource_id: 'ds-9' })
+    await useBAStore.getState().generate('swot', 'T', 'ctx')
+    expect(vi.mocked(api.generate).mock.calls[1][0]).toMatchObject({ datasource_id: null })
+  })
+
+  it('promote replaces the artifact with the server copy in items and current', async () => {
+    const before = art('1')
+    const after: BAArtifact = {
+      ...before,
+      content: { actions: [{ text: 'a', impact: 4, effort: 2, decision_id: 'd-7' }] },
+    }
+    vi.mocked(api.promote).mockResolvedValue({
+      decision: { id: 'd-7' } as never,
+      artifact: after,
+    })
+    useBAStore.setState({ items: [before, art('2')], current: before })
+
+    const decisionId = await useBAStore.getState().promote('1', 0)
+
+    expect(decisionId).toBe('d-7')
+    const s = useBAStore.getState()
+    // Server copy wins — the store must not synthesise decision_id locally.
+    expect(s.items[0].content.actions?.[0].decision_id).toBe('d-7')
+    expect(s.current?.content.actions?.[0].decision_id).toBe('d-7')
+    expect(s.items[1].id).toBe('2') // untouched
+  })
+
+  it('promote leaves current alone when a different artifact was promoted', async () => {
+    const other = art('2')
+    vi.mocked(api.promote).mockResolvedValue({
+      decision: { id: 'd-1' } as never,
+      artifact: { ...other, title: 'changed' },
+    })
+    useBAStore.setState({ items: [art('1'), other], current: art('1') })
+    await useBAStore.getState().promote('2', 0)
+    expect(useBAStore.getState().current?.id).toBe('1')
+    expect(useBAStore.getState().items[1].title).toBe('changed')
   })
 
   it('remove drops the item and resets current only if it was removed', async () => {

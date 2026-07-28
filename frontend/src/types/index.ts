@@ -662,6 +662,40 @@ export interface BAPorterForce {
   rationale: string
 }
 
+/** A number computed from the source, never written by the model. */
+export interface BAFact {
+  id: string
+  kind: 'total' | 'top' | 'trend' | 'anomaly' | 'concentration'
+  label: string
+  value: string
+  /** Bare measure column, used to seed a promoted decision's metric. */
+  metric?: string
+  /** Human-readable provenance, e.g. "sales.revenue / sale_date". */
+  source?: string
+}
+
+/**
+ * One framework bullet. `derived` marks the rule-authored ones — only those carry
+ * `evidence`, because a model citation cannot be verified (see backend
+ * ai/ba_evidence). Everything else is shown as a judgement.
+ */
+export interface BAItem {
+  text: string
+  evidence: string[]
+  derived: boolean
+}
+
+export interface BAAction {
+  text: string
+  impact: number
+  effort: number
+  metric_hint?: string
+  direction?: 'increase' | 'decrease'
+  derived?: boolean
+  /** Set once promoted — the tracked decision this action became. */
+  decision_id?: string
+}
+
 export interface BABcgItem {
   label: string
   share_pct: number
@@ -669,18 +703,28 @@ export interface BABcgItem {
   quadrant: 'star' | 'cash_cow' | 'question' | 'dog'
 }
 
-/** Shape depends on framework — see backend ai/ba_frameworks. */
+/**
+ * Shape depends on framework — see backend ai/ba_frameworks.
+ *
+ * SWOT buckets are `(string | BAItem)[]`: artifacts saved before the evidence
+ * layer hold bare strings, and they must keep rendering. Normalise with
+ * `toItems` from lib/baItems rather than reading a bucket directly.
+ */
 export interface BAContent {
-  strengths?: string[]
-  weaknesses?: string[]
-  opportunities?: string[]
-  threats?: string[]
+  strengths?: (string | BAItem)[]
+  weaknesses?: (string | BAItem)[]
+  opportunities?: (string | BAItem)[]
+  threats?: (string | BAItem)[]
   forces?: BAPorterForce[]
   items?: BABcgItem[]
   thresholds?: { share_pct: number; growth_pct: number }
   mermaid?: string
   summary?: string
   advice?: string
+  facts?: BAFact[]
+  actions?: BAAction[]
+  /** Source name snapshotted at generate time; absent for the demo model. */
+  source_name?: string
 }
 
 export interface BAArtifact {
@@ -690,6 +734,8 @@ export interface BAArtifact {
   context: string
   content: BAContent
   created_at: string
+  /** Source the evidence was read from; null = the demo model. */
+  datasource_id?: string | null
 }
 
 export interface AutoMLTableColumn {

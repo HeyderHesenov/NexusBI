@@ -66,7 +66,8 @@ npm install && npm run dev      # → http://localhost:5173
 
 ## 7. Demodan əvvəl pre-warm (birdəfəlik)
 
-- İlk qrafiki aç (Recharts lazy-load) · bir AutoML modelinə bax · bir BA Studio artefaktı yarat — ki canlı demoda ilk yükləmə gecikməsi olmasın.
+- İlk qrafiki aç (Recharts lazy-load) · bir AutoML modelinə bax · BA Studio-da BPMN artefaktı aç (Mermaid lazy-load) — ki canlı demoda ilk yükləmə gecikməsi olmasın.
+- SWOT və BCG artefaktları artıq seed olunur (`_seed_ba`), əl ilə yaratmaq lazım deyil.
 
 ---
 
@@ -76,4 +77,6 @@ npm install && npm run dev      # → http://localhost:5173
 - [ ] `http://localhost:5173` (localhost!) açılır, demo hesabı ilə giriş olur
 - [ ] Sidebar-dakı hər səhifə **dolu** görünür (boş yoxdur)
 - [ ] `Soruş`-da sual-çipi işləyir → SQL + qrafik + insight çıxır
+- [ ] `BA Studio`-da 2 artefakt var; SWOT-da sübut çipləri + `hesablanmış` / `mülahizə` nişanları görünür, aşağıda prioritetli addımlar var
+- [ ] Bir addımı `Qərara çevir` → `Qərarlar` səhifəsində izlənən qərar yaranır
 - [ ] Dil dəyişimi (AZ/EN/RU/TR) təmiz işləyir

@@ -8,6 +8,7 @@ raises with an empty AI key.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +32,19 @@ _MAX_WIDGETS = 8
 _TOP_N = 10
 # Substrings that mark a column as a time axis (incl. az "tarix" = date).
 _TEMPORAL_HINTS = ("date", "time", "year", "month", "day", "_at", "tarix")
+
+
+@dataclass(frozen=True)
+class SourceProfile:
+    """One table's column roles, ready for deterministic query composition."""
+
+    table: str
+    columns: list[str]
+    measures: list[str]
+    dims: list[str]
+    temporals: list[str]
+    dialect: str
+    source_name: str
 
 
 def _is_id_like(col: str) -> bool:
@@ -66,7 +80,7 @@ def _classify(
     return measures, dims, temporals
 
 
-def _q(ident: str, dialect: str) -> str:
+def quote_ident(ident: str, dialect: str) -> str:
     """Quote a schema identifier for ``dialect`` (schema-sourced, never free text).
 
     MySQL uses backtick identifiers — its default sql_mode reads ``"x"`` as a string
@@ -86,7 +100,7 @@ def _compose_queries(
 ) -> list[tuple[str, str]]:
     """Deterministic ``(title, SQL)`` analytic queries for one table (az titles)."""
     def q(ident: str) -> str:
-        return _q(ident, dialect)
+        return quote_ident(ident, dialect)
 
     t = q(table)
     say = q("say")
@@ -149,13 +163,18 @@ async def _resolve_tables(
     return tables, ds.name, ds.db_type.value
 
 
-async def build_explore_dashboard(
+async def profile_source(
     db: AsyncSession,
     user_id: str,
     datasource_id: str | None,
     cache: CacheService,
-) -> Dashboard:
-    """Profile the source's largest table and assemble a deterministic dashboard."""
+) -> SourceProfile:
+    """Classify the columns of a source's widest table into measures/dims/temporals.
+
+    Shared by Explore (which composes chart queries from it) and BA Studio's
+    evidence layer (which composes probe queries) — the profiling heuristics must
+    not drift between the two.
+    """
     tables, source_name, dialect = await _resolve_tables(db, user_id, datasource_id, cache)
     if not tables:
         raise SchemaNotFoundError("Kəşf üçün cədvəl tapılmadı.")
@@ -168,7 +187,7 @@ async def build_explore_dashboard(
     sample_cols, sample_rows = columns, []
     try:
         clean = sql_guard.validate_select_only(
-            f"SELECT * FROM {_q(table, dialect)} LIMIT {_SAMPLE_ROWS}"
+            f"SELECT * FROM {quote_ident(table, dialect)} LIMIT {_SAMPLE_ROWS}"
         )
         sample_cols, sample_rows = await query_service.guarded_read(
             clean, datasource_id, user_id, db, cache
@@ -177,7 +196,28 @@ async def build_explore_dashboard(
         _log.warning("explore_sample_failed", table=table, error=str(exc)[:200])
 
     measures, dims, temporals = _classify(sample_cols or columns, sample_rows)
-    queries = _compose_queries(table, measures, dims, temporals, dialect)
+    return SourceProfile(
+        table=table,
+        columns=list(sample_cols or columns),
+        measures=measures,
+        dims=dims,
+        temporals=temporals,
+        dialect=dialect,
+        source_name=source_name,
+    )
+
+
+async def build_explore_dashboard(
+    db: AsyncSession,
+    user_id: str,
+    datasource_id: str | None,
+    cache: CacheService,
+) -> Dashboard:
+    """Profile the source's largest table and assemble a deterministic dashboard."""
+    p = await profile_source(db, user_id, datasource_id, cache)
+    source_name = p.source_name
+
+    queries = _compose_queries(p.table, p.measures, p.dims, p.temporals, p.dialect)
     if not queries:
         raise SchemaNotFoundError("Bu mənbədən avtomatik qrafik yaradıla bilmədi.")
 

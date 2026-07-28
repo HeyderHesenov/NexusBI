@@ -1,17 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
-import { Compass, Grid2x2, Loader2, Shield, Sparkles, Workflow } from 'lucide-react'
+import { Compass, Database, Grid2x2, Loader2, Shield, Sparkles, Workflow } from 'lucide-react'
 import { SavedCard } from '../components/ui/SavedCard'
 import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { useOpenParam } from '../hooks/useOpenParam'
 import { useFormatDate } from '../hooks/useFormatDate'
+import { ActionMatrix } from '../components/ba/ActionMatrix'
 import { BCGMatrix } from '../components/ba/BCGMatrix'
+import { EvidenceChips } from '../components/ba/EvidenceChips'
 import { MermaidDiagram } from '../components/ba/MermaidDiagram'
 import { PorterForces } from '../components/ba/PorterForces'
 import { SWOTGrid } from '../components/ba/SWOTGrid'
-import { Field, FIELD } from '../components/ui/form'
+import { Field, FIELD, Select } from '../components/ui/form'
 import { useBAStore } from '../store/baStore'
+import { useDatasourceStore } from '../store/datasourceStore'
 import type { BAArtifact, BAFramework } from '../types'
 
 const FRAMEWORKS: { key: BAFramework; icon: typeof Grid2x2 }[] = [
@@ -26,11 +29,26 @@ const CONTEXT_REQUIRED: Record<BAFramework, boolean> = {
   swot: true, porter: true, bpmn: true, bcg: false,
 }
 
-function ArtifactCanvas({ artifact }: { artifact: BAArtifact }) {
+function ArtifactCanvas({
+  artifact,
+  onPromote,
+}: {
+  artifact: BAArtifact
+  onPromote: (index: number) => Promise<void>
+}) {
   const { t } = useTranslation()
   const c = artifact.content
+  const facts = c.facts ?? []
   return (
     <div className="flex flex-col gap-4">
+      {/* Provenance first: the numbers this framework was built from, before any prose. */}
+      {facts.length > 0 && (
+        <div className="rounded-2xl border border-line bg-surface-2 p-4">
+          <p className="eyebrow mb-2">{t('baStudio.evidence')}</p>
+          <EvidenceChips facts={facts} />
+        </div>
+      )}
+
       {artifact.framework === 'swot' && <SWOTGrid content={c} />}
       {artifact.framework === 'porter' && <PorterForces content={c} />}
       {artifact.framework === 'bcg' && <BCGMatrix content={c} />}
@@ -48,6 +66,12 @@ function ArtifactCanvas({ artifact }: { artifact: BAArtifact }) {
           <p className="text-sm text-ink">{c.advice}</p>
         </div>
       )}
+
+      {/* The loop out: a framework that produces no tracked action is a dead end. */}
+      <section className="rounded-2xl border border-line bg-surface p-4">
+        <p className="eyebrow mb-3">{t('baStudio.actions')}</p>
+        <ActionMatrix actions={c.actions ?? []} onPromote={onPromote} />
+      </section>
     </div>
   )
 }
@@ -55,19 +79,42 @@ function ArtifactCanvas({ artifact }: { artifact: BAArtifact }) {
 export function BAStudioPage() {
   const { t } = useTranslation()
   const fmtDate = useFormatDate()
-  const { items, current, generating, load, generate, select, remove } = useBAStore()
+  const { items, current, generating, load, generate, select, remove, promote } = useBAStore()
+  const { sources, load: loadSources } = useDatasourceStore()
   const [framework, setFramework] = useState<BAFramework>('swot')
   const [title, setTitle] = useState('')
   const [context, setContext] = useState('')
+  const [datasourceId, setDatasourceId] = useState('')
   // Deep-link from the copilot chip: /ba-studio?open=<artifact_id>
   useOpenParam(load, select)
 
+  useEffect(() => {
+    loadSources().catch(() => undefined)
+  }, [loadSources])
+
   const contextMissing = CONTEXT_REQUIRED[framework] && !context.trim()
+  // Prefer the name snapshotted at generate time: datasource_id is SET NULL on
+  // source deletion, so trusting the FK alone would relabel a real artifact "Demo".
+  const sourceName = (a: BAArtifact) =>
+    a.content.source_name ??
+    (a.datasource_id
+      ? (sources.find((s) => s.id === a.datasource_id)?.name ?? a.datasource_id)
+      : t('baStudio.sourceDemo'))
 
   const onGenerate = async () => {
     try {
-      await generate(framework, title, context)
+      await generate(framework, title, context, datasourceId || null)
       toast.success(t('baStudio.generated'))
+    } catch {
+      /* interceptor shows the API error */
+    }
+  }
+
+  const onPromote = async (index: number) => {
+    if (!current) return
+    try {
+      await promote(current.id, index)
+      toast.success(t('baStudio.promoted'))
     } catch {
       /* interceptor shows the API error */
     }
@@ -125,6 +172,24 @@ export function BAStudioPage() {
             })}
           </div>
 
+          {/* Not the shared query DatasourcePicker: that one writes to queryStore,
+              so BA Studio would silently share the Ask page's source selection. */}
+          <Field id="ba-source" label={t('baStudio.sourceLabel')} hint={t('baStudio.sourceHint')}>
+            <Select
+              id="ba-source"
+              value={datasourceId}
+              onChange={(e) => setDatasourceId(e.target.value)}
+              options={[
+                { value: '', label: t('baStudio.sourceDemo') },
+                // Power BI speaks DAX, and the profiler refuses it — keep it out of
+                // the list rather than letting the pick fail at generate time.
+                ...sources
+                  .filter((s) => s.db_type !== 'powerbi')
+                  .map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
+          </Field>
+
           <Field id="ba-title" label={t('baStudio.titleLabel')}>
             <input
               id="ba-title"
@@ -166,13 +231,20 @@ export function BAStudioPage() {
         <section className="rounded-2xl border border-line bg-surface p-5 lg:col-span-3">
           {current ? (
             <>
-              <div className="mb-4 flex items-center justify-between gap-2">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="eyebrow">{t(`baStudio.fw_${current.framework}`)}</p>
                   <h2 className="font-display text-lg font-bold text-ink">{current.title}</h2>
                 </div>
+                <span
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 py-1 font-mono text-[11px] text-ink-soft"
+                  title={t('baStudio.sourceLabel')}
+                >
+                  <Database size={12} className="text-accent" aria-hidden="true" />
+                  {sourceName(current)}
+                </span>
               </div>
-              <ArtifactCanvas artifact={current} />
+              <ArtifactCanvas artifact={current} onPromote={onPromote} />
             </>
           ) : (
             <div className="plot-grid grid min-h-[45vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">

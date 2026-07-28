@@ -260,6 +260,10 @@ TOOLS: list[dict[str, Any]] = [
                     "framework": {"type": "string", "enum": ["swot", "porter", "bcg", "bpmn"]},
                     "title": {"type": "string"},
                     "context": {"type": "string", "description": "Biznes konteksti (bcg üçün opsional)."},
+                    "datasource_id": {
+                        "type": "string",
+                        "description": "Sübutların oxunacağı mənbə; boş buraxılsa demo model.",
+                    },
                 },
                 "required": ["framework"],
             },
@@ -618,8 +622,9 @@ class _ToolContext:
         if framework not in ("swot", "porter", "bcg", "bpmn"):
             return {"error": "framework swot|porter|bcg|bpmn olmalıdır."}
         artifact = await ba_service.generate(
-            self.db, self.user_id, framework,
+            self.db, self.cache, self.user_id, framework,
             str(args.get("title") or ""), str(args.get("context") or ""),
+            str(args.get("datasource_id") or "") or None,
         )
         self.actions.append(
             {"type": "ba_artifact", "label": f"BA artefaktı: {artifact.title}", "ba_artifact_id": artifact.id}
@@ -639,7 +644,15 @@ class _ToolContext:
                 if isinstance(i, dict)
             ]
         elif framework == "swot":
-            summary["items"] = {k: c.get(k, []) for k in ("strengths", "weaknesses", "opportunities", "threats")}
+            # Buckets hold {text, evidence, derived} objects (legacy artifacts held
+            # bare strings) — hand the model plain text, not the wrapper.
+            summary["items"] = {
+                k: [
+                    str(i.get("text") if isinstance(i, dict) else i)
+                    for i in c.get(k, [])
+                ]
+                for k in ("strengths", "weaknesses", "opportunities", "threats")
+            }
         elif framework == "porter":
             summary["forces"] = [
                 {"key": f.get("key"), "level": f.get("level")}

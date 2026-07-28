@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from httpx import AsyncClient
 
-from app.ai import ba_frameworks
+from app.ai import ba_bcg, ba_evidence, ba_frameworks
 from app.core.exceptions import AIGenerationError
 
 # ─── Mermaid sanitizer (fail-closed) ───
@@ -63,24 +63,54 @@ def test_bcg_quadrants_deterministic():
     assert abs(sum(i["share_pct"] for i in core["items"]) - 100) < 1
 
 
-def test_bcg_h2_only_category_is_high_growth(monkeypatch):
-    # A category launched in H2 (h1=0) is the fastest grower, not a flat one.
+def test_bcg_h2_only_category_is_high_growth():
+    # A line that launched in the second half (h1=0) is the fastest grower there
+    # is, not a flat one. The core now takes a dim × period cross-tab.
     rows = [
-        {"category": "Old", "h1": 100.0, "h2": 90.0, "total": 190.0},
-        {"category": "New", "h1": 0.0, "h2": 50.0, "total": 50.0},
+        {"d": "Old", "p": "2024-01", "m": 100.0},
+        {"d": "Old", "p": "2024-02", "m": 90.0},
+        {"d": "New", "p": "2024-02", "m": 50.0},
     ]
-    monkeypatch.setattr(ba_frameworks, "execute_demo_snapshot", lambda sqls: [rows])
-    by = {i["label"]: i for i in ba_frameworks.compute_bcg()["items"]}
+    by = {i["label"]: i for i in ba_bcg.bcg_core_from_rows(rows, "d", "p", "m")["items"]}
     assert by["New"]["growth_pct"] == 100.0
     assert by["New"]["quadrant"] == "question"
     assert by["Old"]["quadrant"] == "cash_cow"
 
 
+def test_bcg_rank_split_matches_calendar_halves():
+    # The split is by RANK (sorted period keys cut at len//2), not by calendar
+    # month arithmetic — that's what keeps it dialect-free. On the demo's 12
+    # month-keys the two must coincide, which is what pins the quadrants above.
+    rows = [
+        {"d": "A", "p": f"2024-{m:02d}", "m": 10.0 if m <= 6 else 20.0} for m in range(1, 13)
+    ]
+    item = ba_bcg.bcg_core_from_rows(rows, "d", "p", "m")["items"][0]
+    assert item["growth_pct"] == 100.0  # H2 (6×20) vs H1 (6×10)
+
+
+def test_bcg_single_period_is_flat_not_infinite_growth():
+    rows = [{"d": "A", "p": "2024-01", "m": 10.0}, {"d": "B", "p": "2024-01", "m": 5.0}]
+    items = ba_bcg.bcg_core_from_rows(rows, "d", "p", "m")["items"]
+    assert all(i["growth_pct"] == 0.0 for i in items)
+
+
+def test_bcg_in_list_escapes_quotes():
+    # Dimension values are DATA out of the user's table — they must go through a
+    # literal builder, never an f-string.
+    assert ba_bcg._in_list(["O'Brien"], "postgresql") == "'O''Brien'"
+    assert "DROP" in ba_bcg._in_list(["x'; DROP TABLE t--"], "sqlite")
+    assert ba_bcg._in_list(["x'; DROP TABLE t--"], "sqlite").count("'") == 4
+
+
 async def test_bcg_advice_falls_back_offline():
+    core = ba_bcg.compute_bcg()
+    facts = ba_evidence.facts_from_bcg(core)
     with patch.object(ba_frameworks, "chat_json", AsyncMock(side_effect=AIGenerationError("no key"))):
-        out = await ba_frameworks.bcg("portfel")
+        out = await ba_frameworks.bcg("portfel", facts, core)
     assert out["items"] and out["advice"]
     assert "Books" in out["advice"] or "Ulduz" in out["advice"]
+    # The offline path must still hand the user something to act on.
+    assert out["actions"] and all(1 <= a["impact"] <= 5 for a in out["actions"])
 
 
 # ─── Fallbacks on AI failure ───
@@ -94,16 +124,26 @@ async def test_swot_rule_based_buckets_by_keywords():
         "Rəqiblərin qiymət təzyiqi riski artır."
     )
     with patch.object(ba_frameworks, "chat_json", AsyncMock(side_effect=AIGenerationError("x"))):
-        out = await ba_frameworks.swot(ctx)
-    assert any("komanda" in s for s in out["strengths"])
-    assert any("marketinq" in s for s in out["weaknesses"])
-    assert any("bazar" in s for s in out["opportunities"])
-    assert any("Rəqib" in s for s in out["threats"])
+        out = await ba_frameworks.swot(ctx, [])
+
+    def texts(bucket: str) -> list[str]:
+        return [i["text"] for i in out[bucket]]
+
+    assert any("komanda" in s for s in texts("strengths"))
+    assert any("marketinq" in s for s in texts("weaknesses"))
+    assert any("bazar" in s for s in texts("opportunities"))
+    assert any("Rəqib" in s for s in texts("threats"))
+    # No facts were supplied, so nothing may claim to be data-backed.
+    assert all(
+        not i["derived"] and i["evidence"] == []
+        for b in ("strengths", "weaknesses", "opportunities", "threats")
+        for i in out[b]
+    )
 
 
 async def test_porter_fallback_returns_all_five_forces():
     with patch.object(ba_frameworks, "chat_json", AsyncMock(side_effect=AIGenerationError("x"))):
-        out = await ba_frameworks.porter("kontekst")
+        out = await ba_frameworks.porter("kontekst", [])
     assert [f["key"] for f in out["forces"]] == list(ba_frameworks.PORTER_KEYS)
     assert all(f["level"] == "medium" for f in out["forces"])
 
@@ -117,7 +157,7 @@ async def test_porter_ai_bad_level_coerced_and_keys_fixed():
         "advice": "a",
     }
     with patch.object(ba_frameworks, "chat_json", AsyncMock(return_value=fake)):
-        out = await ba_frameworks.porter("kontekst")
+        out = await ba_frameworks.porter("kontekst", [])
     keys = [f["key"] for f in out["forces"]]
     assert keys == list(ba_frameworks.PORTER_KEYS)  # invented force dropped, none missing
     assert out["forces"][0]["level"] == "medium"  # bad level coerced
@@ -126,7 +166,9 @@ async def test_porter_ai_bad_level_coerced_and_keys_fixed():
 async def test_bpmn_rejected_ai_output_falls_back_to_linear_flow():
     fake = {"mermaid": "flowchart TD\n  click A javascript:alert(1)", "summary": "s"}
     with patch.object(ba_frameworks, "chat_json", AsyncMock(return_value=fake)):
-        out = await ba_frameworks.bpmn("Sifariş qəbul olunur. Anbar yoxlanılır. Məhsul göndərilir.")
+        out = await ba_frameworks.bpmn(
+            "Sifariş qəbul olunur. Anbar yoxlanılır. Məhsul göndərilir.", []
+        )
     assert out["mermaid"].startswith("flowchart TD")
     assert ba_frameworks.sanitize_mermaid(out["mermaid"]) is not None
     assert "N0" in out["mermaid"] and "-->" in out["mermaid"]

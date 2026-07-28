@@ -220,7 +220,9 @@ async def test_heavy_tool_cap_is_per_tool():
     import pytest
 
     with pytest.raises(AttributeError):
-        await ctx.dispatch("generate_ba_artifact", {"framework": "swot"})
+        await ctx.dispatch(
+            "generate_ba_artifact", {"framework": "swot", "context": "güclü komanda"}
+        )
 
 
 async def test_copilot_tools_share_endpoint_ip_buckets():

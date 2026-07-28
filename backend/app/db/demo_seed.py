@@ -82,6 +82,7 @@ async def seed_demo_content() -> None:
         ("notifications", _seed_notifications),
         ("chat", _seed_chat),
         ("automl", _seed_automl),
+        ("ba", _seed_ba),
     ]
     for name, fn in phases:
         try:
@@ -262,3 +263,34 @@ async def _seed_automl(db, cache, user_id, user_name) -> None:
     from app.services import automl_service
 
     await automl_service.train(db, cache, user_id, "Gəlir proqnozu", "sales", None, "revenue")
+
+
+# BA Studio was the last page that still opened empty on a demo login — the runbook
+# used to tell the presenter to hand-build an artifact before showing it.
+_BA_CONTEXT = (
+    "Güclü mühəndis komandamız və sadiq müştəri bazamız var.\n"
+    "Zəif marketinq büdcəsi böyümə sürətini məhdudlaşdırır.\n"
+    "Yeni regionlara çıxış imkanı görünür.\n"
+    "Rəqiblərin qiymət təzyiqi riski artır."
+)
+
+
+async def _seed_ba(db, cache, user_id, user_name) -> None:
+    """A SWOT and a BCG artifact through the REAL generate pipeline.
+
+    Offline this takes the rule-based route, which still yields deterministic
+    facts, rule-derived evidence and prioritised actions — so the seeded artifacts
+    show the same evidence/judgement split a live one does.
+    """
+    from app.services import ba_service
+
+    for framework, title, context in (
+        ("swot", "Şirkət SWOT-u", _BA_CONTEXT),
+        ("bcg", "Kateqoriya portfeli", "kateqoriya portfelini qiymətləndir"),
+    ):
+        try:
+            await ba_service.generate(db, cache, user_id, framework, title, context)
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001 — one weak artifact shouldn't sink the other
+            await db.rollback()
+            log.warning("demo_seed_ba_failed", framework=framework, error=str(exc)[:200])

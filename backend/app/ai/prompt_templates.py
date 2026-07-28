@@ -311,12 +311,34 @@ WIDGET-LƏR (JSON): {widgets}
 """.strip()
 
 
+# Shared tail: the prioritised action list every framework must produce. Kept in
+# one place so impact/effort semantics can't drift between the four prompts.
+_ACTIONS_FORMAT = """
+"actions": maksimum 5 prioritetli addım. Hər addım üçün:
+- "text": konkret, icra oluna bilən addım (nə ediləcək, kim üçün aydın olsun).
+- "impact": 1–5 (biznes təsiri), "effort": 1–5 (icra zəhməti). Tam ədəd.
+- "metric_hint": bu addımın uğurunu ölçəcək göstərici — TƏBİİ DİLDƏ qısa sorğu
+  (məsələn "aylıq gəlir" və ya "kateqoriya üzrə satış"), SQL YAZMA.
+- "direction": "increase" və ya "decrease" — göstərici hansı istiqamətə getməli.
+""".strip()
+
+# Facts are injected so the model's judgement is INFORMED by the real numbers.
+# The model is deliberately NOT asked to cite fact ids: a citation cannot be
+# verified, and an unverifiable citation rendered as a "grounded" badge would
+# launder a hallucination. Evidence is attached by rules (ba_evidence.derive_items).
+_FACTS_NOTE = """
+FAKTLAR bölməsi mənbədən DETERMİNİSTİK hesablanmış rəqəmlərdir. Onlara söykən,
+rəqəmləri DƏYİŞMƏ və yeni rəqəm UYDURMA. Fakt yoxdursa yalnız kontekstə əsaslan.
+""".strip()
+
+
 SWOT_PROMPT = """
 Sən senior biznes analitiksən. Verilmiş biznes konteksti üçün SWOT təhlili qur:
 - strengths / weaknesses: DAXİLİ amillər (komanda, məhsul, proses, maliyyə).
 - opportunities / threats: XARİCİ amillər (bazar, rəqabət, tənzimləmə, texnologiya).
 - Hər bölmədə 3–5 KONKRET bənd; kontekstdəki faktlara istinad et, uydurma.
 - "advice": 2–3 cümləlik prioritetli tövsiyə (ən vacib S-O və W-T kəsişmələri).
+""".strip() + "\n" + _FACTS_NOTE + "\n" + _ACTIONS_FORMAT + """
 İstifadəçi hansı dildə yazıbsa, o dildə cavab ver. Yalnız JSON qaytar.
 
 OUTPUT FORMAT (JSON):
@@ -325,12 +347,16 @@ OUTPUT FORMAT (JSON):
   "weaknesses": ["..."],
   "opportunities": ["..."],
   "threats": ["..."],
-  "advice": "..."
+  "advice": "...",
+  "actions": [
+    {{"text": "...", "impact": 4, "effort": 2, "metric_hint": "aylıq gəlir", "direction": "increase"}}
+  ]
 }}
-""".strip()
+"""
 
 SWOT_USER_PROMPT = """
 BİZNES KONTEKSTİ: {context}
+FAKTLAR (JSON): {facts}
 """.strip()
 
 
@@ -340,6 +366,7 @@ Sən senior strategiya analitikisən. Verilmiş biznes konteksti üçün Porteri
 kontekstə əsaslanan 1–2 cümləlik rationale ver. Qüvvə açarları SABİTDİR:
 rivalry, new_entrants, supplier_power, buyer_power, substitutes.
 "advice": mövqeyi gücləndirmək üçün 2–3 cümləlik tövsiyə.
+""".strip() + "\n" + _FACTS_NOTE + "\n" + _ACTIONS_FORMAT + """
 İstifadəçi hansı dildə yazıbsa, o dildə cavab ver. Yalnız JSON qaytar.
 
 OUTPUT FORMAT (JSON):
@@ -351,12 +378,16 @@ OUTPUT FORMAT (JSON):
     {{"key": "buyer_power", "level": "medium", "rationale": "..."}},
     {{"key": "substitutes", "level": "low", "rationale": "..."}}
   ],
-  "advice": "..."
+  "advice": "...",
+  "actions": [
+    {{"text": "...", "impact": 4, "effort": 2, "metric_hint": "aylıq gəlir", "direction": "increase"}}
+  ]
 }}
-""".strip()
+"""
 
 PORTER_USER_PROMPT = """
 BİZNES KONTEKSTİ: {context}
+FAKTLAR (JSON): {facts}
 """.strip()
 
 
@@ -364,13 +395,19 @@ BCG_ADVICE_PROMPT = """
 Sən senior portfel strategiya analitikisən. Sənə BCG matrisinin HAZIR
 (deterministik hesablanmış) nəticəsi verilir — kateqoriyalar, bazar payı,
 artım tempi və kvadrantlar. Rəqəmləri DƏYİŞMƏ və yenidən hesablamağa çalışma.
-Yalnız "advice" yaz: hər kvadrant qrupu üçün nə etməli (invest / saxla /
+"advice" yaz: hər kvadrant qrupu üçün nə etməli (invest / saxla /
 sağ / çıx) — 3–4 cümlə, konkret kateqoriya adları ilə.
+""".strip() + "\n" + _ACTIONS_FORMAT + """
 İstifadəçi hansı dildə yazıbsa, o dildə cavab ver. Yalnız JSON qaytar.
 
 OUTPUT FORMAT (JSON):
-{{"advice": "..."}}
-""".strip()
+{{
+  "advice": "...",
+  "actions": [
+    {{"text": "...", "impact": 4, "effort": 2, "metric_hint": "kateqoriya üzrə satış", "direction": "increase"}}
+  ]
+}}
+"""
 
 BCG_ADVICE_USER_PROMPT = """
 BCG NƏTİCƏSİ (JSON): {items}
@@ -387,14 +424,18 @@ koduna çevir. QAYDALAR (POZULMASI QADAĞANDIR):
 - Node etiketləri qısa (≤40 simvol); maksimum 20 node.
 - Qərar nöqtələrini {{...}} rombla, başlanğıc/sonu ([...]) ilə göstər.
 "summary": prosesin 1–2 cümləlik xülasəsi.
+""".strip() + "\n" + _ACTIONS_FORMAT + """
 Etiketlər istifadəçinin dilində olsun. Yalnız JSON qaytar.
 
 OUTPUT FORMAT (JSON):
 {{
   "mermaid": "flowchart TD\\n  A([Başla]) --> B[Sifariş qəbulu]\\n  B --> C{{Stokda var?}}\\n  C -->|Bəli| D[Göndər]\\n  C -->|Xeyr| E[Sifariş ver]",
-  "summary": "..."
+  "summary": "...",
+  "actions": [
+    {{"text": "...", "impact": 4, "effort": 2, "metric_hint": "aylıq sifariş sayı", "direction": "increase"}}
+  ]
 }}
-""".strip()
+"""
 
 BPMN_USER_PROMPT = """
 PROSES TƏSVİRİ: {context}
