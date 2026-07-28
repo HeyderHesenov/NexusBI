@@ -17,6 +17,8 @@ from app.core.exceptions import DataSourceConnectionError, InvalidSQLError
 def test_ssrf_allows_sqlite_and_public():
     net_guard.assert_safe_connection_string("sqlite+aiosqlite:///./x.db")
     net_guard.assert_safe_connection_string("postgresql://u:p@8.8.8.8:5432/d")
+    # A genuinely public IPv6 target must still be allowed.
+    net_guard.assert_safe_connection_string("postgresql://u:p@[2001:4860:4860::8888]:5432/d")
 
 
 @pytest.mark.parametrize(
@@ -26,6 +28,10 @@ def test_ssrf_allows_sqlite_and_public():
         "postgresql://u:p@127.0.0.1:5432/d",  # loopback
         "postgresql://u:p@10.0.0.5:5432/d",  # private
         "mysql://u:p@192.168.1.10:3306/d",  # private
+        # IPv6 tunnels that encapsulate an internal IPv4 target — the top-level
+        # IPv6 flags miss these, so the guard must inspect the embedded address.
+        "postgresql://u:p@[2002:a9fe:a9fe::]:5432/d",  # 6to4 → 169.254.169.254
+        "postgresql://u:p@[::ffff:127.0.0.1]:5432/d",  # IPv4-mapped loopback
     ],
 )
 def test_ssrf_blocks_internal_hosts(conn):
@@ -120,3 +126,72 @@ async def test_login_rate_limited(client: AsyncClient):
             json={"email": "nobody@nexusbi.io", "password": "wrong"},
         )
     assert last.status_code == 429, last.text
+
+
+# ─── Rate-limit client-IP resolution (trusted proxy) ───
+def _fake_request(xff, peer="10.0.0.1"):
+    from starlette.requests import Request
+
+    headers = [(b"x-forwarded-for", xff.encode())] if xff is not None else []
+    return Request({"type": "http", "headers": headers, "client": (peer, 12345)})
+
+
+def test_client_ip_ignores_xff_by_default(monkeypatch):
+    from app.config import settings
+    from app.core import rate_limit
+
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_HOPS", 0)
+    # Default: header untrusted (a client could spoof it) → use the direct peer.
+    assert rate_limit._client_ip(_fake_request("1.2.3.4")) == "10.0.0.1"
+
+
+def test_client_ip_uses_trusted_proxy_hop(monkeypatch):
+    from app.config import settings
+    from app.core import rate_limit
+
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_HOPS", 1)
+    # One trusted proxy → the real client is the rightmost XFF entry; a spoofed
+    # left-hand entry is ignored, and a missing header falls back to the peer.
+    assert rate_limit._client_ip(_fake_request("9.9.9.9, 1.2.3.4")) == "1.2.3.4"
+    assert rate_limit._client_ip(_fake_request("1.2.3.4")) == "1.2.3.4"
+    assert rate_limit._client_ip(_fake_request(None)) == "10.0.0.1"
+
+
+# ─── Demo NL pipeline: table allowlist (defense in depth) ───
+async def test_demo_pipeline_enforces_table_allowlist(client: AsyncClient, auth: dict, monkeypatch):
+    from app.ai.types import Text2SQLResult
+    from app.services import query_service
+
+    async def bad_sql(self, nl, schema, dtype="sqlite", extra_context=""):
+        # SELECT-only, but references a table outside the demo schema (a
+        # hallucinated or prompt-injected reference).
+        return Text2SQLResult(
+            sql="SELECT * FROM injected_secrets", explanation="d", confidence=0.9
+        )
+
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", bad_sql)
+    resp = await client.post(
+        "/api/v1/query/ask", json={"nl_query": "x", "datasource_id": None}, headers=auth
+    )
+    assert resp.status_code >= 400, resp.text  # allowlist rejects the foreign table
+
+
+# ─── AutoML model-blob integrity (HMAC) ───
+def test_automl_blob_sign_roundtrip_and_tamper():
+    import pickle
+
+    from app.core.exceptions import NexusBIException
+    from app.services import automl_service as a
+
+    raw = pickle.dumps({"hello": "world"})
+    signed = a._sign_blob(raw)
+    assert a._unwrap_blob(signed) == raw  # round-trips to the exact payload
+
+    # A raw/unsigned (legacy or attacker-written) blob is refused, never unpickled.
+    with pytest.raises(NexusBIException):
+        a._unwrap_blob(raw)
+    # A single flipped byte in the payload fails the HMAC.
+    tampered = bytearray(signed)
+    tampered[-1] ^= 0x01
+    with pytest.raises(NexusBIException):
+        a._unwrap_blob(bytes(tampered))

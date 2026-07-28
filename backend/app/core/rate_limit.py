@@ -2,8 +2,16 @@
 
 Sliding-window counter kept in process memory — adequate for the single-worker
 demo deployment and a meaningful brute-force speed bump in any case. For a
-multi-worker production deploy back this with Redis (shared `app.state.cache`).
+multi-worker production deploy back this with Redis (shared `app.state.cache`)
+so buckets are shared across workers and survive restarts.
 Authenticated AI endpoints use the per-user monthly quota in `billing` instead.
+
+Client-IP resolution honors `TRUSTED_PROXY_HOPS`: behind a reverse proxy the
+direct peer is always the proxy, which would collapse every client into a single
+bucket (breaking per-IP throttling and letting one abuser starve everyone). When
+the real proxy count is configured we read the client's address from
+`X-Forwarded-For`; with the default of 0 we never trust that header (a client
+could otherwise spoof it) and fall back to the direct peer.
 """
 from __future__ import annotations
 
@@ -12,6 +20,7 @@ from collections import defaultdict, deque
 
 from fastapi import Request
 
+from app.config import settings
 from app.core.exceptions import RateLimitError
 
 # bucket -> ip -> deque[timestamps]
@@ -22,8 +31,25 @@ _HITS: dict[str, dict[str, deque[float]]] = defaultdict(lambda: defaultdict(dequ
 _MAX_IPS_PER_BUCKET = 4096
 
 
-def _client_ip(request: Request) -> str:
+def _direct_peer(request: Request) -> str:
     return request.client.host if request.client else "unknown"
+
+
+def _client_ip(request: Request) -> str:
+    """Client IP used as the rate-limit key.
+
+    With ``TRUSTED_PROXY_HOPS = N`` (N > 0), the client sits behind N reverse
+    proxies, each of which appends exactly one entry to ``X-Forwarded-For``. The
+    real client is therefore the Nth entry counted from the right — anything a
+    client injects lands further left and is ignored. With N = 0 (default) the
+    header is never trusted and we use the direct peer.
+    """
+    hops = settings.TRUSTED_PROXY_HOPS
+    if hops > 0:
+        parts = [p.strip() for p in request.headers.get("x-forwarded-for", "").split(",") if p.strip()]
+        if len(parts) >= hops:
+            return parts[-hops]
+    return _direct_peer(request)
 
 
 def _prune(bucket_map: dict[str, deque[float]], cutoff: float) -> None:

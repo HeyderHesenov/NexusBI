@@ -42,7 +42,7 @@ export function LoginPage() {
     try {
       if (mode === 'login') await login(email, password)
       else await register(email, password, fullName)
-      saveHint(email, password)
+      saveHint(email)
       navigate('/')
     } catch (err: unknown) {
       const fallback =
@@ -63,7 +63,7 @@ export function LoginPage() {
   const fillFromHint = useCallback(() => {
     if (!hint) return
     setEmail(hint.email)
-    setPassword(hint.password)
+    // Password is never stored; the user types it. Focus stays for them to do so.
     setShowHint(false)
   }, [hint])
 

@@ -5,11 +5,16 @@ Design constraints:
 - All CPU-bound work (seeding, prep, fit) runs via ``asyncio.to_thread``.
 - Table names are allowlisted (demo tables or the user's own datasource).
 - SECURITY: the pickle blob is only our own estimator, written by ``train`` and
-  read back from our DB; no endpoint accepts serialized bytes from a client.
+  read back from our DB; no endpoint accepts serialized bytes from a client. As
+  defense in depth it is HMAC-signed with a SECRET_KEY-derived key on write and
+  verified before every ``pickle.loads`` — so even a DB-write compromise can't
+  smuggle a malicious pickle past ``_unwrap_blob`` into code execution.
 """
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import pickle
 import re
 from typing import Any
@@ -17,6 +22,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import NexusBIException, SchemaNotFoundError
 from app.core.logging import get_logger
 from app.db.demo_data import demo_table_names, execute_demo_snapshot
@@ -25,6 +31,40 @@ from app.schemas.automl import MLModelOut
 from app.services import datasource_service
 
 _log = get_logger("nexusbi.automl")
+
+# --- Model-blob integrity (HMAC) ------------------------------------------
+# Stored blob layout: _BLOB_MAGIC + HMAC-SHA256(pickle) + pickle. The key is
+# derived from SECRET_KEY, so rotating SECRET_KEY invalidates blobs (they must be
+# retrained) — the same posture SECURITY.md documents for FERNET_KEY.
+_BLOB_MAGIC = b"NXML1\x00"
+_MAC_LEN = 32
+
+
+def _blob_key() -> bytes:
+    return hashlib.sha256(b"automl-blob\x00" + settings.SECRET_KEY.encode()).digest()
+
+
+def _sign_blob(raw: bytes) -> bytes:
+    """Wrap raw pickle bytes with a magic prefix + HMAC for tamper detection."""
+    mac = hmac.new(_blob_key(), raw, hashlib.sha256).digest()
+    return _BLOB_MAGIC + mac + raw
+
+
+def _unwrap_blob(blob: bytes) -> bytes:
+    """Return the verified pickle bytes, or raise if unsigned/tampered.
+
+    Refusing to unpickle an unverified blob is the whole point — never fall back
+    to loading the raw bytes, or the signature would add no protection.
+    """
+    retrain = NexusBIException("Model bütövlüyü doğrulanmadı — yenidən öyrədin.")
+    if not blob.startswith(_BLOB_MAGIC):
+        raise retrain  # legacy/unsigned or foreign blob
+    body = blob[len(_BLOB_MAGIC):]
+    mac, raw = body[:_MAC_LEN], body[_MAC_LEN:]
+    expected = hmac.new(_blob_key(), raw, hashlib.sha256).digest()
+    if not hmac.compare_digest(mac, expected):
+        raise retrain
+    return raw
 
 MAX_TRAIN_ROWS = 5000
 MAX_PREDICT_ROWS = 100
@@ -229,9 +269,10 @@ def _fit_sync(
         y_test=y_test,
     )
 
-    blob = pickle.dumps(best_model)
-    if len(blob) > MAX_BLOB_BYTES:
+    raw = pickle.dumps(best_model)
+    if len(raw) > MAX_BLOB_BYTES:
         raise NexusBIException("Model həddindən böyükdür.")
+    blob = _sign_blob(raw)
     return {
         "problem_type": problem,
         "best_algo": best_algo,
@@ -517,7 +558,8 @@ def _predict_sync(
     import pandas as pd
 
     # Only our own blob (see module docstring) — never client-supplied bytes.
-    model = pickle.loads(blob)  # noqa: S301
+    # Verify the HMAC before unpickling so a tampered/foreign blob can't execute.
+    model = pickle.loads(_unwrap_blob(blob))  # noqa: S301
     df = pd.DataFrame(rows)
     # A numeric sent as "5" must hit the numeric training column, not become a
     # spurious one-hot ("quantity_5") that reindex would silently zero out. Use the

@@ -33,11 +33,14 @@ os.environ["UPLOAD_DIR"] = _UPLOAD_TMP
 atexit.register(shutil.rmtree, _UPLOAD_TMP, ignore_errors=True)
 
 from app.db.base import Base  # noqa: E402
-from app.db.session import get_db  # noqa: E402
+from app.db.session import enforce_sqlite_foreign_keys, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import *  # noqa: E402,F401,F403
 
 _engine = create_async_engine("sqlite+aiosqlite:///./test_nexusbi.db")
+# The API under test runs on THIS engine (get_db is overridden below), so without
+# the pragma the suite would exercise a database with foreign keys switched off.
+enforce_sqlite_foreign_keys(_engine.sync_engine)
 _Session = async_sessionmaker(_engine, expire_on_commit=False)
 
 

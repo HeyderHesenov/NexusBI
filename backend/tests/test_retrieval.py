@@ -4,6 +4,18 @@ from __future__ import annotations
 from app.ai import client, retrieval
 from app.config import settings
 from app.db.session import AsyncSessionLocal
+from app.models.user import User
+
+
+async def _owner(db, user_id: str) -> str:
+    """`query_embeddings.user_id` is a real FK, so an indexed row needs a real user.
+
+    Spelled out here rather than reusing the registered test user: these tests are
+    about scoping, so the ids have to be readable at the call site.
+    """
+    db.add(User(id=user_id, email=f"{user_id}@nexusbi.io", hashed_password="x"))
+    await db.flush()
+    return user_id
 
 
 async def test_hash_embed_deterministic():
@@ -16,6 +28,7 @@ async def test_hash_embed_deterministic():
 
 async def test_retrieve_is_user_scoped():
     async with AsyncSessionLocal() as db:
+        await _owner(db, "userA")  # "userB" only reads, so it needs no row
         await retrieval.index_text(
             db, user_id="userA", datasource_id=None, kind="query",
             text="region üzrə gəlir", sql="SELECT region, SUM(revenue) FROM sales GROUP BY region",
@@ -54,6 +67,7 @@ async def test_index_text_dedups():
 
         from app.models.query_embedding import QueryEmbedding
 
+        await _owner(db, "dedup")
         for _ in range(3):
             await retrieval.index_text(
                 db, user_id="dedup", datasource_id=None, kind="query", text="eyni sual", sql="SELECT 1",

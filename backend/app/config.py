@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     # Empty => /metrics is only reachable from loopback.
     METRICS_TOKEN: str = Field(default="")
 
+    # Number of trusted reverse proxies in front of the app. 0 (default) => never
+    # trust X-Forwarded-For, so rate-limit keys use the direct peer IP (a client
+    # can't spoof the header). Set to the real proxy count in production so per-IP
+    # throttles see the client's address instead of collapsing to the proxy's IP.
+    TRUSTED_PROXY_HOPS: int = Field(default=0)
+
     # ─── App ───
     DEMO_MODE: bool = Field(default=True)
     CORS_ORIGINS: str = Field(default="http://localhost:5173")

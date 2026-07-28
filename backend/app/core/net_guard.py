@@ -17,11 +17,7 @@ from sqlalchemy.exc import ArgumentError
 from app.core.exceptions import DataSourceConnectionError
 
 
-def _ip_blocked(ip: str) -> bool:
-    try:
-        obj = ipaddress.ip_address(ip)
-    except ValueError:
-        return True  # unparseable — fail closed
+def _addr_blocked(obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     return (
         obj.is_private
         or obj.is_loopback
@@ -30,6 +26,30 @@ def _ip_blocked(ip: str) -> bool:
         or obj.is_multicast
         or obj.is_unspecified
     )
+
+
+def _ip_blocked(ip: str) -> bool:
+    try:
+        obj = ipaddress.ip_address(ip)
+    except ValueError:
+        return True  # unparseable — fail closed
+    if _addr_blocked(obj):
+        return True
+    # An IPv6 address can encapsulate an IPv4 target the top-level flags miss:
+    # IPv4-mapped (::ffff:a.b.c.d), 6to4 (2002::/16) and Teredo (2001:0::/32) all
+    # carry an embedded IPv4 that may route to loopback/private/metadata. Evaluate
+    # it too, so e.g. 2002:a9fe:a9fe:: (6to4 → 169.254.169.254) is still blocked.
+    if isinstance(obj, ipaddress.IPv6Address):
+        embedded: list[ipaddress.IPv4Address] = []
+        if obj.ipv4_mapped is not None:
+            embedded.append(obj.ipv4_mapped)
+        if obj.sixtofour is not None:
+            embedded.append(obj.sixtofour)
+        if obj.teredo is not None:
+            embedded.extend(obj.teredo)  # (server, client) — check both
+        if any(_addr_blocked(e) for e in embedded):
+            return True
+    return False
 
 
 def _assert_public_host(host: str) -> None:
