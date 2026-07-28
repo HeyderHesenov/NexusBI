@@ -203,6 +203,31 @@ def test_every_dbtype_has_a_quoting_path():
             assert quoted.startswith("`"), "MySQL identifiers must use backticks"
 
 
+def test_no_unbounded_upload_read():
+    """`await file.read()` with no size is an OOM waiting for a big enough POST.
+
+    The body is fully materialised before any UPLOAD_MAX_BYTES check can run, so
+    the limit is enforced on memory already spent. upload_service.read_bounded
+    reads in chunks and stops at the limit.
+    """
+    offenders = []
+    for path in _python_files():
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Await):
+                continue
+            call = node.value
+            if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Attribute):
+                continue
+            if call.func.attr == "read" and not call.args and not call.keywords:
+                offenders.append(f"{_module_name(path)}:{node.lineno}")
+
+    assert not offenders, (
+        "Unbounded await ....read() — use upload_service.read_bounded so the size "
+        f"limit is enforced before the bytes are paid for: {offenders}"
+    )
+
+
 def test_no_hand_quoted_table_interpolation():
     """`f'... FROM "{table}"'` is the MySQL bug in source form — ban the shape."""
     offenders = []

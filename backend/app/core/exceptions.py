@@ -57,3 +57,11 @@ class ForbiddenError(NexusBIException):
 
 class RateLimitError(NexusBIException):
     status_code = 429
+
+
+class PayloadTooLargeError(NexusBIException):
+    """Request body exceeds the configured limit. Distinct from a 400 so a client
+    can tell "your file is too big" from "your file is malformed" without parsing
+    localized text — and so a proxy's own 413 and ours agree."""
+
+    status_code = 413

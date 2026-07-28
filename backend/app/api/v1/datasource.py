@@ -42,7 +42,7 @@ async def upload(
     name: str = Form(default=""),
 ) -> DataSourceResponse:
     """Ingest a CSV/Excel file into a SQLite-backed datasource owned by the user."""
-    content = await file.read()
+    content = await upload_service.read_bounded(file)
     # pandas parse + to_sql are blocking/CPU-bound — keep them off the event loop.
     conn_str, _table, _rows = await asyncio.to_thread(
         upload_service.ingest_file, file.filename or "data.csv", content
@@ -66,7 +66,7 @@ async def refresh_data(
     query, widget, metric, RLS rule, and RAG exemplar), this keeps the id so all
     of them stay wired — only the underlying data is swapped.
     """
-    content = await file.read()
+    content = await upload_service.read_bounded(file)
     ds, rows, warnings = await svc.replace_data(
         db, user.id, datasource_id, file.filename or "data.csv", content, cache
     )
