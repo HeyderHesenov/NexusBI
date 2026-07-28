@@ -255,6 +255,10 @@ Aç: **http://localhost:5173**  ·  API docs: **http://localhost:8000/docs**
 
 > Brauzerdə **`localhost`** işlət, `127.0.0.1` yox — CORS yalnız `localhost`-a icazə verir.
 
+`DEMO_MODE` **default olaraq `false`-dur** — unudulmuş bir dəyişən demo qapılarını
+production-a buraxmasın deyə. Yuxarıdakı `cp .env.example .env` onu lokal üçün açır;
+`docker-compose.yml`-dəki dev stack isə özü açıq şəkildə verir.
+
 Demo rejimində (`DEMO_MODE=true`) əlavə konfiqurasiya tələb olunmur — AI mühərriki
 açarı boş olsa da tətbiq determinik offline rule-based mühərriklə işləyir; `DATABASE_URL`
 avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olunur:
@@ -333,7 +337,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | `SECRET_KEY` / `ACCESS_TOKEN_EXPIRE_MINUTES` / `REFRESH_TOKEN_EXPIRE_DAYS` | JWT açarı (prod ≥32) · access müddət (default 30 dəq) · refresh müddət |
 | `METRICS_TOKEN` | `/metrics` üçün bearer (prod; demo-da loopback) |
 | `FERNET_KEY` | Datasource & inteqrasiya sirlərinin şifrələnməsi (prod məcburi) |
-| `DEMO_MODE` / `CORS_ORIGINS` | Demo SQLite · icazəli origin-lər |
+| `DEMO_MODE` / `CORS_ORIGINS` | Demo SQLite (**default `false`**; prod-da açma) · icazəli origin-lər |
 
 Frontend (`frontend/.env`): `VITE_API_URL`.
 

@@ -128,6 +128,23 @@ async def test_login_rate_limited(client: AsyncClient):
     assert last.status_code == 429, last.text
 
 
+# ─── Deployment defaults ───
+def test_demo_mode_is_off_by_default(monkeypatch):
+    """An operator who sets nothing must NOT get demo mode.
+
+    DEMO_MODE gates 24 behaviours, several of which are unsafe outside a demo:
+    /docs and /openapi.json are published, error responses carry the generated
+    SQL, /metrics is reachable from loopback, an unlimited demo login is seeded,
+    and a missing SECRET_KEY is silently replaced with an ephemeral one instead
+    of refusing to start. Defaulting it on means forgetting one env var ships all
+    of that. `_env_file=None` so the repo's dev .env can't mask the default.
+    """
+    from app.config import Settings
+
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    assert Settings(_env_file=None).DEMO_MODE is False
+
+
 # ─── Rate-limit client-IP resolution (trusted proxy) ───
 def _fake_request(xff, peer="10.0.0.1"):
     from starlette.requests import Request

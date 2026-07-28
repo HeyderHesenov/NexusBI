@@ -13,11 +13,17 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-# Force demo mode + a throwaway sqlite file before app import.
-os.environ["DEMO_MODE"] = "true"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_nexusbi.db"
-os.environ["SECRET_KEY"] = "test-secret"
-os.environ["FERNET_KEY"] = "PqQ8m3Vz3yQv8r9Xk2pYwLp1cQv4nF7sJ0aB6dE9gH0="
+# Demo mode + a throwaway sqlite file, set before app import.
+#
+# `setdefault`, not assignment: the suite's default is demo mode, but a caller
+# must be able to run the whole thing with `DEMO_MODE=false` to see what breaks
+# outside the demo — that mode is what a real deployment runs, and forcing the
+# variable here is how it stayed untested. SECRET_KEY is >= 32 chars because
+# `main._assert_production_secrets` rejects anything shorter when demo is off.
+os.environ.setdefault("DEMO_MODE", "true")
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test_nexusbi.db")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-at-least-32-characters-long")
+os.environ.setdefault("FERNET_KEY", "PqQ8m3Vz3yQv8r9Xk2pYwLp1cQv4nF7sJ0aB6dE9gH0=")
 # Hermetic tests: no real AI/network. Empties the key so embeddings use the
 # deterministic offline fallback and Text2SQL uses rule-based — identical to CI.
 os.environ["AI_API_KEY"] = ""

@@ -32,6 +32,11 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://user:pass@db:5432/nexusbi
       REDIS_URL: redis://redis:6379/0
+      # This is the DEV stack (bind-mounted source, --reload, no TLS). Demo mode
+      # is stated here rather than inherited from .env so the dev experience does
+      # not depend on which variables a given checkout happens to set. The
+      # application default is false; a production compose must not set this.
+      DEMO_MODE: "true"
     depends_on:
       db:
         condition: service_healthy

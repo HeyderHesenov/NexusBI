@@ -86,7 +86,13 @@ class Settings(BaseSettings):
     TRUSTED_PROXY_HOPS: int = Field(default=0)
 
     # ─── App ───
-    DEMO_MODE: bool = Field(default=True)
+    # Off by default: this flag gates 24 behaviours and several are unsafe outside
+    # a demo (published /docs + /openapi.json, generated SQL echoed in error
+    # responses, /metrics open to loopback, a seeded unlimited login, and an
+    # ephemeral SECRET_KEY instead of refusing to start). Defaulting it on means a
+    # forgotten env var ships all of that. Dev/demo turns it on explicitly — see
+    # `.env.example` and the `backend` service in `docker-compose.yml`.
+    DEMO_MODE: bool = Field(default=False)
     CORS_ORIGINS: str = Field(default="http://localhost:5173")
     # ISO 4217 code applied to money-looking chart columns (e.g. "AZN", "USD").
     # Empty => charts show plain numbers; column names can't reveal the currency,
