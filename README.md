@@ -309,7 +309,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` · `/checkout` | Planlar · istifadə · mock upgrade · Stripe (gated) |
 | GET/POST | `/api/v1/search` · `/search/reindex` | Qlobal semantik axtarış (asset) · indeks yenilə |
 | POST/GET/DELETE | `/api/v1/saved/{id}/subscriptions` | Planlı PDF/Excel hesabat çatdırılması (email) |
-| GET | `/health` · `/metrics` | Sağlamlıq · Prometheus metrikləri |
+| GET | `/live` · `/ready` · `/health` · `/metrics` | Proses canlıdır (container HEALTHCHECK) · trafik qəbul edə bilər (DB + miqrasiya; uğursuzluqda 503) · `/live`-ın aliası · Prometheus metrikləri |
 
 ---
 

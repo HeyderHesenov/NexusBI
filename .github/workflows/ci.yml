@@ -90,11 +90,14 @@ jobs:
         run: |
           (cd backend && alembic upgrade head)
           (cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 &)
+          # /ready, not /health: it also asserts the database is reachable and at
+          # the migration head, so "booted but unmigrated" fails here instead of
+          # surfacing as confusing 500s inside the E2E run.
           for i in $(seq 1 30); do
-            curl -sf http://localhost:8000/health && break
+            curl -sf http://localhost:8000/ready && break
             sleep 1
           done
-          curl -sf http://localhost:8000/health || (echo "backend failed to start" && exit 1)
+          curl -sf http://localhost:8000/ready || (echo "backend not ready" && exit 1)
           cd frontend && npm run test:e2e
       - name: Upload Playwright report
         if: failure()

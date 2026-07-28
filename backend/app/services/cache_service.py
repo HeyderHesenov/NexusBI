@@ -58,6 +58,15 @@ class CacheService:
         except Exception:
             pass
 
+    async def ping(self) -> bool:
+        """True if Redis answers. Used by the readiness probe, never on a hot path."""
+        if not self._client:
+            return False
+        try:
+            return bool(await self._client.ping())
+        except Exception:
+            return False
+
     async def aclose(self) -> None:
         """Close the underlying Redis connection (for transient/per-tick clients)."""
         if self._client:

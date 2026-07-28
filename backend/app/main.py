@@ -321,9 +321,28 @@ def create_app() -> FastAPI:
         _apply_security_headers(resp)
         return resp
 
+    @app.get("/live", tags=["health"])
+    async def live() -> dict[str, object]:
+        """Process liveness. Deliberately touches nothing — see `core.health`."""
+        return {"status": "ok", "demo_mode": settings.DEMO_MODE}
+
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, object]:
+        """Alias of /live, kept because CI and deployed HEALTHCHECKs curl it."""
         return {"status": "ok", "demo_mode": settings.DEMO_MODE}
+
+    @app.get("/ready", tags=["health"])
+    async def ready(request: Request) -> Response:
+        """Readiness: 200 when this instance can serve, 503 when it cannot."""
+        from app.core import health as health_probe
+
+        ok, components = await health_probe.readiness(
+            getattr(request.app.state, "cache", None)
+        )
+        return JSONResponse(
+            status_code=200 if ok else 503,
+            content={"status": "ready" if ok else "not_ready", "components": components},
+        )
 
     @app.get("/metrics", tags=["health"])
     async def prometheus_metrics(request: Request) -> Response:

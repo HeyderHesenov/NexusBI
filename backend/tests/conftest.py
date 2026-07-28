@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 # Demo mode + a throwaway sqlite file, set before app import.
@@ -38,6 +38,7 @@ _UPLOAD_TMP = tempfile.mkdtemp(prefix="nexusbi_test_uploads_")
 os.environ["UPLOAD_DIR"] = _UPLOAD_TMP
 atexit.register(shutil.rmtree, _UPLOAD_TMP, ignore_errors=True)
 
+from app.core.health import _migration_heads  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.db.session import enforce_sqlite_foreign_keys, get_db  # noqa: E402
 from app.main import app  # noqa: E402
@@ -71,6 +72,18 @@ async def _schema() -> AsyncGenerator[None, None]:
     rate_limit._HITS.clear()
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # create_all writes no alembic_version row, but /ready compares the
+        # database's revision against the migration head. Stamp it so the test
+        # database has the shape a migrated deployment does — and re-stamp every
+        # test, since drop_all leaves this table (it is not in the metadata).
+        await conn.execute(
+            text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL)")
+        )
+        await conn.execute(text("DELETE FROM alembic_version"))
+        for head in _migration_heads():
+            await conn.execute(
+                text("INSERT INTO alembic_version (version_num) VALUES (:v)"), {"v": head}
+            )
     yield
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
