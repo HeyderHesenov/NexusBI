@@ -174,6 +174,60 @@ def test_client_ip_uses_trusted_proxy_hop(monkeypatch):
     assert rate_limit._client_ip(_fake_request(None)) == "10.0.0.1"
 
 
+async def test_ip_limit_is_shared_across_workers_when_redis_is_up():
+    """Two workers must count into one bucket.
+
+    Per-process counters mean the effective limit is `limit x workers`, and it
+    resets on every deploy — so the login throttle a four-worker deployment
+    advertises as 10/min is really 40/min, and zero after a restart.
+    """
+    import uuid
+
+    from app.core import rate_limit
+    from app.services.cache_service import build_cache_service
+
+    worker_a = await build_cache_service()
+    if not worker_a.available:
+        pytest.skip("Redis unavailable — the in-process fallback is covered below")
+    worker_b = await build_cache_service()
+    bucket = f"test_shared_{uuid.uuid4().hex}"
+    try:
+        for _ in range(3):
+            assert await rate_limit._allow(bucket, "1.2.3.4", 3, 60, worker_a)
+        # The 4th hit lands on a DIFFERENT worker and is still refused.
+        assert not await rate_limit._allow(bucket, "1.2.3.4", 3, 60, worker_b)
+        # And the in-process map was never touched, so Redis really did the counting.
+        assert bucket not in rate_limit._HITS
+    finally:
+        await worker_a.aclose()
+        await worker_b.aclose()
+
+
+async def test_ip_limit_falls_back_in_process_without_redis():
+    """No Redis is a degraded limiter, never an absent one."""
+    from app.core import rate_limit
+
+    for _ in range(2):
+        assert await rate_limit._allow("test_fallback", "9.9.9.9", 2, 60, None)
+    assert not await rate_limit._allow("test_fallback", "9.9.9.9", 2, 60, None)
+
+
+async def test_ip_limit_falls_back_when_redis_errors():
+    """A Redis blip must not fail open — that is the same as having no limiter."""
+    from app.core import rate_limit
+
+    class _Broken:
+        available = True
+
+        async def incr(self, key: str, ttl: int) -> int | None:
+            return None  # what CacheService.incr returns when Redis does not answer
+
+    broken = _Broken()
+    for _ in range(2):
+        assert await rate_limit._allow("test_broken", "8.8.8.8", 2, 60, broken)
+    assert not await rate_limit._allow("test_broken", "8.8.8.8", 2, 60, broken)
+
+
 # ─── Demo NL pipeline: table allowlist (defense in depth) ───
 async def test_demo_pipeline_enforces_table_allowlist(client: AsyncClient, auth: dict, monkeypatch):
     from app.ai.types import Text2SQLResult

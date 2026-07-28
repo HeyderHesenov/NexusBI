@@ -7,7 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 from app.core.logging import get_logger
-from app.core.rate_limit import check_ip
+from app.core.rate_limit import cache_of, check_ip
 from app.core.security import assert_access_token, decode_access_token
 from app.db.session import AsyncSessionLocal
 from app.models.dashboard import Dashboard
@@ -81,7 +81,7 @@ async def dashboard_ws(ws: WebSocket, dashboard_id: str) -> None:
     # Throttle connection attempts per IP so share tokens can't be brute-forced
     # over a flood of WebSocket handshakes.
     ip = ws.client.host if ws.client else "unknown"
-    if not check_ip("ws_connect", ip, limit=_IP_CONNECTS, window_seconds=60):
+    if not await check_ip("ws_connect", ip, limit=_IP_CONNECTS, window_seconds=60, cache=cache_of(ws)):
         await ws.close(code=4429)
         return
     access = await _resolve_access(
@@ -134,7 +134,7 @@ async def dashboard_ws(ws: WebSocket, dashboard_id: str) -> None:
                     continue
                 # Throttle persisted chat so a share-link guest can't flood the
                 # dashboard_comments table (per-IP, bounded in-memory limiter).
-                if not check_ip("ws_chat", ip, limit=20, window_seconds=10):
+                if not await check_ip("ws_chat", ip, limit=20, window_seconds=10, cache=cache_of(ws)):
                     await ws.send_json({"type": "throttled"})
                     continue
                 async with AsyncSessionLocal() as db:
@@ -190,7 +190,7 @@ async def user_ws(ws: WebSocket) -> None:
     an instant full-mailbox IDOR.
     """
     ip = ws.client.host if ws.client else "unknown"
-    if not check_ip("ws_connect", ip, limit=_IP_CONNECTS, window_seconds=60):
+    if not await check_ip("ws_connect", ip, limit=_IP_CONNECTS, window_seconds=60, cache=cache_of(ws)):
         await ws.close(code=4429)
         return
     user_id = await _resolve_user_access(ws.query_params.get("ticket"))
@@ -200,7 +200,7 @@ async def user_ws(ws: WebSocket) -> None:
     # Post-auth, per-USER cap. The IP bucket above is shared by everyone behind one
     # office NAT, so it can't be what bounds an app-lifetime socket — hitting it
     # would kill the badge for a whole team.
-    if not check_ip("user_ws", user_id, limit=20, window_seconds=60):
+    if not await check_ip("user_ws", user_id, limit=20, window_seconds=60, cache=cache_of(ws)):
         await ws.close(code=4429)
         return
 
@@ -273,7 +273,7 @@ async def _resolve_room_access(
 async def room_ws(ws: WebSocket, room_key: str) -> None:
     """Team-chat WebSocket for a workspace channel or a 1:1 DM room."""
     ip = ws.client.host if ws.client else "unknown"
-    if not check_ip("ws_connect", ip, limit=_IP_CONNECTS, window_seconds=60):
+    if not await check_ip("ws_connect", ip, limit=_IP_CONNECTS, window_seconds=60, cache=cache_of(ws)):
         await ws.close(code=4429)
         return
     access = await _resolve_room_access(
@@ -304,7 +304,7 @@ async def room_ws(ws: WebSocket, room_key: str) -> None:
                 text = (msg.get("text") or "").strip()
                 if not text:
                     continue
-                if not check_ip("ws_chat", ip, limit=20, window_seconds=10):
+                if not await check_ip("ws_chat", ip, limit=20, window_seconds=10, cache=cache_of(ws)):
                     await ws.send_json({"type": "throttled"})
                     continue
                 async with AsyncSessionLocal() as db:
@@ -315,10 +315,10 @@ async def room_ws(ws: WebSocket, room_key: str) -> None:
                     await notify.publish_message(db, message)
                 # The assistant replies out-of-band so the user's post never waits on AI.
                 if ai_chat_service.is_ai_trigger(room_key, text):
-                    ai_chat_service.spawn_reply(room_key, user_id, text)
+                    ai_chat_service.spawn_reply(room_key, user_id, text, cache_of(ws))
             elif kind == "typing":
                 # Ephemeral — no DB, no persistence; peers age it out client-side.
-                if check_ip("ws_typing", ip, limit=30, window_seconds=10):
+                if await check_ip("ws_typing", ip, limit=30, window_seconds=10, cache=cache_of(ws)):
                     await hub.broadcast(
                         room_key,
                         {"type": "typing", "user_id": user_id, "name": name},

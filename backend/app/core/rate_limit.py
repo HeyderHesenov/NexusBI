@@ -1,9 +1,10 @@
 """Lightweight IP-based rate limiting for unauthenticated / public endpoints.
 
-Sliding-window counter kept in process memory — adequate for the single-worker
-demo deployment and a meaningful brute-force speed bump in any case. For a
-multi-worker production deploy back this with Redis (shared `app.state.cache`)
-so buckets are shared across workers and survive restarts.
+Buckets live in Redis (the shared `app.state.cache`) when it is reachable, so a
+multi-worker deployment enforces one limit rather than one per worker, and a
+restart does not hand every client a fresh allowance. Without Redis — or when it
+fails to answer — the counter falls back to a per-process sliding window, which
+is still a limit; failing open would be the same as having no limiter.
 Authenticated AI endpoints use the per-user monthly quota in `billing` instead.
 
 Client-IP resolution honors `TRUSTED_PROXY_HOPS`: behind a reverse proxy the
@@ -17,6 +18,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict, deque
+from typing import Any
 
 from fastapi import Request
 
@@ -59,8 +61,8 @@ def _prune(bucket_map: dict[str, deque[float]], cutoff: float) -> None:
         del bucket_map[ip]
 
 
-def _allow(bucket: str, ip: str, limit: int, window_seconds: int) -> bool:
-    """Core sliding-window check. True if allowed (and records the hit)."""
+def _allow_in_process(bucket: str, ip: str, limit: int, window_seconds: int) -> bool:
+    """Sliding-window check against this process's own map."""
     now = time.monotonic()
     cutoff = now - window_seconds
     bucket_map = _HITS[bucket]
@@ -75,11 +77,44 @@ def _allow(bucket: str, ip: str, limit: int, window_seconds: int) -> bool:
     return True
 
 
+async def _allow(
+    bucket: str, ip: str, limit: int, window_seconds: int, cache: Any | None = None
+) -> bool:
+    """True if allowed (and records the hit). Shared across workers via Redis.
+
+    Per-process counting makes the advertised limit a per-worker limit: a
+    four-worker deployment enforcing 10 logins/min actually allows 40, and every
+    restart resets it. When a cache is available the bucket lives in Redis, so
+    the number is the number no matter which worker answers.
+
+    Two deliberate fallbacks, both to the in-process counter rather than to
+    allowing the request: no Redis configured, and Redis failing to answer. A
+    limiter that stops counting is the same as no limiter at all.
+
+    The Redis window is fixed and anchored at the first hit of a burst, where the
+    local one slides. The difference only shifts when a bucket resets, never how
+    many requests it admits, and one round trip per check is worth that.
+    """
+    if cache is not None and getattr(cache, "available", False):
+        count = await cache.incr(f"nexusbi:rl:{bucket}:{ip}", window_seconds)
+        if count is not None:
+            return count <= limit
+    return _allow_in_process(bucket, ip, limit, window_seconds)
+
+
+def cache_of(conn: Any | None) -> Any | None:
+    """The app-wide cache behind a Request/WebSocket, or None before startup."""
+    app = getattr(conn, "app", None)
+    return getattr(getattr(app, "state", None), "cache", None)
+
+
 def rate_limit(bucket: str, limit: int, window_seconds: int):
     """Return a FastAPI dependency enforcing `limit` requests per window per IP."""
 
-    def _dep(request: Request) -> None:
-        if not _allow(bucket, _client_ip(request), limit, window_seconds):
+    async def _dep(request: Request) -> None:
+        if not await _allow(
+            bucket, _client_ip(request), limit, window_seconds, cache_of(request)
+        ):
             raise RateLimitError(
                 "Çox sayda cəhd. Bir az sonra yenidən yoxlayın.",
                 detail=f"limit={limit}/{window_seconds}s",
@@ -88,9 +123,12 @@ def rate_limit(bucket: str, limit: int, window_seconds: int):
     return _dep
 
 
-def check_ip(bucket: str, ip: str, limit: int, window_seconds: int) -> bool:
+async def check_ip(
+    bucket: str, ip: str, limit: int, window_seconds: int, cache: Any | None = None
+) -> bool:
     """Non-dependency variant for WebSocket / manual call sites.
 
-    Returns True if allowed, False if the IP is over the limit.
+    Returns True if allowed, False if the IP is over the limit. Pass the app's
+    cache (``cache_of(websocket)``) to share the bucket across workers.
     """
-    return _allow(bucket, ip, limit, window_seconds)
+    return await _allow(bucket, ip, limit, window_seconds, cache)

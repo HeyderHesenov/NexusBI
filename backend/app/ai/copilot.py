@@ -801,7 +801,9 @@ class _ToolContext:
                 return {"error": f"Bir söhbətdə '{name}' ən çox {_HEAVY_LIMIT} dəfə icra oluna bilər."}
             self.heavy_calls[name] = self.heavy_calls.get(name, 0) + 1
         bucket = _IP_BUCKETS.get(name)
-        if bucket and self.client_ip and not check_ip(bucket[0], self.client_ip, bucket[1], bucket[2]):
+        if bucket and self.client_ip and not await check_ip(
+            bucket[0], self.client_ip, bucket[1], bucket[2], cache=self.cache
+        ):
             return {"error": "Bu əməliyyat üçün sürət həddi keçildi — bir az sonra yenidən cəhd edin."}
         return await getattr(self, name)(args)
 

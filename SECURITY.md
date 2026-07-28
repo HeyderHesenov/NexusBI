@@ -84,10 +84,13 @@ Dependabot alerts + security updates, and CodeQL code scanning.
   cookie with CSRF protection is the intended hardening step. It touches auth
   end-to-end (login/refresh/logout/CORS/embed) and is deferred to a dedicated,
   fully-tested change rather than bundled here.
-- **Rate-limit backing store.** Limits are per-process in-memory — correct for the
-  single-worker demo. A multi-worker production deploy should back them with Redis
-  (shared `app.state.cache`) so buckets are shared across workers and survive
-  restarts. `TRUSTED_PROXY_HOPS` should be set to the real proxy count there.
+- **Rate-limit backing store.** Buckets now live in Redis (the shared
+  `app.state.cache`) when it is reachable, so N workers enforce one limit rather
+  than N × limit, and a restart no longer hands every client a fresh allowance.
+  Without Redis — or when it fails to answer — the counter falls back to a
+  per-process sliding window rather than failing open. Redis therefore *tightens*
+  the limit and is not a dependency. Set `TRUSTED_PROXY_HOPS` to the real proxy
+  count in production, or every client collapses into the proxy's bucket.
 
 ## Reporting a vulnerability
 Open a private security advisory on GitHub or email the maintainer. Please do not

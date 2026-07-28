@@ -34,6 +34,7 @@ from app.models.user import User
 from app.realtime import notify
 from app.realtime.hub import hub
 from app.services import chat_service
+from app.services.cache_service import CacheService
 
 _log = structlog.get_logger(__name__)
 
@@ -175,12 +176,20 @@ async def _post_error(room_key: str) -> None:
 
 
 # ─── Plan (triggered by a chat message) ───
-def spawn_reply(room_key: str, requester_id: str, content: str) -> asyncio.Task:
-    """Fire-and-forget: never blocks or fails the user's own message post."""
-    return _spawn(_plan_task(room_key, requester_id, content))
+def spawn_reply(
+    room_key: str, requester_id: str, content: str, cache: CacheService | None = None
+) -> asyncio.Task:
+    """Fire-and-forget: never blocks or fails the user's own message post.
+
+    `cache` only backs the per-requester throttle below; planning itself does not
+    use it. Mirrors `spawn_execute`, which already takes one.
+    """
+    return _spawn(_plan_task(room_key, requester_id, content, cache))
 
 
-async def _plan_task(room_key: str, requester_id: str, content: str) -> None:
+async def _plan_task(
+    room_key: str, requester_id: str, content: str, cache: CacheService | None = None
+) -> None:
     pulse: asyncio.Task | None = None
     try:
         async with AsyncSessionLocal() as db:
@@ -189,7 +198,9 @@ async def _plan_task(room_key: str, requester_id: str, content: str) -> None:
             # the AI, and a flooding requester is throttled without fanfare.
             if requester is None or not has_ai_chat(requester.subscription_tier):
                 return
-            if not check_ip("ai_chat_plan", requester_id, limit=6, window_seconds=60):
+            if not await check_ip(
+                "ai_chat_plan", requester_id, limit=6, window_seconds=60, cache=cache
+            ):
                 return
             assistant = await get_or_create_assistant(db)
             await db.commit()  # the assistant row must survive even if planning fails

@@ -58,6 +58,28 @@ class CacheService:
         except Exception:
             pass
 
+    # INCR then EXPIRE only on creation, as one atomic step. A pipeline would not
+    # do: if the process died between the two commands the key would never expire
+    # and the caller would be locked out permanently.
+    _INCR_WITH_TTL = """
+        local n = redis.call('INCR', KEYS[1])
+        if n == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+        return n
+    """
+
+    async def incr(self, key: str, ttl: int) -> int | None:
+        """Increment `key`, setting `ttl` when it is created. New count, or None.
+
+        None means "Redis did not answer" — distinct from a real count, so a
+        caller can fall back instead of reading a failure as zero.
+        """
+        if not self._client:
+            return None
+        try:
+            return int(await self._client.eval(self._INCR_WITH_TTL, 1, key, ttl))
+        except Exception:
+            return None
+
     async def ping(self) -> bool:
         """True if Redis answers. Used by the readiness probe, never on a hot path."""
         if not self._client:
