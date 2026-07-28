@@ -46,6 +46,13 @@ Dependabot alerts + security updates, and CodeQL code scanning.
   token; interactive API docs disabled outside demo — `app/main.py`.
 - Datasource connection strings encrypted at rest (Fernet); strong-secret startup
   checks in production.
+- Losing workspace access closes the chat sockets you already hold. A room is
+  authorised once, at connect, and never re-checked, so deleting the membership row
+  alone left the socket streaming full message bodies until the client happened to
+  disconnect. The hang-up is published over Redis so it reaches sockets held by
+  *other* workers too — rooms live in per-process memory, so a local-only eviction
+  covered whichever worker happened to serve the DELETE and no others —
+  `app/realtime/hub.py`, `app/realtime/bus.py`.
 - AutoML model blobs (`ml_models.model_blob`) are pickles of estimators trained
   by the server itself; they are written only by `automl_service.train`, read back
   only from our own database, never accepted from a client, and excluded from every

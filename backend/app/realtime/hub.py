@@ -48,6 +48,13 @@ class ConnectionHub:
     def __init__(self) -> None:
         self._rooms: dict[str, set[Connection]] = {}
         self._lock = asyncio.Lock()
+        # Set at startup when Redis is reachable. Only eviction uses it — see
+        # `realtime.bus` for why broadcasts still stay local.
+        self._cache: Any | None = None
+
+    def bind_cache(self, cache: Any | None) -> None:
+        """Attach the app-wide cache so eviction can reach other workers."""
+        self._cache = cache
 
     def presence(self, room: str) -> list[dict[str, Any]]:
         return [asdict(c.participant) for c in self._rooms.get(room, set())]
@@ -97,13 +104,27 @@ class ConnectionHub:
 
     async def evict(self, room_prefix: str, user_ids: set[str] | None = None) -> int:
         """Close live sockets in rooms matching ``room_prefix``, for ``user_ids`` (or
-        everyone when None). Returns how many were closed.
+        everyone when None). Returns how many were closed **on this worker**.
 
         Rooms authorise once, at connect: ``room_ws`` checks access before accepting
         and every later broadcast just goes to whoever is in the set. So losing
         access has to actively hang up, or a removed member keeps receiving full
         message bodies until they happen to disconnect.
+
+        Rooms are per-process, so closing locally only covers the sockets that
+        happened to land on the worker handling the request. The published command
+        is what makes the other workers hang up too; without Redis there is only
+        one worker and local is complete. The return value stays local on purpose —
+        it counts what this process did, not what the cluster will do.
         """
+        closed = await self.evict_local(room_prefix, user_ids)
+        from app.realtime import bus
+
+        await bus.publish_evict(self._cache, room_prefix, user_ids)
+        return closed
+
+    async def evict_local(self, room_prefix: str, user_ids: set[str] | None = None) -> int:
+        """Close matching sockets held by THIS process. Idempotent."""
         doomed: list[tuple[str, Connection]] = []
         async with self._lock:
             for room, conns in self._rooms.items():

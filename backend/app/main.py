@@ -184,6 +184,16 @@ async def lifespan(app: FastAPI):
     except Exception as exc:  # noqa: BLE001 — never block startup on seeding
         log.warning("assistant_seed_failed", error=str(exc))
     background_tasks: list[asyncio.Task] = []
+    # Eviction must reach sockets held by OTHER workers: a room authorises once at
+    # connect, so a removed member keeps receiving messages anywhere this worker
+    # cannot see. Inert without Redis, where there is only one worker anyway.
+    from app.realtime import bus
+    from app.realtime.hub import hub
+
+    hub.bind_cache(app.state.cache)
+    background_tasks.append(
+        asyncio.create_task(bus.run_evict_subscriber(hub, app.state.cache))
+    )
     if settings.SCHEDULER_ENABLED:
         from app.services.scheduler import run_loop
 

@@ -1,7 +1,9 @@
 """Redis cache wrapper. Degrades gracefully when Redis is unavailable."""
 from __future__ import annotations
 
+import asyncio
 import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 import redis.asyncio as aioredis
@@ -121,6 +123,48 @@ class CacheService:
             return bool(await self._client.eval(self._RELEASE_IF_OWNER, 1, key, token))
         except Exception:
             return False
+
+    async def publish(self, channel: str, payload: Any) -> bool:
+        """Fan a JSON payload out to every subscriber. False if Redis is absent."""
+        if not self._client:
+            return False
+        try:
+            await self._client.publish(channel, json.dumps(payload, default=str))
+            return True
+        except Exception:
+            return False
+
+    async def subscribe(
+        self, channel: str, ready: asyncio.Event | None = None
+    ) -> AsyncIterator[Any]:
+        """Yield decoded payloads published to `channel` until cancelled.
+
+        `ready` is set once the subscription is live. Redis pub/sub drops anything
+        published before a subscriber attaches, so a caller that publishes and then
+        expects delivery has to wait for it — otherwise the test (or the startup
+        race) silently loses the first message.
+        """
+        if not self._client:
+            if ready is not None:
+                ready.set()
+            return
+        pubsub = self._client.pubsub()
+        try:
+            await pubsub.subscribe(channel)
+            if ready is not None:
+                ready.set()
+            async for raw in pubsub.listen():
+                if raw.get("type") != "message":
+                    continue  # subscribe/unsubscribe confirmations
+                try:
+                    yield json.loads(raw["data"])
+                except (ValueError, TypeError):
+                    continue  # a malformed publish must not end the subscription
+        finally:
+            try:
+                await pubsub.aclose()
+            except Exception:
+                pass
 
     async def ping(self) -> bool:
         """True if Redis answers. Used by the readiness probe, never on a hot path."""
