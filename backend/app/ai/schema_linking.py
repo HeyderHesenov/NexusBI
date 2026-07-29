@@ -121,7 +121,7 @@ async def _descriptor_embeddings(
     # Model + hash-dim in the key: changing either invalidates the cache instead of
     # returning old-dimension vectors that would mismatch a fresh query embedding.
     sig = f"{settings.EMBEDDING_MODEL}|{settings.RAG_HASH_DIM}"
-    key = "schemalink:" + hashlib.sha1((sig + "\n" + joined).encode()).hexdigest()
+    key = "schemalink:" + hashlib.sha256((sig + "\n" + joined).encode()).hexdigest()
     if cache is not None:
         hit = await cache.get(key)
         if isinstance(hit, dict) and all(t in hit for t in tables):

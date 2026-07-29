@@ -33,7 +33,7 @@ def _cache_key(
     # User-scoped: two users can have different metrics AND different row-level
     # security rules, so a shared cache key could leak RLS-filtered rows.
     raw = f"{user_id}|{nl_query.strip().lower()}|{extra_context}"
-    h = hashlib.sha1(raw.encode()).hexdigest()
+    h = hashlib.sha256(raw.encode()).hexdigest()
     return f"qcache:{datasource_id or 'demo'}:{h}"
 
 _engine = Text2SQLEngine()
@@ -49,7 +49,7 @@ def _sqlgen_key(schema_text: str, dialect: str, extra_context: str, nl_query: st
     retry) for identical questions over the same schema/metric context.
     """
     raw = f"{dialect}|{schema_text}|{extra_context}|{nl_query.strip().lower()}"
-    return f"sqlgen:{hashlib.sha1(raw.encode()).hexdigest()}"
+    return f"sqlgen:{hashlib.sha256(raw.encode()).hexdigest()}"
 
 
 async def _generate_sql_cached(
