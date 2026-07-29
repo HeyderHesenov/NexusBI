@@ -175,10 +175,16 @@ step "Checking the WebSocket upgrade survives the proxy"
 TICKET="$(curl -sf -X POST "$BASE_URL/api/v1/chat/user-ticket" \
   -H "Authorization: Bearer $TOKEN" \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["ticket"])')"
-WS_CODE="$(curl -sS -o /dev/null -w '%{http_code}' \
+# --max-time, because curl has no idea it is done. The status line is all this
+# check wants, but after a 101 the socket stays open by design and curl waits on
+# a body that is never coming — the first passing run sat here for 40 seconds
+# until something else closed the connection. Unbounded, a socket that stays
+# open would burn the whole job timeout and report nothing. Non-zero exit is
+# expected on that cutoff and %{http_code} still carries the status curl saw.
+WS_CODE="$(curl -sS --max-time 10 -o /dev/null -w '%{http_code}' \
   -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
   -H 'Sec-WebSocket-Version: 13' -H "Sec-WebSocket-Key: $(ws_nonce)" \
-  "$BASE_URL/ws/user?ticket=$TICKET")"
+  "$BASE_URL/ws/user?ticket=$TICKET" || true)"
 [ "$WS_CODE" = "101" ] || die "WebSocket handshake returned $WS_CODE, expected 101"
 pass "/ws/user completes the upgrade handshake through Caddy"
 
