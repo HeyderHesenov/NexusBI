@@ -52,6 +52,37 @@ def _assert_production_secrets() -> None:
         raise RuntimeError("AI_API_KEY must be set in production.")
 
 
+def _demo_model_signing_key() -> str:
+    """A random-per-installation signing key for demo, persisted beside uploads.
+
+    Trained AutoML models have to outlive a restart or the whole studio is dead
+    on a demo host — but the key that verifies them must not be a constant in the
+    repo, or a DB-write compromise could forge a blob and reach pickle.loads. So
+    mint one on first boot and keep it on disk next to the data it protects.
+
+    A read-only or missing directory is not fatal: fall back to an in-process key
+    and say so. Models then still verify within this process and are refused after
+    a restart, which is the current behaviour, not a regression.
+    """
+    import secrets as _secrets
+    from pathlib import Path
+
+    path = Path(settings.UPLOAD_DIR) / ".model_signing_key"
+    try:
+        if path.exists():
+            existing = path.read_text(encoding="utf-8").strip()
+            if existing:
+                return existing
+        key = _secrets.token_urlsafe(48)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(key, encoding="utf-8")
+        path.chmod(0o600)
+        return key
+    except OSError as exc:
+        log.warning("demo_model_key_unpersisted", error=str(exc)[:200])
+        return _secrets.token_urlsafe(48)
+
+
 def _harden_demo_secrets() -> None:
     """In demo, never fall back to a predictable signing key.
 
@@ -59,6 +90,11 @@ def _harden_demo_secrets() -> None:
     restart — acceptable for demo, far safer than a committed constant). Warn when
     FERNET_KEY is missing since datasource connection strings would then be
     unencryptable.
+
+    MODEL_SIGNING_KEY gets the opposite treatment: it is persisted rather than
+    ephemeral. Keyed off SECRET_KEY it inherited that key's per-boot randomness,
+    so every stored model failed its integrity check after a restart and AutoML
+    Studio has in fact never worked on a restarted demo.
     """
     import secrets as _secrets
 
@@ -67,6 +103,8 @@ def _harden_demo_secrets() -> None:
     if not settings.SECRET_KEY or settings.SECRET_KEY == "dev-insecure-change-me":
         settings.SECRET_KEY = _secrets.token_urlsafe(48)
         log.warning("ephemeral_secret_key", msg="SECRET_KEY boşdur — efemer açar yaradıldı.")
+    if not settings.MODEL_SIGNING_KEY:
+        settings.MODEL_SIGNING_KEY = _demo_model_signing_key()
     if not settings.FERNET_KEY:
         log.warning(
             "fernet_key_missing",
@@ -127,6 +165,11 @@ async def lifespan(app: FastAPI):
         try:
             await _seed_demo_account()
             await _seed_rag_examples()
+            # Populate every page with content so a fresh demo login isn't a wall
+            # of empty states. Self-isolates each phase; safe to await here.
+            from app.db.demo_seed import seed_demo_content
+
+            await seed_demo_content()
         except Exception as exc:  # noqa: BLE001 — never block startup on seeding
             log.warning("demo_seed_failed", error=str(exc))
     # The chat assistant user exists in EVERY mode (paid tiers use it outside
@@ -141,6 +184,27 @@ async def lifespan(app: FastAPI):
     except Exception as exc:  # noqa: BLE001 — never block startup on seeding
         log.warning("assistant_seed_failed", error=str(exc))
     background_tasks: list[asyncio.Task] = []
+    # Eviction must reach sockets held by OTHER workers: a room authorises once at
+    # connect, so a removed member keeps receiving messages anywhere this worker
+    # cannot see. Inert without Redis, where there is only one worker anyway.
+    from app.realtime import bus
+    from app.realtime.hub import hub
+
+    hub.bind_cache(app.state.cache)
+    background_tasks.append(
+        asyncio.create_task(bus.run_evict_subscriber(hub, app.state.cache))
+    )
+    if settings.REALTIME_BUS_ENABLED:
+        from app.realtime.hub import PRESENCE_HEARTBEAT_SECONDS
+
+        # Delivery and presence cross workers only when asked for: a single-worker
+        # deployment pays a Redis round trip per message for nothing.
+        background_tasks.append(
+            asyncio.create_task(bus.run_room_subscriber(hub, app.state.cache))
+        )
+        background_tasks.append(
+            asyncio.create_task(bus.run_presence_heartbeat(hub, PRESENCE_HEARTBEAT_SECONDS))
+        )
     if settings.SCHEDULER_ENABLED:
         from app.services.scheduler import run_loop
 
@@ -205,12 +269,15 @@ def create_app() -> FastAPI:
             metrics.http_request_duration_seconds.labels(
                 request.method, route_label
             ).observe(elapsed_s)
-            log.info(
-                "request",
-                method=request.method,
-                path=request.url.path,
-                execution_time_ms=int(elapsed_s * 1000),
-            )
+            # Metrics always record; the per-request log line is silenced in DEMO_MODE
+            # so a live-demo terminal stays quiet (Prometheus still has the data).
+            if not settings.DEMO_MODE:
+                log.info(
+                    "request",
+                    method=request.method,
+                    path=request.url.path,
+                    execution_time_ms=int(elapsed_s * 1000),
+                )
             structlog.contextvars.clear_contextvars()
         response.headers["X-Request-ID"] = request_id
         _apply_security_headers(response)
@@ -275,9 +342,28 @@ def create_app() -> FastAPI:
         _apply_security_headers(resp)
         return resp
 
+    @app.get("/live", tags=["health"])
+    async def live() -> dict[str, object]:
+        """Process liveness. Deliberately touches nothing — see `core.health`."""
+        return {"status": "ok", "demo_mode": settings.DEMO_MODE}
+
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, object]:
+        """Alias of /live, kept because CI and deployed HEALTHCHECKs curl it."""
         return {"status": "ok", "demo_mode": settings.DEMO_MODE}
+
+    @app.get("/ready", tags=["health"])
+    async def ready(request: Request) -> Response:
+        """Readiness: 200 when this instance can serve, 503 when it cannot."""
+        from app.core import health as health_probe
+
+        ok, components = await health_probe.readiness(
+            getattr(request.app.state, "cache", None)
+        )
+        return JSONResponse(
+            status_code=200 if ok else 503,
+            content={"status": "ready" if ok else "not_ready", "components": components},
+        )
 
     @app.get("/metrics", tags=["health"])
     async def prometheus_metrics(request: Request) -> Response:

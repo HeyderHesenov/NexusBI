@@ -90,12 +90,6 @@ export function serializeSvg(el: SVGSVGElement): string {
   return new XMLSerializer().serializeToString(el)
 }
 
-/** Trigger a browser download for a Blob under the given filename. */
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
+// Canonical blob-download lives in lib/download; re-exported here so existing
+// graph importers keep their `./graphView` import path.
+export { downloadBlob } from '../../lib/download'

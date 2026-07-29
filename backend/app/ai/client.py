@@ -27,6 +27,21 @@ def get_client() -> AsyncOpenAI:
     return _client
 
 
+def _require_configured() -> None:
+    """Fail fast when no engine is configured, instead of failing over the network.
+
+    Callers already treat ``AIGenerationError`` as "take the deterministic path",
+    so a keyless run lands on the same fallback either way — but reaching it via
+    the SDK costs a connection attempt plus ``max_retries`` backoff *per call*.
+    A DEMO_MODE seed makes dozens of those, which is what pushed CI's readiness
+    budget over the edge: the backend answered /ready seconds after the wait loop
+    had already given up. ``embed`` has guarded this since it was written; the
+    completion paths simply never did.
+    """
+    if not settings.AI_API_KEY or not settings.AI_MODEL:
+        raise AIGenerationError("AI xidməti əlçatmazdır.")
+
+
 async def chat_json(
     system: str,
     user: str,
@@ -40,6 +55,7 @@ async def chat_json(
     response follows the request language (JSON keys/SQL stay unchanged). Leave it
     False for structured generators (Text2SQL/DAX/chart) whose output is not prose.
     """
+    _require_configured()
     if localize:
         system = system + i18n.lang_directive()
     started = time.perf_counter()
@@ -68,6 +84,7 @@ async def chat_text(
     localize: bool = True,
 ) -> str:
     """Call the model and return plain text. Prose by nature → localizes by default."""
+    _require_configured()
     if localize:
         system = system + i18n.lang_directive()
     started = time.perf_counter()
@@ -99,6 +116,7 @@ async def chat_tools(
     them, append results to ``messages``, and call again until the model replies
     with plain ``.content``. ``messages`` must already include the system prompt.
     """
+    _require_configured()
     if localize:
         directive = i18n.lang_directive()
         if directive:

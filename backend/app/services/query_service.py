@@ -321,12 +321,12 @@ async def _guarded_execute(
 
 
 def _sql_label(label: str | None, sql: str) -> str:
-    """Short, non-empty history label for a manual SQL run (marked with ✎)."""
+    """Short, non-empty history label for a manual SQL run (marked with [SQL])."""
     text = (label or "").strip()
     if not text:
         # First non-blank line of the query, trimmed for the history list.
         text = next((ln.strip() for ln in sql.splitlines() if ln.strip()), "SQL")
-    return f"✎ {text[:180]}"
+    return f"[SQL] {text[:180]}"
 
 
 async def guarded_read(
@@ -598,5 +598,9 @@ async def _demo_pipeline(
         _log.warning("demo_ai_fallback", error=exc.message, detail=exc.detail)
         sql_result = rule_based_sql.generate_sql_fallback(nl_query)
         provenance = "deterministic_fallback"
+    # Defense in depth: SELECT-only (run inside generate_sql) does not stop a
+    # hallucinated/injected reference to a non-demo table. Apply the same table
+    # allowlist the manual demo path (`guarded_read`) enforces.
+    sql_guard.assert_tables_in_schema(sql_result.sql, demo_data.demo_table_names(), "sqlite")
     columns, rows = await asyncio.to_thread(demo_data.execute_demo_sql, sql_result.sql)
     return sql_result.sql, columns, rows, sql_result.confidence, provenance

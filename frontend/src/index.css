@@ -109,6 +109,23 @@
     animation-delay: 0.72s;
   }
 
+  /* Story deck reveal — a visibility-driven TRANSITION (not a keyframe replay),
+     so it is interruptible: scrubbing back mid-reveal reverses smoothly instead
+     of restarting. Toggled by adding `.is-in` as a slide scrolls into view.
+     Only opacity + transform animate; the global reduced-motion guard below
+     neutralizes the transition to instant. */
+  .deck-rise {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+    transition:
+      opacity 0.55s cubic-bezier(0.2, 0.7, 0.2, 1),
+      transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .deck-rise.is-in {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
   /* Insight fade-in — the whole text appears at once with a soft rise, instead
      of a character-by-character typewriter. Runs once on mount (re-keyed to
      replay per new result). Only opacity + transform animate. */

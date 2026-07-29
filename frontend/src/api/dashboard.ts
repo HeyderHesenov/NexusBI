@@ -7,6 +7,7 @@ import type {
   Widget,
   WidgetChart,
 } from '../types'
+import type { BrandConfig } from './branding'
 import type { Comment } from '../store/collabStore'
 
 export interface FilteredWidget {
@@ -143,8 +144,15 @@ export async function applyFilter(
   return data
 }
 
-export async function getPublicDashboard(token: string): Promise<Dashboard> {
-  const { data } = await client.get<Dashboard>(`/public/dashboard/${token}`)
+export interface SharedDashboardView {
+  dashboard: Dashboard
+  brand: BrandConfig
+}
+
+/** Public shared dashboard + the owner's white-label brand (NexusBI defaults for
+ *  non-white-label owners). */
+export async function getPublicDashboard(token: string): Promise<SharedDashboardView> {
+  const { data } = await client.get<SharedDashboardView>(`/public/dashboard/${token}`)
   return data
 }
 

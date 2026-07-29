@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import {
   ArrowRight,
   BarChart3,
@@ -6,6 +6,7 @@ import {
   BrainCircuit,
   Compass,
   LayoutDashboard,
+  Maximize2,
   Share2,
   ShieldCheck,
   Tag,
@@ -16,11 +17,8 @@ import { useTranslation } from 'react-i18next'
 import type { CopilotAction } from '../../api/copilot'
 import { shareNavAction } from '../../api/chat'
 import type { ShareMeta, ShareResourceType } from '../../api/chat'
-import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
-import { deriveKpiSeries } from '../../lib/kpi'
-import { formatSignedPct } from '../../lib/format'
-import { ChartRenderer } from '../charts/LazyChartRenderer'
-import { Sparkline } from '../charts/Sparkline'
+import { ChartPreview } from '../charts/previews/ChartPreview'
+import { ShareChartModal } from './ShareChartModal'
 
 // Type badges reuse the sidebar's icon language where the type has a nav entry.
 const TYPE_ICONS: Record<ShareResourceType, LucideIcon> = {
@@ -34,45 +32,19 @@ const TYPE_ICONS: Record<ShareResourceType, LucideIcon> = {
   metric: Tag,
 }
 
-/** A KPI result compresses to a number + delta + sparkline (KPICard is p-10/text-6xl). */
-function KpiTile({ chart }: { chart: NonNullable<ShareMeta['chart']> }) {
-  const series = deriveKpiSeries(chart.data, chart.chart_config)
-  const fmtVal = useChartValueFormatter(chart.chart_config.format)
-  // Tone and trend derive from the SAME 1-decimal rounding formatSignedPct
-  // applies (mirrors KPICard), so a −0.02% delta can't pair a red tone with
-  // a "+0%" label.
-  const rounded = series.deltaPct == null ? null : Math.round(series.deltaPct * 10) / 10
-  return (
-    <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-2 px-3 py-2.5">
-      <div className="min-w-0">
-        <p className="truncate font-display text-2xl font-bold text-ink">
-          {series.latest != null ? fmtVal(series.latest, { compact: false }) : '—'}
-        </p>
-        {series.deltaPct != null && (
-          <p
-            className={`text-xs font-medium ${
-              rounded === 0 ? 'text-ink-soft' : rounded! > 0 ? 'text-accent' : 'text-[#D87C6B]'
-            }`}
-          >
-            {formatSignedPct(series.deltaPct)}
-          </p>
-        )}
-      </div>
-      <Sparkline
-        points={series.points}
-        width={96}
-        height={24}
-        trend={rounded == null ? undefined : rounded < 0 ? 'down' : 'up'}
-      />
-    </div>
-  )
-}
-
-/** Rich card for an artifact shared into the room — chart snapshot for query
- *  results, reference card for everything else. The "open" chip renders only
- *  for the sharer (`canOpen`): every target page is owner-scoped, so for
- *  recipients the card itself IS the share (screenshot semantics). Memoized —
- *  ChatPage re-renders on every composer keystroke. */
+/** Rich card for an artifact shared into the room — a glanceable chart preview
+ *  for query results, a reference card for everything else. The preview is a
+ *  summary, not the chart: at 288×176 a real one is unreadable, so clicking it
+ *  opens the full-size dialog. That dialog is offered to EVERYONE, since the
+ *  snapshot already travels in every member's copy of the message.
+ *
+ *  The "open" chip is different and stays `canOpen`-gated: it navigates to an
+ *  owner-scoped page, so for recipients the card itself IS the share.
+ *
+ *  Memoized — ChatPage re-renders on every composer keystroke. The dialog's
+ *  `open` state therefore lives HERE, not in ChatPage: hoisting it would hand
+ *  every card a fresh callback prop per keystroke, killing this memo for the
+ *  whole thread and re-rendering the open dialog on every character typed. */
 export const ShareCard = memo(function ShareCard({
   meta,
   canOpen,
@@ -83,9 +55,11 @@ export const ShareCard = memo(function ShareCard({
   onOpen: (a: CopilotAction) => void
 }) {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
   // Fallback for share types newer than this client build.
   const Icon = TYPE_ICONS[meta.resource_type] ?? Share2
   const chart = meta.chart && meta.chart.data.length > 0 ? meta.chart : null
+
   return (
     <div className="mt-2 w-72 max-w-full overflow-hidden rounded-xl border border-line bg-surface p-3 text-left">
       <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
@@ -94,17 +68,31 @@ export const ShareCard = memo(function ShareCard({
       <p className="mt-1 truncate text-sm font-semibold text-ink">{meta.title}</p>
       {meta.subtitle && <p className="truncate text-xs text-ink-faint">{meta.subtitle}</p>}
 
-      {chart && chart.chart_type !== 'kpi_card' && (
-        <div className="mt-2 h-44 w-full overflow-hidden">
-          <ChartRenderer
-            data={chart.data}
-            config={chart.chart_config}
-            height="100%"
-            showLegend={false}
-          />
-        </div>
+      {chart && (
+        // Only the preview is the button — the "open" chip below is a sibling.
+        // Wrapping the whole card would nest buttons; `role="button"` on the root
+        // would be worse still, making the chip presentational and unreachable.
+        // `text-left` because <button> centers text and the root's won't survive.
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={t('shareCard.expand', { title: meta.title })}
+          className="group relative mt-2 block w-full cursor-pointer rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          {/* Decorative: the dialog is the honest view, so keep the summary out of
+              the a11y tree and let the button's label speak for it. */}
+          <div aria-hidden="true">
+            <ChartPreview
+              data={chart.data}
+              config={chart.chart_config}
+              columns={chart.columns}
+            />
+          </div>
+          <span className="pointer-events-none absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-md bg-surface/80 text-ink-soft opacity-0 backdrop-blur-sm transition group-hover:opacity-100 group-focus-visible:opacity-100">
+            <Maximize2 size={12} />
+          </span>
+        </button>
       )}
-      {chart && chart.chart_type === 'kpi_card' && <KpiTile chart={chart} />}
       {chart?.truncated && (
         <p className="mt-1 text-[10px] text-ink-faint">
           {t('shareCard.truncated', { count: chart.data.length })}
@@ -118,6 +106,10 @@ export const ShareCard = memo(function ShareCard({
         >
           {t('shareCard.open')} <ArrowRight size={12} />
         </button>
+      )}
+
+      {open && chart && (
+        <ShareChartModal meta={meta} chart={chart} onClose={() => setOpen(false)} />
       )}
     </div>
   )

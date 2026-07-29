@@ -255,6 +255,10 @@ Aç: **http://localhost:5173**  ·  API docs: **http://localhost:8000/docs**
 
 > Brauzerdə **`localhost`** işlət, `127.0.0.1` yox — CORS yalnız `localhost`-a icazə verir.
 
+`DEMO_MODE` **default olaraq `false`-dur** — unudulmuş bir dəyişən demo qapılarını
+production-a buraxmasın deyə. Yuxarıdakı `cp .env.example .env` onu lokal üçün açır;
+`docker-compose.yml`-dəki dev stack isə özü açıq şəkildə verir.
+
 Demo rejimində (`DEMO_MODE=true`) əlavə konfiqurasiya tələb olunmur — AI mühərriki
 açarı boş olsa da tətbiq determinik offline rule-based mühərriklə işləyir; `DATABASE_URL`
 avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olunur:
@@ -305,7 +309,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | GET/POST | `/api/v1/billing/plans` · `/usage` · `/upgrade` · `/checkout` | Planlar · istifadə · mock upgrade · Stripe (gated) |
 | GET/POST | `/api/v1/search` · `/search/reindex` | Qlobal semantik axtarış (asset) · indeks yenilə |
 | POST/GET/DELETE | `/api/v1/saved/{id}/subscriptions` | Planlı PDF/Excel hesabat çatdırılması (email) |
-| GET | `/health` · `/metrics` | Sağlamlıq · Prometheus metrikləri |
+| GET | `/live` · `/ready` · `/health` · `/metrics` | Proses canlıdır (container HEALTHCHECK) · trafik qəbul edə bilər (DB + miqrasiya; uğursuzluqda 503) · `/live`-ın aliası · Prometheus metrikləri |
 
 ---
 
@@ -323,17 +327,19 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | `APP_DB_POOL_SIZE` / `_MAX_OVERFLOW` / `_RECYCLE_SECONDS` | Tətbiq DB-si üçün pool (non-sqlite) |
 | `QUERY_TIMEOUT_SECONDS` / `SQLGEN_CACHE_TTL_SECONDS` | SQL icra timeout-u · NL→SQL generasiya keşi |
 | `UPLOAD_DIR` / `UPLOAD_MAX_BYTES` | CSV/Excel yükləmə qovluğu · limit (10 MB) |
-| `SCHEDULER_ENABLED` / `SCHEDULER_INTERVAL_SECONDS` | Saxlanan sorğu cədvəli |
+| `SCHEDULER_ENABLED` / `SCHEDULER_INTERVAL_SECONDS` / `SCHEDULER_REQUIRE_LOCK` | Saxlanan sorğu cədvəli · tick aralığı · **çox-worker kilidi** (default `true`: Redis yoxdursa dövrələr dayanır, çünki kilidsiz hər worker hesabatı bir dəfə göndərərdi) |
 | `DIGEST_ENABLED` / `DIGEST_HOUR_UTC` / `DIGEST_MAX_ITEMS` | Proaktiv səhər brifi |
 | `LIVE_REFRESH_ENABLED` / `LIVE_REFRESH_TICK_SECONDS` / `LIVE_DEMO_FEED` | Canlı dashboard |
+| `REALTIME_BUS_ENABLED` | Çat/kursor/roster-i Redis üzərindən worker-lər arasında paylaş (default `false`; tək worker üçün lazımsızdır). Üzv çıxarılanda socket bağlama **həmişə** keçir |
 | `COPILOT_MAX_STEPS` | Agentik copilot tool-loop limiti |
 | `INTEGRATIONS_LIVE` / `SMTP_HOST·PORT·USERNAME·PASSWORD·FROM` | Slack/Teams/email (boşdursa mock) |
 | `STRIPE_SECRET_KEY` / `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Stripe Checkout (boşdursa gated/mock) |
 | `POWERBI_TENANT_ID·CLIENT_ID·CLIENT_SECRET` / `POWERBI_API_BASE` / `POWERBI_MAX_ROWS` | Power BI (boşdursa mock provider) · REST baza · sətir cap |
 | `SECRET_KEY` / `ACCESS_TOKEN_EXPIRE_MINUTES` / `REFRESH_TOKEN_EXPIRE_DAYS` | JWT açarı (prod ≥32) · access müddət (default 30 dəq) · refresh müddət |
 | `METRICS_TOKEN` | `/metrics` üçün bearer (prod; demo-da loopback) |
+| `MODEL_SIGNING_KEY` | Saxlanan AutoML modellərinin HMAC açarı. `SECRET_KEY`-dən ayrıdır ki, JWT açarını fırlatmaq bütün öyrədilmiş modelləri silməsin (boşdursa `SECRET_KEY`-ə düşür) |
 | `FERNET_KEY` | Datasource & inteqrasiya sirlərinin şifrələnməsi (prod məcburi) |
-| `DEMO_MODE` / `CORS_ORIGINS` | Demo SQLite · icazəli origin-lər |
+| `DEMO_MODE` / `CORS_ORIGINS` | Demo SQLite (**default `false`**; prod-da açma) · icazəli origin-lər |
 
 Frontend (`frontend/.env`): `VITE_API_URL`.
 
@@ -342,7 +348,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 466 test
+cd backend && pytest        # 538 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -360,7 +366,7 @@ metrik ağacı (roll-up) · data müqavilələri
 AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
 `AI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
 
-**Frontend Vitest (305 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (512 test):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·

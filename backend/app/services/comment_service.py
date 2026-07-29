@@ -7,7 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.notification_types import NotificationCategory
-from app.models.alert import Notification
+from app.services import notify_service
 from app.models.comment import DashboardComment
 from app.models.dashboard import Widget
 from app.models.user import User
@@ -42,14 +42,9 @@ async def _notify_mentions(
     for user in res.scalars().all():
         if user.id == author_id:
             continue  # don't notify yourself
-        db.add(
-            Notification(
-                user_id=user.id,
-                alert_id=None,
-                title="Səni qeyd etdilər",
-                body=f"{author_name}: {content[:200]}",
-                category=NotificationCategory.MENTION,
-            )
+        await notify_service.create(
+            db, user.id, "Səni qeyd etdilər", f"{author_name}: {content[:200]}",
+            NotificationCategory.MENTION,
         )
     await db.flush()
 

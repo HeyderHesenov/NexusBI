@@ -9,16 +9,44 @@ import re
 import uuid
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from sqlalchemy import create_engine
 
 from app.config import settings
-from app.core.exceptions import NexusBIException
+from app.core.exceptions import NexusBIException, PayloadTooLargeError
 
 MAX_ROWS = 100_000
 MAX_COLS = 100
 _ALLOWED = {".csv", ".xlsx"}
+READ_CHUNK_BYTES = 64 * 1024
+
+
+async def read_bounded(file: Any, max_bytes: int | None = None) -> bytes:
+    """Read an upload, refusing anything past ``max_bytes``. Returns the body.
+
+    ``await file.read()`` with no argument materialises the entire request body
+    before any size check can run, so a multi-GB POST is an OOM on the worker no
+    matter what ``UPLOAD_MAX_BYTES`` says — the limit was enforced on bytes we had
+    already paid for. Reading in chunks and stopping the moment the total goes
+    over bounds peak memory to the limit plus one chunk.
+
+    The remainder of the body is deliberately left unread: the client is sending
+    something we have already refused, and draining it is work done on its behalf.
+    """
+    limit = settings.UPLOAD_MAX_BYTES if max_bytes is None else max_bytes
+    buf = bytearray()
+    while True:
+        chunk = await file.read(READ_CHUNK_BYTES)
+        if not chunk:
+            return bytes(buf)
+        buf.extend(chunk)
+        if len(buf) > limit:
+            raise PayloadTooLargeError(
+                f"Fayl çox böyükdür (maks. {limit // (1024 * 1024)} MB).",
+                detail=f"limit={limit} bytes",
+            )
 
 
 def _sanitize(name: str, fallback: str) -> str:
@@ -45,8 +73,12 @@ def ingest_file(filename: str, content: bytes) -> tuple[str, str, int]:
     ext = Path(filename).suffix.lower()
     if ext not in _ALLOWED:
         raise NexusBIException("Yalnız .csv və ya .xlsx faylları dəstəklənir.")
+    # Defence in depth: the route already bounds the read (see `read_bounded`), so
+    # reaching this means an internal caller handed us bytes from somewhere else.
     if len(content) > settings.UPLOAD_MAX_BYTES:
-        raise NexusBIException("Fayl çox böyükdür (maks. 10 MB).")
+        raise PayloadTooLargeError(
+            f"Fayl çox böyükdür (maks. {settings.UPLOAD_MAX_BYTES // (1024 * 1024)} MB)."
+        )
 
     try:
         if ext == ".csv":

@@ -88,6 +88,17 @@ async def test_branding_reflected_in_embed(client: AsyncClient, auth: dict):
     assert view["brand"]["app_name"] == "WhiteLabel Co"
 
 
+async def test_branding_reflected_in_shared(client: AsyncClient, auth: dict):
+    # Public share links (not just iframe embeds) carry the owner's white-label brand.
+    await _set_tier("pro")
+    await client.put("/api/v1/brand", json={"app_name": "WhiteLabel Co"}, headers=auth)
+    did = await _make_dashboard(client, auth)
+    token = (await client.post(f"/api/v1/dashboard/{did}/share", headers=auth)).json()["token"]
+    view = (await client.get(f"/api/v1/public/dashboard/{token}")).json()
+    assert view["dashboard"]["id"] == did
+    assert view["brand"]["app_name"] == "WhiteLabel Co"
+
+
 async def test_branding_put_requires_paid_plan(client: AsyncClient, auth: dict):
     # Free tier cannot set white-label branding.
     resp = await client.put("/api/v1/brand", json={"app_name": "AcmeBI"}, headers=auth)

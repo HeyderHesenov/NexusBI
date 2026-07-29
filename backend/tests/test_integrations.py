@@ -75,7 +75,7 @@ async def test_digest_dispatches_to_channels(client: AsyncClient, auth: dict, mo
         "/api/v1/query/ask", json={"nl_query": "məhsul gəliri", "datasource_id": None}, headers=auth
     )
     await client.post("/api/v1/notifications/digest", headers=auth)
-    assert any(t.startswith("🌅") for t in sent)
+    assert any(t.startswith("Səhər brifi") for t in sent)
 
 
 async def test_mention_creates_notification(client: AsyncClient, auth: dict):

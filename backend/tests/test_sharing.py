@@ -14,10 +14,13 @@ async def test_share_and_public_access(client: AsyncClient, auth: dict):
     token = share.json()["token"]
     assert token
 
-    # Public endpoint works WITHOUT auth headers.
+    # Public endpoint works WITHOUT auth headers, and carries the owner's brand.
     pub = await client.get(f"/api/v1/public/dashboard/{token}")
     assert pub.status_code == 200, pub.text
-    assert pub.json()["name"] == "Shared"
+    body = pub.json()
+    assert body["dashboard"]["name"] == "Shared"
+    # A non-white-label owner gets NexusBI defaults (never the raw stored config).
+    assert body["brand"] == {"app_name": "NexusBI", "primary_color": "#0E9F6E", "logo_url": ""}
 
     # Revoke → public link no longer resolves.
     assert (await client.delete(f"/api/v1/dashboard/{dash_id}/share", headers=auth)).status_code == 204

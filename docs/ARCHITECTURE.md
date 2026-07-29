@@ -31,8 +31,8 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 | Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, graph_view_service, ba_service, automl_service** |
 | AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding)**, sql_guard, schema_introspector, **schema_linking (wide-schema table selection: embed+cosine top-K + FK closure, metadata-only)**, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
-| Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit |
-| Realtime | `realtime/*` | hub (collab WS pub/sub), live_refresh (canlı dashboard loop) |
+| Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit (Redis-backed, per-process fallback), **leader (scheduler lease), health (/live + /ready), sql_ident (dialect-aware quoting)** |
+| Realtime | `realtime/*` | hub (WS rooms, per-worker), **bus (cross-worker eviction; delivery + presence behind a flag)**, live_refresh (canlı dashboard loop) |
 | DB | `db/*` | engine/session, engine_pool, migrations (Alembic), demo_data |
 
 ## Request flow — `POST /query/ask`
@@ -97,8 +97,13 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
 - **Dashboards:** `widgets` reference a `query_log`; the embedded chart snapshot carries
   its data source name. Refresh re-runs the widget's query (cache-bypass). Cross-filter
   is client-side (a click filters every widget sharing that field).
-- **Saved queries + scheduler:** `saved_queries` rows; an in-process asyncio loop
+- **Saved queries + scheduler:** `saved_queries` rows; an asyncio loop
   (`services/scheduler`) refreshes due ones (hourly/daily/weekly) into a fresh QueryLog.
+  Every worker runs the loop but only the one holding the Redis lease acts (`core/leader`) —
+  its work has external side effects (email, Slack, LLM spend), so N workers would
+  otherwise mean N deliveries. With no reachable Redis the loops stand down and log why,
+  rather than duplicating silently; `SCHEDULER_REQUIRE_LOCK=false` opts a genuinely
+  single-process deployment back in.
 - **Alerts & notifications:** an `alerts` row (threshold on a saved query's column) is
   evaluated by `alert_service` whenever that saved query runs (scheduler or manual); a
   breach writes a `notifications` row (bell + Notifications page).
@@ -160,7 +165,15 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   SMTP email. `integration_service.dispatch` fans digest/alert notifications to a user's
   `integration_channels` (Fernet-encrypted target). `@mention` in comments notifies in-app ONLY
   (no third-party fan-out — anti cross-tenant phishing), capped per comment.
-- **Realtime:** `realtime/hub` is an in-process WS pub/sub (collab cursors + chat); `live_refresh`
+- **Realtime:** `realtime/hub` holds the WS rooms in process memory (collab cursors + chat), with
+  `realtime/bus` bridging what must be true on every worker. **Eviction always crosses:** a room is
+  authorised once at connect and never re-checked, so a removed member would keep receiving full
+  message bodies on any worker that did not serve the DELETE. **Delivery and presence cross only
+  when `REALTIME_BUS_ENABLED`** — off by default, since a single-worker deployment gains nothing and
+  pays a Redis round trip per message. With it on, the subscriber performs *every* delivery
+  (publishing *and* sending locally would double-deliver on the sender's worker), and presence is a
+  sorted set scored by heartbeat, so a worker that dies takes its participants with it instead of
+  leaving ghosts in the roster. `live_refresh`
   re-runs live dashboards' widget SQL (data-only) on an interval and pushes over the WS. When a
   dashboard has an active **global filter** it routes through `apply_global_filter(skip_rls=True)`
   so the live push stays filtered (and never fans an owner-scoped dataset out to restricted guests).
@@ -250,7 +263,10 @@ alerts), **`c4d5e6f7a8b9`** (drop `insights` — dedup cleanup), **`d5e6f7a8b9c0
 permutation importance / per-prediction explain stats). De-bloat + trust round: **`f7a8b9c0d1e2`**
 (drop `experiments`), **`a8b9c0d1e2f3`** (drop `eval_runs`), **`b1c2d3e4f5a6`** (`query_logs.confidence`
 + `.provenance` — answer Trust Badge). Migrations are Alembic, chained under `db/migrations/versions`;
-current head = **`b1c2d3e4f5a6`**. NOTE: the **demo** schema is seeded in-memory
+current head = **`a4b5c6d7e8f9`** (`ba_artifacts.datasource_id`, for evidence + action promotion).
+`/ready` compares the database's applied revision against this head and answers 503 when they
+disagree, so "booted but unmigrated" is reported rather than surfacing as 500s. NOTE: the **demo**
+schema is seeded in-memory
 (`db/demo_data._seed`, no migration) — `sales.customer_id` was added there to enable realistic
 customer↔sales joins, and an `events` table (visit→signup→trial→purchase) is retained (the dedicated
 cohort/funnel feature was later removed in `d23cdb2`; the events table now only backs NL "funnel"-style
@@ -413,6 +429,10 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
 - Services hold logic; routers stay thin. New domain → model + schema + service +
   router, registered in `api/v1/router.py` and `models/__init__.py`, with an Alembic
   migration.
-- Graceful degradation over hard dependency (Redis, scheduler, Google all optional).
+- Graceful degradation over hard dependency (Redis, scheduler, Google all optional). Redis is
+  still not required to *serve* — every cache call no-ops and `/ready` does not gate on it — but it
+  is what makes multi-worker correct: it holds the scheduler lease and the shared rate-limit
+  buckets. Where losing it would change an answer rather than slow one down, the code stands down
+  loudly instead of guessing.
 - Frontend theming via CSS-variable tokens (light/dark) consumed by Tailwind;
   emerald accent, Source Serif 4 display. State in small Zustand stores per domain.

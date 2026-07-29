@@ -26,7 +26,7 @@ export function combine(operator: string, values: number[]): number {
 /** Adjustments: leaf node id → percent change (e.g. 15 = +15%). */
 export type Adjustments = Record<string, number>
 
-export function isLeaf(node: EvaluatedNode): boolean {
+function isLeaf(node: EvaluatedNode): boolean {
   return node.children.length === 0
 }
 

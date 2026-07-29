@@ -28,9 +28,7 @@ export const useDataContractStore = create<DataContractState>((set, get) => ({
     const updated = await api.run(id)
     set({ items: get().items.map((c) => (c.id === id ? updated : c)) })
     await get().loadRuns(id)
-    toast(updated.last_status === 'pass' ? 'Bütün yoxlamalar keçdi ✓' : 'Pozulma var ⚠️', {
-      icon: updated.last_status === 'pass' ? '✅' : '⚠️',
-    })
+    toast(updated.last_status === 'pass' ? 'Bütün yoxlamalar keçdi' : 'Pozulma var')
   },
   loadRuns: async (id) => {
     set({ runsById: { ...get().runsById, [id]: await api.runs(id) } })

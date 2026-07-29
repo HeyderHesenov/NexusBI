@@ -9,17 +9,17 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing.tiers import has_ai_chat
 from app.core.exceptions import ForbiddenError, SchemaNotFoundError
 from app.core.notification_types import NotificationCategory
-from app.models.alert import Notification
 from app.models.chat import Channel, ChatMessage, ChatReadMarker
 from app.models.user import User
 from app.models.workspace import WorkspaceMember
-from app.services import workspace_service
+from app.services import notify_service, workspace_service
 
 _MENTION_RE = re.compile(r"@([\w.+-]+@[\w.-]+|\w[\w.\-]{1,})")
 _MAX_MENTIONS = 5
@@ -92,6 +92,11 @@ async def can_access_room(db: AsyncSession, user_id: str, room_key: str) -> bool
         return user is not None and has_ai_chat(user.subscription_tier)
     # DM: the user must be one of the pair, and the two must co-belong to a workspace.
     a, b = ids
+    # Only the canonical dm:{lo}:{hi} form names a room. dm_room() sorts the pair,
+    # so an unsorted key is a room no client can build or render — accepting it
+    # would give every DM a second, invisible alias addressable only by hand.
+    if [a, b] != sorted((a, b)):
+        return False
     if user_id not in (a, b):
         return False
     return await _co_members(db, a, b)
@@ -148,14 +153,9 @@ async def _notify_mentions(
             continue
         if not await can_access_room(db, user.id, room_key):
             continue
-        db.add(
-            Notification(
-                user_id=user.id,
-                alert_id=None,
-                title="Səni qeyd etdilər",
-                body=f"{author_name}: {content[:200]}",
-                category=NotificationCategory.MENTION,
-            )
+        await notify_service.create(
+            db, user.id, "Səni qeyd etdilər", f"{author_name}: {content[:200]}",
+            NotificationCategory.MENTION,
         )
     await db.flush()
 
@@ -192,6 +192,47 @@ async def post_message(
     return msg
 
 
+async def message_recipients(
+    db: AsyncSession, room_key: str, author_id: str, *, only: set[str] | None = None
+) -> list[str]:
+    """Members of a room who should be told about a new message from ``author_id``.
+
+    CALL ORDER MATTERS: only for a message that already passed ``post_message``'s
+    ``can_access_room`` gate. The DM branch derives the peer from the key with zero
+    queries, which is sound only because that gate re-checked ``_co_members`` on the
+    very same pair.
+
+    ``only`` narrows to a candidate set (the users with a live mailbox socket), so
+    both this query and the fan-out are sized by who is ONLINE rather than by
+    workspace membership — an unbounded channel would otherwise let one `viewer`
+    turn 2 messages/second into thousands of frames.
+
+    Recipients must keep coming from the same authority as ``can_access_room``
+    (workspace membership); sourcing them anywhere else turns a badge into a leak.
+    """
+    parsed = _parse_room(room_key)
+    if parsed is None:
+        return []
+    kind, ids = parsed
+    if kind == "ai":
+        return []  # the personal AI room has one member: the owner, who is reading it
+    if kind == "dm":
+        a, b = ids
+        peer = b if a == author_id else a
+        if peer == author_id:
+            return []
+        return [peer] if only is None or peer in only else []
+    ws_id, _ = ids
+    if only is not None and not only:
+        return []
+    query = select(WorkspaceMember.user_id).where(
+        WorkspaceMember.workspace_id == ws_id, WorkspaceMember.user_id != author_id
+    )
+    if only is not None:
+        query = query.where(WorkspaceMember.user_id.in_(only))
+    return list(await db.scalars(query))
+
+
 async def history(
     db: AsyncSession, room_key: str, user_id: str, limit: int = 100
 ) -> list[ChatMessage]:
@@ -208,10 +249,40 @@ async def history(
 
 
 # ─── Read markers / unread ───
-async def mark_read(db: AsyncSession, user_id: str, room_key: str) -> None:
+def _utc(value: datetime) -> datetime:
+    """Normalise to aware UTC — SQLite hands back naive datetimes for DateTime(tz=True)."""
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+async def mark_read(
+    db: AsyncSession, user_id: str, room_key: str, up_to: datetime | None = None
+) -> None:
+    """Advance the user's read watermark for a room.
+
+    The watermark is always a real message's ``created_at``, never an app clock.
+    That is the whole point: ``created_at`` is ``server_default=func.now()``
+    (db/base.py) — the DB clock — so a watermark sampled from ``datetime.now()``
+    is not comparable with it. SQLite floors CURRENT_TIMESTAMP to the second and
+    Postgres evaluates now() at transaction START, so an app-clock watermark marks
+    messages read up to a second BEFORE they exist.
+
+    ``up_to`` is the created_at of the newest message the client actually rendered;
+    it is clamped to the newest message that really exists, so a bad or hostile
+    value can't silence the room forever. Without it we assume "everything
+    currently here". An empty room writes no marker at all — otherwise the next
+    message to arrive would be born already-read.
+
+    The watermark only ever moves forward: a late request that sampled an earlier
+    time must not resurrect already-read messages.
+    """
     if not await can_access_room(db, user_id, room_key):
         raise SchemaNotFoundError("Otağa giriş yoxdur.")
-    now = datetime.now(timezone.utc)
+    newest = await db.scalar(
+        select(func.max(ChatMessage.created_at)).where(ChatMessage.room_key == room_key)
+    )
+    if newest is None:
+        return  # nothing to mark read yet
+    ts = min(_utc(up_to), _utc(newest)) if up_to else _utc(newest)
     marker = (
         await db.execute(
             select(ChatReadMarker).where(
@@ -220,17 +291,116 @@ async def mark_read(db: AsyncSession, user_id: str, room_key: str) -> None:
         )
     ).scalar_one_or_none()
     if marker is None:
-        db.add(ChatReadMarker(user_id=user_id, room_key=room_key, last_read_at=now))
-    else:
-        marker.last_read_at = now
+        try:
+            # SAVEPOINT: a concurrent first-time mark_read (two tabs entering a room)
+            # would otherwise violate uq_read_marker and poison the whole transaction.
+            async with db.begin_nested():
+                db.add(ChatReadMarker(user_id=user_id, room_key=room_key, last_read_at=ts))
+                await db.flush()
+            return
+        except IntegrityError:
+            marker = (
+                await db.execute(
+                    select(ChatReadMarker).where(
+                        ChatReadMarker.user_id == user_id, ChatReadMarker.room_key == room_key
+                    )
+                )
+            ).scalar_one()
+    marker.last_read_at = max(_utc(marker.last_read_at), ts)
     await db.flush()
+
+
+async def _unread_counts(
+    db: AsyncSession, user_id: str, room_keys: list[str]
+) -> dict[str, tuple[int, datetime]]:
+    """Per room with unread: (count, created_at of the newest message counted).
+
+    The timestamp is the snapshot's own cutoff, and it costs one extra column on a
+    GROUP BY we already run. A client that receives a live frame and this snapshot
+    cannot otherwise tell whether the snapshot already counted that message — the
+    two race on first connect — so it would either double-count or drop it.
+
+    TRUSTS ``room_keys`` — it performs no access check, so every caller MUST derive
+    them server-side (``my_room_keys``, ``list_channels``, ``dm_peers``).
+
+    Marker-first by design: read the watermarks (index-served by uq_read_marker),
+    then ask each room for its tail with a CONSTANT lower bound, which the existing
+    ix_chat_messages_room_created serves as a range scan. Outer-joining the markers
+    into the message scan instead — as this used to — makes ``created_at >
+    last_read_at`` a join-derived predicate the planner cannot push into the scan,
+    and ``last_read_at IS NULL`` blocks reducing the LEFT JOIN to an INNER one. The
+    result was O(total history in my rooms) rather than O(unread): tens of
+    thousands of rows materialised to return a handful of counts.
+    """
+    if not room_keys:
+        return {}
+    marked = {
+        room: _utc(ts)
+        for room, ts in await db.execute(
+            select(ChatReadMarker.room_key, ChatReadMarker.last_read_at).where(
+                ChatReadMarker.user_id == user_id, ChatReadMarker.room_key.in_(room_keys)
+            )
+        )
+    }
+    conds = [
+        and_(ChatMessage.room_key == room, ChatMessage.created_at > since)
+        for room, since in marked.items()
+    ]
+    unmarked = [r for r in room_keys if r not in marked]
+    if unmarked:
+        conds.append(ChatMessage.room_key.in_(unmarked))  # never opened → all unread
+    rows = await db.execute(
+        select(ChatMessage.room_key, func.count(), func.max(ChatMessage.created_at))
+        .where(ChatMessage.author_id != user_id, or_(*conds))
+        .group_by(ChatMessage.room_key)
+    )
+    return {room: (int(count), _utc(newest)) for room, count, newest in rows}
+
+
+async def my_room_keys(db: AsyncSession, user_id: str) -> list[str]:
+    """Every room this user can access: their workspaces' channels + a DM room per
+    co-member. Deliberately NOT derived from read markers — a marker can outlive
+    access (leaving a workspace), and counting a room the user can no longer open
+    would produce a badge they cannot clear. The personal ``ai:{uid}`` room is not
+    a team conversation and is absent by construction.
+    """
+    channels = await db.execute(
+        select(Channel.workspace_id, Channel.id)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == Channel.workspace_id)
+        .where(WorkspaceMember.user_id == user_id)
+    )
+    keys = {channel_room(ws_id, ch_id) for ws_id, ch_id in channels}
+    my_ws = select(WorkspaceMember.workspace_id).where(WorkspaceMember.user_id == user_id)
+    # Ids only — dm_peers() hydrates whole User entities, which is a 500-row ORM
+    # load just to build strings and throw the users away.
+    peers = await db.scalars(
+        select(WorkspaceMember.user_id)
+        .where(WorkspaceMember.workspace_id.in_(my_ws), WorkspaceMember.user_id != user_id)
+        .distinct()
+    )
+    keys.update(dm_room(user_id, peer) for peer in peers)
+    return list(keys)
+
+
+async def unread_overview(db: AsyncSession, user_id: str) -> dict[str, dict]:
+    """{room_key: {"unread": n, "at": iso}} for every accessible room with unread.
+
+    Rooms with nothing unread are absent, so the payload tracks real conversations
+    rather than org size. ``at`` is the cutoff this snapshot saw — the mailbox
+    socket sends it so a client can tell a live frame that is already counted here
+    from one that arrived after the query ran.
+    """
+    counts = await _unread_counts(db, user_id, await my_room_keys(db, user_id))
+    return {
+        room: {"unread": count, "at": newest.isoformat()}
+        for room, (count, newest) in counts.items()
+    }
 
 
 async def room_summaries(
     db: AsyncSession, user_id: str, room_keys: list[str]
 ) -> dict[str, tuple[ChatMessage | None, int]]:
-    """Per-room (last message, unread count) for a conversation list, in two
-    queries regardless of how many rooms are asked for.
+    """Per-room (last message, unread count) for a conversation list.
 
     Unread = messages by OTHERS created after the user's read marker (all of
     them when no marker exists). Rooms with no activity are simply absent."""
@@ -256,26 +426,9 @@ async def room_summaries(
     ).scalars()
     out: dict[str, tuple[ChatMessage | None, int]] = {m.room_key: (m, 0) for m in latest}
 
-    unread_rows = await db.execute(
-        select(ChatMessage.room_key, func.count())
-        .outerjoin(
-            ChatReadMarker,
-            (ChatReadMarker.room_key == ChatMessage.room_key)
-            & (ChatReadMarker.user_id == user_id),
-        )
-        .where(
-            ChatMessage.room_key.in_(room_keys),
-            ChatMessage.author_id != user_id,
-            or_(
-                ChatReadMarker.last_read_at.is_(None),
-                ChatMessage.created_at > ChatReadMarker.last_read_at,
-            ),
-        )
-        .group_by(ChatMessage.room_key)
-    )
-    for room, count in unread_rows:
+    for room, (count, _newest) in (await _unread_counts(db, user_id, room_keys)).items():
         last, _ = out.get(room, (None, 0))
-        out[room] = (last, int(count))
+        out[room] = (last, count)
     return out
 
 

@@ -31,9 +31,10 @@ from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal
 from app.models.chat import ChatMessage
 from app.models.user import User
+from app.realtime import notify
 from app.realtime.hub import hub
-from app.schemas.chat import ChatMessageResponse
 from app.services import chat_service
+from app.services.cache_service import CacheService
 
 _log = structlog.get_logger(__name__)
 
@@ -121,9 +122,12 @@ async def post_assistant_message(
     return msg
 
 
-async def _broadcast(msg: ChatMessage, frame: str = "chat") -> None:
-    payload = ChatMessageResponse.model_validate(msg).model_dump(mode="json")
-    await hub.broadcast(msg.room_key, {"type": frame, "message": payload})
+async def _broadcast(db: AsyncSession, msg: ChatMessage, frame: str = "chat") -> None:
+    """Publish through the shared path so an assistant reply badges absent members
+    exactly like a human one. An AI reply in a CHANNEL is authored by a real user
+    row and is counted by the unread snapshot, so skipping fan-out here would make
+    the live badge silently disagree with the snapshot."""
+    await notify.publish_message(db, msg, frame=frame)
 
 
 def _typing_pulse(room_key: str, assistant_id: str) -> asyncio.Task:
@@ -166,18 +170,26 @@ async def _post_error(room_key: str) -> None:
         async with AsyncSessionLocal() as db:
             msg = await post_assistant_message(db, room_key, _APOLOGY, {"ai": True, "kind": "error"})
             await db.commit()
-        await _broadcast(msg)
+            await _broadcast(db, msg)
     except Exception:  # noqa: BLE001 — the error message is best-effort
         _log.warning("ai_chat_error_post_failed", room=room_key)
 
 
 # ─── Plan (triggered by a chat message) ───
-def spawn_reply(room_key: str, requester_id: str, content: str) -> asyncio.Task:
-    """Fire-and-forget: never blocks or fails the user's own message post."""
-    return _spawn(_plan_task(room_key, requester_id, content))
+def spawn_reply(
+    room_key: str, requester_id: str, content: str, cache: CacheService | None = None
+) -> asyncio.Task:
+    """Fire-and-forget: never blocks or fails the user's own message post.
+
+    `cache` only backs the per-requester throttle below; planning itself does not
+    use it. Mirrors `spawn_execute`, which already takes one.
+    """
+    return _spawn(_plan_task(room_key, requester_id, content, cache))
 
 
-async def _plan_task(room_key: str, requester_id: str, content: str) -> None:
+async def _plan_task(
+    room_key: str, requester_id: str, content: str, cache: CacheService | None = None
+) -> None:
     pulse: asyncio.Task | None = None
     try:
         async with AsyncSessionLocal() as db:
@@ -186,7 +198,9 @@ async def _plan_task(room_key: str, requester_id: str, content: str) -> None:
             # the AI, and a flooding requester is throttled without fanfare.
             if requester is None or not has_ai_chat(requester.subscription_tier):
                 return
-            if not check_ip("ai_chat_plan", requester_id, limit=6, window_seconds=60):
+            if not await check_ip(
+                "ai_chat_plan", requester_id, limit=6, window_seconds=60, cache=cache
+            ):
                 return
             assistant = await get_or_create_assistant(db)
             await db.commit()  # the assistant row must survive even if planning fails
@@ -207,7 +221,7 @@ async def _plan_task(room_key: str, requester_id: str, content: str) -> None:
                 db, room_key, result.get("reply") or "Plan hazırdır — təsdiqlə.", meta
             )
             await db.commit()
-        await _broadcast(msg)
+            await _broadcast(db, msg)
     except Exception as exc:  # noqa: BLE001 — a failed reply must stay visible, not silent
         _log.warning("ai_chat_plan_failed", error=type(exc).__name__, detail=str(exc)[:200])
         await _post_error(room_key)
@@ -300,7 +314,7 @@ async def _execute_task(
                 },
             )
             await db.commit()
-        await _broadcast(msg)
+            await _broadcast(db, msg)
     except Exception as exc:  # noqa: BLE001 — flip the card to failed + apologise visibly
         _log.warning("ai_chat_execute_failed", error=type(exc).__name__, detail=str(exc)[:200])
         try:
@@ -309,8 +323,8 @@ async def _execute_task(
                 if plan_msg is not None and isinstance(plan_msg.meta, dict):
                     plan_msg.meta = {**plan_msg.meta, "status": "failed"}
                     await db.commit()
-            if plan_msg is not None and isinstance(plan_msg.meta, dict):
-                await _broadcast(plan_msg, "chat_update")
+                if plan_msg is not None and isinstance(plan_msg.meta, dict):
+                    await _broadcast(db, plan_msg, "chat_update")
         except Exception:  # noqa: BLE001
             _log.warning("ai_chat_fail_mark_failed", message=plan_msg_id)
         await _post_error(room_key)

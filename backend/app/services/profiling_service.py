@@ -8,8 +8,9 @@ import numbers
 from typing import Any
 
 from app.core.exceptions import SchemaNotFoundError
+from app.core.sql_ident import quote_ident
 from app.models.datasource import DataSource, DBType
-from app.services import datasource_service
+from app.services import datasource_service, query_service
 from app.services.cache_service import CacheService
 
 _SAMPLE = 1000
@@ -56,13 +57,21 @@ async def profile(
     if table not in schema:
         raise SchemaNotFoundError("Cədvəl tapılmadı.")
 
-    cache_key = f"profile:{ds.id}:{table}"
+    # Keyed per viewer, not per source: the sample below is RLS-constrained, so a
+    # shared entry would serve the owner's statistics to a restricted member (or
+    # the reverse) depending on who profiled the table first.
+    cache_key = f"profile:{ds.id}:{user_id}:{table}"
     cached = await cache.get(cache_key)
     if cached:
         return cached
 
-    sql = f'SELECT * FROM "{table}" LIMIT {_SAMPLE}'
-    columns, rows = await datasource_service.execute_select(ds, sql)
+    # Quoted for the source's dialect — MySQL reads "x" as a string literal, so a
+    # double-quoted table name profiles the word instead of the table. Executed
+    # through the shared guard chain: this used to call execute_select directly,
+    # which applies neither the table allowlist nor per-viewer RLS, so a member
+    # restricted to their own rows got min/max/distinct over everyone's.
+    sql = f"SELECT * FROM {quote_ident(table, ds.db_type.value)} LIMIT {_SAMPLE}"
+    columns, rows = await query_service.guarded_read(sql, ds.id, user_id, db, cache)
     result = {"table": table, "row_sample": len(rows), "columns": _profile_rows(columns, rows)}
     await cache.set(cache_key, result, ttl=600)
     return result

@@ -56,11 +56,18 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Split heavy vendors so the initial bundle stays small.
+        // Only react is pinned here — it IS on the boot path, so naming it keeps
+        // it in one long-lived, cacheable chunk.
+        //
+        // recharts and mermaid are deliberately NOT listed. Naming a vendor here
+        // links it into the entry's static graph, and Vite then emits a boot-time
+        // <link rel="modulepreload"> for it — which defeated their lazy() wrappers
+        // (LazyChartRenderer, MermaidDiagram) and pulled ~261 KB gzip onto every
+        // page load, the login screen included. Left to Rollup they land in the
+        // async chunks their dynamic imports create, and load on first chart /
+        // diagram instead. Don't "optimize" them back into this list.
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          mermaid: ['mermaid'],
         },
       },
     },

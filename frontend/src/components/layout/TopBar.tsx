@@ -39,11 +39,11 @@ export function TopBar() {
   const openSearch = useSearchStore((s) => s.setOpen)
   const { pathname } = useLocation()
 
+  // One reconcile on mount; new notifications arrive over the per-user mailbox
+  // socket. The old 60s interval refetched all 50 notifications in full — title,
+  // body and all, uncompressed — purely to recompute one integer.
   useEffect(() => {
     load().catch(() => undefined)
-    // Light polling so smart-insight notifications surface without a refresh.
-    const id = setInterval(() => load().catch(() => undefined), 60_000)
-    return () => clearInterval(id)
   }, [load])
 
   return (

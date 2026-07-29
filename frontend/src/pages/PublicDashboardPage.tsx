@@ -2,12 +2,14 @@ import { MessageCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import { ChartRenderer } from '../components/charts/LazyChartRenderer'
 import { CollabPanel } from '../components/dashboard/CollabPanel'
 import { CollabSurface } from '../components/dashboard/CollabSurface'
 import { DashboardFilterBar } from '../components/dashboard/DashboardFilterBar'
+import { PublicWidgetGrid } from '../components/dashboard/PublicWidgetGrid'
 import { NexusMark } from '../components/brand/NexusMark'
 import * as dashApi from '../api/dashboard'
+import type { BrandConfig } from '../api/branding'
+import { deriveAccentVariants, hexToTriplet } from '../lib/color'
 import { useCollabStore } from '../store/collabStore'
 import { mergeFilteredWidgets } from '../store/dashboardStore'
 import type { Dashboard, DashboardFilterSpec } from '../types'
@@ -16,6 +18,8 @@ export function PublicDashboardPage() {
   const { t } = useTranslation()
   const { token } = useParams<{ token: string }>()
   const [dash, setDash] = useState<Dashboard | null>(null)
+  const [brand, setBrand] = useState<BrandConfig | null>(null)
+  const [logoBroken, setLogoBroken] = useState(false)
   const [error, setError] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   // Viewer-side filter — local only, never persisted to the owner's dashboard.
@@ -41,9 +45,39 @@ export function PublicDashboardPage() {
     if (!token) return
     dashApi
       .getPublicDashboard(token)
-      .then(setDash)
+      .then((v) => {
+        setDash(v.dashboard)
+        setBrand(v.brand)
+      })
       .catch(() => setError(true))
   }, [token])
+
+  // Re-skin the shared page with the owner's primary color (white-label). Override
+  // the full accent set so nothing stays default emerald, and restore prior values
+  // on unmount so the global <html> style doesn't leak. Default #0E9F6E == the
+  // current accent, so non-white-label shared links look unchanged.
+  useEffect(() => {
+    if (!brand) return
+    const root = document.documentElement
+    const triplet = hexToTriplet(brand.primary_color)
+    if (!triplet) return
+    const vars = { '--accent': triplet } as Record<string, string>
+    const variants = deriveAccentVariants(brand.primary_color, root.classList.contains('dark'))
+    if (variants) {
+      vars['--accent-press'] = variants.press
+      vars['--accent-soft'] = variants.soft
+    }
+    const prev = Object.fromEntries(
+      Object.keys(vars).map((k) => [k, root.style.getPropertyValue(k)]),
+    )
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v)
+    return () => {
+      for (const [k, v] of Object.entries(prev)) {
+        if (v) root.style.setProperty(k, v)
+        else root.style.removeProperty(k)
+      }
+    }
+  }, [brand])
 
   // Guests join the same collaboration room via the share token.
   const dashId = dash?.id
@@ -58,35 +92,61 @@ export function PublicDashboardPage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="flex items-center gap-2.5 border-b border-line px-8 py-4">
-        <span className="grid h-8 w-8 place-items-center rounded-xl border border-line bg-surface-2">
-          <NexusMark size={18} />
-        </span>
-        <span className="font-display text-base font-bold tracking-tight text-ink">
-          Nexus<span className="text-accent">BI</span>
-        </span>
-        {dash && (
-          <>
-            <span className="mx-2 h-4 w-px bg-line" />
-            <span className="text-sm text-ink-soft">{dash.name}</span>
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={() => setChatOpen((v) => !v)}
-                className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink"
-              >
-                <MessageCircle size={14} /> {t('publicDashboardPage.team')}
-                {participants.length > 1 && (
-                  <span className="grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg">
-                    {participants.length}
+      {/* Publisher's-plate masthead — same grammar as the embed page, one notch more
+          generous. NexusMark renders only when there is no brand yet (never beside a
+          white-label customer's wordmark). The accent rule renders with the lockup so
+          the brand signature appears before the dashboard data arrives. */}
+      <header className="border-b border-line bg-surface">
+        <div className="reveal mx-auto max-w-6xl px-6 pb-4 pt-5">
+          <div className="flex items-center justify-between gap-4">
+            {brand?.logo_url && !logoBroken ? (
+              <img
+                src={brand.logo_url}
+                alt={brand.app_name}
+                className="h-9 w-auto max-w-[240px] object-contain object-left"
+                onError={() => setLogoBroken(true)}
+              />
+            ) : (
+              <span className="flex min-w-0 items-center gap-2.5">
+                {!brand && (
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line bg-surface-2">
+                    <NexusMark size={20} />
                   </span>
                 )}
-              </button>
-              <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-                read-only
+                <span className="truncate font-display text-xl font-semibold tracking-tight text-ink">
+                  {brand ? brand.app_name : 'NexusBI'}
+                </span>
               </span>
-            </div>
-          </>
-        )}
+            )}
+            {dash && (
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => setChatOpen((v) => !v)}
+                  className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink"
+                >
+                  <MessageCircle size={14} /> {t('publicDashboardPage.team')}
+                  {participants.length > 1 && (
+                    <span className="grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg">
+                      {participants.length}
+                    </span>
+                  )}
+                </button>
+                <span className="whitespace-nowrap rounded-full bg-surface-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+                  {t('publicDashboardPage.readOnly')}
+                </span>
+              </div>
+            )}
+          </div>
+          <div aria-hidden className="mt-2 h-0.5 w-12 rounded-full bg-accent" />
+          {dash && (
+            <h1
+              title={dash.name}
+              className="mt-1.5 truncate font-display text-2xl font-semibold leading-8 tracking-tight text-ink"
+            >
+              {dash.name}
+            </h1>
+          )}
+        </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-8">
@@ -104,26 +164,12 @@ export function PublicDashboardPage() {
               busy={filtering}
               onApply={applyFilter}
             />
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {dash.widgets.map((w) => (
-                <div key={w.id} className="flex h-80 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
-                  <div className="border-b border-line px-4 py-2.5">
-                    <span className="truncate text-sm font-medium text-ink">
-                      {w.title || w.chart?.natural_language || t('publicDashboardPage.widget')}
-                    </span>
-                  </div>
-                  <div className="min-h-0 flex-1 p-3">
-                    {w.chart && w.chart.data.length ? (
-                      <ChartRenderer data={w.chart.data} config={w.chart.chart_config} height="100%" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-ink-faint">
-                        {t('publicDashboardPage.noResult')}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PublicWidgetGrid
+              widgets={dash.widgets}
+              layout={dash.layout}
+              widgetFallback={t('publicDashboardPage.widget')}
+              noResult={t('publicDashboardPage.noResult')}
+            />
           </CollabSurface>
         )}
       </main>

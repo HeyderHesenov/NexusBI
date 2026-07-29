@@ -48,6 +48,9 @@ class ChatMessageResponse(BaseModel):
 
 class RoomRequest(BaseModel):
     room_key: str = Field(min_length=1, max_length=120)
+    # created_at of the newest message the client rendered. Keeps the read
+    # watermark on the DB clock; the server clamps it to now.
+    up_to: datetime | None = None
 
 
 class AiActionRequest(BaseModel):

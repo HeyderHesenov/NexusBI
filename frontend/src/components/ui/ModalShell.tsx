@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useModalA11y } from '../../hooks/useModalA11y'
 
 interface Props {
   open: boolean
@@ -12,68 +13,14 @@ interface Props {
   wide?: boolean
 }
 
-const FOCUSABLE =
-  'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
-
-/** Shared modal chrome: overlay, centered card, header, outside-click + Escape
- * close, plus a full WAI-ARIA dialog contract — focus trap, initial focus,
- * focus restoration on close, body scroll-lock, and aria-modal labelling.
+/** Shared modal chrome: overlay, centered card, header, outside-click close.
+ * The WAI-ARIA dialog contract (focus trap, initial focus, focus restoration,
+ * scroll-lock, Escape) comes from useModalA11y, shared with ChartFullscreenModal.
  * Portaled to <body> so triggers inside hover-reveal / overflow / opacity
  * containers can't leak those styles onto the open dialog. */
 export function ModalShell({ open, onClose, title, subtitle, children, footer, wide }: Props) {
-  const cardRef = useRef<HTMLDivElement>(null)
+  const cardRef = useModalA11y(open, onClose)
   const titleId = useId()
-
-  // Escape to close + Tab focus trap (single keydown listener).
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-        return
-      }
-      if (e.key !== 'Tab') return
-      const card = cardRef.current
-      if (!card) return
-      const items = Array.from(card.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        (el) => !el.hasAttribute('hidden') && el.getAttribute('aria-hidden') !== 'true',
-      )
-      if (items.length === 0) {
-        e.preventDefault()
-        card.focus()
-        return
-      }
-      const first = items[0]
-      const last = items[items.length - 1]
-      const active = document.activeElement
-      if (e.shiftKey && (active === first || active === card)) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  // Body scroll-lock + focus restoration while open.
-  useEffect(() => {
-    if (!open) return
-    const restoreTo = document.activeElement as HTMLElement | null
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    // Initial focus: first focusable inside the card, else the card itself.
-    const card = cardRef.current
-    const target =
-      card?.querySelector<HTMLElement>(FOCUSABLE) ?? card ?? null
-    target?.focus()
-    return () => {
-      document.body.style.overflow = prevOverflow
-      restoreTo?.focus?.()
-    }
-  }, [open])
 
   if (!open) return null
 

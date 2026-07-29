@@ -16,7 +16,7 @@
     "othersLabel": "Digər"
   },
   "brandingPage": {
-    "appliesNote": "Embed (iframe / SDK) görünüşünə tətbiq olunur.",
+    "appliesNote": "Embed olunmuş panellərə və paylaşım linklərinə tətbiq olunur.",
     "colorPickerLabel": "Rəng seçici",
     "contrastLow": "Zəif kontrast",
     "contrastOk": "AA kontrast",
@@ -43,7 +43,7 @@
     "saving": "Saxlanır…",
     "sectionColor": "Rəng",
     "sectionIdentity": "Kimlik",
-    "subtitle": "Embed olunmuş panellərdə görünən ad, rəng və loqonu təyin et.",
+    "subtitle": "Embed olunmuş panellərdə və paylaşım linklərində görünən ad, rəng və loqonu təyin et.",
     "title": "Brendinq",
     "upgradeCta": "Pro plana keç",
     "upsellBody": "Embed olunmuş panellərdə öz adını, rəngini və loqonu göstərmək üçün Pro və ya daha yüksək plana keç.",
@@ -200,9 +200,14 @@
     "generatedToast": "“{{name}}” hazırdır — {{count}} widget.",
     "live": "Canlı",
     "liveMode": "Canlı rejim",
+    "moreActions": "Digər əməliyyatlar",
     "new": "Yeni",
+    "open": "Aç",
     "preparing": "Hazırlanır…",
     "refreshAll": "Hamısını yenilə",
+    "sectionDanger": "Təhlükəli zona",
+    "sectionShare": "Paylaşım",
+    "sectionView": "Görünüş və data",
     "share": "Paylaş",
     "story": "Hekayə",
     "team": "Komanda",
@@ -323,7 +328,9 @@
     "emptyDashboard": "Bu panel boşdur.",
     "loading": "Yüklənir…",
     "noResults": "Nəticə yoxdur.",
-    "notFoundOrDisabled": "Embed tapılmadı və ya söndürülüb."
+    "notFoundOrDisabled": "Embed tapılmadı və ya söndürülüb.",
+    "readOnly": "Yalnız baxış",
+    "widget": "Widget"
   },
   "errorBoundary": {
     "panelDescription": "Bu hissədə gözlənilməz xəta baş verdi. Yenidən cəhd edin.",
@@ -378,7 +385,7 @@
   "integrationsPanel": {
     "add": "Əlavə et",
     "deleteTooltip": "Sil",
-    "description": "Brif və alert-ləri Slack, Teams və ya email-ə göndər. (Demo: mock rejim.)",
+    "description": "Brif və alert-ləri Slack, Teams və ya email-ə göndər. Demo rejimində simulyasiya olunur.",
     "hintEmail": "e-poçt ünvanı",
     "hintWebhook": "webhook URL",
     "targetLabel": "Ünvan",
@@ -409,7 +416,6 @@
     "eyebrowRegister": "Başla",
     "fullNamePlaceholder": "Ad Soyad",
     "googleContinue": "Google ilə davam et",
-    "googleNotConfigured": "Google girişi hələ konfiqurasiya olunmayıb.",
     "heroDescription": "SQL bilmədən datanla danış. NexusBI sualını sorğuya çevirir, icra edir və ən uyğun chart-la cavablandırır.",
     "heroLine1": "Sual ver.",
     "heroLine2": "Cavabı gör.",
@@ -512,7 +518,8 @@
     "twin": "Digital Twin",
     "baStudio": "BA Studio",
     "automl": "AutoML",
-    "chat": "Söhbət"
+    "chat": "Söhbət",
+    "chatUnread": "{{count}} oxunmamış mesaj"
   },
   "notificationsPage": {
     "briefingLoading": "Hazırlanır…",
@@ -572,6 +579,7 @@
     "loading": "Yüklənir…",
     "noResult": "Nəticə yoxdur.",
     "notFound": "Paylaşılan dashboard tapılmadı.",
+    "readOnly": "Yalnız baxış",
     "team": "Komanda",
     "widget": "Widget"
   },
@@ -768,7 +776,10 @@
     "whiteLabelEmbed": "White-label embed (imzalı token)"
   },
   "shareCard": {
+    "expand": "{{title}} — qrafiki böyüt",
+    "morePreview": "+{{count}} daha",
     "open": "Aç",
+    "tableSummary": "{{rows}} sətir × {{cols}} sütun",
     "truncated": "İlk {{count}} sətir göstərilir",
     "type_ba_artifact": "BA artefaktı",
     "type_contract": "Data müqaviləsi",
@@ -1110,7 +1121,7 @@
     "ctx_porter": "Sənaye, rəqiblər, təchizatçılar haqqında yazın…",
     "ctx_bcg": "İstəyə bağlı: portfel konteksti (tövsiyə mətnini zənginləşdirir)",
     "ctx_bpmn": "Prosesi addım-addım təsvir edin…",
-    "bcgContextHint": "BCG rəqəmləri qoşulu demo datadan deterministik hesablanır.",
+    "bcgContextHint": "BCG rəqəmləri seçilmiş mənbədən deterministik hesablanır.",
     "generate": "Yarat",
     "generating": "Yaradılır…",
     "generated": "Artefakt yaradıldı.",
@@ -1138,8 +1149,32 @@
     "q_question": "Sual işarəsi",
     "q_dog": "İt",
     "axisShare": "Gəlir payı, %",
-    "axisGrowth": "Artım (H2 vs H1), %",
-    "mermaidError": "Diaqram göstərilə bilmədi — xam kod aşağıdadır."
+    "axisGrowth": "Artım (son yarım vs əvvəlki), %",
+    "mermaidError": "Diaqram göstərilə bilmədi — xam kod aşağıdadır.",
+    "sourceLabel": "Data mənbəyi",
+    "sourceHint": "Sübutlar bu mənbədən deterministik hesablanır.",
+    "sourceDemo": "Demo data",
+    "evidence": "Sübutlar",
+    "derived": "hesablanmış",
+    "judgement": "mülahizə",
+    "fact_total": "cəmi",
+    "fact_top": "lider",
+    "fact_trend": "trend",
+    "fact_anomaly": "anomaliya",
+    "fact_concentration": "konsentrasiya",
+    "actions": "Prioritetli addımlar",
+    "actionsEmpty": "Bu artefakt üçün addım çıxarılmadı.",
+    "impact": "təsir",
+    "effort": "zəhmət",
+    "aiEstimate": "AI qiyməti",
+    "promote": "Qərara çevir",
+    "promoting": "Çevrilir…",
+    "promoted": "Qərar yaradıldı və izlənir.",
+    "viewDecision": "Qərara keç",
+    "q_quickWin": "Tez qazanc",
+    "q_bigBet": "Böyük mərc",
+    "q_fillIn": "Doldurma",
+    "q_thankless": "Az səmərəli"
   },
   "automl": {
     "eyebrow": "Analiz",
@@ -1266,15 +1301,18 @@
     "channels": "Kanallar",
     "connected": "Qoşulu",
     "connecting": "Qoşulur…",
+    "createWorkspace": "İş sahəsi yarat",
     "directMessages": "Şəxsi mesajlar",
     "messagePlaceholder": "Mesaj yaz…",
     "newChannel": "Yeni kanal",
     "newChannelPlaceholder": "kanal adı",
+    "newWorkspacePlaceholder": "iş sahəsi adı",
     "noChannels": "Hələ kanal yoxdur",
     "noMessages": "Hələ mesaj yoxdur. İlk yazan ol.",
     "noPeers": "Komanda yoldaşı yoxdur",
     "noResults": "Heç nə tapılmadı",
     "noWorkspace": "Əvvəlcə komanda sahəsi yarat",
+    "noWorkspaceHint": "Söhbətə başlamaq üçün komanda iş sahəsi yaradın.",
     "online": "{{count}} nəfər onlayn",
     "onlineNow": "onlayn",
     "pickRoom": "Bir kanal və ya söhbət seç",
@@ -1286,6 +1324,7 @@
     "typingMany": "{{count}} nəfər yazır…",
     "workspace": "İş sahəsi",
     "yesterday": "Dünən",
-    "you": "Sən"
+    "you": "Sən",
+    "sharedToast": "{{name}} bir kart paylaşdı"
   }
 }

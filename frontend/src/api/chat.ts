@@ -111,8 +111,16 @@ export async function roomTicket(roomKey: string): Promise<string> {
   return data.ticket
 }
 
-export async function markRead(roomKey: string): Promise<void> {
-  await client.post('/chat/read', { room_key: roomKey })
+/** `upTo` is the created_at of the newest message actually rendered. It keeps the
+ * server's read watermark on the DB clock — a watermark taken from any other clock
+ * marks messages read up to a second before they exist. The server clamps it. */
+export async function markRead(roomKey: string, upTo?: string): Promise<void> {
+  await client.post('/chat/read', { room_key: roomKey, up_to: upTo ?? null })
+}
+
+export async function userTicket(): Promise<string> {
+  const { data } = await client.post<{ ticket: string }>('/chat/user-ticket')
+  return data.ticket
 }
 
 export async function dmPeers(): Promise<DMPeer[]> {

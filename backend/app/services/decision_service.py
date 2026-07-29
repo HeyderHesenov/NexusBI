@@ -223,25 +223,21 @@ async def measure(
 
 async def _notify_impact(db: AsyncSession, d: Decision) -> None:
     from app.core.notification_types import NotificationCategory
-    from app.models.alert import Notification
+    from app.services import notify_service
     from app.services import integration_service
 
     if d.impact_status == "achieved":
-        title = f"🎯 Qərar nəticə verdi: {d.title}"
+        title = f"Qərar nəticə verdi: {d.title}"
         body = (
             f"Hədəf yerinə yetdi — baseline {d.baseline_value:g} → real {d.realized_value:g}."
         )
     else:
-        title = f"⚠️ Qərar geriləyir: {d.title}"
+        title = f"Qərar geriləyir: {d.title}"
         body = (
             f"Metrik gözlənilən istiqamətin əksinə getdi — "
             f"baseline {d.baseline_value:g} → real {d.realized_value:g}."
         )
-    db.add(Notification(
-        user_id=d.user_id, title=title, body=body,
-        category=NotificationCategory.DECISION,
-    ))
-    await db.flush()
+    await notify_service.create(db, d.user_id, title, body, NotificationCategory.DECISION)
     await integration_service.dispatch(db, d.user_id, title, body)
 
 

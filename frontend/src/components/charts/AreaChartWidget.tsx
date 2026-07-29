@@ -13,7 +13,8 @@ import {
 } from 'recharts'
 import type { ChartConfig } from '../../types'
 import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
-import { TruncatedTick } from './axis'
+import { collapseByX, sortByX } from '../../lib/series'
+import { timeSeriesXAxisProps, tooltipStyleProps, valueYAxisProps } from './axis'
 import { targetLineProps } from './targetLine'
 import { useMultiSeries } from './useMultiSeries'
 import { useChartTheme } from './theme'
@@ -36,7 +37,9 @@ export function AreaChartWidget({ data, config, height = 320, targetValue }: Pro
   const gid = `nx-area-${useId()}`
 
   const multi = useMultiSeries(data, x, y, config)
-  const rows = multi ? multi.rows : data
+  // Collapse duplicate-x rows into one point per x, then order a time/numeric
+  // axis chronologically (recharts plots rows in array order).
+  const rows = multi ? sortByX(multi.rows, x) : sortByX(collapseByX(data, x, y), x)
   const longX = rows.some((d) => String(d[x] ?? '').length > 10)
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -48,33 +51,10 @@ export function AreaChartWidget({ data, config, height = 320, targetValue }: Pro
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
-        <XAxis
-          dataKey={x}
-          stroke={AXIS}
-          tickLine={false}
-          tick={longX ? <TruncatedTick max={10} anchor="middle" /> : { fontSize: 12, fill: AXIS }}
-          label={
-            config.x_label
-              ? { value: config.x_label, position: 'insideBottom', offset: -12, fontSize: 11, fill: AXIS }
-              : undefined
-          }
-        />
-        <YAxis
-          stroke={AXIS}
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-          tickFormatter={(v) => fmtVal(Number(v))}
-          label={
-            config.y_label
-              ? { value: config.y_label, angle: -90, position: 'insideLeft', fontSize: 11, fill: AXIS }
-              : undefined
-          }
-        />
+        <XAxis {...timeSeriesXAxisProps(AXIS, x, config.x_label, longX)} />
+        <YAxis {...valueYAxisProps(AXIS, fmtVal, config.y_label)} />
         <Tooltip
-          contentStyle={tooltipStyle}
-          labelStyle={tooltipLabel}
-          itemStyle={tooltipItem}
+          {...tooltipStyleProps(tooltipStyle, tooltipLabel, tooltipItem)}
           formatter={(value: number | string) => fmtVal(Number(value))}
         />
         {multi ? <Legend wrapperStyle={{ fontSize: 12 }} /> : null}

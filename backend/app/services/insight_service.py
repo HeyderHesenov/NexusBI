@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai import insight_digest
 from app.core.logging import get_logger
 from app.core.notification_types import NotificationCategory
-from app.models.alert import Notification
+from app.services import notify_service
 from app.models.query_log import QueryLog
 from app.models.saved_query import SavedQuery
 
@@ -53,16 +53,9 @@ async def scan_recent_distinct(
 
 
 async def _record(db: AsyncSession, user_id: str, name: str, insight: str) -> None:
-    db.add(
-        Notification(
-            user_id=user_id,
-            alert_id=None,
-            title=f"{_TITLE}: {name}"[:255],
-            body=insight,
-            category=NotificationCategory.INSIGHT,
-        )
+    await notify_service.create(
+        db, user_id, f"{_TITLE}: {name}", insight, NotificationCategory.INSIGHT
     )
-    await db.flush()
 
 
 async def from_saved_query_run(

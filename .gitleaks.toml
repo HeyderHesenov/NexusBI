@@ -12,6 +12,12 @@ paths = [
   '''\.env\.example$''',
   '''frontend/\.env\.example$''',
   '''\.gitleaks\.toml$''',
+  # The ignore file lists findings by fingerprint — `<40-hex sha>:<path>:<rule>:<line>`
+  # — and a 40-character hex string next to a filename is exactly what
+  # generic-api-key looks for. Without this the scanner reports its own
+  # suppression list as a leak, and the only way to silence that finding is to add
+  # a fingerprint for it, which is itself another match.
+  '''\.gitleaksignore$''',
   '''package-lock\.json$''',
   '''.*\.lock$''',
   # Test fixture: a throwaway Fernet key used only to run the suite, never prod.

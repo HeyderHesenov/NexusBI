@@ -11,6 +11,7 @@ import {
 import type { ChartConfig } from '../../types'
 import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
+import { tooltipStyleProps } from './axis'
 import { useChartTheme } from './theme'
 
 interface Props {
@@ -75,9 +76,7 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
         <ZAxis range={[60, 60]} />
         <Tooltip
           cursor={{ strokeDasharray: '3 3', stroke: GRID }}
-          contentStyle={tooltipStyle}
-          labelStyle={tooltipLabel}
-          itemStyle={tooltipItem}
+          {...tooltipStyleProps(tooltipStyle, tooltipLabel, tooltipItem)}
           formatter={(value: number | string, name: string) =>
             name === y ? fmtVal(Number(value)) : fmtNum(Number(value), { compact: true })
           }

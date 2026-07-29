@@ -17,6 +17,8 @@ from app.core.exceptions import DataSourceConnectionError, InvalidSQLError
 def test_ssrf_allows_sqlite_and_public():
     net_guard.assert_safe_connection_string("sqlite+aiosqlite:///./x.db")
     net_guard.assert_safe_connection_string("postgresql://u:p@8.8.8.8:5432/d")
+    # A genuinely public IPv6 target must still be allowed.
+    net_guard.assert_safe_connection_string("postgresql://u:p@[2001:4860:4860::8888]:5432/d")
 
 
 @pytest.mark.parametrize(
@@ -26,6 +28,10 @@ def test_ssrf_allows_sqlite_and_public():
         "postgresql://u:p@127.0.0.1:5432/d",  # loopback
         "postgresql://u:p@10.0.0.5:5432/d",  # private
         "mysql://u:p@192.168.1.10:3306/d",  # private
+        # IPv6 tunnels that encapsulate an internal IPv4 target — the top-level
+        # IPv6 flags miss these, so the guard must inspect the embedded address.
+        "postgresql://u:p@[2002:a9fe:a9fe::]:5432/d",  # 6to4 → 169.254.169.254
+        "postgresql://u:p@[::ffff:127.0.0.1]:5432/d",  # IPv4-mapped loopback
     ],
 )
 def test_ssrf_blocks_internal_hosts(conn):
@@ -120,3 +126,249 @@ async def test_login_rate_limited(client: AsyncClient):
             json={"email": "nobody@nexusbi.io", "password": "wrong"},
         )
     assert last.status_code == 429, last.text
+
+
+# ─── Deployment defaults ───
+def test_demo_mode_is_off_by_default(monkeypatch):
+    """An operator who sets nothing must NOT get demo mode.
+
+    DEMO_MODE gates 24 behaviours, several of which are unsafe outside a demo:
+    /docs and /openapi.json are published, error responses carry the generated
+    SQL, /metrics is reachable from loopback, an unlimited demo login is seeded,
+    and a missing SECRET_KEY is silently replaced with an ephemeral one instead
+    of refusing to start. Defaulting it on means forgetting one env var ships all
+    of that. `_env_file=None` so the repo's dev .env can't mask the default.
+    """
+    from app.config import Settings
+
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    assert Settings(_env_file=None).DEMO_MODE is False
+
+
+# ─── Rate-limit client-IP resolution (trusted proxy) ───
+def _fake_request(xff, peer="10.0.0.1"):
+    from starlette.requests import Request
+
+    headers = [(b"x-forwarded-for", xff.encode())] if xff is not None else []
+    return Request({"type": "http", "headers": headers, "client": (peer, 12345)})
+
+
+def test_client_ip_ignores_xff_by_default(monkeypatch):
+    from app.config import settings
+    from app.core import rate_limit
+
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_HOPS", 0)
+    # Default: header untrusted (a client could spoof it) → use the direct peer.
+    assert rate_limit._client_ip(_fake_request("1.2.3.4")) == "10.0.0.1"
+
+
+def test_client_ip_uses_trusted_proxy_hop(monkeypatch):
+    from app.config import settings
+    from app.core import rate_limit
+
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_HOPS", 1)
+    # One trusted proxy → the real client is the rightmost XFF entry; a spoofed
+    # left-hand entry is ignored, and a missing header falls back to the peer.
+    assert rate_limit._client_ip(_fake_request("9.9.9.9, 1.2.3.4")) == "1.2.3.4"
+    assert rate_limit._client_ip(_fake_request("1.2.3.4")) == "1.2.3.4"
+    assert rate_limit._client_ip(_fake_request(None)) == "10.0.0.1"
+
+
+async def test_ip_limit_is_shared_across_workers_when_redis_is_up():
+    """Two workers must count into one bucket.
+
+    Per-process counters mean the effective limit is `limit x workers`, and it
+    resets on every deploy — so the login throttle a four-worker deployment
+    advertises as 10/min is really 40/min, and zero after a restart.
+    """
+    import uuid
+
+    from app.core import rate_limit
+    from app.services.cache_service import build_cache_service
+
+    worker_a = await build_cache_service()
+    if not worker_a.available:
+        pytest.skip("Redis unavailable — the in-process fallback is covered below")
+    worker_b = await build_cache_service()
+    bucket = f"test_shared_{uuid.uuid4().hex}"
+    try:
+        for _ in range(3):
+            assert await rate_limit._allow(bucket, "1.2.3.4", 3, 60, worker_a)
+        # The 4th hit lands on a DIFFERENT worker and is still refused.
+        assert not await rate_limit._allow(bucket, "1.2.3.4", 3, 60, worker_b)
+        # And the in-process map was never touched, so Redis really did the counting.
+        assert bucket not in rate_limit._HITS
+    finally:
+        await worker_a.aclose()
+        await worker_b.aclose()
+
+
+async def test_ip_limit_falls_back_in_process_without_redis():
+    """No Redis is a degraded limiter, never an absent one."""
+    from app.core import rate_limit
+
+    for _ in range(2):
+        assert await rate_limit._allow("test_fallback", "9.9.9.9", 2, 60, None)
+    assert not await rate_limit._allow("test_fallback", "9.9.9.9", 2, 60, None)
+
+
+async def test_ip_limit_falls_back_when_redis_errors():
+    """A Redis blip must not fail open — that is the same as having no limiter."""
+    from app.core import rate_limit
+
+    class _Broken:
+        available = True
+
+        async def incr(self, key: str, ttl: int) -> int | None:
+            return None  # what CacheService.incr returns when Redis does not answer
+
+    broken = _Broken()
+    for _ in range(2):
+        assert await rate_limit._allow("test_broken", "8.8.8.8", 2, 60, broken)
+    assert not await rate_limit._allow("test_broken", "8.8.8.8", 2, 60, broken)
+
+
+# ─── Demo NL pipeline: table allowlist (defense in depth) ───
+async def test_demo_pipeline_enforces_table_allowlist(client: AsyncClient, auth: dict, monkeypatch):
+    from app.ai.types import Text2SQLResult
+    from app.services import query_service
+
+    async def bad_sql(self, nl, schema, dtype="sqlite", extra_context=""):
+        # SELECT-only, but references a table outside the demo schema (a
+        # hallucinated or prompt-injected reference).
+        return Text2SQLResult(
+            sql="SELECT * FROM injected_secrets", explanation="d", confidence=0.9
+        )
+
+    monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", bad_sql)
+    resp = await client.post(
+        "/api/v1/query/ask", json={"nl_query": "x", "datasource_id": None}, headers=auth
+    )
+    assert resp.status_code >= 400, resp.text  # allowlist rejects the foreign table
+
+
+# ─── AutoML model-blob integrity (HMAC) ───
+#
+# Named rather than inlined: a literal next to the string "SECRET_KEY" reads as a
+# credential to gitleaks' generic-api-key rule, and a secret scanner that cries
+# wolf on its own test fixtures is one nobody reads.
+_KEY_BEFORE = "rotate-me-before"
+_KEY_AFTER = "rotate-me-after"
+_SIGNING_KEY = "blob-signing-key-not-the-jwt-one"
+
+def test_automl_blob_sign_roundtrip_and_tamper():
+    import pickle
+
+    from app.core.exceptions import NexusBIException
+    from app.services import automl_service as a
+
+    raw = pickle.dumps({"hello": "world"})
+    signed = a._sign_blob(raw)
+    assert a._unwrap_blob(signed) == raw  # round-trips to the exact payload
+
+    # A raw/unsigned (legacy or attacker-written) blob is refused, never unpickled.
+    with pytest.raises(NexusBIException):
+        a._unwrap_blob(raw)
+    # A single flipped byte in the payload fails the HMAC.
+    tampered = bytearray(signed)
+    tampered[-1] ^= 0x01
+    with pytest.raises(NexusBIException):
+        a._unwrap_blob(bytes(tampered))
+
+
+def test_model_signing_key_survives_secret_key_rotation(monkeypatch):
+    """A stored model must outlive a SECRET_KEY change when a signing key is set.
+
+    Keying the blob off SECRET_KEY alone meant every stored model died whenever
+    that value moved -- and in demo it moves on every boot, because an unset
+    SECRET_KEY is replaced with a fresh ephemeral one at startup. AutoML Studio
+    therefore never survived a restart there.
+    """
+    import pickle
+
+    from app.config import settings
+    from app.services import automl_service as a
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", _SIGNING_KEY)
+    monkeypatch.setattr(settings, "SECRET_KEY", _KEY_BEFORE)
+    signed = a._sign_blob(pickle.dumps({"model": 1}))
+
+    monkeypatch.setattr(settings, "SECRET_KEY", _KEY_AFTER)
+    assert a._unwrap_blob(signed) == pickle.dumps({"model": 1})
+
+
+def test_model_signing_key_rotation_invalidates_blobs(monkeypatch):
+    """Rotating the signing key itself still invalidates blobs (retrain)."""
+    import pickle
+
+    from app.config import settings
+    from app.core.exceptions import NexusBIException
+    from app.services import automl_service as a
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "key-one")
+    signed = a._sign_blob(pickle.dumps({"model": 1}))
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "key-two")
+    with pytest.raises(NexusBIException):
+        a._unwrap_blob(signed)
+
+
+def test_demo_model_signing_key_persists_across_restarts(monkeypatch, tmp_path):
+    """Two boots of the same demo installation must agree on the key.
+
+    Otherwise every model trained before the restart fails verification and the
+    user is told to retrain -- which is what AutoML Studio did on every demo
+    restart while the key was derived from an ephemeral SECRET_KEY.
+    """
+    from app import main
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "DEMO_MODE", True)
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "")
+    main._harden_demo_secrets()
+    first = settings.MODEL_SIGNING_KEY
+    assert first, "demo boot must mint a signing key"
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "")  # restart: setting empty again
+    main._harden_demo_secrets()
+    assert settings.MODEL_SIGNING_KEY == first
+
+    # Random per installation, not a constant compiled into the repo.
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "")
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path / "other"))
+    main._harden_demo_secrets()
+    assert settings.MODEL_SIGNING_KEY != first
+
+
+def test_configured_model_signing_key_is_never_overwritten(monkeypatch, tmp_path):
+    from app import main
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "DEMO_MODE", True)
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "operator-provided")
+    main._harden_demo_secrets()
+    assert settings.MODEL_SIGNING_KEY == "operator-provided"
+
+
+def test_model_signing_falls_back_to_secret_key(monkeypatch):
+    """With no signing key configured the old SECRET_KEY posture is unchanged.
+
+    Existing deployments keep verifying the blobs they already wrote; setting
+    MODEL_SIGNING_KEY is what opts into decoupling them.
+    """
+    import pickle
+
+    from app.config import settings
+    from app.core.exceptions import NexusBIException
+    from app.services import automl_service as a
+
+    monkeypatch.setattr(settings, "MODEL_SIGNING_KEY", "")
+    monkeypatch.setattr(settings, "SECRET_KEY", _KEY_BEFORE)
+    signed = a._sign_blob(pickle.dumps({"model": 1}))
+
+    monkeypatch.setattr(settings, "SECRET_KEY", _KEY_AFTER)
+    with pytest.raises(NexusBIException):
+        a._unwrap_blob(signed)

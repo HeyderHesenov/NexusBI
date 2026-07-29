@@ -114,6 +114,80 @@ async def test_upload_rejects_bad_extension(client: AsyncClient, auth: dict):
     assert bad.status_code == 400
 
 
+# ─── Bounded upload reads ───
+#
+# `await file.read()` with no argument materialises the whole body before any
+# size check can run, so a multi-GB POST is an OOM on the worker no matter what
+# UPLOAD_MAX_BYTES says. These pin the read itself, not just the verdict.
+
+
+class _CountingUpload:
+    """Stands in for UploadFile, recording how much was actually pulled."""
+
+    def __init__(self, total: int) -> None:
+        self._remaining = total
+        self.bytes_served = 0
+
+    async def read(self, size: int = -1) -> bytes:
+        if size < 0:  # the unbounded call this change exists to eliminate
+            raise AssertionError("read() must be called with an explicit chunk size")
+        take = min(size, self._remaining)
+        self._remaining -= take
+        self.bytes_served += take
+        return b"x" * take
+
+
+async def test_read_bounded_stops_at_the_limit():
+    """A 50 MB body must cost ~1 MB of memory, not 50."""
+    from app.core.exceptions import NexusBIException
+    from app.services import upload_service
+
+    huge = _CountingUpload(50 * 1024 * 1024)
+    with pytest.raises(NexusBIException):
+        await upload_service.read_bounded(huge, max_bytes=1024 * 1024)
+    # One chunk of overshoot is how the limit is detected; anything near the full
+    # body means it buffered first and checked afterwards.
+    assert huge.bytes_served <= 1024 * 1024 + upload_service.READ_CHUNK_BYTES
+
+
+async def test_read_bounded_returns_a_body_under_the_limit():
+    from app.services import upload_service
+
+    small = _CountingUpload(2048)
+    assert await upload_service.read_bounded(small, max_bytes=1024 * 1024) == b"x" * 2048
+
+
+async def test_upload_rejects_an_oversized_body(client: AsyncClient, auth: dict, monkeypatch):
+    """End to end: over the limit is a clean 413, never a 500 or an OOM."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "UPLOAD_MAX_BYTES", 4096)
+    oversized = b"product,revenue\n" + b"Laptop,900\n" * 2000
+    resp = await client.post(
+        "/api/v1/datasource/upload",
+        files={"file": ("sales.csv", oversized, "text/csv")},
+        data={"name": "Too big"},
+        headers=auth,
+    )
+    assert resp.status_code == 413, resp.text
+
+
+async def test_refresh_data_rejects_an_oversized_body(
+    client: AsyncClient, auth: dict, sqlite_ds_id: str, monkeypatch
+):
+    """The re-ingest path takes the same bodies, so it needs the same bound."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "UPLOAD_MAX_BYTES", 4096)
+    oversized = b"product,revenue\n" + b"Laptop,900\n" * 2000
+    resp = await client.patch(
+        f"/api/v1/datasource/{sqlite_ds_id}/data",
+        files={"file": ("sales.csv", oversized, "text/csv")},
+        headers=auth,
+    )
+    assert resp.status_code == 413, resp.text
+
+
 async def test_query_error_surfaces_generated_sql(
     client: AsyncClient, auth: dict, sqlite_ds_id: str, monkeypatch
 ):

@@ -10,7 +10,7 @@ Design notes:
   changed. Only the top-N get the (AI) ``insight_digest.summarize_change`` narration.
 - Falls back to a deterministic rule-based highlight so the brief still works
   fully offline (same philosophy as the rest of the app).
-- One brief = one Notification (title "🌅 Səhər brifi", body = bullet list).
+- One brief = one Notification (title "Səhər brifi", body = bullet list).
 """
 from __future__ import annotations
 
@@ -24,14 +24,14 @@ from app.ai import insight_digest
 from app.config import settings
 from app.core.logging import get_logger
 from app.core.notification_types import NotificationCategory
-from app.models.alert import Notification
 from app.models.query_log import QueryLog
 from app.models.user import User
+from app.models.alert import Notification
 from app.services import stats
 from app.services.insight_service import rows_of
 
 _log = get_logger("nexusbi.digest")
-_TITLE = "🌅 Səhər brifi"
+_TITLE = "Səhər brifi"
 # How far back to scan for per-query history when scoring notability.
 _HISTORY_WINDOW = 200
 # A robust z needs a few prior points to mean anything; below this, score 0.0 so a
@@ -172,12 +172,11 @@ async def build_digest(
         return None
 
     body = "Son sorğularının ən vacib nəticələri:\n" + "\n".join(items)
-    notif = Notification(
-        user_id=user_id, alert_id=None, title=_TITLE, body=body,
-        category=NotificationCategory.DIGEST,
+    from app.services import notify_service
+
+    notif = await notify_service.create(
+        db, user_id, _TITLE, body, NotificationCategory.DIGEST
     )
-    db.add(notif)
-    await db.flush()
     # Fan out to the user's workflow channels (Slack/Teams/email) — mock-first.
     from app.services import integration_service
 

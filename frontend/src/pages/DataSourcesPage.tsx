@@ -69,9 +69,7 @@ export function DataSourcesPage() {
     try {
       const res = await replaceData(id, file)
       if (res.warnings.length) {
-        toast(t('dataSourcesPage.refreshWarning', { n: res.warnings.length, items: res.warnings.join(', ') }), {
-          icon: '⚠️',
-        })
+        toast(t('dataSourcesPage.refreshWarning', { n: res.warnings.length, items: res.warnings.join(', ') }))
       } else {
         toast.success(t('dataSourcesPage.refreshed', { rows: res.rows }))
       }

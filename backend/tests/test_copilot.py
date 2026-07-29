@@ -220,7 +220,9 @@ async def test_heavy_tool_cap_is_per_tool():
     import pytest
 
     with pytest.raises(AttributeError):
-        await ctx.dispatch("generate_ba_artifact", {"framework": "swot"})
+        await ctx.dispatch(
+            "generate_ba_artifact", {"framework": "swot", "context": "güclü komanda"}
+        )
 
 
 async def test_copilot_tools_share_endpoint_ip_buckets():
@@ -232,7 +234,7 @@ async def test_copilot_tools_share_endpoint_ip_buckets():
     rate_limit._HITS.clear()
     ip = "10.9.9.9"
     for _ in range(30):
-        assert rate_limit.check_ip("automl_predict", ip, 30, 60)
+        assert await rate_limit.check_ip("automl_predict", ip, 30, 60)
     ctx = copilot._ToolContext(None, None, "u1", client_ip=ip)  # type: ignore[arg-type]
     out = await ctx.dispatch("predict_ml", {"model_id": "m", "row": {"x": 1}})
     assert "sürət həddi" in out.get("error", "")

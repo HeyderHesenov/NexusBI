@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Camera, Clock, Trash2, X } from 'lucide-react'
+import { useFormatDate } from '../../hooks/useFormatDate'
 import type { SnapshotMeta } from '../../types'
 
 interface Props {
@@ -13,16 +14,12 @@ interface Props {
   onDelete: (id: string) => void
 }
 
-function fmt(iso: string): string {
-  const d = new Date(iso)
-  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-}
-
 /** Horizontal snapshot strip — capture button + selectable timeline dots. */
 export function SnapshotTimeline({
   items, selectedId, capturing, loading, onCapture, onSelect, onClear, onDelete,
 }: Props) {
   const { t } = useTranslation()
+  const fmt = useFormatDate()
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface p-3">
       <button
@@ -56,7 +53,7 @@ export function SnapshotTimeline({
                 type="button"
                 onClick={() => (selectedId === s.id ? onClear() : onSelect(s.id))}
                 aria-pressed={selectedId === s.id}
-                title={s.label || fmt(s.created_at)}
+                title={s.label || fmt(s.created_at, { mode: 'short' })}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${
                   selectedId === s.id
                     ? 'border-accent bg-accent-soft text-accent'
@@ -64,7 +61,7 @@ export function SnapshotTimeline({
                 }`}
               >
                 <Clock size={11} />
-                <span className="font-mono">{fmt(s.created_at)}</span>
+                <span className="font-mono">{fmt(s.created_at, { mode: 'short' })}</span>
                 {s.label && <span className="max-w-28 truncate">· {s.label}</span>}
                 {s.origin === 'scheduled' && (
                   <span className="text-[10px] uppercase tracking-wide text-ink-faint">

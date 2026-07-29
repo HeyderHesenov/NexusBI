@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request, Response, status
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.exceptions import SchemaNotFoundError
 from app.core.rate_limit import _client_ip, rate_limit
 from app.core.security import create_room_ticket
 from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.models.chat import ChatMessage
-from app.realtime.hub import hub
+from app.realtime import notify
 from app.schemas.chat import (
     AiActionRequest,
     ChannelCreate,
@@ -89,9 +91,20 @@ async def room_ticket(payload: RoomRequest, user: CurrentUser, db: DbDep) -> dic
     return {"ticket": create_room_ticket(user.id, payload.room_key)}
 
 
+@router.post("/chat/user-ticket")
+async def user_ticket(user: CurrentUser) -> dict[str, str]:
+    """Mint a short-lived ticket for the caller's OWN unread mailbox socket.
+
+    Only a ticket — the unread snapshot deliberately comes down the socket after
+    the hub registers the connection, so a message committed mid-handshake can't
+    fall between a snapshot query and the subscribe.
+    """
+    return {"ticket": create_room_ticket(user.id, notify.user_room(user.id))}
+
+
 @router.post("/chat/read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_read(payload: RoomRequest, user: CurrentUser, db: DbDep) -> Response:
-    await chat_service.mark_read(db, user.id, payload.room_key)
+    await chat_service.mark_read(db, user.id, payload.room_key, up_to=payload.up_to)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -119,21 +132,12 @@ async def share_resource(
     )
     # Persist before broadcasting so a member's history refetch can't miss it.
     await db.commit()
-    resp = ChatMessageResponse.model_validate(msg)
-    await hub.broadcast(
-        msg.room_key, {"type": "chat", "message": resp.model_dump(mode="json")}
-    )
-    return resp
+    await notify.publish_message(db, msg)
+    return ChatMessageResponse.model_validate(msg)
 
 
-async def _broadcast_update(msg: ChatMessage) -> None:
-    await hub.broadcast(
-        msg.room_key,
-        {
-            "type": "chat_update",
-            "message": ChatMessageResponse.model_validate(msg).model_dump(mode="json"),
-        },
-    )
+async def _broadcast_update(db: AsyncSession, msg: ChatMessage) -> None:
+    await notify.publish_message(db, msg, frame="chat_update")
 
 
 @router.post("/chat/ai/approve", status_code=status.HTTP_202_ACCEPTED)
@@ -150,7 +154,7 @@ async def ai_approve(
     # Persist BEFORE broadcasting/spawning: peers refetching history must see
     # the approved status, and the executor task reads its own session.
     await db.commit()
-    await _broadcast_update(msg)
+    await _broadcast_update(db, msg)
     ai_chat_service.spawn_execute(cache, msg, _client_ip(request))
     return {"status": "approved"}
 
@@ -162,7 +166,7 @@ async def ai_cancel(payload: AiActionRequest, user: CurrentUser, db: DbDep) -> d
         db, user.id, "chat.ai_cancel", entity="chat_message", entity_id=msg.id
     )
     await db.commit()
-    await _broadcast_update(msg)
+    await _broadcast_update(db, msg)
     return {"status": "cancelled"}
 
 

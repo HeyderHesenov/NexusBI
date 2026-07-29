@@ -14,7 +14,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChartConfig } from '../../types'
 import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
-import { TruncatedTick } from './axis'
+import { TruncatedTick, tooltipStyleProps } from './axis'
 import { ScrollZoom } from './ScrollZoom'
 import { targetLineProps } from './targetLine'
 import { useChartTheme } from './theme'
@@ -127,9 +127,7 @@ export function BarChartWidget({
         />
         <Tooltip
           cursor={{ fill: 'rgba(14,159,110,0.10)' }}
-          contentStyle={tooltipStyle}
-          labelStyle={tooltipLabel}
-          itemStyle={tooltipItem}
+          {...tooltipStyleProps(tooltipStyle, tooltipLabel, tooltipItem)}
           formatter={(value: number | string) => fmt(Number(value))}
         />
         {Number.isFinite(targetValue) ? (

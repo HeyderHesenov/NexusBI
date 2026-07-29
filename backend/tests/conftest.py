@@ -10,14 +10,20 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-# Force demo mode + a throwaway sqlite file before app import.
-os.environ["DEMO_MODE"] = "true"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_nexusbi.db"
-os.environ["SECRET_KEY"] = "test-secret"
-os.environ["FERNET_KEY"] = "PqQ8m3Vz3yQv8r9Xk2pYwLp1cQv4nF7sJ0aB6dE9gH0="
+# Demo mode + a throwaway sqlite file, set before app import.
+#
+# `setdefault`, not assignment: the suite's default is demo mode, but a caller
+# must be able to run the whole thing with `DEMO_MODE=false` to see what breaks
+# outside the demo — that mode is what a real deployment runs, and forcing the
+# variable here is how it stayed untested. SECRET_KEY is >= 32 chars because
+# `main._assert_production_secrets` rejects anything shorter when demo is off.
+os.environ.setdefault("DEMO_MODE", "true")
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test_nexusbi.db")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-at-least-32-characters-long")
+os.environ.setdefault("FERNET_KEY", "PqQ8m3Vz3yQv8r9Xk2pYwLp1cQv4nF7sJ0aB6dE9gH0=")
 # Hermetic tests: no real AI/network. Empties the key so embeddings use the
 # deterministic offline fallback and Text2SQL uses rule-based — identical to CI.
 os.environ["AI_API_KEY"] = ""
@@ -32,12 +38,16 @@ _UPLOAD_TMP = tempfile.mkdtemp(prefix="nexusbi_test_uploads_")
 os.environ["UPLOAD_DIR"] = _UPLOAD_TMP
 atexit.register(shutil.rmtree, _UPLOAD_TMP, ignore_errors=True)
 
+from app.core.health import _migration_heads  # noqa: E402
 from app.db.base import Base  # noqa: E402
-from app.db.session import get_db  # noqa: E402
+from app.db.session import enforce_sqlite_foreign_keys, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import *  # noqa: E402,F401,F403
 
 _engine = create_async_engine("sqlite+aiosqlite:///./test_nexusbi.db")
+# The API under test runs on THIS engine (get_db is overridden below), so without
+# the pragma the suite would exercise a database with foreign keys switched off.
+enforce_sqlite_foreign_keys(_engine.sync_engine)
 _Session = async_sessionmaker(_engine, expire_on_commit=False)
 
 
@@ -62,6 +72,18 @@ async def _schema() -> AsyncGenerator[None, None]:
     rate_limit._HITS.clear()
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # create_all writes no alembic_version row, but /ready compares the
+        # database's revision against the migration head. Stamp it so the test
+        # database has the shape a migrated deployment does — and re-stamp every
+        # test, since drop_all leaves this table (it is not in the metadata).
+        await conn.execute(
+            text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL)")
+        )
+        await conn.execute(text("DELETE FROM alembic_version"))
+        for head in _migration_heads():
+            await conn.execute(
+                text("INSERT INTO alembic_version (version_num) VALUES (:v)"), {"v": head}
+            )
     yield
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

@@ -79,8 +79,26 @@ class Settings(BaseSettings):
     # Empty => /metrics is only reachable from loopback.
     METRICS_TOKEN: str = Field(default="")
 
+    # Key for the HMAC over stored AutoML model blobs. Kept separate from
+    # SECRET_KEY because the two rotate for different reasons: rotating a JWT
+    # signing key should log everyone out, not delete every trained model. Empty
+    # => fall back to SECRET_KEY, which is the pre-existing behaviour.
+    MODEL_SIGNING_KEY: str = Field(default="")
+
+    # Number of trusted reverse proxies in front of the app. 0 (default) => never
+    # trust X-Forwarded-For, so rate-limit keys use the direct peer IP (a client
+    # can't spoof the header). Set to the real proxy count in production so per-IP
+    # throttles see the client's address instead of collapsing to the proxy's IP.
+    TRUSTED_PROXY_HOPS: int = Field(default=0)
+
     # ─── App ───
-    DEMO_MODE: bool = Field(default=True)
+    # Off by default: this flag gates 24 behaviours and several are unsafe outside
+    # a demo (published /docs + /openapi.json, generated SQL echoed in error
+    # responses, /metrics open to loopback, a seeded unlimited login, and an
+    # ephemeral SECRET_KEY instead of refusing to start). Defaulting it on means a
+    # forgotten env var ships all of that. Dev/demo turns it on explicitly — see
+    # `.env.example` and the `backend` service in `docker-compose.yml`.
+    DEMO_MODE: bool = Field(default=False)
     CORS_ORIGINS: str = Field(default="http://localhost:5173")
     # ISO 4217 code applied to money-looking chart columns (e.g. "AZN", "USD").
     # Empty => charts show plain numbers; column names can't reveal the currency,
@@ -93,6 +111,12 @@ class Settings(BaseSettings):
 
     # ─── Scheduler (saved-query refresh) ───
     SCHEDULER_ENABLED: bool = Field(default=True)
+    # Every worker runs its own scheduler loop, so without a shared lock an N-worker
+    # deployment delivers each scheduled report N times. Redis provides that lock.
+    # Left True, a deployment with no reachable Redis stands the loops down and says
+    # so, rather than duplicating silently. Set False only when you genuinely run a
+    # single process.
+    SCHEDULER_REQUIRE_LOCK: bool = Field(default=True)
     SCHEDULER_INTERVAL_SECONDS: int = Field(default=60)  # how often due jobs are checked
 
     # ─── Proactive AI digest (morning brief) ───
@@ -101,6 +125,13 @@ class Settings(BaseSettings):
     DIGEST_MAX_ITEMS: int = Field(default=5)  # max highlights per brief
 
     # ─── Live dashboards (real-time auto-refresh + WS push) ───
+    # Route realtime delivery and presence through Redis so chat, cursors and
+    # rosters cross workers. Off by default: a single-worker deployment gains
+    # nothing and pays a Redis round trip per message, and this changes delivery
+    # semantics for a feature people use. Turn it on when you run more than one
+    # worker — the production compose does.
+    REALTIME_BUS_ENABLED: bool = Field(default=False)
+
     LIVE_REFRESH_ENABLED: bool = Field(default=True)
     LIVE_REFRESH_TICK_SECONDS: int = Field(default=4)  # loop wake cadence
     LIVE_DEMO_FEED: bool = Field(default=True)  # nudge demo data so numbers visibly move

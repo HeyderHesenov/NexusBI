@@ -70,7 +70,7 @@ async def delete(db: AsyncSession, user_id: str, channel_id: str) -> None:
 async def send_test(db: AsyncSession, user_id: str, channel_id: str) -> bool:
     ch = await get(db, user_id, channel_id)
     return await integrations.deliver(
-        ch.type, decrypt_secret(ch.target_encrypted), "NexusBI test", "Bu, test bildirişidir. ✅"
+        ch.type, decrypt_secret(ch.target_encrypted), "NexusBI test", "Bu, test bildirişidir."
     )
 
 

@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { SERIES, DANGER } from '../charts/theme'
+import { factMap, resolveEvidence, toItems } from '../../lib/baItems'
+import { ItemEvidence } from './EvidenceChips'
 import type { BAContent } from '../../types'
 
 const ACCENT = SERIES[0]
@@ -14,10 +16,12 @@ const QUADS = [
 
 export function SWOTGrid({ content }: { content: BAContent }) {
   const { t } = useTranslation()
+  // Legacy artifacts hold bare strings in these buckets — normalise, never index.
+  const facts = factMap(content.facts)
   return (
     <div className="grid gap-3 sm:grid-cols-2" data-testid="swot-grid">
       {QUADS.map(({ key, color }) => {
-        const items = content[key] ?? []
+        const items = toItems(content[key])
         return (
           <section key={key} className="rounded-2xl border border-line bg-surface-2 p-4">
             {/* Heading text stays on the ink token for contrast; the dot carries the color. */}
@@ -28,11 +32,18 @@ export function SWOTGrid({ content }: { content: BAContent }) {
             {items.length === 0 ? (
               <p className="text-xs text-ink-faint">{t('baStudio.quadrantEmpty')}</p>
             ) : (
-              <ul className="flex flex-col gap-1.5 text-sm text-ink-soft">
+              <ul className="flex flex-col gap-2 text-sm text-ink-soft">
                 {items.map((item, i) => (
                   <li key={i} className="flex gap-2">
                     <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-ink-faint" />
-                    {item}
+                    <span className="min-w-0">
+                      {item.text}
+                      <ItemEvidence
+                        cited={resolveEvidence(item, facts)}
+                        derived={item.derived}
+                        hasFacts={facts.size > 0}
+                      />
+                    </span>
                   </li>
                 ))}
               </ul>

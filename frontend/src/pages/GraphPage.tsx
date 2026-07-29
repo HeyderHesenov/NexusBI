@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Expand, Minimize2, RefreshCw } from 'lucide-react'
 import { GraphCanvas } from '../components/graph/GraphCanvas'
 import { PageHeader } from '../components/ui/PageHeader'
+import { Skeleton } from '../components/ui/Skeleton'
 import { GraphViewSwitcher } from '../components/graph/GraphViewSwitcher'
 import { GraphContextMenus } from '../components/graph/GraphContextMenus'
 import { useGraphViewMenu } from '../hooks/useGraphViewMenu'
@@ -205,9 +206,7 @@ export function GraphPage() {
       />
 
       {loading && !data ? (
-        <div className="grid min-h-[55vh] place-items-center text-sm text-ink-faint">
-          {t('common.loading')}
-        </div>
+        <Skeleton className="min-h-[55vh] w-full" />
       ) : error && !data ? (
         <div className="grid min-h-[55vh] place-items-center text-center">
           <div>
