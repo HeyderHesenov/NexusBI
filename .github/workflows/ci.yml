@@ -93,11 +93,14 @@ jobs:
           # /ready, not /health: it also asserts the database is reachable and at
           # the migration head, so "booted but unmigrated" fails here instead of
           # surfacing as confusing 500s inside the E2E run.
-          for i in $(seq 1 30); do
+          # 90s, not 30s: the DEMO_MODE seed runs during startup, and a slow
+          # runner can still push it past a tight budget. The old 30s lost a run
+          # to a backend that answered /ready 1.6 seconds later.
+          for i in $(seq 1 90); do
             curl -sf http://localhost:8000/ready && break
             sleep 1
           done
-          curl -sf http://localhost:8000/ready || (echo "backend not ready" && exit 1)
+          curl -sf http://localhost:8000/ready || (echo "backend not ready after 90s" && exit 1)
           cd frontend && npm run test:e2e
       - name: Upload Playwright report
         if: failure()
