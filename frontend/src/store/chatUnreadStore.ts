@@ -58,10 +58,19 @@ const backoff = (n: number) => Math.min(1000 * 2 ** n, 30_000) + Math.random() *
  * newest message that snapshot counted. */
 type Snapshot = Record<string, { unread: number; at: string }>
 
+/** Room keys arrive off the socket and are used directly as object keys. The
+ * mailbox is ours, but "the server would never send that" is an assumption about
+ * today's server, not a property of this reducer — and `__proto__` reaching the
+ * spread below would poison every later lookup. Dropped, not sanitised: a room
+ * by that name does not exist, so there is no badge to render. */
+const UNSAFE_ROOM_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+const isSafeRoomKey = (key: string) => !UNSAFE_ROOM_KEYS.has(key)
+
 function bump(rooms: Record<string, number>, frame: UnreadFrame, viewing: string | null) {
   // Suppressed exactly when ChatPage will mark it read — the two share one
   // condition, so the badge and the read watermark cannot disagree.
   if (frame.room_key === viewing) return rooms
+  if (!isSafeRoomKey(frame.room_key)) return rooms
   return { ...rooms, [frame.room_key]: (rooms[frame.room_key] ?? 0) + 1 }
 }
 
@@ -74,7 +83,9 @@ export function applyUnreadFrame(
     case 'unread_snapshot': {
       const snap = frame.rooms as Snapshot
       let rooms: Record<string, number> = {}
-      for (const [room, v] of Object.entries(snap)) rooms[room] = v.unread
+      for (const [room, v] of Object.entries(snap)) {
+        if (isSafeRoomKey(room)) rooms[room] = v.unread
+      }
       // The room on screen is never badged. On reconnect the server still counts it
       // — the debounced markRead has not landed yet — so the snapshot would
       // otherwise light up the conversation the user is reading.
