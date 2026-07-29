@@ -47,14 +47,26 @@ step "Writing throwaway secrets to $ENV_FILE"
 
 # NEXUSBI_ENV_FILE is read back by docker-compose.prod.yml's `env_file:`, so the
 # containers get these values and the operator's own .env.prod is never opened.
+#
+# Minted per run rather than written as literals. Two reasons: a committed
+# credential-shaped string is a leak scanner's job to flag whether or not it is
+# real, and a script that hands out the same "throwaway" key to every reader is
+# the wrong thing to copy from.
+rand_b64() { python3 -c "import base64,os,sys; print(base64.urlsafe_b64encode(os.urandom(int(sys.argv[1]))).decode())" "$1"; }
+
+# RFC 6455 wants Sec-WebSocket-Key to be standard base64 of 16 bytes, and the
+# `websockets` server validates the alphabet — so the url-safe variant above
+# (which substitutes - and _) will not do for that one header.
+ws_nonce() { python3 -c "import base64,os; print(base64.b64encode(os.urandom(16)).decode())"; }
+
 cat > "$ENV_FILE" <<EOF
 NEXUSBI_ENV_FILE=$ENV_FILE
 POSTGRES_USER=nexusbi
-POSTGRES_PASSWORD=smoke-only-$(date +%s)
+POSTGRES_PASSWORD=$(rand_b64 18)
 POSTGRES_DB=nexusbi
-SECRET_KEY=smoke-secret-key-that-is-definitely-long-enough-32
-FERNET_KEY=PqQ8m3Vz3yQv8r9Xk2pYwLp1cQv4nF7sJ0aB6dE9gH0=
-MODEL_SIGNING_KEY=smoke-model-signing-key
+SECRET_KEY=$(rand_b64 36)
+FERNET_KEY=$(rand_b64 32)
+MODEL_SIGNING_KEY=$(rand_b64 24)
 # Deliberately empty: a keyless deploy must boot and serve its deterministic
 # fallbacks. If this stack needs a model key to come up, that is the bug.
 AI_API_KEY=
@@ -144,7 +156,7 @@ TICKET="$(curl -sf -X POST "$BASE_URL/api/v1/chat/user-ticket" \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["ticket"])')"
 WS_CODE="$(curl -sS -o /dev/null -w '%{http_code}' \
   -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
-  -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+  -H 'Sec-WebSocket-Version: 13' -H "Sec-WebSocket-Key: $(ws_nonce)" \
   "$BASE_URL/ws/user?ticket=$TICKET")"
 [ "$WS_CODE" = "101" ] || die "WebSocket handshake returned $WS_CODE, expected 101"
 pass "/ws/user completes the upgrade handshake through Caddy"

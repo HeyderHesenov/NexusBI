@@ -134,6 +134,8 @@ def test_production_boots_without_an_ai_key(monkeypatch):
 
 def test_production_still_refuses_weak_signing_secrets(monkeypatch):
     """The fatal checks stay fatal — this is the half that must not be relaxed."""
+    import os
+
     import pytest
 
     from app.config import settings
@@ -144,9 +146,10 @@ def test_production_still_refuses_weak_signing_secrets(monkeypatch):
     with pytest.raises(RuntimeError, match="SECRET_KEY"):
         _assert_production_secrets()
 
-    monkeypatch.setattr(
-        settings, "SECRET_KEY", "test-secret-key-at-least-32-characters-long", raising=False
-    )
+    # conftest already exports a long-enough key; reusing it beats writing a
+    # second credential-shaped literal into the repository for the scanner to
+    # find, and keeps the two in step if either changes.
+    monkeypatch.setattr(settings, "SECRET_KEY", os.environ["SECRET_KEY"], raising=False)
     monkeypatch.setattr(settings, "FERNET_KEY", "", raising=False)
     with pytest.raises(RuntimeError, match="FERNET_KEY"):
         _assert_production_secrets()
