@@ -63,15 +63,17 @@ type Snapshot = Record<string, { unread: number; at: string }>
  * today's server, not a property of this reducer — and `__proto__` reaching the
  * spread below would poison every later lookup. Dropped, not sanitised: a room
  * by that name does not exist, so there is no badge to render. */
-const UNSAFE_ROOM_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
-const isSafeRoomKey = (key: string) => !UNSAFE_ROOM_KEYS.has(key)
+/* Written out at each write site rather than behind a helper: the guard has to be
+ * visible to a reader looking at the assignment, and dataflow analysis stops
+ * treating it as a barrier once it hides behind a Set lookup. */
 
 function bump(rooms: Record<string, number>, frame: UnreadFrame, viewing: string | null) {
   // Suppressed exactly when ChatPage will mark it read — the two share one
   // condition, so the badge and the read watermark cannot disagree.
   if (frame.room_key === viewing) return rooms
-  if (!isSafeRoomKey(frame.room_key)) return rooms
-  return { ...rooms, [frame.room_key]: (rooms[frame.room_key] ?? 0) + 1 }
+  const key = frame.room_key
+  if (key === '__proto__' || key === 'constructor' || key === 'prototype') return rooms
+  return { ...rooms, [key]: (rooms[key] ?? 0) + 1 }
 }
 
 /** Pure reducer — every frame the mailbox can send, testable without a socket. */
@@ -84,7 +86,8 @@ export function applyUnreadFrame(
       const snap = frame.rooms as Snapshot
       let rooms: Record<string, number> = {}
       for (const [room, v] of Object.entries(snap)) {
-        if (isSafeRoomKey(room)) rooms[room] = v.unread
+        if (room === '__proto__' || room === 'constructor' || room === 'prototype') continue
+        rooms[room] = v.unread
       }
       // The room on screen is never badged. On reconnect the server still counts it
       // — the debounced markRead has not landed yet — so the snapshot would
