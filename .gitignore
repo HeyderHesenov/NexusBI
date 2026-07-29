@@ -24,7 +24,11 @@ env/
 *.db-wal
 *.sqlite
 *.sqlite3
-data/uploads/
+# Unanchored on purpose: a pattern containing a slash is relative to this file,
+# so plain `data/uploads/` covered only <root>/data/uploads. The backend runs
+# with cwd=backend and UPLOAD_DIR=./data/uploads, so the directory it actually
+# writes to is backend/data/uploads — which the anchored form never matched.
+**/data/uploads/
 
 # Node / frontend
 node_modules/
