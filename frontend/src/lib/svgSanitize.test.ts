@@ -36,6 +36,36 @@ describe('sanitizeSvg', () => {
     expect(out).toContain('<rect')
   })
 
+  it('strips vbscript: URLs', () => {
+    const out = sanitizeSvg('<svg><a href="vbscript:msgbox(1)"><rect/></a></svg>')
+    expect(out.toLowerCase()).not.toContain('vbscript:')
+    expect(out).toContain('<rect')
+  })
+
+  it('strips schemes obfuscated with whitespace and control characters', () => {
+    // Browsers ignore both anywhere inside the scheme, so a prefix check on the
+    // raw attribute value would let these through.
+    for (const href of ['java\tscript:alert(1)', 'java\u0000script:alert(1)', ' JaVaScRiPt:alert(1)']) {
+      const out = sanitizeSvg(`<svg><a href="${href}"><rect/></a></svg>`)
+      expect(out.toLowerCase().replace(/[\s\u0000-\u001f]+/g, ''), href).not.toContain('javascript:')
+    }
+  })
+
+  it('strips data: URLs that can carry script', () => {
+    // image/svg+xml is the trap: it reads as an image and is actually a document.
+    for (const href of ['data:text/html,<script>alert(1)</script>', 'data:image/svg+xml;base64,PHN2Zz4=']) {
+      const out = sanitizeSvg(`<svg><a href="${href}"><rect/></a></svg>`)
+      expect(out.toLowerCase(), href).not.toContain('data:')
+      expect(out).toContain('<rect')
+    }
+  })
+
+  it('keeps raster data: image URLs', () => {
+    const png = 'data:image/png;base64,iVBORw0KGgo='
+    const out = sanitizeSvg(`<svg><image href="${png}"/></svg>`)
+    expect(out).toContain(png)
+  })
+
   it('keeps benign hrefs', () => {
     const out = sanitizeSvg('<svg><a href="https://example.com"><rect/></a></svg>')
     expect(out).toContain('https://example.com')
