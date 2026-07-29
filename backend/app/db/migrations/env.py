@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.pool import NullPool
 
 from app.config import settings
+from app.db.migration_lock import lock_migrations
 from app.models import Base  # noqa: F401  (registers all models)
 
 config = context.config
@@ -40,6 +41,9 @@ def do_run_migrations(connection: Connection) -> None:
         render_as_batch=True,
     )
     with context.begin_transaction():
+        # Inside the transaction on purpose: the lock is transaction-scoped, so
+        # it is released by the same commit or rollback that ends this run.
+        lock_migrations(connection)
         context.run_migrations()
 
 
