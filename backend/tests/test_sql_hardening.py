@@ -138,3 +138,38 @@ async def test_generation_cache_key_varies_by_question(monkeypatch):
     await query_service._generate_sql_cached("q1", "schema", "sqlite", "", cache)
     await query_service._generate_sql_cached("q2", "schema", "sqlite", "", cache)
     assert calls["n"] == 2  # different question → distinct key → fresh generation
+
+
+# ─── Block-comment stripping: behaviour + the ReDoS that motivated the rewrite ───
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("SELECT 1 /* hi */ FROM t", "SELECT 1   FROM t"),
+        ("SELECT /* a */ 1 /* b */ FROM t", "SELECT   1   FROM t"),
+        ("SELECT 1 /* multi\nline */ FROM t", "SELECT 1   FROM t"),
+        ("SELECT 1 /**/ FROM t", "SELECT 1   FROM t"),
+        ("SELECT 1 /*** stars ***/ FROM t", "SELECT 1   FROM t"),
+        # Nesting is not honoured — the FIRST `*/` closes the span, as before.
+        ("SELECT 1 /* outer /* inner */ FROM t", "SELECT 1   FROM t"),
+        # An unterminated comment is left verbatim so the parser rejects it.
+        ("SELECT 1 /* unterminated FROM t", "SELECT 1 /* unterminated FROM t"),
+    ],
+)
+def test_block_comment_stripping(raw, expected):
+    assert sql_guard._strip_comments(raw) == expected
+
+
+def test_block_comment_stripping_is_linear():
+    """Guards the rewrite in _strip_block_comments.
+
+    `/*` repeated with no closing `*/` made the old non-greedy regex rescan to
+    end-of-string from every opener: ~300 ms at the 20 000-character cap the
+    request schemas allow, blocking the event loop. The bound here is ~1000x the
+    measured linear cost, so it fails only on a genuine return to backtracking.
+    """
+    import time
+
+    hostile = ("/*" + "a/*" * 6666)[:20_000]
+    started = time.perf_counter()
+    sql_guard._strip_comments(hostile)
+    assert time.perf_counter() - started < 0.5
