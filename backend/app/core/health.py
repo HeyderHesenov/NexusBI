@@ -79,12 +79,29 @@ async def _cache_status(cache: CacheService | None) -> str:
         return "unavailable"
 
 
+def _ai_status() -> str:
+    """Whether model calls are possible — reported, never gating.
+
+    A keyless install is supported: ``ai.client._require_configured`` raises
+    before any network call and every caller falls through to its deterministic
+    path. So the app is genuinely ready to serve; it just answers from the
+    fallbacks. Surfacing it here is what stops that being a silent surprise —
+    an operator who meant to configure AI can see it in one curl.
+    """
+    from app.config import settings
+
+    if settings.AI_API_KEY and settings.AI_MODEL:
+        return "ok"
+    return "degraded: no API key, deterministic fallbacks only"
+
+
 async def readiness(cache: CacheService | None) -> tuple[bool, dict[str, str]]:
     """Return ``(ready, per-component status)``.
 
-    Only the database and its migration state gate readiness. Redis is reported
-    but not gating: the app is built to degrade without it (every cache call
-    no-ops), so refusing traffic would be a lie in the other direction. That
+    Only the database and its migration state gate readiness. Redis and the AI
+    engine are reported but not gating: the app is built to degrade without
+    either (every cache call no-ops; every AI feature has a deterministic
+    fallback), so refusing traffic would be a lie in the other direction. That
     changes when Redis becomes load-bearing — scheduler leader election — and
     this is where the check moves when it does.
     """
@@ -100,6 +117,7 @@ async def readiness(cache: CacheService | None) -> tuple[bool, dict[str, str]]:
     components["database"] = database
     components["migrations"] = migrations
     components["cache"] = await _cache_status(cache)
+    components["ai"] = _ai_status()
 
     ready = database == "ok" and migrations == "ok"
     if not ready:

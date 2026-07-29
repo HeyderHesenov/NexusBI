@@ -39,7 +39,20 @@ def _apply_security_headers(response) -> None:
 
 
 def _assert_production_secrets() -> None:
-    """Fail fast if a non-demo deploy is missing real secrets."""
+    """Fail fast if a non-demo deploy is missing real secrets.
+
+    Only the secrets whose absence makes the deploy *unsound* are fatal:
+    ``SECRET_KEY`` signs tokens and ``FERNET_KEY`` encrypts stored datasource
+    credentials, so a placeholder value there is a silent security hole.
+
+    ``AI_API_KEY`` is deliberately NOT fatal. Every AI feature in this codebase
+    has a deterministic keyless fallback, and ``ai.client._require_configured``
+    short-circuits to it without touching the network — so a keyless install is
+    a supported, degraded configuration, not a broken one. Refusing to boot
+    would mean a self-hosted operator cannot run NexusBI at all without buying
+    model access, which contradicts the fallbacks the product is built around.
+    Readiness reports the degradation (see ``core.health``); it does not gate on it.
+    """
     if settings.DEMO_MODE:
         return
     if not settings.SECRET_KEY or settings.SECRET_KEY == "dev-insecure-change-me" or len(
@@ -49,7 +62,13 @@ def _assert_production_secrets() -> None:
     if not settings.FERNET_KEY:
         raise RuntimeError("FERNET_KEY must be set in production.")
     if not settings.AI_API_KEY:
-        raise RuntimeError("AI_API_KEY must be set in production.")
+        log.warning(
+            "ai_disabled_no_api_key",
+            detail=(
+                "AI_API_KEY is not set. Every AI feature will serve its deterministic "
+                "fallback; no model calls will be made. Set AI_API_KEY to enable them."
+            ),
+        )
 
 
 def _demo_model_signing_key() -> str:
