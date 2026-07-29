@@ -1,0 +1,131 @@
+# Production stack: one command, a clean host, no demo data.
+#
+#   cp .env.prod.example .env.prod   # fill in the secrets it lists
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Differences from docker-compose.yml that matter, and why:
+#   - no bind mounts; the images carry the code, so a restart cannot pick up a
+#     half-edited working tree
+#   - DEMO_MODE is never set, so the application default (false) applies
+#   - migrations run once, in their own service, before the app is allowed to
+#     start — not in the lifespan, which would run them in every worker at once
+#   - named volumes for anything that must outlive a container
+#
+# NEXUSBI_ENV_FILE exists so scripts/deploy_smoke.sh can stand this exact stack
+# up against throwaway secrets, under its own compose project, without ever
+# reading or destroying a real deployment's .env.prod and volumes.
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:-nexusbi}
+    # Deliberately no `ports:`. The database is reachable on the compose network
+    # and nowhere else; publishing 5432 is how a self-hosted install ends up
+    # brute-forced.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    # Load-bearing in this stack, not just a cache: scheduler leader election,
+    # cross-worker realtime delivery and rate limiting all go through it.
+    # appendonly keeps that state across a restart.
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ./backend
+    command: ["alembic", "upgrade", "head"]
+    env_file: ${NEXUSBI_ENV_FILE:-.env.prod}
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nexusbi}
+    depends_on:
+      db:
+        condition: service_healthy
+    # One-shot: it exits, and `backend` waits for that exit to be a success.
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "${WEB_CONCURRENCY:-4}"
+    env_file: ${NEXUSBI_ENV_FILE:-.env.prod}
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nexusbi}
+      REDIS_URL: redis://redis:6379/0
+      # Multiple workers, so delivery and presence have to cross process
+      # boundaries — otherwise an evicted member keeps receiving chat messages
+      # from whichever worker still holds their socket.
+      REALTIME_BUS_ENABLED: "true"
+      # Already the default; stated because it is the invariant that stops four
+      # workers from each sending the same scheduled report.
+      SCHEDULER_REQUIRE_LOCK: "true"
+      # Exactly one proxy (web) sits in front, and it appends one entry to
+      # X-Forwarded-For. Raise this only if you add another hop, or rate-limit
+      # keys become spoofable.
+      TRUSTED_PROXY_HOPS: "1"
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    # No `ports:` — the edge reaches it over the compose network.
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+    environment:
+      # Set to your hostname (bi.example.com) and Caddy provisions and renews a
+      # certificate for it. Left as http://localhost, it serves plain HTTP.
+      NEXUSBI_SITE_ADDRESS: ${NEXUSBI_SITE_ADDRESS:-http://localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      NEXUSBI_MAX_BODY: ${NEXUSBI_MAX_BODY:-12MB}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      # Issued certificates and ACME account keys. Without this volume every
+      # restart re-requests certificates and walks into Let's Encrypt rate limits.
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  caddydata:
+  caddyconfig:

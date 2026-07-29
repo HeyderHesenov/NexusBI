@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#
+# Refuse to commit a secret-bearing file.
+#
+# Why this exists when the repository already has GitHub push protection and a
+# gitleaks CI job: both of those act too late or too narrowly for a PUBLIC repo.
+#
+#   - Push protection blocks recognised VENDOR formats (sk-..., AKIA..., ghp_...).
+#     NexusBI's own SECRET_KEY and FERNET_KEY are high-entropy random strings in
+#     no vendor's format, so they sail straight through.
+#   - The gitleaks workflow scans the full history, but only after the push has
+#     already landed. On a public repository a secret is compromised the moment
+#     it is pushed; a red CI run is a notification, not a defence.
+#
+# Install once:
+#     git config core.hooksPath scripts/git-hooks
+#
+# Bypass for a deliberate commit:  git commit --no-verify
+
+set -euo pipefail
+
+fail() { printf '\033[31mpre-commit: %s\033[0m\n' "$1" >&2; }
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+[ -z "$staged" ] && exit 0
+
+# ─── Secret-bearing filenames ───
+# .env.example and .env.prod.example are the documented templates and carry no
+# values; everything else matching these shapes is refused.
+blocked="$(printf '%s\n' "$staged" | grep -E '(^|/)\.env($|\.)|\.pem$|\.key$|(^|/)\.model_signing_key$' \
+  | grep -vE '\.env\.example$|\.env\.prod\.example$' || true)"
+
+if [ -n "$blocked" ]; then
+  fail "these files hold credentials and must not be committed:"
+  printf '  %s\n' $blocked >&2
+  fail "if one is genuinely a template, name it *.example."
+  exit 1
+fi
+
+# ─── Content scan, when the tool is available ───
+# Optional on purpose: the filename guard above is the part that must work on
+# every machine, with no install step.
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks protect --staged --redact --config .gitleaks.toml --no-banner; then
+    fail "gitleaks found a secret in the staged changes."
+    exit 1
+  fi
+fi
+
+exit 0

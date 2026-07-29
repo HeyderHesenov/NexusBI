@@ -49,8 +49,10 @@ openpyxl==3.1.5
 # ─── Report rendering (scheduled PDF/Excel delivery) ───
 reportlab==5.0.0
 
-# ─── Tests ───
-pytest==9.0.3
-pytest-asyncio==1.3.0
-aiosmtpd==1.4.6  # in-process SMTP sink for the live report-delivery test
+# ─── Machine learning (AutoML Studio, multivariate anomaly detection) ───
+# Runtime, not test-only: automl_service trains with it and ai/analysis.py
+# lazy-imports IsolationForest.
 scikit-learn==1.6.1
+
+# Test-only dependencies live in requirements-dev.txt so the production image
+# does not ship a test runner. CI installs both.
