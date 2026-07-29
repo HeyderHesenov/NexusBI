@@ -108,7 +108,6 @@ services:
       # Set to your hostname (bi.example.com) and Caddy provisions and renews a
       # certificate for it. Left as http://localhost, it serves plain HTTP.
       NEXUSBI_SITE_ADDRESS: ${NEXUSBI_SITE_ADDRESS:-http://localhost}
-      ACME_EMAIL: ${ACME_EMAIL:-}
       NEXUSBI_MAX_BODY: ${NEXUSBI_MAX_BODY:-12MB}
     ports:
       - "80:80"

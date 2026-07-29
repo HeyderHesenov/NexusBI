@@ -25,7 +25,7 @@ openssl rand -base64 48                                                   # SECR
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"   # FERNET_KEY
 ```
 
-HTTPS üçün `NEXUSBI_SITE_ADDRESS`-i domenin et (`bi.example.com`, sxemsiz) və `ACME_EMAIL` yaz. Sonra:
+HTTPS üçün `NEXUSBI_SITE_ADDRESS`-i domenin et (`bi.example.com`, sxemsiz) — Caddy sertifikatı özü alır və yeniləyir. Sonra:
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build

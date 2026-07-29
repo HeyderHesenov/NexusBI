@@ -32,8 +32,15 @@ die() { printf '  \033[31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
 cleanup() {
   local code=$?
   if [ $code -ne 0 ]; then
-    step "Failed — recent backend logs"
-    "${COMPOSE[@]}" logs --tail 60 backend 2>&1 || true
+    # Every service, not just the backend. The first failure of this script was
+    # Caddy refusing to start on a config error, and a backend-only dump showed
+    # a perfectly healthy backend with no clue as to why nothing reached it.
+    step "Failed — container states"
+    "${COMPOSE[@]}" ps -a 2>&1 || true
+    for svc in web backend migrate db redis; do
+      step "Failed — $svc logs"
+      "${COMPOSE[@]}" logs --tail 40 "$svc" 2>&1 || true
+    done
   fi
   step "Cleaning up"
   "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
@@ -73,6 +80,7 @@ AI_API_KEY=
 AI_MODEL=
 NEXUSBI_SITE_ADDRESS=http://localhost
 WEB_CONCURRENCY=4
+
 # The scheduler sleeps before its first election, so the default 60s would make
 # the leader check below a minute of dead waiting.
 SCHEDULER_INTERVAL_SECONDS=5
@@ -84,6 +92,19 @@ step "Building and starting the production stack on empty volumes"
 "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
 "${COMPOSE[@]}" up -d --build
 pass "stack up"
+
+# A long-running service that has already exited is never coming back in a way
+# the readiness loop would notice — it just burns the full timeout. `migrate` is
+# excluded because exiting is its whole job.
+sleep 5
+for svc in web backend db redis; do
+  state="$("${COMPOSE[@]}" ps -a --format '{{.Service}} {{.State}}' | awk -v s="$svc" '$1==s {print $2}')"
+  # 'restarting' is not tolerated: with `restart: unless-stopped` that is what a
+  # container crash-looping on a bad config looks like, which is precisely the
+  # case this check exists to catch.
+  [ "$state" = "running" ] || die "$svc is '$state' five seconds after start"
+done
+pass "every long-running service is up"
 
 # ─────────────────────────────────────────────────────────────────────────────
 step "Waiting for readiness through the edge proxy"

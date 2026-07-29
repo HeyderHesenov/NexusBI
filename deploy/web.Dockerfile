@@ -27,3 +27,11 @@ RUN npm run build
 FROM caddy:2-alpine
 COPY --from=build /app/dist /srv
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
+
+# Fail the build on a malformed Caddyfile rather than at runtime. A config error
+# makes Caddy exit on start, so with `restart: unless-stopped` the only symptom
+# is that nothing ever answers on :80 — which reads as a slow backend and costs
+# a full readiness timeout to diagnose. Validating here turns that into a build
+# error with the offending line number. Env placeholders resolve to their
+# in-file defaults, which is what CI runs with.
+RUN caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile

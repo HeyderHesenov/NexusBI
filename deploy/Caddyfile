@@ -5,11 +5,13 @@
 # makes a single image deployable to any domain — and it removes CORS from the
 # picture entirely, since nothing is cross-origin any more.
 
-{
-	# Let's Encrypt expiry notices. Unset in CI, where the site address is
-	# http:// and no certificate is issued.
-	email {$ACME_EMAIL:}
-}
+# No global options block, and in particular no `email`. An unset ACME_EMAIL
+# expands `email {$ACME_EMAIL:}` to a bare `email` with no argument, which is a
+# parse error — Caddy exits, nothing listens on :80, and the only symptom is a
+# readiness timeout with a perfectly healthy backend behind it. Caddy registers
+# its ACME account without a contact address instead, which costs only Let's
+# Encrypt expiry notices; ISRG is discontinuing those anyway, and Caddy renews
+# on its own schedule rather than waiting to be reminded.
 
 # A real hostname here (bi.example.com) makes Caddy obtain and renew a
 # certificate on its own. The http://localhost default is for CI and for a
