@@ -233,13 +233,17 @@ cp .env.example .env
 docker-compose up
 ```
 
+> **Bu, dev stack-idir** — bind-mount, `--reload`, `DEMO_MODE=true`, TLS yoxdur.
+> Real quraşdırma üçün **[docs/deploy.md](docs/deploy.md)**: `docker-compose.prod.yml`
+> ilə demo-suz, çox worker-li, avtomatik HTTPS-li stack bir əmrlə qalxır.
+
 ### Docker olmadan (lokal dev)
 
 ```bash
 # Backend
 cd backend
 python -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt   # test asılılıqları ayrıdır
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 

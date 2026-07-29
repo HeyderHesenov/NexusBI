@@ -21,7 +21,13 @@ services:
       - "6379:6379"
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      # The Dockerfile's default target is the hardened production image: non-root,
+      # source baked in. Neither suits a bind-mounted, reloading dev container, so
+      # this asks for the dev stage explicitly. See docker-compose.prod.yml for the
+      # stack that uses the default.
+      target: dev
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app

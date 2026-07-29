@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import * as api from '../api/chat'
+import { wsBase } from '../lib/wsUrl'
 import type { Channel, ChatMessage, DMPeer } from '../api/chat'
 
 export interface Participant {
@@ -10,10 +11,8 @@ export interface Participant {
 }
 
 function wsUrl(roomKey: string, ticket: string): string {
-  const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
-  const base = apiBase.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '')
   // The room key contains ':' — encode it as one path segment; Starlette decodes it.
-  return `${base}/ws/room/${encodeURIComponent(roomKey)}?ticket=${encodeURIComponent(ticket)}`
+  return `${wsBase()}/ws/room/${encodeURIComponent(roomKey)}?ticket=${encodeURIComponent(ticket)}`
 }
 
 // Module-scoped socket + epoch guard: only one chat socket is ever open, and a

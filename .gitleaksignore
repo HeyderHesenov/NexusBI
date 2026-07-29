@@ -24,3 +24,18 @@ b9dbfd755e3381e6e0f66ba228fa620ab30c557b:backend/app/ai/client.py:generic-api-ke
 0ad76407a8e757f65330af4faa328337685c8f79:backend/tests/test_security.py:generic-api-key:234
 0ad76407a8e757f65330af4faa328337685c8f79:backend/tests/test_security.py:generic-api-key:307
 0ad76407a8e757f65330af4faa328337685c8f79:backend/tests/test_security.py:generic-api-key:310
+
+# Faza 0 deploy work. Four placeholders, none of which was ever a credential,
+# and all of which are gone from the current files — `f91dccf` replaced them
+# with values generated per run. They survive only inside the two commits that
+# introduced them, which is what this file is for.
+#
+# Duplicate of the throwaway Fernet key already in backend/tests/conftest.py
+# (itself path-allowlisted in .gitleaks.toml) and of the same 32-character
+# placeholder that file exports as SECRET_KEY:
+4ff7959bf5a28f81d37bfa2ba7f35081f2b6ce20:backend/tests/test_health.py:generic-api-key:148
+57d6d2b734a8624faf61bf4b1798298db4d17b5f:scripts/deploy_smoke.sh:generic-api-key:55
+57d6d2b734a8624faf61bf4b1798298db4d17b5f:scripts/deploy_smoke.sh:generic-api-key:56
+# The RFC 6455 example nonce, "the sample nonce" base64-encoded, copied from the
+# specification to open a WebSocket handshake in the smoke test:
+57d6d2b734a8624faf61bf4b1798298db4d17b5f:scripts/deploy_smoke.sh:generic-api-key:147

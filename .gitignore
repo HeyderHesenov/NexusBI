@@ -1,7 +1,14 @@
 # Secrets — NEVER commit
+#
+# All three forms are needed. `.env` matches only that exact name and `*.env`
+# only names ENDING in .env, so neither covers `.env.prod` — the file that holds
+# the production signing key and the Fernet key that decrypts every stored
+# datasource password. The negations must stay below the patterns they undo.
 .env
 *.env
+.env.*
 !.env.example
+!.env.prod.example
 *.pem
 *.key
 secrets/

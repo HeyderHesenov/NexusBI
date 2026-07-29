@@ -1,0 +1,65 @@
+# NexusBI edge configuration.
+#
+# One origin serves the SPA and the API. That is what lets the production build
+# use a relative API base (see deploy/web.Dockerfile), which in turn is what
+# makes a single image deployable to any domain — and it removes CORS from the
+# picture entirely, since nothing is cross-origin any more.
+
+# No global options block, and in particular no `email`. An unset ACME_EMAIL
+# expands `email {$ACME_EMAIL:}` to a bare `email` with no argument, which is a
+# parse error — Caddy exits, nothing listens on :80, and the only symptom is a
+# readiness timeout with a perfectly healthy backend behind it. Caddy registers
+# its ACME account without a contact address instead, which costs only Let's
+# Encrypt expiry notices; ISRG is discontinuing those anyway, and Caddy renews
+# on its own schedule rather than waiting to be reminded.
+
+# A real hostname here (bi.example.com) makes Caddy obtain and renew a
+# certificate on its own. The http://localhost default is for CI and for a
+# local run: the http:// scheme disables TLS without any other change.
+{$NEXUSBI_SITE_ADDRESS:http://localhost} {
+	encode zstd gzip
+
+	# Must stay >= the backend's UPLOAD_MAX_BYTES. If the edge limit is the
+	# lower of the two, a large upload dies here with an opaque 413 instead of
+	# the application's own localized error.
+	request_body {
+		max_size {$NEXUSBI_MAX_BODY:12MB}
+	}
+
+	# Everything the backend owns. /metrics is deliberately absent: Prometheus
+	# scrapes it over the internal compose network, and publishing per-query
+	# timing and quota counters to the internet is not something an operator
+	# would choose on purpose.
+	@api path /api/* /ws/* /live /ready /health
+	handle @api {
+		reverse_proxy backend:8000 {
+			# The backend derives the client IP from this header, bounded by
+			# TRUSTED_PROXY_HOPS=1 — one hop, this proxy. Keep those two in step.
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	# The SPA.
+	handle {
+		root * /srv
+
+		# Vite emits content-hashed filenames under /assets, so those are
+		# immutable. index.html is not hashed: caching it is how a deploy leaves
+		# browsers pinned to a bundle that no longer exists.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		@unhashed not path /assets/*
+		header @unhashed Cache-Control "no-cache"
+
+		header X-Content-Type-Options "nosniff"
+
+		# No X-Frame-Options / frame-ancestors here, unlike the API responses.
+		# Embedded dashboards are a product feature — a customer's page iframes
+		# /embed/<token>. Denying framing at the edge would disable white-label
+		# embedding outright. Framing is scoped by the embed token instead.
+
+		# Client-side routing: unknown paths are app routes, not 404s.
+		try_files {path} /index.html
+		file_server
+	}
+}

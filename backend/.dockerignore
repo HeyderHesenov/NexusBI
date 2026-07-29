@@ -1,0 +1,17 @@
+# Keep the build context small and, more importantly, keep local state out of
+# the image. `data/` in particular holds uploaded files, per-source SQLite
+# databases and the AutoML model signing key — baking any of that into a shared
+# image would leak one installation's data into every other one.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+data/
+*.db
+*.sqlite3
+.env
+.env.*
+!.env.example

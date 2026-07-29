@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import toast from 'react-hot-toast'
 import i18n from '../i18n'
 import * as api from '../api/chat'
+import { wsBase } from '../lib/wsUrl'
 import { useNotificationStore } from './notificationStore'
 import type { AppNotification } from '../types'
 
@@ -33,9 +34,7 @@ export interface UnreadFrame {
 }
 
 function wsUrl(ticket: string): string {
-  const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
-  const base = apiBase.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '')
-  return `${base}/ws/user?ticket=${encodeURIComponent(ticket)}`
+  return `${wsBase()}/ws/user?ticket=${encodeURIComponent(ticket)}`
 }
 
 // Non-serialisable/liveness state lives at module scope, never in the store

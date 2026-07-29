@@ -1,5 +1,6 @@
 import axios, { type AxiosRequestConfig } from 'axios'
 import toast from 'react-hot-toast'
+import { apiBase } from '../lib/wsUrl'
 
 // Any request may set `silent: true` to opt out of the global error toast — used by
 // background polls so a transient/offline failure never spams the user with a toast.
@@ -9,7 +10,7 @@ declare module 'axios' {
   }
 }
 
-const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
+const baseURL = apiBase()
 
 const TOKEN_KEY = 'nexusbi_token'
 const REFRESH_KEY = 'nexusbi_refresh'

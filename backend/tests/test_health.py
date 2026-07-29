@@ -99,3 +99,57 @@ async def test_health_still_answers_for_existing_probes(client: AsyncClient):
     resp = await client.get("/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
+
+
+async def test_ready_reports_ai_degraded_without_a_key(client: AsyncClient):
+    """The suite runs keyless (conftest empties AI_API_KEY), like a keyless deploy."""
+    resp = await client.get("/ready")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["components"]["ai"].startswith("degraded")
+
+
+async def test_ready_reports_ai_ok_when_configured(client: AsyncClient, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "AI_API_KEY", "sk-test", raising=False)
+    monkeypatch.setattr(settings, "AI_MODEL", "gpt-4o-mini", raising=False)
+    resp = await client.get("/ready")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["components"]["ai"] == "ok"
+
+
+def test_production_boots_without_an_ai_key(monkeypatch):
+    """A keyless self-hosted install is supported, not a boot failure.
+
+    Every AI feature falls back to a deterministic path, so refusing to start
+    would lock operators out of the product over an optional dependency.
+    """
+    from app.config import settings
+    from app.main import _assert_production_secrets
+
+    monkeypatch.setattr(settings, "DEMO_MODE", False, raising=False)
+    monkeypatch.setattr(settings, "AI_API_KEY", "", raising=False)
+    _assert_production_secrets()  # must not raise
+
+
+def test_production_still_refuses_weak_signing_secrets(monkeypatch):
+    """The fatal checks stay fatal — this is the half that must not be relaxed."""
+    import os
+
+    import pytest
+
+    from app.config import settings
+    from app.main import _assert_production_secrets
+
+    monkeypatch.setattr(settings, "DEMO_MODE", False, raising=False)
+    monkeypatch.setattr(settings, "SECRET_KEY", "too-short", raising=False)
+    with pytest.raises(RuntimeError, match="SECRET_KEY"):
+        _assert_production_secrets()
+
+    # conftest already exports a long-enough key; reusing it beats writing a
+    # second credential-shaped literal into the repository for the scanner to
+    # find, and keeps the two in step if either changes.
+    monkeypatch.setattr(settings, "SECRET_KEY", os.environ["SECRET_KEY"], raising=False)
+    monkeypatch.setattr(settings, "FERNET_KEY", "", raising=False)
+    with pytest.raises(RuntimeError, match="FERNET_KEY"):
+        _assert_production_secrets()
