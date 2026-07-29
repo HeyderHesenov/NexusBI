@@ -1,4 +1,5 @@
 import { client } from './client'
+import { apiBase } from '../lib/wsUrl'
 
 export interface BrandConfig {
   app_name: string
@@ -23,8 +24,7 @@ export interface EmbeddedDashboardView {
 
 /** Public embed fetch — plain fetch (no auth interceptor / redirect on 401). */
 export async function getEmbedView(token: string): Promise<EmbeddedDashboardView> {
-  const base = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
-  const resp = await fetch(`${base}/public/embed/${token}`)
+  const resp = await fetch(`${apiBase()}/public/embed/${token}`)
   if (!resp.ok) throw new Error(String(resp.status))
   return resp.json()
 }

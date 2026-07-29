@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useDashboardStore } from './dashboardStore'
+import { wsBase } from '../lib/wsUrl'
 import type { WidgetChart } from '../types'
 
 export interface Participant {
@@ -41,8 +42,7 @@ interface CollabState {
 }
 
 function wsUrl(dashboardId: string, auth: Auth): string {
-  const api = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
-  const base = api.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '')
+  const base = wsBase()
   // Prefer the short-lived ticket so the long-lived JWT never lands in the URL.
   const q = auth.ticket
     ? `ticket=${encodeURIComponent(auth.ticket)}`
