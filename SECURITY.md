@@ -98,6 +98,18 @@ Dependabot alerts + security updates, and CodeQL code scanning.
   per-process sliding window rather than failing open. Redis therefore *tightens*
   the limit and is not a dependency. Set `TRUSTED_PROXY_HOPS` to the real proxy
   count in production, or every client collapses into the proxy's bucket.
+- **Connect datasources with a read-only database user.** Executing analyst-authored
+  SQL is a feature, not a flaw, and it is guarded in depth: `validate_select_only`
+  (single statement, `SELECT`/`WITH` only, function and catalog denylists) →
+  `assert_tables_in_schema` (positive allowlist — only tables the datasource actually
+  exposes) → row-level-security injection → a server-side `statement_timeout`, a row
+  cap and a 30-per-minute rate limit. Every layer there is enforced in code.
+  What no amount of application code can fix is that the *function* check is a
+  **denylist**: it names the dangerous builtins it knows about, and a database
+  engine can always ship one more. Granting the connection user `SELECT` and
+  nothing else turns that from a race against a list into a property of the
+  database, and costs nothing to do. Treat it as required for any datasource
+  holding data you would not hand to whoever can log in.
 
 ## Reporting a vulnerability
 Open a private security advisory on GitHub or email the maintainer. Please do not
