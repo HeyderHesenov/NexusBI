@@ -11,6 +11,25 @@
 - **Automated scanning:** [gitleaks](.github/workflows/secret-scan.yml) scans the
   full history on every push/PR and daily; [CodeQL](.github/workflows/codeql.yml)
   runs security-extended static analysis for Python and TypeScript.
+- **Local pre-commit guard — install it.** This repository is public, so both of
+  the controls above act too late or too narrowly to be the last line:
+
+  - GitHub push protection blocks recognised *vendor* formats (`sk-…`, `AKIA…`,
+    `ghp_…`). NexusBI's own `SECRET_KEY` and `FERNET_KEY` are random strings in
+    no vendor's format and pass straight through it.
+  - The gitleaks workflow scans everything, but only after the push has landed.
+    On a public repository a secret is compromised the moment it is pushed; a red
+    CI run reports the leak, it does not prevent it.
+
+  ```bash
+  git config core.hooksPath scripts/git-hooks
+  ```
+
+  [`scripts/git-hooks/pre-commit`](scripts/git-hooks/pre-commit) refuses any
+  staged `.env*` (bar the `*.example` templates), `*.pem`, `*.key` or
+  `.model_signing_key`, and runs `gitleaks protect --staged` when gitleaks is
+  installed. Keep `.env` at mode `600` while you are there — the default `644`
+  leaves it readable by every process running as any user on the machine.
 
 ### If a key is exposed
 1. **Rotate immediately** at the AI provider dashboard (revoke + create new;

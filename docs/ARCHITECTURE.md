@@ -234,6 +234,44 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   `ai_latency_seconds` and `rag_retrievals_total` (hit/miss) at `/metrics`.
   Structured logs via structlog.
 
+## Deployment
+
+Two stacks, and the difference is deliberate. `docker-compose.yml` is development:
+bind-mounted source, `--reload`, `DEMO_MODE=true`, no TLS. `docker-compose.prod.yml`
+is a real installation. Operator instructions live in [deploy.md](deploy.md); the
+design decisions are here.
+
+- **One Dockerfile, two targets.** `backend/Dockerfile` builds dependencies into a
+  venv in a throwaway stage, then branches: `dev` (root, no source — the compose
+  bind mount supplies it) and `production` (non-root uid 10001, source baked in,
+  no test runner, `HEALTHCHECK` on `/live`). Production is the *last* stage, so a
+  bare `docker build` can never hand back the development image by accident.
+- **Migrations run once, outside the app.** A one-shot `migrate` service holds
+  `service_completed_successfully` over the backend. Putting them in the lifespan
+  would run them in all four uvicorn workers simultaneously, racing on
+  `alembic_version`; `db/migration_lock` adds a Postgres advisory lock for the
+  cases compose does not cover (a k8s Job retry, a manual `alembic upgrade head`).
+- **One origin.** Caddy serves the built SPA and reverse-proxies `/api`, `/ws`,
+  `/live`, `/ready`, `/health` to the backend, which is what lets the frontend be
+  built with a *relative* API base: one image works on any domain, and nothing is
+  cross-origin so CORS never applies. `lib/wsUrl` resolves that relative base
+  against `window.location` because the WebSocket constructor cannot take one.
+  `/metrics` is deliberately not proxied — Prometheus reaches it on the internal
+  network instead of the internet.
+- **Caddy, not nginx**, for reasons specific to this app: ACME renewal lives in the
+  process rather than a certbot timer that fails quietly at 90 days; `reverse_proxy`
+  forwards WebSocket upgrades without the header boilerplate three realtime
+  endpoints depend on; and it does not buffer streaming responses. No frame headers
+  are set at the edge, unlike API responses — embedded dashboards are a feature, and
+  `frame-ancestors 'none'` there would disable white-label embedding outright.
+- **`REALTIME_BUS_ENABLED=true` in production**, since the stack is multi-worker by
+  default; `TRUSTED_PROXY_HOPS=1` matches the single proxy in front.
+- **The exit criterion is a CI job, not a claim.** `scripts/deploy_smoke.sh` stands
+  the production stack up on empty volumes and asserts what it claims to be —
+  non-demo, migrated before serving, unprivileged, one scheduler leader among four
+  workers, data surviving a full restart, `/ready` 503 with `/live` 200 when the
+  database dies. It runs as `Deploy smoke (docker compose)` on every PR.
+
 ## Data model (app DB)
 
 `users` (1)─<(N)) `datasources`, `query_logs`, `dashboards`, `saved_queries`, `metrics`,
