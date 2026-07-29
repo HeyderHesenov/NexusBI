@@ -172,7 +172,13 @@ def _hash_embed(text: str) -> list[float]:
 
 
 def hash_token(tok: str) -> int:
-    """Stable (non-salted) token hash — hashlib so it survives process restarts."""
+    """Stable (non-salted) token hash — hashlib so it survives process restarts.
+
+    Deliberately still SHA-1, unlike the cache keys. This is not a digest of
+    anything sensitive; it picks a bucket in the hashed-embedding vector, so the
+    algorithm is part of the stored data format. Changing it silently reindexes
+    nothing and makes every persisted embedding mismatch fresh query vectors.
+    """
     import hashlib
 
     return int.from_bytes(hashlib.sha1(tok.encode()).digest()[:8], "big")
