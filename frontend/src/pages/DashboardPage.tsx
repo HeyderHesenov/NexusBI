@@ -1,5 +1,5 @@
-import { Eye, History, LayoutGrid, MessageCircle, MoreHorizontal, Plus, Presentation, Radio, RefreshCw, Send, Share2, Sparkles, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Eye, History, LayoutGrid, MessageCircle, MoreHorizontal, Plus, Presentation, Printer, Radio, RefreshCw, Send, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -10,6 +10,7 @@ import { AddWidgetModal } from '../components/dashboard/AddWidgetModal'
 import { CollabPanel } from '../components/dashboard/CollabPanel'
 import { CollabSurface } from '../components/dashboard/CollabSurface'
 import { DashboardGrid } from '../components/dashboard/DashboardGrid'
+import { DashboardPrintView } from '../components/dashboard/DashboardPrintView'
 import { GenerateDashboardModal } from '../components/dashboard/GenerateDashboardModal'
 import { SaveDashboardModal } from '../components/dashboard/SaveDashboardModal'
 import { ShareDashboardModal } from '../components/dashboard/ShareDashboardModal'
@@ -17,7 +18,7 @@ import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { SnapshotTimeline } from '../components/dashboard/SnapshotTimeline'
 import { SnapshotView } from '../components/dashboard/SnapshotView'
 import { ActionMenu } from '../components/ui/ActionMenu'
-import type { ActionMenuSection } from '../components/ui/ActionMenu'
+import type { ActionMenuItem, ActionMenuSection } from '../components/ui/ActionMenu'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { buildStory, getComments, getWsTicket } from '../api/dashboard'
 import { useCollabStore } from '../store/collabStore'
@@ -45,6 +46,7 @@ export function DashboardPage() {
   const [storyLoading, setStoryLoading] = useState(false)
   const [timeMachineOpen, setTimeMachineOpen] = useState(false)
   const [shareToChatOpen, setShareToChatOpen] = useState(false)
+  const [printing, setPrinting] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const { participants, connect, disconnect } = useCollabStore()
   const snapshots = useSnapshotStore()
@@ -114,15 +116,33 @@ export function DashboardPage() {
     }, 800)
   }
 
+  // Browser print is modal: `afterprint` is how we learn the dialog closed and the
+  // off-screen sheet can be unmounted. The timeout is a backstop — a browser that
+  // never fires it must not leave the sheet mounted for the rest of the session.
+  useEffect(() => {
+    if (!printing) return
+    const done = () => setPrinting(false)
+    window.addEventListener('afterprint', done)
+    const bail = setTimeout(done, 30_000)
+    return () => {
+      window.removeEventListener('afterprint', done)
+      clearTimeout(bail)
+    }
+  }, [printing])
+
+  const printWhenReady = useCallback(() => window.print(), [])
+
   // Overflow "Actions" menu — the lower-frequency / destructive controls, grouped
   // into sections so the toolbar stays a single row. Each section is pushed only
   // when its gate is met; ActionMenu self-hides when every section is empty
   // (read-only shared view / no dashboard open).
   const actionSections: ActionMenuSection[] = []
-  if (current && canEdit && current.widgets.length > 0) {
-    actionSections.push({
-      header: t('dashboardPage.sectionView'),
-      items: [
+  if (current && current.widgets.length > 0) {
+    const viewItems: ActionMenuItem[] = []
+    // Story and refresh-all both call owner-scoped endpoints; print is a pure
+    // client-side render, so a member viewing a shared board still gets it.
+    if (canEdit) {
+      viewItems.push(
         {
           key: 'story',
           label: storyLoading ? t('dashboardPage.preparing') : t('dashboardPage.story'),
@@ -137,8 +157,16 @@ export function DashboardPage() {
           onSelect: () => refreshAll(current.id),
           disabled: refreshing,
         },
-      ],
+      )
+    }
+    viewItems.push({
+      key: 'print',
+      label: printing ? t('dashboardPage.preparing') : t('dashboardPage.print'),
+      Icon: Printer,
+      onSelect: () => setPrinting(true),
+      disabled: printing,
     })
+    actionSections.push({ header: t('dashboardPage.sectionView'), items: viewItems })
   }
   if (current && canEdit) {
     actionSections.push({
@@ -351,6 +379,10 @@ export function DashboardPage() {
 
       {story && current && (
         <StoryMode story={story} widgets={current.widgets} onClose={() => setStory(null)} />
+      )}
+
+      {printing && current && (
+        <DashboardPrintView dashboard={current} onReady={printWhenReady} />
       )}
 
       <CollabPanel open={chatOpen} onClose={() => setChatOpen(false)} />
