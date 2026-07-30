@@ -204,3 +204,40 @@ async def test_an_open_breaker_sends_embeddings_to_the_offline_fallback(
     vectors = await ai_client.embed(["salam"], feature="retrieval")
     assert len(vectors) == 1
     assert len(vectors[0]) == settings.RAG_HASH_DIM
+
+
+@pytest.mark.asyncio
+async def test_completions_are_bounded_by_the_configured_cap(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "AI_API_KEY", "k")
+    monkeypatch.setattr(settings, "AI_MODEL", "gpt-4o")
+    monkeypatch.setattr(settings, "AI_MAX_TOKENS_JSON", 1234)
+    seen: dict[str, object] = {}
+
+    async def _create(**kw):
+        seen.update(kw)
+        return _fake_completion(10, 1)
+
+    _stub_completions(monkeypatch, _create)
+    await ai_client.chat_json("sys", "usr", feature="text2sql")
+    assert seen["max_tokens"] == 1234
+
+
+@pytest.mark.asyncio
+async def test_a_truncated_json_reply_degrades_instead_of_crashing(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Without this guard max_tokens turns a long answer into a JSONDecodeError
+    # and a 500, instead of the deterministic fallback every caller already has.
+    monkeypatch.setattr(settings, "AI_API_KEY", "k")
+    monkeypatch.setattr(settings, "AI_MODEL", "gpt-4o")
+
+    async def _create(**_kw):
+        resp = _fake_completion(10, 1, content='{"questions": ["yarim')
+        resp.choices[0].finish_reason = "length"
+        return resp
+
+    _stub_completions(monkeypatch, _create)
+    with pytest.raises(AIGenerationError):
+        await ai_client.chat_json("sys", "usr", feature="dashboard_planner")

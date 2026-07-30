@@ -56,6 +56,7 @@ async def chat_json(
     temperature: float = 0.0,
     localize: bool = False,
     feature: str = "unknown",
+    max_tokens: int | None = None,
 ) -> dict[str, Any]:
     """Call the model and parse a JSON object response.
 
@@ -71,6 +72,7 @@ async def chat_json(
         resp = await get_client().chat.completions.create(
             model=settings.AI_MODEL,
             temperature=temperature,
+            max_tokens=max_tokens or settings.AI_MAX_TOKENS_JSON,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system},
@@ -80,6 +82,11 @@ async def chat_json(
     except (APIError, OpenAIError) as exc:
         raise _map_ai_error(exc) from exc
     await _record_call(resp, started, "json", feature)
+    if resp.choices[0].finish_reason == "length":
+        # The body is cut mid-token, so json.loads would raise and surface as a
+        # 500. Degrade the way every other AI failure here degrades instead.
+        log.warning("ai_response_truncated", kind="json", feature=feature)
+        raise AIGenerationError("AI xidməti əlçatmazdır.")
     content = resp.choices[0].message.content or "{}"
     return json.loads(content)
 
@@ -91,6 +98,7 @@ async def chat_text(
     temperature: float = 0.3,
     localize: bool = True,
     feature: str = "unknown",
+    max_tokens: int | None = None,
 ) -> str:
     """Call the model and return plain text. Prose by nature → localizes by default."""
     await _preflight()
@@ -101,6 +109,7 @@ async def chat_text(
         resp = await get_client().chat.completions.create(
             model=settings.AI_MODEL,
             temperature=temperature,
+            max_tokens=max_tokens or settings.AI_MAX_TOKENS_TEXT,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
@@ -108,6 +117,8 @@ async def chat_text(
         )
     except (APIError, OpenAIError) as exc:
         raise _map_ai_error(exc) from exc
+    # No truncation guard here on purpose: a clipped sentence is still usable
+    # prose, unlike a clipped JSON body which cannot be parsed at all.
     await _record_call(resp, started, "text", feature)
     return (resp.choices[0].message.content or "").strip()
 
@@ -119,6 +130,7 @@ async def chat_tools(
     temperature: float = 0.0,
     localize: bool = False,
     feature: str = "unknown",
+    max_tokens: int | None = None,
 ) -> Any:
     """Call the model with tool definitions; return the raw response message.
 
@@ -136,6 +148,7 @@ async def chat_tools(
         resp = await get_client().chat.completions.create(
             model=settings.AI_MODEL,
             temperature=temperature,
+            max_tokens=max_tokens or settings.AI_MAX_TOKENS_TOOLS,
             messages=messages,
             tools=tools,
             tool_choice="auto",
