@@ -38,6 +38,12 @@ export function DashboardPrintView({ dashboard, onReady }: Props) {
   const { t } = useTranslation()
   const sheetRef = useRef<HTMLDivElement>(null)
   const firedRef = useRef(false)
+  // The deadline belongs to the mount, not to the effect run. A live-mode board
+  // hands us a new `dashboard` object on every refresh, and re-running the effect
+  // would restart the clock each time — pushing the print further out exactly
+  // when the user is waiting for it.
+  const startedAtRef = useRef(0)
+  if (!startedAtRef.current) startedAtRef.current = performance.now()
   // Read through a ref so a re-created callback can't re-arm the print.
   const onReadyRef = useRef(onReady)
   onReadyRef.current = onReady
@@ -51,11 +57,10 @@ export function DashboardPrintView({ dashboard, onReady }: Props) {
     const expected = dashboard.widgets.filter(
       (w) => w.chart?.data.length && isImageExportable(w.chart.chart_config.chart_type),
     ).length
-    const startedAt = performance.now()
     let raf = 0
     const tick = () => {
       const drawn = sheet.querySelectorAll('svg.recharts-surface').length
-      if (drawn >= expected || performance.now() - startedAt > SETTLE_MS) {
+      if (drawn >= expected || performance.now() - startedAtRef.current > SETTLE_MS) {
         firedRef.current = true
         onReadyRef.current()
         return
