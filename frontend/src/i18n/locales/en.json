@@ -57,6 +57,14 @@
     "chart": "Chart",
     "close": "Close"
   },
+  "chartExport": {
+    "trigger": "Download",
+    "group": "Format",
+    "csv": "CSV (rows)",
+    "png": "PNG (image)",
+    "svg": "SVG (vector)",
+    "failed": "Could not create the image."
+  },
   "chartRenderer": {
     "noResults": "No results found."
   },
@@ -81,7 +89,6 @@
     "chart": "Chart",
     "checking": "Checking…",
     "detecting": "Analyzing…",
-    "downloadCsv": "Download CSV",
     "findingDrivers": "Searching…",
     "forecast": "Forecast",
     "forecasting": "Forecasting…",
@@ -204,6 +211,8 @@
     "new": "New",
     "open": "Open",
     "preparing": "Preparing…",
+    "print": "Print / PDF",
+    "printedOn": "Printed on {{date}}",
     "refreshAll": "Refresh all",
     "sectionDanger": "Danger zone",
     "sectionShare": "Share",

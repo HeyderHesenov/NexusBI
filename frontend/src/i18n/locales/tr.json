@@ -57,6 +57,14 @@
     "chart": "Grafik",
     "close": "Kapat"
   },
+  "chartExport": {
+    "trigger": "İndir",
+    "group": "Biçim",
+    "csv": "CSV (satırlar)",
+    "png": "PNG (görsel)",
+    "svg": "SVG (vektör)",
+    "failed": "Görsel oluşturulamadı."
+  },
   "chartRenderer": {
     "noResults": "Sonuç bulunamadı."
   },
@@ -81,7 +89,6 @@
     "chart": "Grafik",
     "checking": "Kontrol…",
     "detecting": "Analiz…",
-    "downloadCsv": "CSV indir",
     "findingDrivers": "Aranıyor…",
     "forecast": "Tahmin",
     "forecasting": "Tahmin…",
@@ -204,6 +211,8 @@
     "new": "Yeni",
     "open": "Aç",
     "preparing": "Hazırlanıyor…",
+    "print": "Yazdır / PDF",
+    "printedOn": "Yazdırma tarihi: {{date}}",
     "refreshAll": "Tümünü yenile",
     "sectionDanger": "Tehlikeli bölge",
     "sectionShare": "Paylaşım",

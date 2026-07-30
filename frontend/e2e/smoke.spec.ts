@@ -19,6 +19,18 @@ test('login → query → dashboards', async ({ page }) => {
   // Result card shows a "{n} sətir · {ms} ms" meta line once the query resolves.
   await expect(page.getByText(/sətir ·/).first()).toBeVisible({ timeout: 20_000 })
 
+  // --- Export the chart as a PNG ---
+  // The only end-to-end cover for the rasterization path: it runs against the
+  // built preview, so the production CSP is live here. That matters because the
+  // serialized chart is handed to an <img> as a data: URL — img-src allows data:
+  // and deliberately not blob:, so a "modernized" object-URL would fail HERE and
+  // nowhere else.
+  await page.getByRole('button', { name: 'Sütun' }).click() // force an SVG chart type
+  await page.getByRole('button', { name: 'Yüklə' }).click()
+  const pngDownload = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: /PNG/ }).click()
+  expect((await pngDownload).suggestedFilename()).toMatch(/\.png$/)
+
   // --- Dashboards ---
   await page.goto('/dashboards')
   await expect(page.getByRole('heading', { name: 'Dashboard-lar' })).toBeVisible()
