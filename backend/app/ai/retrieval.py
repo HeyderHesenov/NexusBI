@@ -21,7 +21,7 @@ _log = get_logger("nexusbi.rag")
 
 
 async def _embed_one(text: str) -> list[float]:
-    vecs = await client.embed([text])
+    vecs = await client.embed([text], feature="retrieval")
     return vecs[0] if vecs else []
 
 
@@ -209,7 +209,7 @@ async def reindex(db: AsyncSession, user_id: str) -> int:
     if not fresh:
         return 0
 
-    vectors = await client.embed([c[3] for c in fresh])
+    vectors = await client.embed([c[3] for c in fresh], feature="retrieval")
     for (uid, ds_id, kind, text, sql), vec in zip(fresh, vectors):
         if not vec:
             continue

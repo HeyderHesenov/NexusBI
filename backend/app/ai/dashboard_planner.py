@@ -17,7 +17,9 @@ async def plan_dashboard(goal: str, schema_hint: str = "") -> list[str]:
         user = DASHBOARD_PLANNER_USER_PROMPT.format(
             goal=goal, schema_hint=schema_hint or _DEMO_HINT
         )
-        raw = await chat_json(DASHBOARD_PLANNER_PROMPT, user, temperature=0.4)
+        raw = await chat_json(
+            DASHBOARD_PLANNER_PROMPT, user, temperature=0.4, feature="dashboard_planner"
+        )
         questions = [q.strip() for q in raw.get("questions", []) if isinstance(q, str) and q.strip()]
         return questions[:_MAX_QUESTIONS]
     except Exception as exc:  # noqa: BLE001 — caller decides how to degrade

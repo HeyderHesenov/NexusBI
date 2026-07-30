@@ -76,7 +76,9 @@ async def build_story(name: str, widgets: list[dict[str, Any]]) -> dict[str, Any
             name=name,
             widgets=json.dumps(_widget_payload(widgets), ensure_ascii=False, default=str),
         )
-        raw = await chat_json(DATA_STORY_PROMPT, user, temperature=0.5, localize=True)
+        raw = await chat_json(
+            DATA_STORY_PROMPT, user, temperature=0.5, localize=True, feature="data_story"
+        )
     except Exception as exc:  # noqa: BLE001 — never fail the story; degrade gracefully
         _log.warning("data_story_failed", error=type(exc).__name__, detail=str(exc)[:200])
         return _fallback_story(name, widgets)

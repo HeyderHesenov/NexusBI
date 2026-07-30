@@ -50,6 +50,7 @@ async def plan_transform(
         raw = await chat_json(
             DATA_PREP_PROMPT,
             DATA_PREP_USER_PROMPT.format(schema=schema_text, instruction=instruction),
+            feature="data_prep",
         )
         sql = str(raw.get("sql") or "").strip()
         if sql:

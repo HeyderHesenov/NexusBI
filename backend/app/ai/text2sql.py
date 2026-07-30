@@ -38,7 +38,7 @@ class Text2SQLEngine:
         last_error: Exception | None = None
         for attempt in range(self.max_retries):
             try:
-                raw = await chat_json(system, user)
+                raw = await chat_json(system, user, feature="text2sql")
                 result = Text2SQLResult(**raw)
                 result.sql = validate_select_only(result.sql)
                 return result
@@ -82,7 +82,7 @@ class Text2SQLEngine:
         last_error: Exception | None = None
         for attempt in range(retries):
             try:
-                raw = await chat_json(system, user)
+                raw = await chat_json(system, user, feature="text2sql")
                 result = Text2SQLResult(**raw)
                 result.sql = validate_select_only(result.sql)
                 return result

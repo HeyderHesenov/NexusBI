@@ -262,3 +262,26 @@ def test_every_completion_is_bounded_by_max_tokens():
         "every chat.completions.create must pass max_tokens; "
         f"{len(missing)} of {len(creates)} call(s) do not"
     )
+
+
+def test_ai_call_sites_name_their_feature():
+    """Unattributed spend is spend you cannot act on.
+
+    Every chat_*/embed call outside client.py must pass feature=..., otherwise
+    its cost lands in ai_spend_daily under "unknown" and the operator cannot
+    tell which part of the product is expensive.
+    """
+    import re
+
+    offenders = []
+    for path in _python_files():
+        if path.name == "client.py" and path.parent.name == "ai":
+            continue
+        text = path.read_text(encoding="utf-8")
+        for match in re.finditer(
+            r"\b(chat_json|chat_text|chat_tools|embed)\(((?:[^()]|\([^()]*\))*)\)", text, re.S
+        ):
+            if "feature=" not in match.group(2):
+                offenders.append(f"{_module_name(path)}: {match.group(1)}")
+
+    assert not offenders, "AI calls without feature=: " + ", ".join(sorted(set(offenders)))

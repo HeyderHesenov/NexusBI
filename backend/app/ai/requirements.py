@@ -64,7 +64,9 @@ async def extract_kpis(text: str) -> dict[str, Any]:
         return {"kpis": []}
     try:
         raw = await chat_json(
-            REQUIREMENTS_PROMPT, REQUIREMENTS_USER_PROMPT.format(text=cleaned)
+            REQUIREMENTS_PROMPT,
+            REQUIREMENTS_USER_PROMPT.format(text=cleaned),
+            feature="requirements",
         )
         kpis = raw.get("kpis")
         if isinstance(kpis, list) and kpis:

@@ -61,7 +61,7 @@ async def select_chart_type(
             sample=json.dumps(data[:3], ensure_ascii=False, default=str),
             row_count=len(data),
         )
-        raw = await chat_json(CHART_SELECTOR_PROMPT, user)
+        raw = await chat_json(CHART_SELECTOR_PROMPT, user, feature="chart_selector")
         return _guard_pie(ChartConfig(**raw), data)
     except Exception as exc:  # noqa: BLE001 — degrade to deterministic selection
         _log.warning("chart_selection_failed", error=type(exc).__name__, detail=str(exc)[:200])

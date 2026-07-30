@@ -155,6 +155,7 @@ async def swot(
             SWOT_PROMPT,
             SWOT_USER_PROMPT.format(context=cleaned, facts=facts_json),
             localize=True,
+            feature="ba_frameworks",
         )
         parsed: dict[str, Any] = {k: _items(raw.get(k)) for k in _SWOT_BUCKETS}
         if any(parsed.values()):
@@ -198,6 +199,7 @@ async def porter(
             PORTER_PROMPT,
             PORTER_USER_PROMPT.format(context=cleaned, facts=facts_json),
             localize=True,
+            feature="ba_frameworks",
         )
         by_key = {
             f.get("key"): f for f in raw.get("forces", []) if isinstance(f, dict)
@@ -278,6 +280,7 @@ async def bcg(
                 items=json.dumps(core["items"], ensure_ascii=False), context=_clean(context)
             ),
             localize=True,
+            feature="ba_frameworks",
         )
         advice = str(raw.get("advice") or "").strip()[:1500]
         ai_actions = _actions(raw.get("actions"))
@@ -345,7 +348,10 @@ async def bpmn(
     out: dict[str, Any] | None = None
     try:
         raw = await chat_json(
-            BPMN_PROMPT, BPMN_USER_PROMPT.format(context=cleaned), localize=True
+            BPMN_PROMPT,
+            BPMN_USER_PROMPT.format(context=cleaned),
+            localize=True,
+            feature="ba_frameworks",
         )
         safe = sanitize_mermaid(str(raw.get("mermaid") or ""))
         if safe:
