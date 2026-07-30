@@ -62,3 +62,34 @@ async def test_spend_row_is_keyed_by_day_feature_and_model(db_session) -> None:
     row = (await db_session.execute(select(AISpendDaily))).scalar_one()
     assert (row.day, row.feature, row.model) == (date(2026, 7, 30), "text2sql", "gpt-4o")
     assert row.micro_usd == 10_500
+
+
+@pytest.mark.asyncio
+async def test_two_calls_accumulate_into_one_row(db_session) -> None:
+    await cost.record("text2sql", "gpt-4o", 3_000, 300)
+    await cost.record("text2sql", "gpt-4o", 1_000, 100)
+    row = (await db_session.execute(select(AISpendDaily))).scalar_one()
+    assert row.calls == 2
+    assert row.prompt_tokens == 4_000
+    assert row.micro_usd == 10_500 + 3_500
+
+
+@pytest.mark.asyncio
+async def test_spend_survives_a_rolled_back_request(db_session) -> None:
+    # The money left the account even though the request failed; the ledger must
+    # not roll back with it. This is why record() owns its own session.
+    await cost.record("insight_generator", "gpt-4o", 2_000, 200)
+    await db_session.rollback()
+    row = (await db_session.execute(select(AISpendDaily))).scalar_one()
+    assert row.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_a_write_failure_never_reaches_the_caller(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _boom(*_a, **_kw):
+        raise RuntimeError("database is on fire")
+
+    monkeypatch.setattr("app.billing.cost.AsyncSessionLocal", _boom)
+    await cost.record("text2sql", "gpt-4o", 10, 1)  # must not raise
