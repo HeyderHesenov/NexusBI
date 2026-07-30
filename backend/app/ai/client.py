@@ -7,6 +7,7 @@ from typing import Any
 
 from openai import APIError, AsyncOpenAI, OpenAIError
 
+from app.billing import cost
 from app.config import settings
 from app.core import i18n, metrics
 from app.core.exceptions import AIGenerationError
@@ -48,6 +49,7 @@ async def chat_json(
     *,
     temperature: float = 0.0,
     localize: bool = False,
+    feature: str = "unknown",
 ) -> dict[str, Any]:
     """Call the model and parse a JSON object response.
 
@@ -71,7 +73,7 @@ async def chat_json(
         )
     except (APIError, OpenAIError) as exc:
         raise _map_ai_error(exc) from exc
-    _record_call(resp, started, "json")
+    await _record_call(resp, started, "json", feature)
     content = resp.choices[0].message.content or "{}"
     return json.loads(content)
 
@@ -82,6 +84,7 @@ async def chat_text(
     *,
     temperature: float = 0.3,
     localize: bool = True,
+    feature: str = "unknown",
 ) -> str:
     """Call the model and return plain text. Prose by nature → localizes by default."""
     _require_configured()
@@ -99,7 +102,7 @@ async def chat_text(
         )
     except (APIError, OpenAIError) as exc:
         raise _map_ai_error(exc) from exc
-    _record_call(resp, started, "text")
+    await _record_call(resp, started, "text", feature)
     return (resp.choices[0].message.content or "").strip()
 
 
@@ -109,6 +112,7 @@ async def chat_tools(
     *,
     temperature: float = 0.0,
     localize: bool = False,
+    feature: str = "unknown",
 ) -> Any:
     """Call the model with tool definitions; return the raw response message.
 
@@ -132,11 +136,11 @@ async def chat_tools(
         )
     except (APIError, OpenAIError) as exc:
         raise _map_ai_error(exc) from exc
-    _record_call(resp, started, "tools")
+    await _record_call(resp, started, "tools", feature)
     return resp.choices[0].message
 
 
-async def embed(texts: list[str]) -> list[list[float]]:
+async def embed(texts: list[str], *, feature: str = "unknown") -> list[list[float]]:
     """Embed texts for the RAG vector layer.
 
     Uses the real embedding model when a key is configured; otherwise falls back
@@ -154,7 +158,7 @@ async def embed(texts: list[str]) -> list[list[float]]:
         # Don't fail the caller — degrade to the offline embedding.
         log.warning("embed_fallback", error=type(exc).__name__, detail=str(exc)[:200])
         return [_hash_embed(t) for t in texts]
-    _record_call(resp, started, "embed")
+    await _record_call(resp, started, "embed", feature, embedding=True)
     return [d.embedding for d in resp.data]
 
 
@@ -198,18 +202,31 @@ def _map_ai_error(exc: Exception) -> AIGenerationError:
     return AIGenerationError("AI xidməti əlçatmazdır.")
 
 
-def _record_call(resp: Any, started: float, kind: str) -> None:
-    """Log + count an AI call and its token usage."""
+async def _record_call(
+    resp: Any, started: float, kind: str, feature: str, *, embedding: bool = False
+) -> None:
+    """Log, count and cost an AI call.
+
+    The one place every model call passes through on its way out, which is why
+    spend accounting lives here rather than at each of the dozen call sites.
+    """
     elapsed = time.perf_counter() - started
-    tokens = getattr(getattr(resp, "usage", None), "total_tokens", None)
+    usage = getattr(resp, "usage", None)
+    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+    tokens = getattr(usage, "total_tokens", None)
     log.info(
         "ai_call",
         model=settings.AI_MODEL,
         tokens_used=tokens,
         latency_ms=int(elapsed * 1000),
         kind=kind,
+        feature=feature,
     )
     metrics.ai_calls_total.labels(kind).inc()
     metrics.ai_latency_seconds.labels(kind).observe(elapsed)
     if tokens:
         metrics.ai_tokens_total.inc(tokens)
+    await cost.record(
+        feature, settings.AI_MODEL, prompt_tokens, completion_tokens, embedding=embedding
+    )

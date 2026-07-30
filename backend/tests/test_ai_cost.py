@@ -2,13 +2,41 @@
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
 
+from app.ai import client as ai_client
 from app.billing import cost
 from app.config import settings
 from app.models.ai_spend import AISpendDaily
+
+
+def _fake_completion(prompt: int, completion: int, content: str = "{}"):
+    """Shape of an OpenAI chat completion, with just the fields we read."""
+    return SimpleNamespace(
+        usage=SimpleNamespace(
+            prompt_tokens=prompt,
+            completion_tokens=completion,
+            total_tokens=prompt + completion,
+        ),
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content=content), finish_reason="stop"
+            )
+        ],
+    )
+
+
+def _stub_completions(monkeypatch: pytest.MonkeyPatch, create) -> None:
+    monkeypatch.setattr(
+        ai_client,
+        "get_client",
+        lambda: SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+        ),
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -93,3 +121,21 @@ async def test_a_write_failure_never_reaches_the_caller(
 
     monkeypatch.setattr("app.billing.cost.AsyncSessionLocal", _boom)
     await cost.record("text2sql", "gpt-4o", 10, 1)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_a_completion_lands_in_the_ledger_under_its_feature(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "AI_API_KEY", "k")
+    monkeypatch.setattr(settings, "AI_MODEL", "gpt-4o")
+
+    async def _create(**_kw):
+        return _fake_completion(3_000, 300)
+
+    _stub_completions(monkeypatch, _create)
+    await ai_client.chat_json("sys", "usr", feature="text2sql")
+
+    row = (await db_session.execute(select(AISpendDaily))).scalar_one()
+    assert row.feature == "text2sql"
+    assert row.micro_usd == 10_500
