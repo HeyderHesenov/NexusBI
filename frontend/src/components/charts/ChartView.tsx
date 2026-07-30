@@ -1,5 +1,5 @@
-import { AlertTriangle, Download, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Tags, TrendingUp, Workflow, Wrench, X } from 'lucide-react'
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { AlertTriangle, GitBranch, GitFork, ShieldCheck, SlidersHorizontal, Tags, TrendingUp, Workflow, Wrench, X } from 'lucide-react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   AnomalyResult,
@@ -11,7 +11,6 @@ import type {
   RootCauseResult,
   SignificanceResult,
 } from '../../types'
-import { downloadCsv } from '../../lib/csv'
 import { matchTarget, targetValueFor } from '../../lib/kpiTargets'
 import { useKpiTargets } from '../../hooks/useKpiTargets'
 import * as analysisApi from '../../api/analysis'
@@ -35,6 +34,7 @@ import { ChartRenderer } from './LazyChartRenderer'
 import { ChartZoom } from './ChartZoom'
 import { ChartFullscreenModal } from './ChartFullscreenModal'
 import { CHART_BTN } from './chartControls'
+import { ChartExportMenu } from './ChartExportMenu'
 import { ChartToolbar } from './ChartToolbar'
 import { FilterPills, type Filter } from './FilterPills'
 const ForecastChartWidget = lazy(() =>
@@ -89,6 +89,10 @@ export function ChartView({
   // Controlled if the parent passes fullscreen/onFullscreenChange, else internal.
   const fsOpen = fullscreen ?? internalFs
   const setFs = onFullscreenChange ?? setInternalFs
+  // Wraps the INLINE chart only. renderChart also builds a copy inside the
+  // fullscreen modal; sharing one ref would let whichever mounted last win, so
+  // an export would silently change size when the overlay happens to be open.
+  const chartRef = useRef<HTMLDivElement>(null)
 
   // Reset view state when a new result arrives.
   useEffect(() => {
@@ -383,13 +387,13 @@ export function ChartView({
             sections={aiSections}
           />
         )}
-        <button
-          onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
-          aria-label={t('chartView.downloadCsv')}
-          className={`${CHART_BTN} border border-line text-ink-soft hover:border-accent hover:text-ink`}
-        >
-          <Download size={14} /> CSV
-        </button>
+        <ChartExportMenu
+          getChartEl={() => chartRef.current}
+          chartType={type}
+          rows={filtered}
+          title={title}
+          fallbackName={exportName}
+        />
       </div>
 
       <FilterPills
@@ -398,7 +402,7 @@ export function ChartView({
         onClear={() => setFilters([])}
       />
 
-      {renderChart(320)}
+      <div ref={chartRef}>{renderChart(320)}</div>
 
       <Suspense
         fallback={

@@ -79,16 +79,47 @@ describe('ShareChartModal', () => {
     expect(screen.getByTestId('chart')).toHaveAttribute('data-type', type)
   })
 
+  /** Open the download menu and pick a format row. */
+  const pickFormat = async (name: RegExp) => {
+    await userEvent.click(screen.getByRole('button', { name: /Yüklə/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name }))
+  }
+
   it('downloads the snapshot rows as CSV under a title-derived name', async () => {
     open()
-    await userEvent.click(screen.getByRole('button', { name: /CSV/ }))
+    await pickFormat(/CSV/)
     expect(downloadCsv).toHaveBeenCalledWith(rows, 'nexusbi-rayonlar-üzrə-gəlir.csv')
   })
 
   it('falls back to a generic CSV name when the title has no usable characters', async () => {
     open(chart(), meta({ title: '!!!' }))
-    await userEvent.click(screen.getByRole('button', { name: /CSV/ }))
+    await pickFormat(/CSV/)
     expect(downloadCsv).toHaveBeenCalledWith(rows, 'nexusbi-export.csv')
+  })
+
+  it('offers the image formats for a chart', async () => {
+    open()
+    await userEvent.click(screen.getByRole('button', { name: /Yüklə/ }))
+    expect(screen.getByRole('menuitem', { name: /PNG/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /SVG/ })).toBeInTheDocument()
+  })
+
+  it.each(['table', 'pivot'] as const)(
+    'omits the image formats for %s — DOM rows have no <svg> to serialize',
+    async (type) => {
+      open(chart(type))
+      await userEvent.click(screen.getByRole('button', { name: /Yüklə/ }))
+      expect(screen.getByRole('menuitem', { name: /CSV/ })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /PNG/ })).toBeNull()
+      expect(screen.queryByRole('menuitem', { name: /SVG/ })).toBeNull()
+    },
+  )
+
+  it('drops the image formats once the user flips the chart to its rows', async () => {
+    open()
+    await userEvent.click(screen.getByRole('button', { name: /Cədvəl/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Yüklə/ }))
+    expect(screen.queryByRole('menuitem', { name: /PNG/ })).toBeNull()
   })
 
   it('shows the insight when the snapshot carries one', () => {

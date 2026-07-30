@@ -1,11 +1,12 @@
 import { Database, GripVertical, RefreshCw, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Responsive, WidthProvider, type Layout, type Layouts } from 'react-grid-layout'
 import type { Dashboard } from '../../types'
 import { matchTarget, targetValueFor } from '../../lib/kpiTargets'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useKpiTargets } from '../../hooks/useKpiTargets'
+import { ChartExportMenu } from '../charts/ChartExportMenu'
 import { ChartRenderer } from '../charts/LazyChartRenderer'
 import { FilterPills, type Filter } from '../charts/FilterPills'
 import { DashboardFilterBar } from './DashboardFilterBar'
@@ -48,6 +49,9 @@ export function DashboardGrid({
   const [busy, setBusy] = useState<string | null>(null)
   // Cross-filter: click a chart element → filter every widget that has that field.
   const [crossFilter, setCrossFilter] = useState<Filter | null>(null)
+  // Chart bodies by widget id, for image export. Widgets are a dynamic list, so
+  // this is one ref holding a map rather than a hook per widget.
+  const chartEls = useRef(new Map<string, HTMLDivElement>())
   // Saved KPI targets → dashed reference line on widgets whose measure or
   // title exactly matches a target name (scale-gated). Owner view is authed.
   const targets = useKpiTargets()
@@ -94,6 +98,10 @@ export function DashboardGrid({
       rowHeight={34}
       margin={[16, 16]}
       draggableHandle=".drag-handle"
+      // The header controls live inside the drag handle; without this, pressing
+      // one of them also arms a drag, so a menu that opens under the cursor can
+      // shove the widget across the grid.
+      draggableCancel=".widget-actions"
       isDraggable={!readOnly}
       isResizable={!readOnly}
       onLayoutChange={(_current, all) => onLayoutChange(all)}
@@ -123,27 +131,46 @@ export function DashboardGrid({
                 </span>
               )}
             </div>
-            {!readOnly && (
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  onClick={() => refresh(w.id)}
-                  disabled={busy === w.id}
-                  aria-label={t('dashboardGrid.refresh')}
-                  className="text-ink-faint transition hover:text-accent disabled:opacity-50"
-                >
-                  <RefreshCw size={14} className={busy === w.id ? 'animate-spin' : ''} />
-                </button>
-                <button
-                  onClick={() => onRemoveWidget(w.id)}
-                  aria-label={t('dashboardGrid.remove')}
-                  className="text-ink-faint transition hover:text-[#D87C6B]"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            )}
+            <div className="widget-actions flex shrink-0 items-center gap-2">
+              {/* Export stays available in the read-only (shared) view: taking a
+                  copy is a read, and readOnly only withholds editing. */}
+              {w.chart && w.chart.data.length > 0 && (
+                <ChartExportMenu
+                  compact
+                  getChartEl={() => chartEls.current.get(w.id) ?? null}
+                  chartType={w.chart.chart_config.chart_type}
+                  rows={widgetData(w.chart.columns, w.chart.data)}
+                  title={w.title || w.chart.natural_language}
+                />
+              )}
+              {!readOnly && (
+                <>
+                  <button
+                    onClick={() => refresh(w.id)}
+                    disabled={busy === w.id}
+                    aria-label={t('dashboardGrid.refresh')}
+                    className="text-ink-faint transition hover:text-accent disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} className={busy === w.id ? 'animate-spin' : ''} />
+                  </button>
+                  <button
+                    onClick={() => onRemoveWidget(w.id)}
+                    aria-label={t('dashboardGrid.remove')}
+                    className="text-ink-faint transition hover:text-[#D87C6B]"
+                  >
+                    <X size={15} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <div className="min-h-0 flex-1 p-3">
+          <div
+            ref={(el) => {
+              if (el) chartEls.current.set(w.id, el)
+              else chartEls.current.delete(w.id)
+            }}
+            className="min-h-0 flex-1 p-3"
+          >
             {w.chart && w.chart.data.length ? (
               <ErrorBoundary variant="widget" label={t('dashboardGrid.chart')} resetKeys={[w.chart]}>
                 <ChartRenderer
