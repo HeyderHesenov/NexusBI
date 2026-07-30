@@ -1,10 +1,14 @@
 """AI spend accounting: pricing, the daily ledger, and the budget breaker."""
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
+from sqlalchemy import select
 
 from app.billing import cost
 from app.config import settings
+from app.models.ai_spend import AISpendDaily
 
 
 @pytest.fixture(autouse=True)
@@ -39,3 +43,22 @@ def test_unpriced_config_yields_zero_rather_than_crashing(
     monkeypatch.setattr(settings, "AI_PRICE_INPUT_USD_PER_1M", 0.0)
     monkeypatch.setattr(settings, "AI_PRICE_OUTPUT_USD_PER_1M", 0.0)
     assert cost.micro_usd(5_000, 500) == 0
+
+
+@pytest.mark.asyncio
+async def test_spend_row_is_keyed_by_day_feature_and_model(db_session) -> None:
+    db_session.add(
+        AISpendDaily(
+            day=date(2026, 7, 30),
+            feature="text2sql",
+            model="gpt-4o",
+            calls=1,
+            prompt_tokens=3_000,
+            completion_tokens=300,
+            micro_usd=10_500,
+        )
+    )
+    await db_session.commit()
+    row = (await db_session.execute(select(AISpendDaily))).scalar_one()
+    assert (row.day, row.feature, row.model) == (date(2026, 7, 30), "text2sql", "gpt-4o")
+    assert row.micro_usd == 10_500
