@@ -21,6 +21,7 @@ import { ActionMenu } from '../components/ui/ActionMenu'
 import type { ActionMenuItem, ActionMenuSection } from '../components/ui/ActionMenu'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { buildStory, getComments, getWsTicket } from '../api/dashboard'
+import { useReflowDismiss } from '../hooks/useReflowDismiss'
 import { useCollabStore } from '../store/collabStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useSnapshotStore } from '../store/snapshotStore'
@@ -514,15 +515,14 @@ function PillContextMenu({
     }
     document.addEventListener('mousedown', onPointer)
     document.addEventListener('keydown', onKey)
-    window.addEventListener('scroll', onClose, true)
-    window.addEventListener('resize', onClose)
     return () => {
       document.removeEventListener('mousedown', onPointer)
       document.removeEventListener('keydown', onKey)
-      window.removeEventListener('scroll', onClose, true)
-      window.removeEventListener('resize', onClose)
     }
   }, [onClose])
+
+  // Mounted only while open. Cursor-anchored, so there is no trigger to track.
+  useReflowDismiss(true, onClose)
 
   // Keep the menu inside the viewport when the click lands near an edge.
   const MENU_W = 160

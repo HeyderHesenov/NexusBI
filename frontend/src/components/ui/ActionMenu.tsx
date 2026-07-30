@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { useReflowDismiss } from '../../hooks/useReflowDismiss'
 import { CHART_BTN } from '../charts/chartControls'
 
 export interface ActionMenuItem {
@@ -80,10 +81,9 @@ export function ActionMenu({
   // case nothing is highlighted and aria-activedescendant is dropped).
   const firstEnabled = () => flatRef.current.findIndex((it) => !it.disabled)
 
-  // On open: highlight the first enabled row, and wire outside-click / Escape /
-  // scroll / resize. The panel is portaled to <body> and position:fixed, so it's
-  // outside rootRef — dismissal checks both the trigger root and the panel, and
-  // scroll/resize close it (a fixed panel can't track the moving trigger).
+  // On open: highlight the first enabled row, and wire outside-click / Escape.
+  // The panel is portaled to <body> and position:fixed, so it's outside rootRef —
+  // dismissal checks both the trigger root and the panel.
   useEffect(() => {
     if (!open) {
       setCoords(null)
@@ -101,23 +101,18 @@ export function ActionMenu({
         triggerRef.current?.focus()
       }
     }
-    // Close when the trigger moves under the panel (page scroll / resize), but
-    // NOT when the user scrolls the panel's own overflow list.
-    const onReflow = (e: Event) => {
-      if (e.type === 'scroll' && menuRef.current?.contains(e.target as Node)) return
-      setOpen(false)
-    }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
-    window.addEventListener('scroll', onReflow, true)
-    window.addEventListener('resize', onReflow)
     return () => {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
-      window.removeEventListener('scroll', onReflow, true)
-      window.removeEventListener('resize', onReflow)
     }
   }, [open])
+
+  // Close when the trigger moves out from under the fixed panel — but not when
+  // the user scrolls the panel's own overflow list, and not on the scroll that
+  // brought the trigger into view in the first place.
+  useReflowDismiss(open, () => setOpen(false), { ignoreWithin: menuRef, anchorRef: triggerRef })
 
   // Position the fixed panel under the trigger, left-aligned and clamped
   // horizontally. Always opens downward; when space below is tight the panel

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import { useReflowDismiss } from '../../hooks/useReflowDismiss'
 
 export interface ContextMenuItem {
   label: string
@@ -34,17 +35,14 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
   }, [x, y])
 
   useEffect(() => {
-    const close = () => onClose()
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
-    window.addEventListener('scroll', close, true)
-    window.addEventListener('resize', close)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('scroll', close, true)
-      window.removeEventListener('resize', close)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // Mounted only while open, so it is always active. No anchor to track: the menu
+  // is pinned to a cursor point, so any scroll really does strand it.
+  useReflowDismiss(true, onClose)
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }}>
