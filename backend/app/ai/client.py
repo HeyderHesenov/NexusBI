@@ -28,8 +28,8 @@ def get_client() -> AsyncOpenAI:
     return _client
 
 
-def _require_configured() -> None:
-    """Fail fast when no engine is configured, instead of failing over the network.
+async def _preflight() -> None:
+    """Refuse the call before it reaches the network, for either reason.
 
     Callers already treat ``AIGenerationError`` as "take the deterministic path",
     so a keyless run lands on the same fallback either way — but reaching it via
@@ -38,8 +38,14 @@ def _require_configured() -> None:
     budget over the edge: the backend answered /ready seconds after the wait loop
     had already given up. ``embed`` has guarded this since it was written; the
     completion paths simply never did.
+
+    An exhausted daily budget raises the *same* error, deliberately: the product
+    already knows how to run without a model, so the breaker reuses that path
+    rather than inventing a second kind of degradation to test and maintain.
     """
     if not settings.AI_API_KEY or not settings.AI_MODEL:
+        raise AIGenerationError("AI xidməti əlçatmazdır.")
+    if await cost.over_ceiling():
         raise AIGenerationError("AI xidməti əlçatmazdır.")
 
 
@@ -57,7 +63,7 @@ async def chat_json(
     response follows the request language (JSON keys/SQL stay unchanged). Leave it
     False for structured generators (Text2SQL/DAX/chart) whose output is not prose.
     """
-    _require_configured()
+    await _preflight()
     if localize:
         system = system + i18n.lang_directive()
     started = time.perf_counter()
@@ -87,7 +93,7 @@ async def chat_text(
     feature: str = "unknown",
 ) -> str:
     """Call the model and return plain text. Prose by nature → localizes by default."""
-    _require_configured()
+    await _preflight()
     if localize:
         system = system + i18n.lang_directive()
     started = time.perf_counter()
@@ -120,7 +126,7 @@ async def chat_tools(
     them, append results to ``messages``, and call again until the model replies
     with plain ``.content``. ``messages`` must already include the system prompt.
     """
-    _require_configured()
+    await _preflight()
     if localize:
         directive = i18n.lang_directive()
         if directive:
@@ -149,7 +155,11 @@ async def embed(texts: list[str], *, feature: str = "unknown") -> list[list[floa
     """
     if not texts:
         return []
-    if not settings.AI_API_KEY or not settings.EMBEDDING_MODEL:
+    if (
+        not settings.AI_API_KEY
+        or not settings.EMBEDDING_MODEL
+        or await cost.over_ceiling()
+    ):
         return [_hash_embed(t) for t in texts]
     started = time.perf_counter()
     try:

@@ -82,7 +82,7 @@ async def _cache_status(cache: CacheService | None) -> str:
 def _ai_status() -> str:
     """Whether model calls are possible — reported, never gating.
 
-    A keyless install is supported: ``ai.client._require_configured`` raises
+    A keyless install is supported: ``ai.client._preflight`` raises
     before any network call and every caller falls through to its deterministic
     path. So the app is genuinely ready to serve; it just answers from the
     fallbacks. Surfacing it here is what stops that being a silent surprise —

@@ -10,7 +10,14 @@ from sqlalchemy import select
 from app.ai import client as ai_client
 from app.billing import cost
 from app.config import settings
+from app.core.exceptions import AIGenerationError
 from app.models.ai_spend import AISpendDaily
+
+
+@pytest.fixture(autouse=True)
+def _clear_spend_cache() -> None:
+    """The breaker caches today's total in-process; tests must not inherit it."""
+    cost.reset_cache()
 
 
 def _fake_completion(prompt: int, completion: int, content: str = "{}"):
@@ -139,3 +146,61 @@ async def test_a_completion_lands_in_the_ledger_under_its_feature(
     row = (await db_session.execute(select(AISpendDaily))).scalar_one()
     assert row.feature == "text2sql"
     assert row.micro_usd == 10_500
+
+
+@pytest.mark.asyncio
+async def test_breaker_opens_once_today_exceeds_the_ceiling(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "AI_DAILY_USD_CEILING", 1.0)
+    assert await cost.over_ceiling() is False
+    await cost.record("text2sql", "gpt-4o", 400_000, 40_000)  # $1.40
+    cost.reset_cache()
+    assert await cost.over_ceiling() is True
+
+
+@pytest.mark.asyncio
+async def test_a_zero_ceiling_disables_the_breaker(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "AI_DAILY_USD_CEILING", 0.0)
+    await cost.record("text2sql", "gpt-4o", 4_000_000, 400_000)
+    cost.reset_cache()
+    assert await cost.over_ceiling() is False
+
+
+@pytest.mark.asyncio
+async def test_an_open_breaker_stops_a_completion_before_the_network(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "AI_API_KEY", "k")
+    monkeypatch.setattr(settings, "AI_MODEL", "gpt-4o")
+    monkeypatch.setattr(settings, "AI_DAILY_USD_CEILING", 1.0)
+    await cost.record("text2sql", "gpt-4o", 400_000, 40_000)
+    cost.reset_cache()
+
+    def _explode():
+        raise AssertionError("the breaker must fire before any client is built")
+
+    monkeypatch.setattr(ai_client, "get_client", _explode)
+    with pytest.raises(AIGenerationError):
+        await ai_client.chat_json("sys", "usr", feature="text2sql")
+
+
+@pytest.mark.asyncio
+async def test_an_open_breaker_sends_embeddings_to_the_offline_fallback(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "AI_API_KEY", "k")
+    monkeypatch.setattr(settings, "EMBEDDING_MODEL", "text-embedding-3-small")
+    monkeypatch.setattr(settings, "AI_DAILY_USD_CEILING", 1.0)
+    await cost.record("retrieval", "gpt-4o", 400_000, 40_000)
+    cost.reset_cache()
+
+    def _explode():
+        raise AssertionError("the breaker must fire before any client is built")
+
+    monkeypatch.setattr(ai_client, "get_client", _explode)
+    vectors = await ai_client.embed(["salam"], feature="retrieval")
+    assert len(vectors) == 1
+    assert len(vectors[0]) == settings.RAG_HASH_DIM

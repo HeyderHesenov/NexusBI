@@ -46,7 +46,7 @@ def _assert_production_secrets() -> None:
     credentials, so a placeholder value there is a silent security hole.
 
     ``AI_API_KEY`` is deliberately NOT fatal. Every AI feature in this codebase
-    has a deterministic keyless fallback, and ``ai.client._require_configured``
+    has a deterministic keyless fallback, and ``ai.client._preflight``
     short-circuits to it without touching the network — so a keyless install is
     a supported, degraded configuration, not a broken one. Refusing to boot
     would mean a self-hosted operator cannot run NexusBI at all without buying
