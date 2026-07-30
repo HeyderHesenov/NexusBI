@@ -40,6 +40,11 @@ test('login → query → dashboards', async ({ page }) => {
   // size check below: it is the only thing that distinguishes chart from icon.
   await page.getByRole('button', { name: 'Xətt' }).click()
   await page.getByRole('button', { name: 'Yüklə' }).click()
+  // Assert the panel opened before reaching for a row. The trigger sits below the
+  // fold at 1280×720, so this click is preceded by a scroll — and a menu that is
+  // dismissed by its own reveal scroll otherwise shows up as an inscrutable
+  // 30 s wait on the PNG row rather than "the menu never opened".
+  await expect(page.getByRole('menu', { name: 'Yüklə' })).toBeVisible()
   const pngDownload = page.waitForEvent('download')
   await page.getByRole('menuitem', { name: /PNG/ }).click()
   const png = await pngDownload
