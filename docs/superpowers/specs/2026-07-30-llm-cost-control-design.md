@@ -33,7 +33,9 @@ düşür. Dövrə açarı yeni fallback yazmaq əvəzinə məhz bu yolu işə sa
 | Xərc anbarı | **Günlük aqreqat sətir**, `(gün, feature, model)` açarı ilə |
 | Kvota aşımı | İcazə verilir; növbəti sorğu bloklanır |
 | Tavan defoltu | `10.0` USD/gün (`0` = söndürülüb) |
-| Tarif rəqəmləri | **Eyni işdə yenilənir**, ~60% brüt marja hədəfi ilə: 150 / 800 / 4000 / 6000 |
+| Tarif rəqəmləri | **Eyni işdə yenilənir**, ~60% brüt marja hədəfi ilə: 300 / 800 / 4000 / 6000 |
+| Free tarifin dashboard-u | `_MAX_QUESTIONS` = 3 (ödənişlilərdə 6) — eyni pula iki dəfə çox lövhə |
+| Kvotada nə sayılır | Yalnız completion-lar; `embed` yalnız USD tavanına yazılır |
 
 ## Memarlıq
 
@@ -69,12 +71,12 @@ cəmin atomik `UPDATE` ilə artırılması və yuvarlaqlaşdırma sürüşməsin
 
 ```
 istək → enforce_rate_limit: pəncərə + kvota yoxlanır, 1 vahid tutulur
-      → planner + N×(text2sql, chart, insight) model çağırışı
+      → planner + 6×(text2sql, chart, insight) = 19 completion + bir neçə embed
           hər biri: _preflight (açar? dövrə?) → model → _record_call
-                    ├─ contextvar sayğacı += 1
-                    └─ ai_spend_daily += micro_usd   (ayrı sessiya, öz commit-i)
+                    ├─ contextvar sayğacı += 1   (yalnız completion-lar)
+                    └─ ai_spend_daily += micro_usd   (embed daxil; ayrı sessiya, öz commit-i)
       → cavab
-      → finalizer: contextvar = 31 → kvotadan daha 30 vahid yazılır
+      → finalizer: contextvar = 19 → kvotadan daha 18 vahid yazılır
 ```
 
 **Xərc yazısı sorğunun tranzaksiyasından kənardadır** — ayrı qısaömürlü sessiya ilə öz
@@ -102,18 +104,35 @@ yazır. Kvota istifadəçinin ödədiyindən çox AI xərcləməsinin qarşısı
 mexanizmdir — yəni birbaşa marja alətidir.
 
 Hesablama bazası (2026-07-30 tarixli qiymətlər, `gpt-4o`: input **$2.50**/1M, output
-**$10.00**/1M; embedding praktik olaraq sıfır). Prompt ölçülərindən çıxarılan **təxmin**:
-bir model çağırışı ≈ **$0.01**, bir dashboard generasiyası ≈ 16–31 çağırış ≈ $0.11–0.20.
+**$10.00**/1M). Prompt ölçülərindən çıxarılan **təxmin**: bir completion ≈ **$0.01**.
 
+Kodda ölçülmüş fan-out:
+- **Bir dashboard** = 1 planlayıcı + `_MAX_QUESTIONS` sual × ~3 completion.
+  6 sualla ≈ **19**, 3 sualla ≈ **10** completion.
+- **Bir sadə NL sorğu** = text2sql + chart selector + insight ≈ **3** completion.
+
+### Kvota yalnız completion-ları sayır
+Bir NL sorğu embedding çağırışları da edir (RAG axtarışı + `RAG_INDEX_ON_WRITE` ilə
+indeksləmə). Embedding **$0.02**/1M-dir — completion input-undan 125 dəfə ucuz, output-u
+yoxdur. Onu tam kvota vahidi saymaq istifadəçini nahaq cəzalandırardı, ona görə:
+
+- **Kvota (contextvar sayğacı):** yalnız `chat_json` / `chat_text` / `chat_tools`.
+- **USD tavanı və `ai_spend_daily`:** hər şey, `embed` daxil — operatorun real hesabı budur.
+
+### Tarif cədvəli
 Hədəf: **~60% brüt marja** (AI xərci gəlirin ~40%-i) — sahibin qərarı, meyar isə "pul
 ödəyən istifadəçi az istifadə edə bildiyini hiss etməsin".
 
-| Tarif | Qiymət | İndi | **Yeni** | Təxmini AI xərci | Nə verir |
-|---|---|---|---|---|---|
-| Free | $0 | 30 | **150** | ~$1.50 | 5 dashboard və ya ~50 sorğu |
-| Pro | $20 | 300 | **800** | ~$8 | ~26 dashboard |
-| Max | $100 | 1500 | **4000** | ~$40 | ~130 dashboard |
-| Max+ | $150 | 3000 | **6000** | ~$60 | ~195 dashboard |
+Free tarifi üçün `_MAX_QUESTIONS` **3**-ə endirilir (ödənişlilərdə 6 qalır): dashboard
+~19 əvəzinə ~10 vahid olur, yəni **eyni pula iki dəfə çox dashboard**. Yan fayda — 3
+vidcetli fokuslu lövhə ilk təcrübə üçün 6 vidcetli qarışıqdan yaxşıdır.
+
+| Tarif | Qiymət | İndi | **Yeni** | Sual/dashboard | Təxmini AI xərci | Nə verir |
+|---|---|---|---|---|---|---|
+| Free | $0 | 30 | **300** | 3 | ~$3 | **~30 dashboard** və ya ~100 sorğu |
+| Pro | $20 | 300 | **800** | 6 | ~$8 | ~42 dashboard və ya ~265 sorğu |
+| Max | $100 | 1500 | **4000** | 6 | ~$40 | ~210 dashboard |
+| Max+ | $150 | 3000 | **6000** | 6 | ~$60 | ~315 dashboard |
 
 `unlimited` (daxili demo/test tarifi) dəyişmir. `Tier.features` mətnləri də yenilənməlidir
 (yalnız `billing/tiers.py`-dədir, frontend onları API-dən alır — i18n dublikatı yoxdur).
@@ -128,11 +147,12 @@ $100-lıq planda $120 xərcləyər, yəni zərər. Buna görə iki şey məcburi
 2. **İcradan ~bir həftə sonra `ai_spend_daily` üzərində ölçmə aparılmalı və rəqəmlər
    yenidən qoyulmalıdır.** Yuxarıdakı cədvəl təxminə əsaslanır, ölçməyə yox.
 
-Free tarifi xalis xərcdir (gəlir yoxdur): 150 vahid × ~$0.01 = ayda ~$1.50 bir pulsuz
-istifadəçiyə. 500 pulsuz istifadəçi = ayda ~$750 — miqyas artanda yenidən baxılmalı rəqəm.
+Free tarifi xalis xərcdir (gəlir yoxdur): 300 vahid × ~$0.01 = ayda ~$3 bir pulsuz
+istifadəçiyə. 500 pulsuz istifadəçi = ayda ~$1500 — miqyas artanda yenidən baxılmalı rəqəm.
+Gündəlik USD tavanı bunun da yeganə üst həddidir.
 
 ### Kvota aşımı
-1 vahidi qalan istifadəçi `/dashboard/generate` başladıb 31 vahid yandıra bilər; xərclənmiş
+1 vahidi qalan istifadəçi `/dashboard/generate` başladıb ~19 vahid yandıra bilər; xərclənmiş
 çağırışı geri qaytarmaq mümkün deyil. Aşımaya icazə verilir, növbəti sorğu bloklanır.
 Alternativ (fan-out ortasında determinist yola keçmək) yarımçıq dashboard doğurur. Əsl
 maliyyə qoruyucusu gündəlik USD tavanıdır.
@@ -217,6 +237,13 @@ pinləyən test" bu işlə qurulur.
 - Model-spesifik qiymət cədvəli — hazırda tək model konfiqurasiya olunur.
 - Frontend-in kvota göstəricisi (`/usage`) dəyişmir: vahid hələ də "sorğu"dur, sadəcə bir
   HTTP sorğusu birdən çox vahid yaza bilər.
+- **Gündəlik pay (aylıq kvotanın üstünə ikinci pəncərə)** — müzakirə olundu, **qəsdən
+  təxirə salındı**. Səbəb: `_MAX_QUESTIONS`=3 və 300 vahid ilə pulsuz istifadəçinin bir
+  günə kvotasını bitirməsi üçün ~100 sual verməsi lazımdır, yəni problem praktik olaraq
+  yox olur; buna qarşı `usage_service`-ə ikinci pəncərə semantikası, `/usage`-a yeni sahə
+  və frontend dəyişikliyi lazım olardı — həm də **ayrıca testi olmayan** bir modulda, onu
+  eyni anda atomik və proporsional edərkən. 1.4 bitəndən sonra ayrıca kiçik iş kimi
+  götürülür; o vaxt modul artıq testlə örtülü olacaq.
 - Ucuz modelə keçid (məsələn chart tipi seçimi kimi sadə təsnifat çağırışları üçün) —
   ən böyük xərc dəstəyidir, amma **əvvəlcə ölçmək lazımdır**. 1.4-dən sonrakı ilk namizəd.
 - `Tier.features` mətnlərinin yalnız Azərbaycan dilində olması — mövcud i18n boşluğudur,
