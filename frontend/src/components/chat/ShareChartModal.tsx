@@ -1,23 +1,12 @@
-import { BarChart3, Download, Table2 } from 'lucide-react'
-import { useState } from 'react'
+import { BarChart3, Table2 } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ShareMeta } from '../../api/chat'
-import { downloadCsv } from '../../lib/csv'
+import { ChartExportMenu } from '../charts/ChartExportMenu'
 import { ChartFullscreenModal } from '../charts/ChartFullscreenModal'
 import { ChartRenderer } from '../charts/LazyChartRenderer'
 
 type ShareChart = NonNullable<ShareMeta['chart']>
-
-/** Turn a card title into a tidy download name. */
-const filename = (title: string) => {
-  const slug = title
-    .trim()
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
-  return `nexusbi-${slug || 'export'}.csv`
-}
 
 /** The honest view of a shared chart: full size, legend on, rows one toggle away.
  *  Every room member gets this — the snapshot already travels in their copy of the
@@ -37,6 +26,7 @@ export function ShareChartModal({
 }) {
   const { t } = useTranslation()
   const [asTable, setAsTable] = useState(false)
+  const chartRef = useRef<HTMLDivElement>(null)
   // Tables and pivots ARE the rows — there's nothing to toggle to.
   const canToggle = chart.chart_type !== 'table' && chart.chart_type !== 'pivot'
   const config =
@@ -70,16 +60,17 @@ export function ShareChartModal({
             </div>
           )}
           <div className="flex-1" />
-          <button
-            type="button"
-            onClick={() => downloadCsv(chart.data, filename(meta.title))}
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-line-strong hover:text-ink"
-          >
-            <Download size={13} /> {t('chartView.downloadCsv')}
-          </button>
+          {/* Image formats follow the VISIBLE view: flipping to the table drops
+              them, because a table renders as DOM and has no <svg> to serialize. */}
+          <ChartExportMenu
+            getChartEl={() => chartRef.current}
+            chartType={config.chart_type}
+            rows={chart.data}
+            title={meta.title}
+          />
         </div>
 
-        <div className="min-h-0 flex-1">
+        <div ref={chartRef} className="min-h-0 flex-1">
           <ChartRenderer data={chart.data} config={config} height="100%" showLegend />
         </div>
 

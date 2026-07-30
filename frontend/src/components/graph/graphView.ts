@@ -1,6 +1,6 @@
 // Pure view helpers for the knowledge-graph canvas: manual node positions
-// (pins), mini-map coordinate math, and SVG serialization for export. Kept
-// framework-free so the geometry is unit-testable without a DOM render.
+// (pins) and mini-map coordinate math. Kept framework-free so the geometry is
+// unit-testable without a DOM render.
 import { LAYOUT_H, LAYOUT_W, type LayoutPoint } from './useForceLayout'
 
 const PIN_KEY = 'nexusbi.graph.pins.v1'
@@ -85,11 +85,8 @@ export function miniToWorld(
   return { x: (mx / miniW) * LAYOUT_W, y: (my / miniH) * LAYOUT_H }
 }
 
-/** Serialize an <svg> element to a standalone string (for image export). */
-export function serializeSvg(el: SVGSVGElement): string {
-  return new XMLSerializer().serializeToString(el)
-}
-
-// Canonical blob-download lives in lib/download; re-exported here so existing
-// graph importers keep their `./graphView` import path.
+// Canonical blob-download lives in lib/download and the SVG export helpers in
+// lib/chartExport (shared with the recharts surfaces); both are re-exported here
+// so existing graph importers keep their `./graphView` import path.
 export { downloadBlob } from '../../lib/download'
+export { serializeSvg } from '../../lib/chartExport'

@@ -20,19 +20,14 @@ import {
   Table,
   type LucideProps,
 } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { downloadChartPng, downloadChartSvg } from '../../lib/chartExport'
 import { truncateLabel } from '../../lib/format'
 import { neighborSet, pathEdgeKey } from '../../store/graphStore'
 import type { GraphData, GraphNode, GraphNodeType } from '../../types'
 import { GRAPH_TYPE_COLORS, HEALTH_COLOR, useChartTheme } from '../charts/theme'
 import { LAYOUT_H, LAYOUT_W, useForceLayout, type LayoutPoint } from './useForceLayout'
-import {
-  downloadBlob,
-  loadPins,
-  mergePositions,
-  miniToWorld,
-  savePins,
-  serializeSvg,
-} from './graphView'
+import { loadPins, mergePositions, miniToWorld, savePins } from './graphView'
 
 interface Props {
   data: GraphData
@@ -170,37 +165,18 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
     exportImage: (format) => {
       const svg = svgRef.current
       if (!svg) return
-      // The canvas background is a CSS class (not serialized) — inject an explicit
-      // surface rect so the exported image isn't transparent.
-      const clone = svg.cloneNode(true) as SVGSVGElement
-      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-      bg.setAttribute('x', String(view.x))
-      bg.setAttribute('y', String(view.y))
-      bg.setAttribute('width', String(view.w))
-      bg.setAttribute('height', String(view.h))
-      bg.setAttribute('fill', theme.SURFACE)
-      clone.insertBefore(bg, clone.firstChild)
-      const src = serializeSvg(clone)
+      // The background rect and the raster scaling live in lib/chartExport,
+      // shared with the recharts surfaces. The rect follows this canvas's
+      // viewBox, so a panned/zoomed graph still exports on an opaque surface.
+      const filename = `knowledge-graph.${format}`
+      const opts = { background: theme.SURFACE }
       if (format === 'svg') {
-        downloadBlob(new Blob([src], { type: 'image/svg+xml;charset=utf-8' }), 'knowledge-graph.svg')
+        downloadChartSvg(svg, filename, opts)
         return
       }
-      const img = new Image()
-      img.onload = () => {
-        const scale = 2 // export at 2× for crisp raster output
-        const canvas = document.createElement('canvas')
-        canvas.width = view.w * scale
-        canvas.height = view.h * scale
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        ctx.fillStyle = theme.SURFACE
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        canvas.toBlob((blob) => {
-          if (blob) downloadBlob(blob, 'knowledge-graph.png')
-        }, 'image/png')
-      }
-      img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(src)))}`
+      downloadChartPng(svg, filename, opts).catch(() => {
+        toast.error(t('chartExport.failed'))
+      })
     },
     resetPins: () => {
       setPinned(new Map())

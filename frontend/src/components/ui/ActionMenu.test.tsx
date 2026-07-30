@@ -108,6 +108,30 @@ describe('ActionMenu', () => {
     expect(trigger).not.toHaveAttribute('aria-activedescendant')
   })
 
+  it('survives the scroll that revealed its trigger, closes once the trigger moves', () => {
+    // Regression: opening the menu by clicking a trigger that had to be scrolled
+    // into view queues a scroll event that is delivered a frame later — after the
+    // menu is open. It must not be read as "the user scrolled away".
+    let top = 300
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      () => ({ top, left: 0, bottom: top + 24, right: 90, width: 90, height: 24 }) as DOMRect,
+    )
+    try {
+      render(<ActionMenu ariaLabel="tools" triggerLabel="Tools" sections={sections()} />)
+      fireEvent.click(screen.getByRole('button', { name: 'tools' }))
+      expect(screen.getByRole('menu')).toBeInTheDocument()
+
+      fireEvent.scroll(document) // the scroll that brought the trigger into view
+      expect(screen.getByRole('menu')).toBeInTheDocument()
+
+      top = 120 // now the trigger really slid out from under the panel
+      fireEvent.scroll(document)
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
+
   it('aria: trigger exposes activedescendant + controls when open', () => {
     render(<ActionMenu ariaLabel="tools" triggerLabel="Tools" sections={sections()} />)
     const trigger = screen.getByRole('button', { name: 'tools' })

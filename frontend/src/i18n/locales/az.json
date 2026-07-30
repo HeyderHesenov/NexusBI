@@ -57,6 +57,14 @@
     "chart": "Qrafik",
     "close": "Bağla"
   },
+  "chartExport": {
+    "trigger": "Yüklə",
+    "group": "Format",
+    "csv": "CSV (sətirlər)",
+    "png": "PNG (şəkil)",
+    "svg": "SVG (vektor)",
+    "failed": "Şəkil yaradıla bilmədi."
+  },
   "chartRenderer": {
     "noResults": "Nəticə tapılmadı."
   },
@@ -79,7 +87,6 @@
     "chart": "Qrafik",
     "checking": "Yoxlanır…",
     "detecting": "Təhlil…",
-    "downloadCsv": "CSV yüklə",
     "findingDrivers": "Axtarılır…",
     "forecast": "Proqnoz",
     "forecasting": "Proqnoz…",
@@ -204,6 +211,8 @@
     "new": "Yeni",
     "open": "Aç",
     "preparing": "Hazırlanır…",
+    "print": "Çap / PDF",
+    "printedOn": "Çap tarixi: {{date}}",
     "refreshAll": "Hamısını yenilə",
     "sectionDanger": "Təhlükəli zona",
     "sectionShare": "Paylaşım",

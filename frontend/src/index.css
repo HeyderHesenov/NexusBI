@@ -296,3 +296,47 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Print (dashboard → PDF) ──────────────────────────────────────────────────
+   DashboardPrintView portals a paper rendering of the board to <body>; the app
+   itself has no printable form (absolute grid cells, sidebar, toolbars), so the
+   whole of #root steps aside rather than being reshaped rule by rule. */
+@media print {
+  #root {
+    display: none !important;
+  }
+
+  /* Dark mode is a screen preference, not a paper one: a dark board would print
+     as a solid ink block. Restore the light token set for the sheet. */
+  .dark {
+    --bg: 250 249 245;
+    --surface: 255 255 255;
+    --surface-2: 245 244 238;
+    --line: 229 227 220;
+    --line-strong: 214 211 202;
+    --ink: 31 30 29;
+    --ink-soft: 91 87 80;
+    --ink-faint: 140 135 126;
+    --accent: 14 159 110;
+    --accent-press: 11 126 88;
+    --accent-soft: 227 243 236;
+    --shadow: 60 50 40;
+  }
+
+  /* Charts are wider than they are tall, so landscape wastes the least paper and
+     lets the sheet's fixed width fit without the browser scaling it down. */
+  @page {
+    size: A4 landscape;
+    margin: 14mm;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  /* A widget split across a page boundary is unreadable — keep each whole. */
+  .print-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

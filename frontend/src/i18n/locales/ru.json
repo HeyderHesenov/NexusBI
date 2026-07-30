@@ -57,6 +57,14 @@
     "chart": "График",
     "close": "Закрыть"
   },
+  "chartExport": {
+    "trigger": "Скачать",
+    "group": "Формат",
+    "csv": "CSV (строки)",
+    "png": "PNG (изображение)",
+    "svg": "SVG (вектор)",
+    "failed": "Не удалось создать изображение."
+  },
   "chartRenderer": {
     "noResults": "Результаты не найдены."
   },
@@ -81,7 +89,6 @@
     "chart": "График",
     "checking": "Проверка…",
     "detecting": "Анализ…",
-    "downloadCsv": "Скачать CSV",
     "findingDrivers": "Поиск…",
     "forecast": "Прогноз",
     "forecasting": "Прогноз…",
@@ -204,6 +211,8 @@
     "new": "Новый",
     "open": "Открыть",
     "preparing": "Подготовка…",
+    "print": "Печать / PDF",
+    "printedOn": "Дата печати: {{date}}",
     "refreshAll": "Обновить всё",
     "sectionDanger": "Опасная зона",
     "sectionShare": "Поделиться",
