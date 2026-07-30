@@ -33,6 +33,7 @@ düşür. Dövrə açarı yeni fallback yazmaq əvəzinə məhz bu yolu işə sa
 | Xərc anbarı | **Günlük aqreqat sətir**, `(gün, feature, model)` açarı ilə |
 | Kvota aşımı | İcazə verilir; növbəti sorğu bloklanır |
 | Tavan defoltu | `10.0` USD/gün (`0` = söndürülüb) |
+| Tarif rəqəmləri | **Eyni işdə yenilənir**, ~60% brüt marja hədəfi ilə: 150 / 800 / 4000 / 6000 |
 
 ## Memarlıq
 
@@ -88,16 +89,47 @@ tutulur; `yield`-dən sonra contextvar sayğacına baxılıb qalan `N−1` vahid
 istisna atsa belə finalizer işləyir — çağırışlar edilib, pulu ödənilib. Contextvar hər
 sorğuda yenidən qurulur və finalizer-də sıfırlanır.
 
-### ⚠ Nəticə: mövcud tarif rəqəmləri effektiv olaraq kiçilir
-Bu, dizaynın ən böyük yan təsiridir və açıq yazılmalıdır. Bu gün Free tarifinin 30 vahidi
-30 HTTP sorğusu deməkdir; proporsionallıqdan sonra **bir** `/dashboard/generate` ~31 vahid
-yeyə bilər — yəni Free istifadəçisi ayda bir dashboard generasiyası ilə kvotasını bitirir.
-Pro (300) üçün bu ~10 generasiya deməkdir.
+### Tarif rəqəmləri eyni işdə yenidən qurulur
 
-Dizayn bunu **düzəltmir**, çünki tarif rəqəmləri məhsul/qiymət qərarıdır, mühəndislik
-qərarı yox. İcra zamanı `billing/tiers.py`-a toxunulmur. Sahib icradan sonra rəqəmlərə
-yenidən baxmalıdır — real fan-out ölçüsü `ai_spend_daily` cədvəlindən görünəndən sonra bu
-qərar məlumatlı verilə bilər. Bu iş üçün ayrıca bənd açılmalıdır.
+Proporsionallıq vahidin mənasını dəyişir: bu gün 30 vahid = 30 HTTP sorğusu, ondan sonra
+30 vahid = 30 **model çağırışı** ≈ bir dashboard generasiyası. Köhnə rəqəmlərlə Free
+istifadəçisi ilk dashboard-da bloklanardı, ona görə iki dəyişiklik **eyni PR-da** getməlidir.
+
+Biznes modeli (bunu açıq yazıram, çünki rəqəmlər ondan çıxır): **tək server-tərəfi açar**
+var — operatorunki. İstifadəçilərin nə öz OpenAI hesabı, nə də ayrıca açarı olur; sorğu
+backend-dən operatorun açarı ilə gedir, OpenAI ay sonu **cəmi** üçün operatora bir hesab
+yazır. Kvota istifadəçinin ödədiyindən çox AI xərcləməsinin qarşısını alan yeganə
+mexanizmdir — yəni birbaşa marja alətidir.
+
+Hesablama bazası (2026-07-30 tarixli qiymətlər, `gpt-4o`: input **$2.50**/1M, output
+**$10.00**/1M; embedding praktik olaraq sıfır). Prompt ölçülərindən çıxarılan **təxmin**:
+bir model çağırışı ≈ **$0.01**, bir dashboard generasiyası ≈ 16–31 çağırış ≈ $0.11–0.20.
+
+Hədəf: **~60% brüt marja** (AI xərci gəlirin ~40%-i) — sahibin qərarı, meyar isə "pul
+ödəyən istifadəçi az istifadə edə bildiyini hiss etməsin".
+
+| Tarif | Qiymət | İndi | **Yeni** | Təxmini AI xərci | Nə verir |
+|---|---|---|---|---|---|
+| Free | $0 | 30 | **150** | ~$1.50 | 5 dashboard və ya ~50 sorğu |
+| Pro | $20 | 300 | **800** | ~$8 | ~26 dashboard |
+| Max | $100 | 1500 | **4000** | ~$40 | ~130 dashboard |
+| Max+ | $150 | 3000 | **6000** | ~$60 | ~195 dashboard |
+
+`unlimited` (daxili demo/test tarifi) dəyişmir. `Tier.features` mətnləri də yenilənməlidir
+(yalnız `billing/tiers.py`-dədir, frontend onları API-dən alır — i18n dublikatı yoxdur).
+Max-ın `(5x)` etiketi düz qalır (4000/800); Max+-ın `(10x)` etiketi **artıq doğru deyil**
+(6000/800 = 7.5x) və silinməlidir — sətir onsuz da "Ən yüksək limit" deyir.
+
+**Marjanın nazikləşməsinin qiyməti — açıq yazılmalıdır.** 80% əvəzinə 60% seçmək təxmin
+xətasına dözümü azaldır: əgər çağırış başına real xərc $0.01 yox $0.03 çıxarsa, Max tarifi
+$100-lıq planda $120 xərcləyər, yəni zərər. Buna görə iki şey məcburi olur:
+1. **Gündəlik USD tavanı yük daşıyan qoruyucudur**, "gözəl olardı" deyil — yeganə şey odur
+   ki, təxmin yanılsa belə zərəri gündəlik məbləğlə hədləyir.
+2. **İcradan ~bir həftə sonra `ai_spend_daily` üzərində ölçmə aparılmalı və rəqəmlər
+   yenidən qoyulmalıdır.** Yuxarıdakı cədvəl təxminə əsaslanır, ölçməyə yox.
+
+Free tarifi xalis xərcdir (gəlir yoxdur): 150 vahid × ~$0.01 = ayda ~$1.50 bir pulsuz
+istifadəçiyə. 500 pulsuz istifadəçi = ayda ~$750 — miqyas artanda yenidən baxılmalı rəqəm.
 
 ### Kvota aşımı
 1 vahidi qalan istifadəçi `/dashboard/generate` başladıb 31 vahid yandıra bilər; xərclənmiş
@@ -183,7 +215,9 @@ pinləyən test" bu işlə qurulur.
   üstünə sonradan əlavə edilə bilər.
 - Admin konsolunda əl ilə dövrə sıfırlaması — Faza 4.
 - Model-spesifik qiymət cədvəli — hazırda tək model konfiqurasiya olunur.
-- Tarif cədvəlinin (`billing/tiers.py`) rəqəmlərinə toxunulmur — yuxarıdakı "mövcud tarif
-  rəqəmləri effektiv olaraq kiçilir" bəndinə bax; bu, ayrıca məhsul qərarıdır.
 - Frontend-in kvota göstəricisi (`/usage`) dəyişmir: vahid hələ də "sorğu"dur, sadəcə bir
   HTTP sorğusu birdən çox vahid yaza bilər.
+- Ucuz modelə keçid (məsələn chart tipi seçimi kimi sadə təsnifat çağırışları üçün) —
+  ən böyük xərc dəstəyidir, amma **əvvəlcə ölçmək lazımdır**. 1.4-dən sonrakı ilk namizəd.
+- `Tier.features` mətnlərinin yalnız Azərbaycan dilində olması — mövcud i18n boşluğudur,
+  bu işlə gəlmir və bu işdə həll olunmur.
