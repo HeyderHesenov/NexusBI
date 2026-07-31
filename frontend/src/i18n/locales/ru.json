@@ -285,7 +285,6 @@
     "freshnessSlaLabel": "SLA актуальности (часы):",
     "freshnessStale": "Устарело",
     "freshnessUnknown": "Неизвестно",
-    "locked": "Заблокирован",
     "lockedTitle": "Заблокированный источник: участник без правила не видит строк",
     "prepData": "Подготовить данные",
     "profileTitle": "Профиль",

@@ -285,7 +285,6 @@
     "freshnessSlaLabel": "Freshness SLA (hours):",
     "freshnessStale": "Stale",
     "freshnessUnknown": "Unknown",
-    "locked": "Locked",
     "lockedTitle": "Locked source: a member with no rule sees no rows",
     "prepData": "Prepare data",
     "profileTitle": "Profile",

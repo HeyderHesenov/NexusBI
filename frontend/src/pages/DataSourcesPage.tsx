@@ -161,32 +161,26 @@ export function DataSourcesPage() {
           {sources.map((s) => (
             <li key={s.id} className="rounded-2xl border border-line bg-surface p-4">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface-2">
+                {/* min-w-0 lets a long source name truncate instead of pushing the
+                    action row past the card edge. */}
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line bg-surface-2">
                     {s.db_type === 'powerbi' ? (
                       <BarChart3 size={16} className="text-[#F2C811]" />
                     ) : (
                       <Database size={16} className="text-accent" />
                     )}
                   </span>
-                  <div>
-                    <p className="flex items-center gap-1.5 font-medium text-ink">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-ink" title={s.name}>
                       {s.name}
-                      {s.rls_mode === 'strict' && (
-                        <span
-                          title={t('dataSourcesPage.lockedTitle')}
-                          className="inline-flex items-center gap-1 rounded-md border border-accent/40 bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent"
-                        >
-                          <Lock size={9} /> {t('dataSourcesPage.locked')}
-                        </span>
-                      )}
                     </p>
                     <p className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">
                       {s.db_type}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={() => setDatasource(datasourceId === s.id ? null : s.id)}
                     className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
@@ -233,12 +227,23 @@ export function DataSourcesPage() {
                     </button>
                   )}
                   {s.db_type !== 'powerbi' && (
+                    // The RLS button carries the lock state itself. A separate badge
+                    // costs width this row does not have — and this is also where the
+                    // owner goes to change it.
                     <button
                       onClick={() => setRlsFor({ id: s.id, name: s.name })}
-                      title={t('dataSourcesPage.rlsTitle')}
-                      className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-accent hover:text-accent"
+                      title={
+                        s.rls_mode === 'strict'
+                          ? t('dataSourcesPage.lockedTitle')
+                          : t('dataSourcesPage.rlsTitle')
+                      }
+                      className={`rounded-lg border p-1.5 transition ${
+                        s.rls_mode === 'strict'
+                          ? 'border-accent/50 bg-accent-soft text-accent'
+                          : 'border-line text-ink-soft hover:border-accent hover:text-accent'
+                      }`}
                     >
-                      <ShieldHalf size={15} />
+                      {s.rls_mode === 'strict' ? <Lock size={15} /> : <ShieldHalf size={15} />}
                     </button>
                   )}
                   {s.db_type === 'sqlite' && (
