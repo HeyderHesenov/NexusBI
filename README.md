@@ -10,7 +10,8 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 > anomaliya · kök-səbəb · proaktiv digest · agentik copilot). Üstəlik komanda idarəetməsi
 > (RBAC + row-level security), embedded analytics + white-label, FP&A ssenari planlaması.
 >
-> **Final layihə — 2/3** (üç final layihədən ikincisi).
+> **Kurs layihəsi kimi başladı, indi məhsul kimi inkişaf edir** — təqdimat bitib, iş
+> davam edir: hər dəyişiklik PR-dan, testlərdən və CI-dan keçir.
 
 ---
 
@@ -30,6 +31,9 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   allowlist → RLS fail-closed). `POST /query/run`.
 - **Avtomatik chart + əl ilə keçid** — bar · line · area · pie · scatter · cədvəl · **pivot**;
   CSV export, drill-down filtr (qrafik elementinə klik).
+- **Qrafik ixracı (PNG/SVG) + dashboard çapı** — hər qrafiki üç səthdən (sorğu · chat paylaşım
+  kartı · dashboard widget-i) təsvir kimi yüklə; dashboard isə brauzerin çap dialoqundan PDF-ə
+  gedir (ayrıca çap görünüşü, ekran layout-u pozulmadan). Konsultant deliverable-ı üçün.
 - **Pivot cədvəl explorer** — nəticə üzərində sürüklə-seç çarpaz analiz (sətir/sütun/ölçü/
   aqreqat: cəm·orta·say·min·maks), SQL-siz — Excel PivotTable eqvivalenti, tam client-side.
 - **AI insight** — nəticədən qısa biznes təhlili (sorğunun dilində).
@@ -121,8 +125,10 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 
 ### Komanda & idarəetmə (enterprise)
 - **Workspace + rollar (RBAC)** — owner / editor / viewer; e-poçtla dəvət.
-- **Row-level security (RLS)** — üzv yalnız icazəli sətirləri görür (fail-closed; canlı +
-  refresh yollarında tətbiq olunur).
+- **Row-level security (RLS) + mənbə kilidi** — üzv yalnız icazəli sətirləri görür (fail-closed;
+  canlı + refresh yollarında tətbiq olunur). **Deny-by-default:** mənbəni bir kliklə "kilidlə" →
+  qaydası olmayan üzv **heç bir sətir** görmür (sahibə təsir etmir). Yeni mənbələr kilidli yaradılır,
+  mövcudlar olduğu kimi qalır.
 - **Audit jurnalı** — təhlükəsizlik-əhəmiyyətli əməllərin izi (kim/nə/nə vaxt).
 
 ### Embed & white-label
@@ -136,6 +142,10 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
   (reuse-detection + family-revoke) və `/auth/logout`.
 - **Abunə planları + per-user rate limiting** — Free/Pro/Max/Max+ aylıq AI limiti;
   demo-da mock upgrade, prod-da **config-gated Stripe Checkout**.
+- **LLM xərc nəzarəti** — hər completion token-cap-lidir; kvota sorğunun **real fan-out-una görə**
+  yazılır (bir dashboard = 1 yox, ~19 çağırış); hər çağırışın USD dəyəri `ai_spend_daily`-yə düşür
+  və gündəlik tavan (`AI_DAILY_USD_CEILING`) aşılanda AI dayanır. Tariflər təxminlə yox,
+  **ölçmə ilə** qoyulub (`backend/scripts/measure_ai_cost.py`).
 - **Qlobal semantik axtarış (⌘K)** — "churn-u harda izləyirik?" → dashboard/metrik/hesabat
   mənası ilə tapılır (embedding vektor store reuse, keyless offline fallback; komanda-paleti).
 - **Claude-ilhamlı UI** — light/dark toggle, emerald accent, Source Serif 4 başlıqlar.
@@ -295,6 +305,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST | `/api/v1/requirements/extract` · `/{id}/build` | BRD → KPI çıxar · dashboard qur |
 | POST | `/api/v1/dataprep/preview` · `/materialize` | NL transform önizlə · mənbə kimi saxla |
 | GET/POST/DELETE/PATCH | `/api/v1/datasource/{id}/profile` · `/rls` · `/sla` | Profiling · RLS qaydaları · freshness SLA |
+| PATCH | `/api/v1/datasource/{id}/rls-mode` | Mənbəni kilidlə/aç (`strict`/`open`) — kilidlidə qaydasız üzv sıfır sətir görür |
 | POST/GET/PUT/DELETE | `/api/v1/kpi-targets/...` | KPI hədəf + pacing |
 | GET/POST/DELETE | `/api/v1/workspaces/...` (+ `/members`) · `/audit` | Workspace + RBAC üzvlük · audit jurnalı |
 | GET/POST/DELETE | `/api/v1/integrations/...` (+ `/{id}/test`) | Slack/Teams/email kanalları |
@@ -323,6 +334,10 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 |---------|--------|
 | `AI_API_KEY` / `AI_MODEL` | AI mühərriki üçün giriş açarı + mühərrik identifikatoru (.env-dən; boşdursa offline rule-based) |
 | `EMBEDDING_MODEL` | RAG embedding mühərriki (boşdursa determinik offline hash fallback) |
+| `AI_MAX_TOKENS_JSON` / `_TEXT` / `_TOOLS` | Completion başına token tavanı (JSON cavab · sərbəst mətn · alət döngüsü) |
+| `AI_PRICE_INPUT_USD_PER_1M` / `AI_PRICE_OUTPUT_USD_PER_1M` / `AI_PRICE_EMBEDDING_USD_PER_1M` | Modelin qiyməti — **0 qalsa hər çağırış $0 yazılır**, uçot sağlam görünür və tavan heç vaxt işə düşmür |
+| `AI_DAILY_USD_CEILING` | Gündəlik USD tavanı (default 10). ⚠️ Yalnız **Postgres**-də etibarlıdır — SQLite-da sorğunun açıq tranzaksiyası uçotu bloklayır |
+| `SCHEMA_LINK_TOP_K` / `_MIN_TABLES` / `_CACHE_TTL_SECONDS` | Geniş sxemdə modelə göndərilən cədvəl sayı · bu hədd və aşağısında linking keçilir · keş TTL |
 | `RAG_ENABLED` / `RAG_TOP_K` / `RAG_MAX_CANDIDATES` / `RAG_HASH_DIM` / `RAG_INDEX_ON_WRITE` | RAG grounding: aktiv · inject olunan nümunə sayı · skan limiti · offline embed ölçüsü · hər NL→SQL-i indeksləmə |
 | `GOOGLE_CLIENT_ID` | Google OAuth Web client ID (boşdursa düymə deaktiv) |
 | `DATABASE_URL` | Async DSN (postgresql+asyncpg / sqlite+aiosqlite) |
@@ -352,7 +367,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 538 test
+cd backend && pytest        # 706 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -367,10 +382,12 @@ offline embed determinizmi, dedup)** ·
 metrik ağacı (roll-up) · data müqavilələri
 (profiling-əsaslı keyfiyyət)** · **dashboard snapshotları
 (test_snapshots) · biliklər qrafı (test_graph) · BA frameworks + mermaid sanitizer (test_ba) ·
-AutoML guard zənciri + limitlər (test_automl)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
+AutoML guard zənciri + limitlər (test_automl) · LLM xərc uçotu + proporsional kvota
+(test_ai_cost, test_usage_quota) · RLS deny-by-default: scope matrisi + uçdan-uca kilid
+(test_rls_mode)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
 `AI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
 
-**Frontend Vitest (512 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (610 test):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
@@ -383,8 +400,11 @@ BCGMatrix)**.
 **E2E (Playwright):** `frontend/e2e/smoke.spec.ts` — login → NL sorğu (demo SQLite + rule-based
 fallback) → dashboards. Lokal: `npm run test:e2e` (preview :4173; `E2E_BASE_URL` ilə dev :5173-ə yönəlt).
 
-CI (`.github/workflows/ci.yml`) — 3 job: **backend** (ruff + pytest), **frontend** (Vitest + build),
-**e2e** (demo backend qaldırılır → Playwright smoke; **bloklayıcı**, `needs: backend+frontend`).
+CI (`.github/workflows/ci.yml`) — 4 job: **backend** (ruff + pytest), **frontend** (Vitest + build),
+**e2e** (demo backend qaldırılır → Playwright smoke; **bloklayıcı**, `needs: backend+frontend`) və
+**deploy-smoke** (`docker-compose.prod.yml` + `scripts/deploy_smoke.sh` — prod stack-in yeganə icra
+yeri). Əlavə iki workflow: `codeql.yml` (python + js/ts) və `secret-scan.yml` (gitleaks, tam tarixçə).
+`main` ruleset-i beşini tələb edir: Backend · Frontend · E2E smoke · gitleaks · Deploy smoke.
 Bundle analizi: `cd frontend && npm run analyze` → `stats.html`.
 
 ---
@@ -409,6 +429,11 @@ sqlglot (SQL guard/RLS) · JWT (python-jose) · Fernet · Redis · pandas/openpy
   Filtr **SQL səviyyəsində** (`rls_sql.constrain_sql`, sqlglot) aqreqatdan əvvəl inject olunur
   (SUM/GROUP BY sızması bağlı); post-fetch Python filtri fallback. Canlı + dashboard-refresh
   yollarında da tətbiq olunur.
+- **Deny-by-default (`datasources.rls_mode`)** — `strict` mənbədə qaydası olmayan qeyri-sahib
+  **sıfır sətir** görür (`rls_sql.deny_all_sql` sorğunu sarır ki, aqreqat da boş qayıtsın).
+  Sahib yalnız **implisit** deny-dən azaddır — öz haqqında yazdığı qayda ona da tətbiq olunur.
+  Kilidli mənbənin widget-ləri publik/embed linklərdə render olunmur (anonim baxışçının qaydası
+  ola bilməz). Sıxılaşdırma `qcache:` və `profile:` keşlərini birdən təmizləyir.
 - **Text2SQL sərtləşməsi** — metadata-cədvəl denylist (tırnaq-bypass-a davamlı), schema
   allowlist (schema-qualifier rədd), Postgres/MySQL statement timeout; generation keşi user-müstəqil.
 - **Refresh-token rotation** — hər yeniləmədə rotasiya + reuse-detection (oğurlanan token
