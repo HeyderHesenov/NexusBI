@@ -10,7 +10,8 @@ chart seçir və biznes insight verir**. SQL bilməyən analist, menecer və rə
 > anomaliya · kök-səbəb · proaktiv digest · agentik copilot). Üstəlik komanda idarəetməsi
 > (RBAC + row-level security), embedded analytics + white-label, FP&A ssenari planlaması.
 >
-> **Final layihə — 2/3** (üç final layihədən ikincisi).
+> **Kurs layihəsi kimi başladı, indi məhsul kimi inkişaf edir** — təqdimat bitib, iş
+> davam edir: hər dəyişiklik PR-dan, testlərdən və CI-dan keçir.
 
 ---
 
