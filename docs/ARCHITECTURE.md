@@ -155,6 +155,13 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   remains a fallback. Enforced in `query_service._live_pipeline` AND `reexecute_logged_query`
   (dashboard refresh); the live-broadcast path re-applies it too. NOTE: data sources are still
   personal — full team-sharing of a source (resource `workspace_id`) is the documented next step.
+  **Deny-by-default:** `datasources.rls_mode` is `open` (a ruleless member sees everything —
+  what pre-existing sources keep) or `strict` (a ruleless non-owner sees nothing, via
+  `rls_sql.deny_all_sql`, which wraps the query so even an aggregate returns zero rows).
+  New sources are created `strict`. `rls_service.resolve_scope` is the sentinel every read
+  path goes through — it distinguishes "no rule" from "no restriction", which a bare rule
+  list cannot. Owner-scoped fan-out paths (live broadcast, public/embed) ask
+  `datasource_is_restricted` and skip locked sources entirely. See SECURITY.md.
 - **Audit log:** `audit_service.log` appends to `audit_logs` on security-relevant actions
   (datasource create/delete, RLS create/delete, workspace member changes); `GET /audit` lists.
 - **Scenario planning:** `scenario_service` (numpy, no AI, deterministic) — `goal_seek`,

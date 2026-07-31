@@ -129,6 +129,23 @@ Dependabot alerts + security updates, and CodeQL code scanning.
   nothing else turns that from a race against a list into a property of the
   database, and costs nothing to do. Treat it as required for any datasource
   holding data you would not hand to whoever can log in.
+- **Row-level security is deny-by-default on new sources.** Each datasource carries
+  an `rls_mode`. On an `open` source a member with no rule sees every row — the
+  original behaviour, and what every source that existed before this column got.
+  On a `strict` source a member with no rule sees **no** rows: the query is wrapped
+  so it returns zero rows before any aggregate is computed. Sources created from
+  now on start `strict`; the owner flips either way from the RLS dialog.
+  - The **owner is exempt from the strict deny only.** A rule that names them still
+    applies — that instruction was explicit. Without the exemption, locking a source
+    would lock its author out of their own data.
+  - Anything that renders one dataset for a whole audience — the live-refresh
+    broadcast, public share links, embeds — refuses to render a **locked** source at
+    all, exactly as it already refused any source carrying a rule. An anonymous
+    viewer can never hold a rule, so there is no scope to render them.
+  - Enforcement is in the SQL, never after the fetch: `rls_service.resolve_scope`
+    decides the scope, `rls_sql.constrain_sql` filters before aggregation, and
+    `rls_sql.deny_all_sql` produces the zero-row form. All three fail closed — SQL
+    that cannot be parsed is rejected rather than run unconstrained.
 
 ## Reporting a vulnerability
 Open a private security advisory on GitHub or email the maintainer. Please do not
