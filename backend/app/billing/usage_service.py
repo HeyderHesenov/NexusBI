@@ -63,23 +63,36 @@ async def check_and_consume(db: AsyncSession, user: User) -> None:
     await db.refresh(user)
 
 
-async def consume_extra(user_id: str, units: int) -> None:
+async def consume_extra(user_id: str, units: int, db: AsyncSession | None = None) -> None:
     """Charge `units` more, unconditionally — those calls already cost money.
 
-    Its own session on purpose: this runs after the endpoint returned, when the
-    request's transaction may already be finished, and the charge must land
-    whether or not the request itself succeeded.
+    Pass the session that took the up-front unit whenever there is one. That +1
+    is still uncommitted and already holds this user's row, so a second
+    connection writing the same row would wait for a transaction that is itself
+    waiting for this call to return: "database is locked" on SQLite, a request
+    stuck until statement_timeout on Postgres. Joining the same transaction has
+    a consequence worth stating plainly — the charge shares the request's fate,
+    so a request that rolls back is charged nothing, exactly as the up-front
+    unit already was. What is *not* refunded is the money: ``ai_spend_daily`` is
+    written from its own session and keeps every call that was actually made.
+
+    Without a session (a background task, or a caller whose transaction is
+    already finished) it opens its own and commits immediately.
     """
     if units <= 0:
         return
+    stmt = (
+        update(User)
+        .where(User.id == user_id)
+        .values(ai_calls_used=User.ai_calls_used + units)
+        .execution_options(synchronize_session=False)
+    )
     try:
+        if db is not None:
+            await db.execute(stmt)
+            return
         async with AsyncSessionLocal() as session:
-            await session.execute(
-                update(User)
-                .where(User.id == user_id)
-                .values(ai_calls_used=User.ai_calls_used + units)
-                .execution_options(synchronize_session=False)
-            )
+            await session.execute(stmt)
             await session.commit()
     except Exception as exc:  # noqa: BLE001 — never fail a response over accounting
         log.warning("quota_reconcile_failed", error=type(exc).__name__, detail=str(exc)[:200])

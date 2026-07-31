@@ -1,6 +1,7 @@
 """Shared FastAPI dependencies: DB session, cache, current user."""
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -50,12 +51,26 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 async def enforce_rate_limit(
     user: Annotated[User, Depends(get_current_user)], db: DbDep
-) -> User:
-    """Consume one monthly AI quota unit or raise 429. Use on AI endpoints."""
+) -> AsyncGenerator[User, None]:
+    """Consume monthly AI quota in proportion to the model calls actually made.
+
+    One unit is taken up front so an exhausted user is refused before any work
+    starts; the rest is charged on the way out, once the endpoint has finished
+    and the real count is known. The charge happens even when the endpoint
+    raised — the calls it made before failing still cost money.
+    """
+    from app.ai import call_context
     from app.billing import usage_service
 
     await usage_service.check_and_consume(db, user)
-    return user
+    token = call_context.begin()
+    try:
+        yield user
+    finally:
+        extra = max(0, call_context.count() - 1)
+        call_context.end(token)
+        if extra:
+            await usage_service.consume_extra(user.id, extra, db)
 
 
 RateLimitedUser = Annotated[User, Depends(enforce_rate_limit)]

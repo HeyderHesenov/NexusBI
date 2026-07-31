@@ -7,6 +7,7 @@ from typing import Any
 
 from openai import APIError, AsyncOpenAI, OpenAIError
 
+from app.ai import call_context
 from app.billing import cost
 from app.config import settings
 from app.core import i18n, metrics
@@ -250,6 +251,8 @@ async def _record_call(
     metrics.ai_latency_seconds.labels(kind).observe(elapsed)
     if tokens:
         metrics.ai_tokens_total.inc(tokens)
+    if not embedding:
+        call_context.bump()
     await cost.record(
         feature, settings.AI_MODEL, prompt_tokens, completion_tokens, embedding=embedding
     )

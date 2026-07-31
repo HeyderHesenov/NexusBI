@@ -193,6 +193,37 @@ async def test_approve_executes_and_posts_actions(
     assert user.ai_calls_used == 1
 
 
+async def test_approved_execution_is_charged_for_every_completion(
+    client: AsyncClient, auth: dict, db_session, monkeypatch
+):
+    """Approval takes one unit up front, but the copilot run it kicks off happens
+    later, in a background task, and can make a dozen calls. The counter is
+    opened inside that task — the request it came from is long gone."""
+    from app.ai import call_context
+
+    me = await _me(client, auth)
+    await _set_tier(db_session, me["id"], "max")
+
+    async def fake_run(message, history, db, cache, user_id, approved_plan=None, client_ip=""):
+        for _ in range(7):
+            call_context.bump()
+        return {"reply": "Hazırdır.", "actions": [], "steps": 7}
+
+    monkeypatch.setattr(copilot, "run", fake_run)
+    room = chat_service.ai_room(me["id"])
+    plan_msg = await _seed_plan_message(db_session, room, me["id"])
+
+    resp = await client.post(
+        "/api/v1/chat/ai/approve", json={"message_id": plan_msg.id}, headers=auth
+    )
+    assert resp.status_code == 202, resp.text
+    await asyncio.gather(*list(ai_chat_service._TASKS))
+
+    db_session.expire_all()
+    user = await db_session.get(User, me["id"])
+    assert user.ai_calls_used == 7
+
+
 async def test_approve_is_requester_only(client: AsyncClient, auth: dict, db_session):
     me = await _me(client, auth)
     await _set_tier(db_session, me["id"], "max")

@@ -22,7 +22,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai import copilot
+from app.ai import call_context, copilot
 from app.billing import usage_service
 from app.billing.tiers import has_ai_chat
 from app.core.exceptions import ForbiddenError, SchemaNotFoundError
@@ -296,10 +296,15 @@ async def _execute_task(
             # skip_latest=0: history ends at the plan reply; the approved request
             # is passed as the current message.
             history = await _build_history(db, room_key, assistant.id, skip_latest=0)
-            result = await copilot.run(
-                pending_message, history, db, cache, requester_id, plan or None,
-                client_ip=client_ip,
-            )
+            # Approval already took one unit, but the run itself happens here —
+            # in a background task, after that request is gone — and can make a
+            # dozen calls. The counter has to be opened where they actually
+            # happen, so the extra ones are charged to whoever approved.
+            async with call_context.charged(requester_id, db):
+                result = await copilot.run(
+                    pending_message, history, db, cache, requester_id, plan or None,
+                    client_ip=client_ip,
+                )
             pulse.cancel()
             pulse = None
             msg = await post_assistant_message(
