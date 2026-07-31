@@ -175,6 +175,40 @@ async def test_a_completion_lands_in_the_ledger_under_its_feature(
 
 
 @pytest.mark.asyncio
+async def test_an_embedding_is_recorded_under_the_embedding_model(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The model column has to name the model that was actually billed.
+
+    Recording an embedding as gpt-4o overstates nothing on its own — the price
+    used is already the embedding price — but it makes completion spend and
+    embedding spend inseparable in the ledger, and the tier quotas are derived
+    from the cost of a *completion*. It also tells an operator reading the table
+    something untrue.
+    """
+    monkeypatch.setattr(settings, "AI_API_KEY", "k")
+    monkeypatch.setattr(settings, "AI_MODEL", "gpt-4o")
+    monkeypatch.setattr(settings, "EMBEDDING_MODEL", "text-embedding-3-small")
+
+    async def _create(**_kw):
+        return SimpleNamespace(
+            usage=SimpleNamespace(prompt_tokens=1_000_000, completion_tokens=0),
+            data=[SimpleNamespace(embedding=[0.1, 0.2])],
+        )
+
+    monkeypatch.setattr(
+        ai_client,
+        "get_client",
+        lambda: SimpleNamespace(embeddings=SimpleNamespace(create=_create)),
+    )
+    await ai_client.embed(["salam"], feature="retrieval")
+
+    row = (await db_session.execute(select(AISpendDaily))).scalar_one()
+    assert row.model == "text-embedding-3-small"
+    assert row.micro_usd == 20_000  # embedding price, not the completion price
+
+
+@pytest.mark.asyncio
 async def test_breaker_opens_once_today_exceeds_the_ceiling(
     db_session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

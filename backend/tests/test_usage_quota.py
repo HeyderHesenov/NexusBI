@@ -246,9 +246,9 @@ async def test_charged_joins_a_session_when_it_is_given_one() -> None:
 
 def test_tier_quotas_match_the_costed_plan() -> None:
     assert tiers.get_tier("free").monthly_quota == 300
-    assert tiers.get_tier("pro").monthly_quota == 800
-    assert tiers.get_tier("max").monthly_quota == 4000
-    assert tiers.get_tier("max_plus").monthly_quota == 6000
+    assert tiers.get_tier("pro").monthly_quota == 1600
+    assert tiers.get_tier("max").monthly_quota == 8000
+    assert tiers.get_tier("max_plus").monthly_quota == 12000
 
 
 def test_free_dashboards_are_planned_smaller() -> None:
@@ -260,10 +260,13 @@ def test_free_dashboards_are_planned_smaller() -> None:
 
 
 def test_tier_copy_states_the_real_quota() -> None:
-    assert any("300" in f for f in tiers.get_tier("free").features)
-    assert any("800" in f for f in tiers.get_tier("pro").features)
+    for key in tiers.PURCHASABLE:
+        tier = tiers.get_tier(key)
+        assert any(str(tier.monthly_quota) in f for f in tier.features), key
     # Max+ is 7.5x Pro, not 10x — the old multiplier would now be a lie.
     assert not any("10x" in f for f in tiers.get_tier("max_plus").features)
+    # Max's "(5x)" label has to keep matching the arithmetic it claims.
+    assert tiers.get_tier("max").monthly_quota == 5 * tiers.get_tier("pro").monthly_quota
 
 
 async def test_the_planner_stops_at_the_bound_it_is_given(

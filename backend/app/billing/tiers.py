@@ -1,9 +1,19 @@
 """Subscription tier catalogue — the single source of truth for quotas.
 
 A quota unit is one model call, not one HTTP request, so a fan-out endpoint
-costs what it actually spends. Numbers are set for roughly a 60% gross margin at
-an estimated $0.01 per completion — an estimate that has never been measured, so
-re-derive them from ai_spend_daily once real traffic exists.
+costs what it actually spends. Numbers are set for roughly a 60% gross margin.
+
+Measured 2026-07-31 with `scripts/measure_ai_cost.py` (gpt-4o, 90 completions):
+**$0.00279 per completion**, against the $0.01 these numbers were first guessed
+at. They are not simply 3.6x larger for it. The measurement runs on the demo
+schema — three tables — and a real customer pays more twice over: the schema
+travels in the prompt (bounded at SCHEMA_LINK_TOP_K tables, so it grows rather
+than explodes), and past SCHEMA_LINK_MIN_TABLES each question adds a
+schema_linking call, taking a question from three completions to four. That puts
+a realistic figure near $0.0056, which is what these quotas are solved for.
+
+Re-run the script when prompts change, and again against real traffic once there
+is any.
 
 Free plans smaller dashboards (3 questions rather than 6) so the same quota buys
 twice as many of them.
@@ -43,17 +53,17 @@ TIERS: dict[str, Tier] = {
         key="pro",
         name="Pro",
         price_usd=20,
-        monthly_quota=800,
-        features=["Aylıq 800 AI sorğusu", "Proqnoz & anomaliya", "White-label brending"],
+        monthly_quota=1600,
+        features=["Aylıq 1600 AI sorğusu", "Proqnoz & anomaliya", "White-label brending"],
         white_label=True,
     ),
     "max": Tier(
         key="max",
         name="Max",
         price_usd=100,
-        monthly_quota=4000,
+        monthly_quota=8000,
         features=[
-            "Aylıq 4000 AI sorğusu (5x)",
+            "Aylıq 8000 AI sorğusu (5x)",
             "Bütün Pro üstünlükləri",
             "Komanda söhbətində AI köməkçi",
             "Genişləndirilmiş tarixçə",
@@ -65,9 +75,9 @@ TIERS: dict[str, Tier] = {
         key="max_plus",
         name="Max+",
         price_usd=150,
-        monthly_quota=6000,
+        monthly_quota=12000,
         features=[
-            "Aylıq 6000 AI sorğusu",
+            "Aylıq 12000 AI sorğusu",
             "Bütün Max üstünlükləri",
             "Komanda söhbətində AI köməkçi",
             "Ən yüksək limit",
