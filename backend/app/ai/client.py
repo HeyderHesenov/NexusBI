@@ -239,9 +239,13 @@ async def _record_call(
     prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
     completion_tokens = getattr(usage, "completion_tokens", 0) or 0
     tokens = getattr(usage, "total_tokens", None)
+    # Name the model that was actually billed. Filing embeddings under AI_MODEL
+    # would make completion spend and embedding spend inseparable in the ledger,
+    # and the tier quotas are derived from what a *completion* costs.
+    model = settings.EMBEDDING_MODEL if embedding else settings.AI_MODEL
     log.info(
         "ai_call",
-        model=settings.AI_MODEL,
+        model=model,
         tokens_used=tokens,
         latency_ms=int(elapsed * 1000),
         kind=kind,
@@ -253,6 +257,4 @@ async def _record_call(
         metrics.ai_tokens_total.inc(tokens)
     if not embedding:
         call_context.bump()
-    await cost.record(
-        feature, settings.AI_MODEL, prompt_tokens, completion_tokens, embedding=embedding
-    )
+    await cost.record(feature, model, prompt_tokens, completion_tokens, embedding=embedding)
