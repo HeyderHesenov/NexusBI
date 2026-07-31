@@ -4,11 +4,16 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from sqlalchemy import case, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing.tiers import get_tier, is_unlimited
 from app.core.exceptions import RateLimitError
+from app.core.logging import get_logger
+from app.db.session import AsyncSessionLocal
 from app.models.user import User
+
+log = get_logger("nexusbi.usage")
 
 PERIOD = timedelta(days=30)
 
@@ -20,28 +25,64 @@ def _aware(dt: datetime | None) -> datetime | None:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def _reset_if_expired(user: User, now: datetime) -> None:
-    start = _aware(user.usage_period_start)
-    if start is None or now - start >= PERIOD:
-        user.usage_period_start = now
-        user.ai_calls_used = 0
+def _window_elapsed(cutoff: datetime):
+    """SQL predicate: this user's 30-day window has lapsed (or never started)."""
+    return or_(User.usage_period_start.is_(None), User.usage_period_start <= cutoff)
 
 
 async def check_and_consume(db: AsyncSession, user: User) -> None:
-    """Reset the window if elapsed, enforce the tier quota, then consume one call."""
+    """Reset the window if elapsed, enforce the tier quota, consume one call.
+
+    One statement, not read-modify-write: two requests arriving together used to
+    read the same count and write the same +1, so one of the two calls was free.
+    The window reset rides along in CASE expressions, which see the column's
+    pre-update value — exactly the "has it lapsed?" question being asked.
+    """
     if is_unlimited(user.subscription_tier):
         return  # demo/test account — no counting, no limit
     now = datetime.now(timezone.utc)
-    _reset_if_expired(user, now)
+    cutoff = now - PERIOD
     quota = get_tier(user.subscription_tier).monthly_quota
-    if user.ai_calls_used >= quota:
+    elapsed = _window_elapsed(cutoff)
+    result = await db.execute(
+        update(User)
+        .where(User.id == user.id, or_(elapsed, User.ai_calls_used + 1 <= quota))
+        .values(
+            usage_period_start=case((elapsed, now), else_=User.usage_period_start),
+            ai_calls_used=case((elapsed, 1), else_=User.ai_calls_used + 1),
+        )
+        .execution_options(synchronize_session=False)
+    )
+    if result.rowcount == 0:
         raise RateLimitError(
             "Aylıq AI sorğu limitiniz doldu.",
             detail="Daha çox sorğu üçün planınızı yüksəldin.",
             code="ai_quota",
         )
-    user.ai_calls_used += 1
     await db.flush()
+    await db.refresh(user)
+
+
+async def consume_extra(user_id: str, units: int) -> None:
+    """Charge `units` more, unconditionally — those calls already cost money.
+
+    Its own session on purpose: this runs after the endpoint returned, when the
+    request's transaction may already be finished, and the charge must land
+    whether or not the request itself succeeded.
+    """
+    if units <= 0:
+        return
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                update(User)
+                .where(User.id == user_id)
+                .values(ai_calls_used=User.ai_calls_used + units)
+                .execution_options(synchronize_session=False)
+            )
+            await session.commit()
+    except Exception as exc:  # noqa: BLE001 — never fail a response over accounting
+        log.warning("quota_reconcile_failed", error=type(exc).__name__, detail=str(exc)[:200])
 
 
 def get_usage(user: User) -> dict[str, Any]:
