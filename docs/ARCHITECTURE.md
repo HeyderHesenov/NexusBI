@@ -19,7 +19,7 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
                             query_logs, dashboards,      schema)            CSV/Excel→SQLite)
                             widgets, saved_queries,
                             metrics, decisions(+measurements),
-                            query_embeddings
+                            query_embeddings, ai_spend_daily
 ```
 
 ## Backend layout (`backend/app`)
@@ -28,8 +28,8 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 |-------|------|----------------|
 | API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, **snapshot**, metric, **metric_tree**, saved_query, billing, branding, decision, integration, copilot, requirement, **ba**, **automl**, scenario, workspace, **data_contract**, **alert**, **search**, **graph**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
-| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, graph_view_service, ba_service, automl_service** |
-| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding)**, sql_guard, schema_introspector, **schema_linking (wide-schema table selection: embed+cosine top-K + FK closure, metadata-only)**, rule_based_sql/dax, prompt_templates, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed)** |
+| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, **billing/cost (per-call USD accounting + daily ceiling)**, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS incl. deny-all wrapper), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, graph_view_service, ba_service, automl_service** |
+| AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding)**, sql_guard, schema_introspector, **schema_linking (wide-schema table selection: embed+cosine top-K + FK closure, metadata-only)**, rule_based_sql/dax, prompt_templates, **call_context (per-request AI call counter → proportional quota)**, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit (Redis-backed, per-process fallback), **leader (scheduler lease), health (/live + /ready), sql_ident (dialect-aware quoting)** |
 | Realtime | `realtime/*` | hub (WS rooms, per-worker), **bus (cross-worker eviction; delivery + presence behind a flag)**, live_refresh (canlı dashboard loop) |
@@ -38,7 +38,8 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 ## Request flow — `POST /query/ask`
 
 1. **Auth + rate limit** — `RateLimitedUser` dependency resolves the JWT user and
-   consumes one monthly AI quota unit (`billing/usage_service`); 429 if exhausted
+   consumes monthly AI quota (`billing/usage_service`) — **in proportion to the calls the
+   request actually makes**, reconciled from `ai/call_context` in the request's OWN session; 429 if exhausted
    (the `unlimited` demo tier bypasses).
 2. **`query_service.process_nl_query`**:
    - Build **extra_context** = metric catalog (`metric_service.metrics_as_prompt`) +
@@ -153,8 +154,10 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   aggregation, so SUM/GROUP BY can't leak filtered rows; case-insensitive table match, CTE-shadow
   aware, **fail-closed** if a protected table can't be constrained. Post-fetch `rls_service.apply`
   remains a fallback. Enforced in `query_service._live_pipeline` AND `reexecute_logged_query`
-  (dashboard refresh); the live-broadcast path re-applies it too. NOTE: data sources are still
-  personal — full team-sharing of a source (resource `workspace_id`) is the documented next step.
+  (dashboard refresh); the live-broadcast path re-applies it too. A source can now be shared to a
+  workspace (`workspace_resources`, query-only for members via
+  `datasource_service.get_datasource_for_user`), and RLS is what makes that safe: the source stays
+  owned by whoever shared it, while every read is constrained by the **viewer's** scope.
   **Deny-by-default:** `datasources.rls_mode` is `open` (a ruleless member sees everything —
   what pre-existing sources keep) or `strict` (a ruleless non-owner sees nothing, via
   `rls_sql.deny_all_sql`, which wraps the query so even an aggregate returns zero rows).
@@ -214,25 +217,50 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   (app_name/primary_color/logo_url, server-validated against injection). `public/embed.js`
   auto-mounts an iframe in third-party pages.
 - **Billing / tiers:** `billing/tiers` is the single source of truth for quotas;
-  `usage_service` enforces a monthly window. `POST /upgrade` is a demo mock; `POST /checkout`
-  is a config-gated real Stripe Checkout (no `STRIPE_SECRET_KEY` → refused).
+  `usage_service` enforces a monthly window by taking ONE unit up front in a single atomic
+  `UPDATE … WHERE ai_calls_used + 1 <= quota` — check and consume in one statement, so concurrent
+  questions can't race past the limit — and reconciling the rest of the request's real cost
+  afterwards (see LLM cost control). `POST /upgrade` is a demo mock; `POST /checkout` is a
+  config-gated real Stripe Checkout (no `STRIPE_SECRET_KEY` → refused).
+- **LLM cost control:** every completion is capped (`AI_MAX_TOKENS_JSON|TEXT|TOOLS`) and priced
+  from `AI_PRICE_*` into `ai_spend_daily` by `billing/cost.record`. Quota is charged in proportion
+  to the real fan-out, not one unit per request: `ai/call_context` counts the calls a request
+  actually made — a mutable object in the ContextVar, because `asyncio.gather` copies the context
+  and a plain `ContextVar[int].set()` in a child task is invisible to the parent (`query_service`
+  and `dashboard_service` both fan out that way, so a dashboard would have billed 1 instead of 19).
+  `AI_DAILY_USD_CEILING` stops the day when the spend crosses it. **The ceiling is only reliable on
+  Postgres** — on SQLite the request's own open transaction locks the database against the spend
+  writer, so rows are dropped rather than waited on (`docs/deploy.md` says so out loud).
+  Actual measured cost lives in `backend/scripts/measure_ai_cost.py`.
+- **Chart export & print:** `lib/chartExport.ts` serializes a chart's live SVG, inlines a
+  background, and rasterizes it — offered by `ChartExportMenu` on three surfaces (query view, chat
+  share card, dashboard widget). Rasterization must keep the `data:` URL: prod CSP allows
+  `img-src 'self' data:` and **not** `blob:`, so "modernizing" to `createObjectURL` would break
+  only in production. Dashboard printing renders a separate off-screen `DashboardPrintView` rather
+  than `@media print` alone, because react-grid-layout never reflows on screen and recharts'
+  ResizeObserver therefore never fires.
 - **Auth / refresh tokens:** register/login issue an **access + refresh pair** (`auth_token_service.issue_pair`).
   `POST /auth/refresh` rotates the refresh token (`rotate`, `SELECT ... FOR UPDATE`) and **detects reuse**
   — a replayed token revokes the whole family. `POST /auth/logout` revokes it. Access TTL is short
   (`ACCESS_TOKEN_EXPIRE_MINUTES`, default 30); refresh lives `REFRESH_TOKEN_EXPIRE_DAYS`. `get_current_user`
   rejects non-`sub` claims, so refresh/ws/embed tokens can't be used as access tokens. Frontend
   `tokenStore` does single-flight 401-refresh.
-- **CI:** `.github/workflows/ci.yml` runs three jobs on push/PR: **backend** (ruff + pytest),
-  **frontend** (Vitest + build), and a **blocking `e2e`** job (`needs: backend, frontend`). The e2e
-  job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step kills its
-  background processes on exit, the backend boot, `alembic upgrade head`, health-wait, and
-  `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (466) mocks the AI engine at the boundary — patch the **class**
+- **CI:** `.github/workflows/ci.yml` runs four jobs on push/PR: **backend** (ruff + pytest),
+  **frontend** (Vitest + build), a **blocking `e2e`** job (`needs: backend, frontend`), and
+  **deploy-smoke** (`docker-compose.prod.yml` + `scripts/deploy_smoke.sh`) — the only place the
+  Docker layer is ever executed, since no container runtime exists on the dev machine. Two more
+  workflows run alongside: `codeql.yml` (python + javascript-typescript) and `secret-scan.yml`
+  (gitleaks over full history). The `main` ruleset requires five of them: Backend, Frontend,
+  E2E smoke, gitleaks, Deploy smoke — CodeQL is excluded because its matrix job names vary.
+  The e2e job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step
+  kills its background processes on exit, the backend boot, `alembic upgrade head`, health-wait,
+  and `npm run test:e2e` all live in ONE step.
+- **Testing:** backend pytest (706) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
   deterministic, no cost — identical to CI; new suites: test_snapshots, test_graph,
-  test_ba, test_automl). Frontend Vitest (305) covers `lib/*`, hooks, and Zustand
+  test_ba, test_automl, test_ai_cost, test_usage_quota, test_rls_mode). Frontend Vitest (610) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, the advanced-analytics
   stores/panels — metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
