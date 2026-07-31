@@ -127,12 +127,23 @@ Free tarifi üçün `_MAX_QUESTIONS` **3**-ə endirilir (ödənişlilərdə 6 qa
 ~19 əvəzinə ~10 vahid olur, yəni **eyni pula iki dəfə çox dashboard**. Yan fayda — 3
 vidcetli fokuslu lövhə ilk təcrübə üçün 6 vidcetli qarışıqdan yaxşıdır.
 
-| Tarif | Qiymət | İndi | **Yeni** | Sual/dashboard | Təxmini AI xərci | Nə verir |
+| Tarif | Qiymət | Köhnə | 1.4-də | **Ölçmədən sonra** | Sual/dashboard | AI xərci (real) |
 |---|---|---|---|---|---|---|
-| Free | $0 | 30 | **300** | 3 | ~$3 | **~30 dashboard** və ya ~100 sorğu |
-| Pro | $20 | 300 | **800** | 6 | ~$8 | ~42 dashboard və ya ~265 sorğu |
-| Max | $100 | 1500 | **4000** | 6 | ~$40 | ~210 dashboard |
-| Max+ | $150 | 3000 | **6000** | 6 | ~$60 | ~315 dashboard |
+| Free | $0 | 30 | 300 | **300** | 3 | ~$1.7/ay bir pulsuz istifadəçiyə |
+| Pro | $20 | 300 | 800 | **1600** | 6 | ~$9 (45%) |
+| Max | $100 | 1500 | 4000 | **8000** | 6 | ~$45 (45%) |
+| Max+ | $150 | 3000 | 6000 | **12000** | 6 | ~$67 (45%) |
+
+> **2026-07-31 ÖLÇMƏ — bu cədvəlin son sütunu artıq təxmin deyil.**
+> `backend/scripts/measure_ai_cost.py` real API-ni sürüb 90 completion ölçdü:
+> **$0.00279 / completion**, yəni ilkin $0.01 təxminindən **3.6 dəfə ucuz**.
+> Kvotalar buna baxmayaraq 3.6 yox, **2 dəfə** qaldırıldı, çünki ölçmə demo
+> sxeması (3 cədvəl) üzərindədir və real müştəri iki dəfə artıq ödəyir: sxema
+> prompt-un içindədir (`SCHEMA_LINK_TOP_K` ilə hədlənir), və
+> `SCHEMA_LINK_MIN_TABLES`-dən çox cədvəli olan mənbədə hər sual əlavə bir
+> `schema_linking` çağırışı qazanır — yəni sual 3 completion-dan 4-ə çıxır.
+> Realistik rəqəm ~**$0.0056**-dır və kvotalar məhz ona görə həll olunub.
+> Ölçmənin özü **$0.25** xərclədi.
 
 `unlimited` (daxili demo/test tarifi) dəyişmir. `Tier.features` mətnləri də yenilənməlidir
 (yalnız `billing/tiers.py`-dədir, frontend onları API-dən alır — i18n dublikatı yoxdur).
@@ -140,16 +151,21 @@ Max-ın `(5x)` etiketi düz qalır (4000/800); Max+-ın `(10x)` etiketi **artıq
 (6000/800 = 7.5x) və silinməlidir — sətir onsuz da "Ən yüksək limit" deyir.
 
 **Marjanın nazikləşməsinin qiyməti — açıq yazılmalıdır.** 80% əvəzinə 60% seçmək təxmin
-xətasına dözümü azaldır: əgər çağırış başına real xərc $0.01 yox $0.03 çıxarsa, Max tarifi
-$100-lıq planda $120 xərcləyər, yəni zərər. Buna görə iki şey məcburi olur:
+xətasına dözümü azaldır: əgər çağırış başına real xərc $0.01 yox $0.03 çıxsaydı, Max tarifi
+$100-lıq planda $120 xərcləyərdi, yəni zərər. Buna görə iki şey məcburi idi:
 1. **Gündəlik USD tavanı yük daşıyan qoruyucudur**, "gözəl olardı" deyil — yeganə şey odur
    ki, təxmin yanılsa belə zərəri gündəlik məbləğlə hədləyir.
-2. **İcradan ~bir həftə sonra `ai_spend_daily` üzərində ölçmə aparılmalı və rəqəmlər
-   yenidən qoyulmalıdır.** Yuxarıdakı cədvəl təxminə əsaslanır, ölçməyə yox.
+2. ~~İcradan ~bir həftə sonra ölçmə aparılmalıdır.~~ ✅ **2026-07-31-də edildi** — amma
+   gözləməklə yox. "Bir həftə" canlı trafik nəzərdə tuturdu, NexusBI-ın isə nə deploy-u,
+   nə istifadəçisi var: təqvim vaxtı heç nə ölçmür, **model çağırışları ölçür**. Ona görə
+   çağırışlar qəsdən yaradıldı (`scripts/measure_ai_cost.py`). Təxmin **yaxşı tərəfə**
+   yanılmışdı — $0.01 yox, $0.00279.
 
-Free tarifi xalis xərcdir (gəlir yoxdur): 300 vahid × ~$0.01 = ayda ~$3 bir pulsuz
-istifadəçiyə. 500 pulsuz istifadəçi = ayda ~$1500 — miqyas artanda yenidən baxılmalı rəqəm.
-Gündəlik USD tavanı bunun da yeganə üst həddidir.
+Free tarifi xalis xərcdir (gəlir yoxdur): ölçülmüş rəqəmlə 300 vahid ≈ ayda **$0.84**
+(realistik sxema ilə ~$1.7) bir pulsuz istifadəçiyə. 500 pulsuz istifadəçi ≈ ayda
+$420–850 — ilkin $1500 qorxusundan xeyli aşağı, amma miqyas artanda yenə baxılmalıdır.
+Gündəlik USD tavanı bunun da yeganə üst həddidir; $10 tavan ölçülmüş qiymətlə
+gündə ~3500 completion deməkdir.
 
 ### Kvota aşımı
 1 vahidi qalan istifadəçi `/dashboard/generate` başladıb ~19 vahid yandıra bilər; xərclənmiş
