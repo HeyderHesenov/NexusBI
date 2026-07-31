@@ -201,9 +201,7 @@ async def set_rls_mode(
     an anonymous viewer can't hold a rule.
     """
     ds = await svc.set_rls_mode(db, user.id, datasource_id, payload.rls_mode)
-    # Same reason as add_rls/delete_rls below: a tightening must not leave a looser
-    # cached result behind.
-    await cache.delete_prefix(f"qcache:{datasource_id}:")
+    await svc.purge_rls_derived_caches(cache, datasource_id)
     await audit_service.log(
         db, user.id, "rls.mode", entity="datasource", entity_id=datasource_id,
         meta={"mode": payload.rls_mode},
@@ -234,7 +232,7 @@ async def add_rls(
         db, user.id, datasource_id, member.id, payload.column, payload.allowed_value
     )
     # Tightening access must not leave stale, less-restricted rows in cache.
-    await cache.delete_prefix(f"qcache:{datasource_id}:")
+    await svc.purge_rls_derived_caches(cache, datasource_id)
     await audit_service.log(
         db, user.id, "rls.create", entity="datasource", entity_id=datasource_id,
         meta={"member": member.id, "column": payload.column},
@@ -247,7 +245,7 @@ async def delete_rls(
     datasource_id: str, rule_id: str, user: CurrentUser, db: DbDep, cache: CacheDep
 ) -> Response:
     await rls_service.delete_rule(db, user.id, rule_id)
-    await cache.delete_prefix(f"qcache:{datasource_id}:")
+    await svc.purge_rls_derived_caches(cache, datasource_id)
     await audit_service.log(
         db, user.id, "rls.delete", entity="datasource", entity_id=datasource_id,
         meta={"rule": rule_id},

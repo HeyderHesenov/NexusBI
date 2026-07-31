@@ -207,3 +207,72 @@ async def test_shared_dashboard_denies_a_ruleless_member_on_a_strict_source(
     # The owner's own view of the same dashboard is untouched.
     owner_view = await client.get(f"/api/v1/dashboard/{dash_id}", headers=auth)
     assert len(owner_view.json()["widgets"][0]["chart"]["data"]) == owner_row_count
+
+
+async def test_every_rls_mutation_evicts_the_caches_derived_from_the_old_scope(
+    client: AsyncClient, auth: dict, monkeypatch
+):
+    """Query results AND profiles are per-viewer values computed under a row scope.
+    A profile lives for ten minutes, so a tightening that only evicted `qcache:`
+    would keep serving statistics over rows the viewer may no longer read.
+
+    Recorded through a fake cache: the suite runs without Redis, where every cache
+    call is a silent no-op and nothing is ever stored to observe.
+    """
+    from app.dependencies import get_cache
+
+    purged: list[str] = []
+
+    class RecordingCache:
+        available = False
+
+        async def get(self, key):
+            return None
+
+        async def set(self, key, value, ttl=3600):
+            return None
+
+        async def delete(self, key):
+            return None
+
+        async def delete_prefix(self, prefix):
+            purged.append(prefix)
+
+    _mock_chart_insight(monkeypatch)
+    ds_id = await _materialize(client, auth, monkeypatch, "purge_src")
+    _, auth2 = await _make_workspace_with_member(client, auth, "purgemate@nexusbi.io")
+
+    client._transport.app.dependency_overrides[get_cache] = lambda: RecordingCache()
+    try:
+        for call in (
+            client.patch(
+                f"/api/v1/datasource/{ds_id}/rls-mode",
+                json={"rls_mode": "open"},
+                headers=auth,
+            ),
+            client.post(
+                f"/api/v1/datasource/{ds_id}/rls",
+                json={
+                    "member_email": "purgemate@nexusbi.io",
+                    "column": "product_name",
+                    "allowed_value": "x",
+                },
+                headers=auth,
+            ),
+        ):
+            purged.clear()
+            resp = await call
+            assert resp.status_code in (200, 201), resp.text
+            assert f"qcache:{ds_id}:" in purged
+            assert f"profile:{ds_id}:" in purged, purged
+
+        rule_id = (
+            await client.get(f"/api/v1/datasource/{ds_id}/rls", headers=auth)
+        ).json()[0]["id"]
+        purged.clear()
+        gone = await client.delete(f"/api/v1/datasource/{ds_id}/rls/{rule_id}", headers=auth)
+        assert gone.status_code == 204, gone.text
+        assert f"qcache:{ds_id}:" in purged
+        assert f"profile:{ds_id}:" in purged, purged
+    finally:
+        client._transport.app.dependency_overrides.pop(get_cache, None)
