@@ -241,6 +241,46 @@ async def test_charged_joins_a_session_when_it_is_given_one() -> None:
     assert await _used(user_id) == 5
 
 
+# ─── The tier catalogue the quota numbers come from ───
+
+
+def test_tier_quotas_match_the_costed_plan() -> None:
+    assert tiers.get_tier("free").monthly_quota == 300
+    assert tiers.get_tier("pro").monthly_quota == 800
+    assert tiers.get_tier("max").monthly_quota == 4000
+    assert tiers.get_tier("max_plus").monthly_quota == 6000
+
+
+def test_free_dashboards_are_planned_smaller() -> None:
+    """Half the questions, half the cost — the free tier's value comes from
+    this, not from a bigger number."""
+    assert tiers.questions_per_dashboard("free") == 3
+    assert tiers.questions_per_dashboard("pro") == 6
+    assert tiers.questions_per_dashboard(None) == 3  # unknown key falls back to free
+
+
+def test_tier_copy_states_the_real_quota() -> None:
+    assert any("300" in f for f in tiers.get_tier("free").features)
+    assert any("800" in f for f in tiers.get_tier("pro").features)
+    # Max+ is 7.5x Pro, not 10x — the old multiplier would now be a lie.
+    assert not any("10x" in f for f in tiers.get_tier("max_plus").features)
+
+
+async def test_the_planner_stops_at_the_bound_it_is_given(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The bound is what makes a free dashboard cost ten units instead of
+    nineteen, so it has to reach the planner, not just the catalogue."""
+    from app.ai import dashboard_planner
+
+    async def fake_chat_json(*_a, **_kw):
+        return {"questions": [f"sual {i}" for i in range(8)]}
+
+    monkeypatch.setattr(dashboard_planner, "chat_json", fake_chat_json)
+    assert len(await dashboard_planner.plan_dashboard("gəlir", max_questions=3)) == 3
+    assert len(await dashboard_planner.plan_dashboard("gəlir")) == 6
+
+
 async def test_the_copilot_endpoint_is_charged_for_every_completion(
     client, auth, monkeypatch: pytest.MonkeyPatch
 ) -> None:

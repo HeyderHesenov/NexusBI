@@ -163,8 +163,15 @@ async def generate_dashboard(
 ) -> Dashboard:
     """Plan questions for ``goal`` (AI), then assemble a dashboard from them."""
     from app.ai import dashboard_planner
+    from app.billing import tiers
+    from app.models.user import User
 
-    questions = await dashboard_planner.plan_dashboard(goal)
+    tier_key = (
+        await db.execute(select(User.subscription_tier).where(User.id == user_id))
+    ).scalar_one_or_none()
+    questions = await dashboard_planner.plan_dashboard(
+        goal, max_questions=tiers.questions_per_dashboard(tier_key)
+    )
     if not questions:
         raise SchemaNotFoundError("Dashboard planı yaradıla bilmədi.")
     return await assemble_dashboard(
