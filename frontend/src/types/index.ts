@@ -54,6 +54,9 @@ export interface QueryResult {
   from_cache?: boolean
   confidence?: number | null
   provenance?: Provenance | null
+  /** Empty because row-level security denied every row, not because the query
+   *  matched nothing — the two look identical without this. */
+  rls_denied?: boolean
 }
 
 export interface PowerBIDataset {
@@ -80,10 +83,14 @@ export interface QueryHistoryPage {
   total: number
 }
 
+export type RlsMode = 'open' | 'strict'
+
 export interface DataSource {
   id: string
   name: string
   db_type: string
+  /** 'strict' = a member with no RLS rule sees no rows at all. */
+  rls_mode?: RlsMode
   freshness_sla_hours?: number | null
   last_refreshed_at?: string | null
   created_at: string

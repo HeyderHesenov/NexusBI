@@ -241,12 +241,13 @@ async def render_dashboard_for_viewer(
     """Render a SHARED dashboard for a workspace member (read-only).
 
     Widgets and their query logs belong to the OWNER (loaded via ``owner_id``).
-    RLS-LEAK INVARIANT: before returning any widget's data we check the VIEWER's
-    RLS on that widget's datasource. If the viewer has ANY rule there, the owner's
-    (unfiltered) stored snapshot MUST NOT be served — the widget's SQL is
-    re-executed with the VIEWER as the RLS subject, so the member sees the owner's
-    data constrained by exactly the member's rules. On any failure the widget
-    renders empty (fail-closed). Nothing here is persisted.
+    RLS-LEAK INVARIANT: before returning any widget's data we resolve the VIEWER's
+    row scope on that widget's datasource. If the viewer is restricted at all — a
+    rule of their own, OR no rule on a ``strict`` source — the owner's (unfiltered)
+    stored snapshot MUST NOT be served: the widget's SQL is re-executed with the
+    VIEWER as the RLS subject, so the member sees the owner's data constrained by
+    exactly the member's scope (which, when denied, is zero rows). On any failure
+    the widget renders empty (fail-closed). Nothing here is persisted.
     """
     from app.services import rls_service
 
@@ -255,21 +256,28 @@ async def render_dashboard_for_viewer(
 
     ds_ids = {q.datasource_id for q in logs.values() if q.datasource_id}
     ds_names: dict[str, str] = {}
+    # Sources are loaded in one shot (not per widget) so the scope check below costs
+    # nothing extra: owner + mode come from this same row set.
+    sources: dict[str, DataSource] = {}
     if ds_ids:
-        rows = await db.execute(
-            select(DataSource.id, DataSource.name).where(DataSource.id.in_(ds_ids))
-        )
-        ds_names = {ds_id: name for ds_id, name in rows.all()}
+        rows = await db.execute(select(DataSource).where(DataSource.id.in_(ds_ids)))
+        sources = {ds.id: ds for ds in rows.scalars().all()}
+        ds_names = {ds_id: ds.name for ds_id, ds in sources.items()}
 
     widget_responses: list[WidgetResponse] = []
     for w in widgets:
         log = logs.get(w.query_log_id) if w.query_log_id else None
         chart = None
         if log is not None:
-            restricted = bool(
-                log.datasource_id
-                and await rls_service.rules_for_user(db, log.datasource_id, viewer_id)
-            )
+            restricted = False
+            if log.datasource_id:
+                ds = sources.get(log.datasource_id)
+                # A source we couldn't load is treated as restricted — we cannot
+                # prove this viewer may see it, so we don't serve it.
+                restricted = (
+                    ds is None
+                    or (await rls_service.resolve_scope(db, ds, viewer_id)).restricted
+                )
             if restricted:
                 # Never serve the owner's unfiltered snapshot to a restricted viewer —
                 # re-run under the viewer's row scope (fail-closed on any error).
@@ -567,12 +575,13 @@ async def refresh_widget_data(
     if log is None:
         return None
     # RLS safety: live refresh runs as the dashboard OWNER and broadcasts one
-    # dataset to the whole room. If the source is RLS-restricted, that dataset
-    # would be owner-unfiltered — never push it to potentially-restricted viewers.
+    # dataset to the whole room. If the source restricts anyone — a rule exists, or
+    # it is strict, so a ruleless member is denied — that dataset would be
+    # owner-unfiltered; never push it to potentially-restricted viewers.
     if log.datasource_id:
         from app.services import rls_service
 
-        if await rls_service.datasource_has_rules(db, log.datasource_id):
+        if await rls_service.datasource_is_restricted(db, log.datasource_id):
             return None
     columns, rows = await query_service.reexecute_logged_query(log, db, user_id, cache)
     log.result_data = {"columns": columns, "rows": query_service.snapshot_rows(rows)}
@@ -646,8 +655,12 @@ async def apply_global_filter(
         if log is None or not log.generated_sql:
             out.append({"widget_id": w.id, "chart": _widget_chart(log, ds_names)})
             continue
-        if skip_rls and log.datasource_id and await rls_service.datasource_has_rules(db, log.datasource_id):
+        if skip_rls and log.datasource_id and await rls_service.datasource_is_restricted(
+            db, log.datasource_id
+        ):
             # Don't fan an owner-scoped filtered dataset out to restricted guests.
+            # A locked (strict) source counts: an anonymous public viewer can never
+            # hold a rule, so it is denied by definition.
             out.append({"widget_id": w.id, "chart": None})
             continue
         widget_spec = spec

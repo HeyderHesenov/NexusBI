@@ -1,4 +1,4 @@
-import { AlertTriangle, Bookmark, Clock, Code2, Database, Lightbulb, LayoutGrid, Maximize2, MessageSquarePlus, Pencil, RefreshCw, Sparkles, Target, Trash2 } from 'lucide-react'
+import { AlertTriangle, Bookmark, Clock, Code2, Database, Lightbulb, LayoutGrid, Lock, Maximize2, MessageSquarePlus, Pencil, RefreshCw, Sparkles, Target, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChartView } from '../components/charts/ChartView'
@@ -273,6 +273,13 @@ function TurnCard({
             )}
             <StatFactChips facts={result.stats_facts ?? []} />
           </div>
+        </div>
+      )}
+
+      {result.rls_denied && (
+        <div className="flex items-start gap-2.5 rounded-2xl border border-accent/40 bg-accent-soft p-4 text-sm text-ink">
+          <Lock size={15} className="mt-0.5 shrink-0 text-accent" />
+          <p>{t('queryPage.rlsDenied')}</p>
         </div>
       )}
 

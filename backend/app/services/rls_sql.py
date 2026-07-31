@@ -48,6 +48,38 @@ def _in_predicate(ref: str, column: str, values: list[str]) -> exp.Expression:
     return exp.In(this=col, expressions=[exp.Literal.string(v) for v in values])
 
 
+def deny_all_sql(sql: str, dialect: str = "sqlite") -> str:
+    """Wrap ``sql`` so it returns ZERO rows while keeping its column list.
+
+    Used when a viewer has no rule on a ``strict`` source: they are entitled to no
+    rows at all, but the query still runs so the client gets real column names and
+    renders an empty chart instead of an error.
+
+    Wrapping — not AND-ing ``FALSE`` into each SELECT — because an aggregate over
+    an empty set is NOT an empty result: ``SELECT SUM(x) FROM sales WHERE FALSE``
+    returns one row holding NULL. Only an outer filter guarantees zero rows for
+    every query shape.
+
+    Fail-CLOSED: SQL we cannot parse raises ``InvalidSQLError`` (same contract as
+    ``constrain_sql``) rather than falling through unfiltered.
+    """
+    glot_dialect = _DIALECTS.get(dialect, "sqlite")
+    try:
+        inner = sqlglot.parse_one(sql, dialect=glot_dialect)
+        if inner is None:
+            raise InvalidSQLError("RLS: boş SQL.")
+        wrapped = (
+            exp.select("*")
+            .from_(exp.Subquery(this=inner, alias=exp.TableAlias(this=exp.to_identifier("_rls_deny"))))
+            .where(exp.condition("1 = 0"))
+        )
+        return wrapped.sql(dialect=glot_dialect)
+    except InvalidSQLError:
+        raise
+    except Exception as exc:  # sqlglot.errors.ParseError and friends
+        raise InvalidSQLError("RLS tətbiqi üçün SQL təhlil olunmadı.") from exc
+
+
 def constrain_sql(
     sql: str,
     rules: list[RLSRule],

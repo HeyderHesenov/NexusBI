@@ -133,6 +133,29 @@ async def set_sla(
     return ds
 
 
+async def set_rls_mode(
+    db: AsyncSession, user_id: str, datasource_id: str, mode: str
+) -> DataSource:
+    """Lock/unlock a source (owner-only — ``get_datasource`` is the gate)."""
+    ds = await get_datasource(db, user_id, datasource_id)
+    ds.rls_mode = mode
+    await db.flush()
+    await db.refresh(ds)
+    return ds
+
+
+async def purge_rls_derived_caches(cache: CacheService, datasource_id: str) -> None:
+    """Drop every cached value that was computed under a now-stale row scope.
+
+    Both caches are per-viewer and hold rows (or statistics over rows) produced by
+    the guard chain, so tightening access has to evict them or the old, looser
+    answer keeps being served until its TTL runs out — ten minutes for a profile,
+    which is long enough to matter. Called from all three RLS mutations.
+    """
+    await cache.delete_prefix(f"qcache:{datasource_id}:")
+    await cache.delete_prefix(f"profile:{datasource_id}:")
+
+
 async def stamp_refreshed(db: AsyncSession, ds: DataSource) -> None:
     """Mark the source as freshly reached (resets the freshness clock)."""
     ds.last_refreshed_at = datetime.now(timezone.utc)
