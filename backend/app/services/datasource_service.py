@@ -133,6 +133,17 @@ async def set_sla(
     return ds
 
 
+async def set_rls_mode(
+    db: AsyncSession, user_id: str, datasource_id: str, mode: str
+) -> DataSource:
+    """Lock/unlock a source (owner-only — ``get_datasource`` is the gate)."""
+    ds = await get_datasource(db, user_id, datasource_id)
+    ds.rls_mode = mode
+    await db.flush()
+    await db.refresh(ds)
+    return ds
+
+
 async def stamp_refreshed(db: AsyncSession, ds: DataSource) -> None:
     """Mark the source as freshly reached (resets the freshness clock)."""
     ds.last_refreshed_at = datetime.now(timezone.utc)

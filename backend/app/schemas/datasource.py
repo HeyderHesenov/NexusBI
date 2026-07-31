@@ -28,10 +28,17 @@ class DataSourceSLAUpdate(BaseModel):
     freshness_sla_hours: int | None = Field(default=None, ge=1, le=8760)
 
 
+class DataSourceRLSModeUpdate(BaseModel):
+    """Lock ("strict") or unlock ("open") a source for members without a rule."""
+
+    rls_mode: Literal["open", "strict"]
+
+
 class DataSourceResponse(BaseModel):
     id: str
     name: str
     db_type: str
+    rls_mode: str = "open"
     freshness_sla_hours: int | None = None
     last_refreshed_at: datetime | None = None
     created_at: datetime

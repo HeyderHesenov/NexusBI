@@ -4,14 +4,16 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from fastapi import APIRouter, File, Form, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 
 from app.core.exceptions import SchemaNotFoundError
+from app.core.rate_limit import rate_limit
 from app.dependencies import CacheDep, CurrentUser, DbDep
 from app.schemas.datasource import (
     DataRefreshResponse,
     DataSourceCreate,
     DataSourceResponse,
+    DataSourceRLSModeUpdate,
     DataSourceSLAUpdate,
     PowerBIConnectRequest,
     PowerBIDataset,
@@ -179,6 +181,35 @@ async def delete(datasource_id: str, user: CurrentUser, db: DbDep) -> Response:
 
 
 # ─── Row-level security rules (datasource owner manages) ───
+
+@router.patch(
+    "/{datasource_id}/rls-mode",
+    response_model=DataSourceResponse,
+    dependencies=[Depends(rate_limit("rls_mode", limit=20, window_seconds=60))],
+)
+async def set_rls_mode(
+    datasource_id: str,
+    payload: DataSourceRLSModeUpdate,
+    user: CurrentUser,
+    db: DbDep,
+    cache: CacheDep,
+) -> DataSourceResponse:
+    """Lock ("strict") or unlock ("open") a source.
+
+    Strict = a member with no RLS rule sees no rows at all. The owner is never
+    affected. Locking also blanks the source's widgets on public/embed links —
+    an anonymous viewer can't hold a rule.
+    """
+    ds = await svc.set_rls_mode(db, user.id, datasource_id, payload.rls_mode)
+    # Same reason as add_rls/delete_rls below: a tightening must not leave a looser
+    # cached result behind.
+    await cache.delete_prefix(f"qcache:{datasource_id}:")
+    await audit_service.log(
+        db, user.id, "rls.mode", entity="datasource", entity_id=datasource_id,
+        meta={"mode": payload.rls_mode},
+    )
+    return DataSourceResponse.model_validate(ds)
+
 
 @router.get("/{datasource_id}/rls", response_model=list[RLSRuleResponse])
 async def list_rls(datasource_id: str, user: CurrentUser, db: DbDep) -> list[RLSRuleResponse]:
