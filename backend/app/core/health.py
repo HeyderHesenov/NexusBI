@@ -79,20 +79,29 @@ async def _cache_status(cache: CacheService | None) -> str:
         return "unavailable"
 
 
-def _ai_status() -> str:
+async def _ai_status() -> str:
     """Whether model calls are possible — reported, never gating.
 
     A keyless install is supported: ``ai.client._preflight`` raises
     before any network call and every caller falls through to its deterministic
-    path. So the app is genuinely ready to serve; it just answers from the
-    fallbacks. Surfacing it here is what stops that being a silent surprise —
-    an operator who meant to configure AI can see it in one curl.
+    path. The same is true once the daily budget is gone, which is why both are
+    reported the same way: the app is genuinely ready to serve, it just answers
+    from the fallbacks. Surfacing it here is what stops that being a silent
+    surprise — an operator who meant to configure AI, or who has just spent the
+    day's budget by lunchtime, can see it in one curl.
     """
+    from app.billing import cost
     from app.config import settings
 
-    if settings.AI_API_KEY and settings.AI_MODEL:
-        return "ok"
-    return "degraded: no API key, deterministic fallbacks only"
+    if not (settings.AI_API_KEY and settings.AI_MODEL):
+        return "degraded: no API key, deterministic fallbacks only"
+    if await cost.over_ceiling():
+        spent = await cost.spent_today_micro() / 1_000_000
+        return (
+            f"degraded: gündəlik büdcə bitdi (${spent:.2f} / "
+            f"${settings.AI_DAILY_USD_CEILING:.2f}), yalnız determinist yol"
+        )
+    return "ok"
 
 
 async def readiness(cache: CacheService | None) -> tuple[bool, dict[str, str]]:
@@ -117,7 +126,7 @@ async def readiness(cache: CacheService | None) -> tuple[bool, dict[str, str]]:
     components["database"] = database
     components["migrations"] = migrations
     components["cache"] = await _cache_status(cache)
-    components["ai"] = _ai_status()
+    components["ai"] = await _ai_status()
 
     ready = database == "ok" and migrations == "ok"
     if not ready:

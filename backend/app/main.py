@@ -69,6 +69,17 @@ def _assert_production_secrets() -> None:
                 "fallback; no model calls will be made. Set AI_API_KEY to enable them."
             ),
         )
+    if settings.AI_DAILY_USD_CEILING > 0 and not (
+        settings.AI_PRICE_INPUT_USD_PER_1M or settings.AI_PRICE_OUTPUT_USD_PER_1M
+    ):
+        log.warning(
+            "ai_ceiling_without_prices",
+            detail=(
+                "AI_DAILY_USD_CEILING is set but token prices are 0, so every call "
+                "costs 0 and the ceiling can never trip. Set "
+                "AI_PRICE_INPUT_USD_PER_1M and AI_PRICE_OUTPUT_USD_PER_1M."
+            ),
+        )
 
 
 def _demo_model_signing_key() -> str:

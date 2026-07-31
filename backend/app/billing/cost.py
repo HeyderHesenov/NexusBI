@@ -13,6 +13,7 @@ from sqlalchemy import func, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
+from app.core import metrics
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
 from app.models.ai_spend import AISpendDaily
@@ -159,5 +160,9 @@ async def record(
                     await session.execute(bump)
             await session.commit()
         _note_spend(spent)
+        metrics.ai_cost_usd_total.labels(feature).inc(spent / 1_000_000)
+        if settings.AI_DAILY_USD_CEILING > 0:
+            remaining = settings.AI_DAILY_USD_CEILING - (await spent_today_micro()) / 1_000_000
+            metrics.ai_budget_remaining_usd.set(max(0.0, remaining))
     except Exception as exc:  # noqa: BLE001 — accounting must never fail a request
         log.warning("ai_spend_write_failed", error=type(exc).__name__, detail=str(exc)[:200])

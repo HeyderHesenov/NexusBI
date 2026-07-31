@@ -1,7 +1,7 @@
 """Prometheus metrics — low-cardinality counters/histograms for observability."""
 from __future__ import annotations
 
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Gauge, Histogram
 
 http_requests_total = Counter(
     "nexusbi_http_requests_total",
@@ -36,4 +36,16 @@ rag_retrievals_total = Counter(
     "nexusbi_rag_retrievals_total",
     "RAG context retrievals by outcome",
     ["outcome"],  # hit | miss
+)
+# Spend, labelled by the feature that made the call — the number that decides
+# whether the tier prices are right, and the one to alert on before the ceiling
+# cuts AI over to its deterministic paths.
+ai_cost_usd_total = Counter(
+    "nexusbi_ai_cost_usd_total",
+    "AI engine spend in USD",
+    ["feature"],
+)
+ai_budget_remaining_usd = Gauge(
+    "nexusbi_ai_budget_remaining_usd",
+    "USD left under today's AI spend ceiling",
 )
