@@ -151,6 +151,7 @@ async def process_nl_query(
             from_cache=True,
             confidence=cached.get("confidence"),
             provenance=cached.get("provenance"),
+            rls_denied=await _rls_denied(db, datasource_id, user_id, cached["rows"]),
         )
 
     # Cache miss → ground generation with RAG (similar prior queries + verified
@@ -224,6 +225,7 @@ async def process_nl_query(
         from_cache=False,
         confidence=confidence,
         provenance=provenance,
+        rls_denied=await _rls_denied(db, resolved_ds_id, user_id, rows),
     )
 
     # Index this fresh NL→SQL pair so future questions retrieve it (RAG). Only real
@@ -309,15 +311,38 @@ async def _guarded_execute(
     The allowlist is the ONLY place tables are checked (execute_select re-validates
     SELECT-only but never the table set); RLS is per-viewer and constrains BEFORE
     aggregation (post-fetch filtering leaks SUM/GROUP BY totals). Fails closed.
+
+    Deny-by-default: on a ``strict`` source a viewer who is not the owner and has
+    no rule gets a zero-row wrapper instead of the query — no rule is not the same
+    as no restriction (see ``rls_service.resolve_scope``).
     """
     sql_guard.assert_tables_in_schema(clean_sql, list(schema.keys()), ds.db_type.value)
     from app.services import rls_service, rls_sql
 
-    rules = await rls_service.rules_for_user(db, ds.id, user_id)
+    scope = await rls_service.resolve_scope(db, ds, user_id)
     exec_sql = clean_sql
-    if rules:
-        exec_sql = rls_sql.constrain_sql(exec_sql, rules, schema, ds.db_type.value)
+    if scope.deny_all:
+        exec_sql = rls_sql.deny_all_sql(exec_sql, ds.db_type.value)
+        _log.info("rls_deny_all", datasource_id=ds.id, user_id=user_id)
+    elif scope.rules:
+        exec_sql = rls_sql.constrain_sql(exec_sql, scope.rules, schema, ds.db_type.value)
     return await ds_service.execute_select(ds, exec_sql)
+
+
+async def _rls_denied(
+    db: AsyncSession, datasource_id: str | None, user_id: str, rows: list[Any]
+) -> bool:
+    """True when an empty result is empty BY RULE rather than by data.
+
+    Asked only when the result is already empty, so the normal path pays nothing —
+    and asking here (instead of threading a flag out of the guard chain) covers the
+    AI path, the manual-SQL path and cache hits with one lookup.
+    """
+    if rows or not datasource_id:
+        return False
+    from app.services import rls_service
+
+    return (await rls_service.resolve_scope_by_id(db, datasource_id, user_id)).deny_all
 
 
 def _sql_label(label: str | None, sql: str) -> str:
@@ -408,6 +433,7 @@ async def run_user_sql(
         from_cache=False,
         # Analyst-authored SQL: no LLM guessed it, so the number is exact-by-construction.
         provenance="user_sql",
+        rls_denied=await _rls_denied(db, datasource_id, user_id, rows),
     )
 
 
@@ -428,12 +454,14 @@ async def _finalize(
     from_cache: bool,
     confidence: float | None = None,
     provenance: str | None = None,
+    rls_denied: bool = False,
 ) -> QueryResult:
     """Persist a QueryLog and build the response (shared by cache hit + miss).
 
     ``rows`` is the full result for the response; ``snapped`` is the bounded
     snapshot persisted to the log (already computed by the caller).
     ``confidence``/``provenance`` are the answer-trust signal shown as a badge.
+    ``rls_denied`` tells the client the emptiness is a permission, not a fact.
     """
     log = QueryLog(
         user_id=user_id,
@@ -470,6 +498,7 @@ async def _finalize(
         from_cache=from_cache,
         confidence=confidence,
         provenance=provenance,
+        rls_denied=rls_denied,
     )
 
 

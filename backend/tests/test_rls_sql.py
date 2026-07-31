@@ -1,12 +1,13 @@
 """RLS predicate injection (rls_sql.constrain_sql) — SQL-level enforcement."""
 from __future__ import annotations
 
+import sqlite3
 from types import SimpleNamespace
 
 import pytest
 
 from app.core.exceptions import InvalidSQLError
-from app.services.rls_sql import constrain_sql
+from app.services.rls_sql import constrain_sql, deny_all_sql
 
 SCHEMA = {
     "sales": [{"name": "region"}, {"name": "revenue"}, {"name": "id"}],
@@ -121,3 +122,49 @@ def test_value_with_quote_is_escaped_not_injected():
     # Escaped, single statement — no injection breakout.
     assert out.count(";") == 0
     assert "''" in out  # doubled quote = escaped literal
+
+
+# ─── deny_all_sql: strict source, viewer with no rule ───
+
+
+@pytest.mark.parametrize("dialect", ["sqlite", "postgresql", "mysql"])
+def test_deny_all_wraps_in_a_zero_row_filter(dialect: str):
+    out = deny_all_sql("SELECT region, SUM(revenue) AS total FROM sales GROUP BY region", dialect)
+    low = out.lower()
+    assert low.startswith("select * from (")
+    assert "_rls_deny" in low
+    assert low.rstrip().endswith("where 1 = 0")
+
+
+def test_deny_all_returns_zero_rows_for_an_aggregate():
+    """The reason this wraps instead of AND-ing FALSE into the query.
+
+    An aggregate over an empty set is NOT an empty result: `SELECT SUM(x) … WHERE
+    1=0` yields one row holding NULL. Only the outer filter guarantees no rows —
+    and that is what "this viewer is entitled to nothing" must mean.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE sales (region TEXT, revenue INT)")
+    conn.execute("INSERT INTO sales VALUES ('EU', 10), ('US', 20)")
+
+    inner = "SELECT SUM(revenue) AS total FROM sales"
+    assert conn.execute(f"{inner} WHERE 1 = 0").fetchall() == [(None,)]  # the trap
+
+    cur = conn.execute(deny_all_sql(inner, "sqlite"))
+    assert cur.fetchall() == []
+    # Column names survive, so the client renders an empty chart, not an error.
+    assert [d[0] for d in cur.description] == ["total"]
+
+
+def test_deny_all_keeps_detail_columns():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE sales (region TEXT, revenue INT)")
+    conn.execute("INSERT INTO sales VALUES ('EU', 10)")
+    cur = conn.execute(deny_all_sql("SELECT region, revenue FROM sales", "sqlite"))
+    assert cur.fetchall() == []
+    assert [d[0] for d in cur.description] == ["region", "revenue"]
+
+
+def test_deny_all_unparseable_sql_fails_closed():
+    with pytest.raises(InvalidSQLError):
+        deny_all_sql("SELEC bad(((", "sqlite")

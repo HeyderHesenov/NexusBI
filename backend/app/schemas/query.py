@@ -53,6 +53,10 @@ class QueryResult(BaseModel):
     # model's own 0–1 score, only meaningful for provenance="llm".
     confidence: float | None = None
     provenance: str | None = None
+    # True when the result is empty because row-level security denied every row
+    # (strict source, no rule for this viewer) — the client says so instead of
+    # rendering an unexplained blank chart.
+    rls_denied: bool = False
 
 
 class QueryHistoryItem(BaseModel):
