@@ -68,6 +68,8 @@ Tavan **UTC gecə yarısı** öz-özünə açılır; əl ilə sıfırlama yoxdur
 
 Prometheus tərəfində: `nexusbi_ai_cost_usd_total{feature=...}` (nəyin nə qədər xərclədiyi) və `nexusbi_ai_budget_remaining_usd` (tavana nə qalıb — alert qoymaq üçün doğru metrika budur).
 
+**Yalnız PostgreSQL-də etibarlıdır.** SQLite bütün bazanı yazıcılar üçün kilidləyir, ona görə sorğu öz tranzaksiyasını açıq saxlayarkən (kvota vahidi götürülən andan etibarən — yəni hər AI endpoint-ində) uçot yazısı kilidə düşür və itir. Yuxarıdakı compose faylı Postgres işlədir, yəni real quraşdırma bundan təsirlənmir; amma `DEMO_MODE` ilə SQLite üzərində işlədirsənsə `ai_spend_daily` boş qalacaq və **gündəlik tavan işə düşməyəcək**. Bu halda yeganə qoruyucu engine tərəfindəki öz limitlərindir.
+
 ## Nə harda saxlanılır
 
 Beş adlandırılmış volume var. Backup planı bunlardan ibarətdir:

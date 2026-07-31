@@ -1,6 +1,7 @@
 """AI spend accounting: pricing, the daily ledger, and the budget breaker."""
 from __future__ import annotations
 
+import time
 from datetime import date
 from types import SimpleNamespace
 
@@ -126,8 +127,33 @@ async def test_a_write_failure_never_reaches_the_caller(
     def _boom(*_a, **_kw):
         raise RuntimeError("database is on fire")
 
-    monkeypatch.setattr("app.billing.cost.AsyncSessionLocal", _boom)
+    monkeypatch.setattr("app.billing.cost._spend_sessions", lambda: _boom)
     await cost.record("text2sql", "gpt-4o", 10, 1)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_a_contended_sqlite_write_gives_up_in_about_a_second(db_session) -> None:
+    """SQLite locks the whole database for writers, so a request holding its own
+    transaction open — every quota-consuming AI endpoint does — blocks this write
+    and loses it either way. What must not happen is the caller waiting the
+    engine's full 30-second busy timeout to find that out, once per model call.
+    """
+    from sqlalchemy import text
+
+    from app.db.session import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as blocker:
+        # Any write takes the database-wide lock; users is what the real
+        # contender (usage_service.check_and_consume) writes.
+        await blocker.execute(text("UPDATE users SET ai_calls_used = ai_calls_used"))
+        await blocker.flush()
+
+        started = time.perf_counter()
+        await cost.record("text2sql", "gpt-4o", 3_000, 300)
+        elapsed = time.perf_counter() - started
+        await blocker.rollback()
+
+    assert elapsed < 5.0, f"contended ledger write waited {elapsed:.1f}s"
 
 
 @pytest.mark.asyncio

@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy import func, insert, select, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 from app.core import metrics
@@ -19,6 +21,33 @@ from app.db.session import AsyncSessionLocal
 from app.models.ai_spend import AISpendDaily
 
 log = get_logger("nexusbi.cost")
+
+# The ledger's own session factory. On PostgreSQL — the production target — this
+# is just AsyncSessionLocal: ai_spend_daily and users are different tables, two
+# connections write them concurrently, and there is nothing to wait for.
+#
+# SQLite is the reason this exists. It locks the *whole database* for writers, so
+# a request that is holding its own transaction open — which every
+# quota-consuming AI endpoint does, from the moment enforce_rate_limit takes its
+# unit — blocks this write for the connection's full busy timeout and then loses
+# it regardless. Measured on 2026-07-31: 31.2 seconds of stall, zero rows
+# written. Waiting one second instead is not a fix for the loss, but the loss was
+# already the outcome; what it fixes is a half-minute of dead time inside a
+# user's request, added once per model call. The ledger is best-effort by design
+# and says so — a stall of that size is not.
+_sqlite_spend_sessions: async_sessionmaker[AsyncSession] | None = None
+
+
+def _spend_sessions() -> async_sessionmaker[AsyncSession]:
+    global _sqlite_spend_sessions
+    if not settings.DATABASE_URL.startswith("sqlite"):
+        return AsyncSessionLocal
+    if _sqlite_spend_sessions is None:
+        engine = create_async_engine(
+            settings.DATABASE_URL, connect_args={"timeout": 1.0}, poolclass=NullPool
+        )
+        _sqlite_spend_sessions = async_sessionmaker(engine, expire_on_commit=False)
+    return _sqlite_spend_sessions
 
 
 def micro_usd(prompt_tokens: int, completion_tokens: int) -> int:
@@ -124,7 +153,7 @@ async def record(
     )
     day = datetime.now(timezone.utc).date()
     try:
-        async with AsyncSessionLocal() as session:
+        async with _spend_sessions()() as session:
             bump = (
                 update(AISpendDaily)
                 .where(
