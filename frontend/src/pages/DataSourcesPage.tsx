@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { BarChart3, Database, Gauge, Loader2, Plug, Plus, RefreshCw, ShieldHalf, Sparkles, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
+import { BarChart3, Database, Gauge, Loader2, Lock, Plug, Plus, RefreshCw, ShieldHalf, Sparkles, Table2, Trash2, UploadCloud, Wand2 } from 'lucide-react'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useQueryStore } from '../store/queryStore'
@@ -170,7 +170,17 @@ export function DataSourcesPage() {
                     )}
                   </span>
                   <div>
-                    <p className="font-medium text-ink">{s.name}</p>
+                    <p className="flex items-center gap-1.5 font-medium text-ink">
+                      {s.name}
+                      {s.rls_mode === 'strict' && (
+                        <span
+                          title={t('dataSourcesPage.lockedTitle')}
+                          className="inline-flex items-center gap-1 rounded-md border border-accent/40 bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent"
+                        >
+                          <Lock size={9} /> {t('dataSourcesPage.locked')}
+                        </span>
+                      )}
+                    </p>
                     <p className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">
                       {s.db_type}
                     </p>
@@ -341,6 +351,9 @@ export function DataSourcesPage() {
         onClose={() => setRlsFor(null)}
         datasourceId={rlsFor?.id ?? null}
         datasourceName={rlsFor?.name ?? ''}
+        // Read from the store, not from rlsFor — so the switch re-renders after
+        // the toggle instead of showing the mode the modal was opened with.
+        rlsMode={sources.find((s) => s.id === rlsFor?.id)?.rls_mode ?? 'open'}
       />
     </div>
   )

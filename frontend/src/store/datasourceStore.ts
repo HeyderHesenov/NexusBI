@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import toast from 'react-hot-toast'
-import type { DataSource, DataSourceCreate, DataSourceSchema } from '../types'
+import type { DataSource, DataSourceCreate, DataSourceSchema, RlsMode } from '../types'
 import * as dsApi from '../api/datasource'
 import { useQueryStore } from './queryStore'
 
@@ -16,6 +16,7 @@ interface DatasourceState {
   replaceData: (id: string, file: File) => Promise<dsApi.DataRefreshResult>
   test: (id: string) => Promise<boolean>
   setSla: (id: string, hours: number | null) => Promise<void>
+  setRlsMode: (id: string, mode: RlsMode) => Promise<void>
   remove: (id: string) => Promise<void>
 }
 
@@ -83,6 +84,10 @@ export const useDatasourceStore = create<DatasourceState>((set, get) => ({
     const updated = await dsApi.setSla(id, hours)
     set({ sources: get().sources.map((s) => (s.id === id ? updated : s)) })
     toast.success('Təzəlik SLA yeniləndi.')
+  },
+  setRlsMode: async (id, mode) => {
+    const updated = await dsApi.setRlsMode(id, mode)
+    set({ sources: get().sources.map((s) => (s.id === id ? updated : s)) })
   },
   remove: async (id) => {
     await dsApi.remove(id)

@@ -1,27 +1,46 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
-import { Plus, ShieldHalf, Trash2 } from 'lucide-react'
+import { Lock, LockOpen, Plus, ShieldHalf, Trash2 } from 'lucide-react'
 import { ModalShell } from '../ui/ModalShell'
 import { Field, FIELD } from '../ui/form'
+import { useDatasourceStore } from '../../store/datasourceStore'
 import * as dsApi from '../../api/datasource'
 import type { RLSRule } from '../../api/datasource'
+import type { RlsMode } from '../../types'
 
 interface Props {
   open: boolean
   onClose: () => void
   datasourceId: string | null
   datasourceName: string
+  rlsMode: RlsMode
 }
 
 /** Manage row-level security rules for one datasource (owner only). */
-export function RlsModal({ open, onClose, datasourceId, datasourceName }: Props) {
+export function RlsModal({ open, onClose, datasourceId, datasourceName, rlsMode }: Props) {
   const { t } = useTranslation()
+  const setRlsMode = useDatasourceStore((s) => s.setRlsMode)
   const [rules, setRules] = useState<RLSRule[]>([])
   const [email, setEmail] = useState('')
   const [column, setColumn] = useState('')
   const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
+  const [modeBusy, setModeBusy] = useState(false)
+  const locked = rlsMode === 'strict'
+
+  const toggleMode = async () => {
+    if (!datasourceId || modeBusy) return
+    setModeBusy(true)
+    try {
+      await setRlsMode(datasourceId, locked ? 'open' : 'strict')
+      toast.success(t(locked ? 'rlsModal.unlocked' : 'rlsModal.locked'))
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setModeBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (open && datasourceId) {
@@ -67,6 +86,39 @@ export function RlsModal({ open, onClose, datasourceId, datasourceName }: Props)
       }
     >
       <div className="space-y-3 p-5">
+        <div className="rounded-xl border border-line bg-surface-2 p-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              {locked ? (
+                <Lock size={15} className="mt-0.5 shrink-0 text-accent" />
+              ) : (
+                <LockOpen size={15} className="mt-0.5 shrink-0 text-ink-faint" />
+              )}
+              <div>
+                <p className="text-sm font-medium text-ink">{t('rlsModal.modeLabel')}</p>
+                <p className="mt-0.5 text-xs text-ink-soft">
+                  {t(locked ? 'rlsModal.modeStrictHint' : 'rlsModal.modeOpenHint')}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={toggleMode}
+              disabled={modeBusy}
+              className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                locked
+                  ? 'border-accent bg-accent-soft text-accent hover:bg-accent hover:text-bg'
+                  : 'border-line text-ink-soft hover:border-accent hover:text-accent'
+              }`}
+            >
+              {t(locked ? 'rlsModal.unlock' : 'rlsModal.lock')}
+            </button>
+          </div>
+          {locked && (
+            <p className="mt-2.5 border-t border-line pt-2.5 text-xs text-ink-faint">
+              {t('rlsModal.modePublicWarning')}
+            </p>
+          )}
+        </div>
         {rules.length > 0 && (
           <ul className="space-y-1.5">
             {rules.map((r) => (

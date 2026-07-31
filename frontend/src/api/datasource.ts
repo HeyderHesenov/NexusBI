@@ -1,5 +1,12 @@
 import { client } from './client'
-import type { Dashboard, DataSource, DataSourceCreate, DataSourceSchema, PowerBIDataset } from '../types'
+import type {
+  Dashboard,
+  DataSource,
+  DataSourceCreate,
+  DataSourceSchema,
+  PowerBIDataset,
+  RlsMode,
+} from '../types'
 
 export async function list(): Promise<DataSource[]> {
   const { data } = await client.get<DataSource[]>('/datasource/')
@@ -24,6 +31,14 @@ export async function test(id: string): Promise<boolean> {
 export async function setSla(id: string, hours: number | null): Promise<DataSource> {
   const { data } = await client.patch<DataSource>(`/datasource/${id}/sla`, {
     freshness_sla_hours: hours,
+  })
+  return data
+}
+
+/** Lock ('strict') or unlock ('open') a source for members without a rule. */
+export async function setRlsMode(id: string, mode: RlsMode): Promise<DataSource> {
+  const { data } = await client.patch<DataSource>(`/datasource/${id}/rls-mode`, {
+    rls_mode: mode,
   })
   return data
 }
