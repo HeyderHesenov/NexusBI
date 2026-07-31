@@ -27,7 +27,7 @@ async def generate_insight(
             chart_type=chart_type or "auto",
             data=json.dumps(data[:50], ensure_ascii=False, default=str),
         )
-        return await chat_text(INSIGHT_GENERATOR_PROMPT, user)
+        return await chat_text(INSIGHT_GENERATOR_PROMPT, user, feature="insight_generator")
     except Exception as exc:  # noqa: BLE001 — insight is best-effort, never fatal
         _log.warning("insight_generation_failed", error=type(exc).__name__, detail=str(exc)[:200])
         return ""

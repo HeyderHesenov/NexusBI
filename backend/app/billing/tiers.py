@@ -1,7 +1,12 @@
 """Subscription tier catalogue — the single source of truth for quotas.
 
-Monthly AI-query quotas. The $100 plan grants 5x the $20 plan; the $150 plan
-grants 10x. Every AI endpoint (ask, retry, forecast, anomalies) consumes quota.
+A quota unit is one model call, not one HTTP request, so a fan-out endpoint
+costs what it actually spends. Numbers are set for roughly a 60% gross margin at
+an estimated $0.01 per completion — an estimate that has never been measured, so
+re-derive them from ai_spend_daily once real traffic exists.
+
+Free plans smaller dashboards (3 questions rather than 6) so the same quota buys
+twice as many of them.
 """
 from __future__ import annotations
 
@@ -19,6 +24,10 @@ class Tier:
     features: list[str] = field(default_factory=list)
     white_label: bool = False  # may set/serve custom branding on embeds
     ai_chat: bool = False  # Nexus AI assistant participates in team chat
+    # Widgets an AI-generated dashboard plans for. Free gets a smaller board so
+    # the same quota buys twice as many of them — and three focused widgets beat
+    # six scattered ones as a first impression.
+    dashboard_questions: int = 6
 
 
 TIERS: dict[str, Tier] = {
@@ -26,24 +35,25 @@ TIERS: dict[str, Tier] = {
         key="free",
         name="Free",
         price_usd=0,
-        monthly_quota=30,
-        features=["Aylıq 30 AI sorğusu", "İnteraktiv dashboardlar", "CSV ixrac"],
+        monthly_quota=300,
+        features=["Aylıq 300 AI sorğusu", "İnteraktiv dashboardlar", "CSV ixrac"],
+        dashboard_questions=3,
     ),
     "pro": Tier(
         key="pro",
         name="Pro",
         price_usd=20,
-        monthly_quota=300,
-        features=["Aylıq 300 AI sorğusu", "Proqnoz & anomaliya", "White-label brending"],
+        monthly_quota=800,
+        features=["Aylıq 800 AI sorğusu", "Proqnoz & anomaliya", "White-label brending"],
         white_label=True,
     ),
     "max": Tier(
         key="max",
         name="Max",
         price_usd=100,
-        monthly_quota=1500,
+        monthly_quota=4000,
         features=[
-            "Aylıq 1500 AI sorğusu (5x)",
+            "Aylıq 4000 AI sorğusu (5x)",
             "Bütün Pro üstünlükləri",
             "Komanda söhbətində AI köməkçi",
             "Genişləndirilmiş tarixçə",
@@ -55,9 +65,9 @@ TIERS: dict[str, Tier] = {
         key="max_plus",
         name="Max+",
         price_usd=150,
-        monthly_quota=3000,
+        monthly_quota=6000,
         features=[
-            "Aylıq 3000 AI sorğusu (10x)",
+            "Aylıq 6000 AI sorğusu",
             "Bütün Max üstünlükləri",
             "Komanda söhbətində AI köməkçi",
             "Ən yüksək limit",
@@ -93,6 +103,11 @@ def get_tier(key: str | None) -> Tier:
 def has_white_label(key: str | None) -> bool:
     """True if the tier may set/serve custom white-label branding."""
     return get_tier(key).white_label
+
+
+def questions_per_dashboard(key: str | None) -> int:
+    """How many questions an AI dashboard plans for this tier."""
+    return get_tier(key).dashboard_questions
 
 
 def has_ai_chat(key: str | None) -> bool:

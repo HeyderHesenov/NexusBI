@@ -833,7 +833,7 @@ async def plan(message: str, history: list[dict[str, str]]) -> dict[str, Any]:
     )
     user = (f"ƏVVƏLKİ:\n{ctx}\n\n" if ctx else "") + f"İSTƏK: {message}"
     try:
-        raw = await chat_json(PLAN_PROMPT, user, localize=True)
+        raw = await chat_json(PLAN_PROMPT, user, localize=True, feature="copilot")
         steps = raw.get("plan")
         if isinstance(steps, list) and steps:
             plan_steps = [
@@ -885,7 +885,7 @@ async def run(
     steps = 0
     for _ in range(settings.COPILOT_MAX_STEPS):
         steps += 1
-        reply = await chat_tools(messages, TOOLS, localize=True)
+        reply = await chat_tools(messages, TOOLS, localize=True, feature="copilot")
         tool_calls = getattr(reply, "tool_calls", None)
         if not tool_calls:
             return {"reply": (reply.content or "").strip(), "actions": ctx.actions, "steps": steps}

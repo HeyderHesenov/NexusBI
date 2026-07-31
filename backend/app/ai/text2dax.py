@@ -34,7 +34,7 @@ class Text2DAXEngine:
         last_error: Exception | None = None
         for attempt in range(self.max_retries):
             try:
-                raw = await chat_json(system, user)
+                raw = await chat_json(system, user, feature="text2dax")
                 result = DAXResult(**raw)
                 dax.dax_to_sql(result.dax)  # validate it is executable
                 return result

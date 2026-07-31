@@ -53,7 +53,7 @@ async def test_upgrade_raises_limit(client, auth, _small_free_quota):
     up = await client.post("/api/v1/billing/upgrade", json={"tier": "pro"}, headers=auth)
     assert up.status_code == 200
     assert up.json()["tier"] == "pro"
-    # Pro quota (300) is far above the 2 consumed → next call succeeds.
+    # Pro quota (800) is far above the 2 consumed → next call succeeds.
     assert (await _ask(client, auth)).status_code == 200
 
 
@@ -100,5 +100,5 @@ async def test_plans_catalogue(client, auth):
     resp = await client.get("/api/v1/billing/plans", headers=auth)
     plans = {p["key"]: p for p in resp.json()}
     assert plans["pro"]["price_usd"] == 20
-    assert plans["max"]["monthly_quota"] == 1500
-    assert plans["max_plus"]["monthly_quota"] == 3000
+    assert plans["max"]["monthly_quota"] == 4000
+    assert plans["max_plus"]["monthly_quota"] == 6000

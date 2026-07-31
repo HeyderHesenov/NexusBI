@@ -4,11 +4,16 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from sqlalchemy import case, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.billing.tiers import get_tier, is_unlimited
 from app.core.exceptions import RateLimitError
+from app.core.logging import get_logger
+from app.db.session import AsyncSessionLocal
 from app.models.user import User
+
+log = get_logger("nexusbi.usage")
 
 PERIOD = timedelta(days=30)
 
@@ -20,28 +25,77 @@ def _aware(dt: datetime | None) -> datetime | None:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def _reset_if_expired(user: User, now: datetime) -> None:
-    start = _aware(user.usage_period_start)
-    if start is None or now - start >= PERIOD:
-        user.usage_period_start = now
-        user.ai_calls_used = 0
+def _window_elapsed(cutoff: datetime):
+    """SQL predicate: this user's 30-day window has lapsed (or never started)."""
+    return or_(User.usage_period_start.is_(None), User.usage_period_start <= cutoff)
 
 
 async def check_and_consume(db: AsyncSession, user: User) -> None:
-    """Reset the window if elapsed, enforce the tier quota, then consume one call."""
+    """Reset the window if elapsed, enforce the tier quota, consume one call.
+
+    One statement, not read-modify-write: two requests arriving together used to
+    read the same count and write the same +1, so one of the two calls was free.
+    The window reset rides along in CASE expressions, which see the column's
+    pre-update value — exactly the "has it lapsed?" question being asked.
+    """
     if is_unlimited(user.subscription_tier):
         return  # demo/test account — no counting, no limit
     now = datetime.now(timezone.utc)
-    _reset_if_expired(user, now)
+    cutoff = now - PERIOD
     quota = get_tier(user.subscription_tier).monthly_quota
-    if user.ai_calls_used >= quota:
+    elapsed = _window_elapsed(cutoff)
+    result = await db.execute(
+        update(User)
+        .where(User.id == user.id, or_(elapsed, User.ai_calls_used + 1 <= quota))
+        .values(
+            usage_period_start=case((elapsed, now), else_=User.usage_period_start),
+            ai_calls_used=case((elapsed, 1), else_=User.ai_calls_used + 1),
+        )
+        .execution_options(synchronize_session=False)
+    )
+    if result.rowcount == 0:
         raise RateLimitError(
             "Aylıq AI sorğu limitiniz doldu.",
             detail="Daha çox sorğu üçün planınızı yüksəldin.",
             code="ai_quota",
         )
-    user.ai_calls_used += 1
     await db.flush()
+    await db.refresh(user)
+
+
+async def consume_extra(user_id: str, units: int, db: AsyncSession | None = None) -> None:
+    """Charge `units` more, unconditionally — those calls already cost money.
+
+    Pass the session that took the up-front unit whenever there is one. That +1
+    is still uncommitted and already holds this user's row, so a second
+    connection writing the same row would wait for a transaction that is itself
+    waiting for this call to return: "database is locked" on SQLite, a request
+    stuck until statement_timeout on Postgres. Joining the same transaction has
+    a consequence worth stating plainly — the charge shares the request's fate,
+    so a request that rolls back is charged nothing, exactly as the up-front
+    unit already was. What is *not* refunded is the money: ``ai_spend_daily`` is
+    written from its own session and keeps every call that was actually made.
+
+    Without a session (a background task, or a caller whose transaction is
+    already finished) it opens its own and commits immediately.
+    """
+    if units <= 0:
+        return
+    stmt = (
+        update(User)
+        .where(User.id == user_id)
+        .values(ai_calls_used=User.ai_calls_used + units)
+        .execution_options(synchronize_session=False)
+    )
+    try:
+        if db is not None:
+            await db.execute(stmt)
+            return
+        async with AsyncSessionLocal() as session:
+            await session.execute(stmt)
+            await session.commit()
+    except Exception as exc:  # noqa: BLE001 — never fail a response over accounting
+        log.warning("quota_reconcile_failed", error=type(exc).__name__, detail=str(exc)[:200])
 
 
 def get_usage(user: User) -> dict[str, Any]:

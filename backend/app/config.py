@@ -24,6 +24,21 @@ class Settings(BaseSettings):
     AI_MODEL: str = Field(default="")
     EMBEDDING_MODEL: str = Field(default="")
 
+    # ─── AI spend control ───
+    # Prices are USD per 1M tokens, copied from the engine's pricing page. Left at
+    # 0 the cost of every call computes to zero, which silently disables the
+    # ceiling — main.py warns loudly when a ceiling is set without prices.
+    AI_PRICE_INPUT_USD_PER_1M: float = Field(default=0.0)
+    AI_PRICE_OUTPUT_USD_PER_1M: float = Field(default=0.0)
+    AI_PRICE_EMBEDDING_USD_PER_1M: float = Field(default=0.0)
+    # Whole-deployment daily spend cap. 0 disables the breaker entirely.
+    AI_DAILY_USD_CEILING: float = Field(default=10.0)
+    # Upper bound per completion. Structured generators need room for the JSON
+    # body; prose is capped tighter because it is read by a human.
+    AI_MAX_TOKENS_JSON: int = Field(default=1500)
+    AI_MAX_TOKENS_TEXT: int = Field(default=800)
+    AI_MAX_TOKENS_TOOLS: int = Field(default=1500)
+
     # ─── RAG / vector grounding (portable: SQLite + numpy cosine) ───
     RAG_ENABLED: bool = Field(default=True)
     RAG_TOP_K: int = Field(default=5)  # similar examples injected into the prompt

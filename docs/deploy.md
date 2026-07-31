@@ -47,6 +47,29 @@ curl -f http://localhost/ready
 
 Bu, xəta deyil — sənədləşdirilmiş iş rejimidir. Açar əlavə edib `docker compose -f docker-compose.prod.yml up -d` desən komponent `"ok"`-a keçir.
 
+## AI xərc nəzarəti
+
+Model çağırışları sənin açarınla gedir, yəni hesab sənə yazılır. Dörd açar bunu hədləyir (`.env.prod.example`-də hazır dəyərlərlə):
+
+| Açar | Nə edir |
+|---|---|
+| `AI_PRICE_INPUT_USD_PER_1M` / `_OUTPUT_` / `_EMBEDDING_` | Token qiymətləri (engine-in qiymət səhifəsindən) |
+| `AI_DAILY_USD_CEILING` | Gündəlik USD tavanı; `0` = söndürülüb |
+
+Hər model çağırışı `ai_spend_daily` cədvəlinə yazılır — `(gün, feature, model)` üzrə bir sətir. Bugünkü cəm tavana çatanda AI **günün sonuna qədər** determinist yola keçir: məhsul işləməyə davam edir, sadəcə Text2SQL qayda əsaslı, embedding hash əsaslı olur. `/ready` bunu göstərir (503 vermir — tətbiq həqiqətən hazırdır):
+
+```json
+{"components":{"ai":"degraded: gündəlik büdcə bitdi ($10.14 / $10.00), yalnız determinist yol"}}
+```
+
+Tavan **UTC gecə yarısı** öz-özünə açılır; əl ilə sıfırlama yoxdur.
+
+**Tələ:** tavanı qoyub qiymətləri `0` buraxsan hər çağırış 0 sayılır və tavan heç vaxt işə düşmür. Tətbiq bunu qalxarkən `ai_ceiling_without_prices` xəbərdarlığı ilə deyir — log-da onu görsən, qiymətləri qoy.
+
+Prometheus tərəfində: `nexusbi_ai_cost_usd_total{feature=...}` (nəyin nə qədər xərclədiyi) və `nexusbi_ai_budget_remaining_usd` (tavana nə qalıb — alert qoymaq üçün doğru metrika budur).
+
+**Yalnız PostgreSQL-də etibarlıdır.** SQLite bütün bazanı yazıcılar üçün kilidləyir, ona görə sorğu öz tranzaksiyasını açıq saxlayarkən (kvota vahidi götürülən andan etibarən — yəni hər AI endpoint-ində) uçot yazısı kilidə düşür və itir. Yuxarıdakı compose faylı Postgres işlədir, yəni real quraşdırma bundan təsirlənmir; amma `DEMO_MODE` ilə SQLite üzərində işlədirsənsə `ai_spend_daily` boş qalacaq və **gündəlik tavan işə düşməyəcək**. Bu halda yeganə qoruyucu engine tərəfindəki öz limitlərindir.
+
 ## Nə harda saxlanılır
 
 Beş adlandırılmış volume var. Backup planı bunlardan ibarətdir:

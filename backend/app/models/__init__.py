@@ -1,5 +1,6 @@
 """SQLAlchemy models. Importing registers them on the Base metadata."""
 from app.db.base import Base
+from app.models.ai_spend import AISpendDaily
 from app.models.alert import Alert, Notification
 from app.models.ba_artifact import BAArtifact
 from app.models.brand import BrandConfig
@@ -33,6 +34,7 @@ from app.models.workspace import (
 
 __all__ = [
     "Base",
+    "AISpendDaily",
     "User",
     "DataSource",
     "DBType",

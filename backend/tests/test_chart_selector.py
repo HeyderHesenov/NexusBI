@@ -13,7 +13,7 @@ def _rows(n: int) -> list[dict]:
 
 @pytest.mark.asyncio
 async def test_ai_pie_demoted_to_bar_when_too_many(monkeypatch):
-    async def fake_chat_json(system, user, *, temperature=0.0):
+    async def fake_chat_json(system, user, *, temperature=0.0, **_kw):
         return {"chart_type": "pie", "x_axis": "name", "y_axis": "total"}
 
     monkeypatch.setattr(chart_selector, "chat_json", fake_chat_json)
@@ -25,7 +25,7 @@ async def test_ai_pie_demoted_to_bar_when_too_many(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_ai_pie_kept_when_few(monkeypatch):
-    async def fake_chat_json(system, user, *, temperature=0.0):
+    async def fake_chat_json(system, user, *, temperature=0.0, **_kw):
         return {"chart_type": "pie", "x_axis": "name", "y_axis": "total"}
 
     monkeypatch.setattr(chart_selector, "chat_json", fake_chat_json)

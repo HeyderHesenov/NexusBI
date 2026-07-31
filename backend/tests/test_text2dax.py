@@ -45,7 +45,7 @@ def test_fallback_top_products_uses_sales_revenue():
 
 
 async def test_generate_dax_with_mocked_ai(monkeypatch):
-    async def fake_chat_json(system, user, *, temperature=0.0):
+    async def fake_chat_json(system, user, *, temperature=0.0, **_kw):
         return {
             "dax": "EVALUATE SUMMARIZECOLUMNS('Sales'[category], \"Rev\", SUM('Sales'[revenue]))",
             "explanation": "ok",

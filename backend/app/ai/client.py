@@ -7,6 +7,8 @@ from typing import Any
 
 from openai import APIError, AsyncOpenAI, OpenAIError
 
+from app.ai import call_context
+from app.billing import cost
 from app.config import settings
 from app.core import i18n, metrics
 from app.core.exceptions import AIGenerationError
@@ -27,8 +29,8 @@ def get_client() -> AsyncOpenAI:
     return _client
 
 
-def _require_configured() -> None:
-    """Fail fast when no engine is configured, instead of failing over the network.
+async def _preflight() -> None:
+    """Refuse the call before it reaches the network, for either reason.
 
     Callers already treat ``AIGenerationError`` as "take the deterministic path",
     so a keyless run lands on the same fallback either way — but reaching it via
@@ -37,8 +39,14 @@ def _require_configured() -> None:
     budget over the edge: the backend answered /ready seconds after the wait loop
     had already given up. ``embed`` has guarded this since it was written; the
     completion paths simply never did.
+
+    An exhausted daily budget raises the *same* error, deliberately: the product
+    already knows how to run without a model, so the breaker reuses that path
+    rather than inventing a second kind of degradation to test and maintain.
     """
     if not settings.AI_API_KEY or not settings.AI_MODEL:
+        raise AIGenerationError("AI xidməti əlçatmazdır.")
+    if await cost.over_ceiling():
         raise AIGenerationError("AI xidməti əlçatmazdır.")
 
 
@@ -48,6 +56,8 @@ async def chat_json(
     *,
     temperature: float = 0.0,
     localize: bool = False,
+    feature: str = "unknown",
+    max_tokens: int | None = None,
 ) -> dict[str, Any]:
     """Call the model and parse a JSON object response.
 
@@ -55,7 +65,7 @@ async def chat_json(
     response follows the request language (JSON keys/SQL stay unchanged). Leave it
     False for structured generators (Text2SQL/DAX/chart) whose output is not prose.
     """
-    _require_configured()
+    await _preflight()
     if localize:
         system = system + i18n.lang_directive()
     started = time.perf_counter()
@@ -63,6 +73,7 @@ async def chat_json(
         resp = await get_client().chat.completions.create(
             model=settings.AI_MODEL,
             temperature=temperature,
+            max_tokens=max_tokens or settings.AI_MAX_TOKENS_JSON,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system},
@@ -71,7 +82,12 @@ async def chat_json(
         )
     except (APIError, OpenAIError) as exc:
         raise _map_ai_error(exc) from exc
-    _record_call(resp, started, "json")
+    await _record_call(resp, started, "json", feature)
+    if resp.choices[0].finish_reason == "length":
+        # The body is cut mid-token, so json.loads would raise and surface as a
+        # 500. Degrade the way every other AI failure here degrades instead.
+        log.warning("ai_response_truncated", kind="json", feature=feature)
+        raise AIGenerationError("AI xidməti əlçatmazdır.")
     content = resp.choices[0].message.content or "{}"
     return json.loads(content)
 
@@ -82,9 +98,11 @@ async def chat_text(
     *,
     temperature: float = 0.3,
     localize: bool = True,
+    feature: str = "unknown",
+    max_tokens: int | None = None,
 ) -> str:
     """Call the model and return plain text. Prose by nature → localizes by default."""
-    _require_configured()
+    await _preflight()
     if localize:
         system = system + i18n.lang_directive()
     started = time.perf_counter()
@@ -92,6 +110,7 @@ async def chat_text(
         resp = await get_client().chat.completions.create(
             model=settings.AI_MODEL,
             temperature=temperature,
+            max_tokens=max_tokens or settings.AI_MAX_TOKENS_TEXT,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
@@ -99,7 +118,9 @@ async def chat_text(
         )
     except (APIError, OpenAIError) as exc:
         raise _map_ai_error(exc) from exc
-    _record_call(resp, started, "text")
+    # No truncation guard here on purpose: a clipped sentence is still usable
+    # prose, unlike a clipped JSON body which cannot be parsed at all.
+    await _record_call(resp, started, "text", feature)
     return (resp.choices[0].message.content or "").strip()
 
 
@@ -109,6 +130,8 @@ async def chat_tools(
     *,
     temperature: float = 0.0,
     localize: bool = False,
+    feature: str = "unknown",
+    max_tokens: int | None = None,
 ) -> Any:
     """Call the model with tool definitions; return the raw response message.
 
@@ -116,7 +139,7 @@ async def chat_tools(
     them, append results to ``messages``, and call again until the model replies
     with plain ``.content``. ``messages`` must already include the system prompt.
     """
-    _require_configured()
+    await _preflight()
     if localize:
         directive = i18n.lang_directive()
         if directive:
@@ -126,17 +149,18 @@ async def chat_tools(
         resp = await get_client().chat.completions.create(
             model=settings.AI_MODEL,
             temperature=temperature,
+            max_tokens=max_tokens or settings.AI_MAX_TOKENS_TOOLS,
             messages=messages,
             tools=tools,
             tool_choice="auto",
         )
     except (APIError, OpenAIError) as exc:
         raise _map_ai_error(exc) from exc
-    _record_call(resp, started, "tools")
+    await _record_call(resp, started, "tools", feature)
     return resp.choices[0].message
 
 
-async def embed(texts: list[str]) -> list[list[float]]:
+async def embed(texts: list[str], *, feature: str = "unknown") -> list[list[float]]:
     """Embed texts for the RAG vector layer.
 
     Uses the real embedding model when a key is configured; otherwise falls back
@@ -145,7 +169,11 @@ async def embed(texts: list[str]) -> list[list[float]]:
     """
     if not texts:
         return []
-    if not settings.AI_API_KEY or not settings.EMBEDDING_MODEL:
+    if (
+        not settings.AI_API_KEY
+        or not settings.EMBEDDING_MODEL
+        or await cost.over_ceiling()
+    ):
         return [_hash_embed(t) for t in texts]
     started = time.perf_counter()
     try:
@@ -154,7 +182,7 @@ async def embed(texts: list[str]) -> list[list[float]]:
         # Don't fail the caller — degrade to the offline embedding.
         log.warning("embed_fallback", error=type(exc).__name__, detail=str(exc)[:200])
         return [_hash_embed(t) for t in texts]
-    _record_call(resp, started, "embed")
+    await _record_call(resp, started, "embed", feature, embedding=True)
     return [d.embedding for d in resp.data]
 
 
@@ -198,18 +226,33 @@ def _map_ai_error(exc: Exception) -> AIGenerationError:
     return AIGenerationError("AI xidməti əlçatmazdır.")
 
 
-def _record_call(resp: Any, started: float, kind: str) -> None:
-    """Log + count an AI call and its token usage."""
+async def _record_call(
+    resp: Any, started: float, kind: str, feature: str, *, embedding: bool = False
+) -> None:
+    """Log, count and cost an AI call.
+
+    The one place every model call passes through on its way out, which is why
+    spend accounting lives here rather than at each of the dozen call sites.
+    """
     elapsed = time.perf_counter() - started
-    tokens = getattr(getattr(resp, "usage", None), "total_tokens", None)
+    usage = getattr(resp, "usage", None)
+    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+    tokens = getattr(usage, "total_tokens", None)
     log.info(
         "ai_call",
         model=settings.AI_MODEL,
         tokens_used=tokens,
         latency_ms=int(elapsed * 1000),
         kind=kind,
+        feature=feature,
     )
     metrics.ai_calls_total.labels(kind).inc()
     metrics.ai_latency_seconds.labels(kind).observe(elapsed)
     if tokens:
         metrics.ai_tokens_total.inc(tokens)
+    if not embedding:
+        call_context.bump()
+    await cost.record(
+        feature, settings.AI_MODEL, prompt_tokens, completion_tokens, embedding=embedding
+    )

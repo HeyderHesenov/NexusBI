@@ -11,15 +11,24 @@ _DEMO_HINT = "Demo verilənləri: sales (satışlar), customers (müştərilər)
 _MAX_QUESTIONS = 6
 
 
-async def plan_dashboard(goal: str, schema_hint: str = "") -> list[str]:
-    """Return 4–6 distinct NL questions covering ``goal``; [] on failure."""
+async def plan_dashboard(
+    goal: str, schema_hint: str = "", *, max_questions: int = _MAX_QUESTIONS
+) -> list[str]:
+    """Return up to ``max_questions`` distinct NL questions covering ``goal``; [] on failure.
+
+    The bound is the caller's, not the prompt's: each question costs about three
+    completions downstream, so it is the single biggest lever on what generating
+    a dashboard charges. See ``tiers.questions_per_dashboard``.
+    """
     try:
         user = DASHBOARD_PLANNER_USER_PROMPT.format(
             goal=goal, schema_hint=schema_hint or _DEMO_HINT
         )
-        raw = await chat_json(DASHBOARD_PLANNER_PROMPT, user, temperature=0.4)
+        raw = await chat_json(
+            DASHBOARD_PLANNER_PROMPT, user, temperature=0.4, feature="dashboard_planner"
+        )
         questions = [q.strip() for q in raw.get("questions", []) if isinstance(q, str) and q.strip()]
-        return questions[:_MAX_QUESTIONS]
+        return questions[:max_questions]
     except Exception as exc:  # noqa: BLE001 — caller decides how to degrade
         _log.warning("dashboard_plan_failed", error=type(exc).__name__, detail=str(exc)[:200])
         return []

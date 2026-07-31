@@ -118,6 +118,57 @@ async def test_ready_reports_ai_ok_when_configured(client: AsyncClient, monkeypa
     assert resp.json()["components"]["ai"] == "ok"
 
 
+async def test_ready_reports_an_exhausted_budget_without_gating(client: AsyncClient, monkeypatch):
+    """An exhausted budget is a degraded AI, not an unready app — the product
+    still serves from its deterministic paths."""
+    from app.billing import cost
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "AI_API_KEY", "k", raising=False)
+    monkeypatch.setattr(settings, "AI_MODEL", "gpt-4o", raising=False)
+    monkeypatch.setattr(settings, "AI_PRICE_INPUT_USD_PER_1M", 2.50, raising=False)
+    monkeypatch.setattr(settings, "AI_PRICE_OUTPUT_USD_PER_1M", 10.00, raising=False)
+    monkeypatch.setattr(settings, "AI_DAILY_USD_CEILING", 1.0, raising=False)
+    await cost.record("text2sql", "gpt-4o", 400_000, 40_000)  # $1.40
+    cost.reset_cache()
+
+    resp = await client.get("/ready")
+    assert resp.status_code == 200, resp.text
+    assert "büdcə" in resp.json()["components"]["ai"]
+    cost.reset_cache()
+
+
+def test_an_unpriced_ceiling_is_warned_about_at_startup(monkeypatch, capsys):
+    """A ceiling with zero prices never trips — every call costs 0. Silent
+    protection that does not protect is worse than none.
+
+    capsys rather than caplog: structlog renders straight to stdout here, so the
+    stdlib logging capture sees nothing.
+    """
+    from app.config import settings
+    from app.main import _assert_production_secrets
+
+    monkeypatch.setattr(settings, "DEMO_MODE", False, raising=False)
+    monkeypatch.setattr(settings, "AI_API_KEY", "k", raising=False)
+    monkeypatch.setattr(settings, "AI_DAILY_USD_CEILING", 10.0, raising=False)
+    monkeypatch.setattr(settings, "AI_PRICE_INPUT_USD_PER_1M", 0.0, raising=False)
+    monkeypatch.setattr(settings, "AI_PRICE_OUTPUT_USD_PER_1M", 0.0, raising=False)
+    _assert_production_secrets()
+    assert "ai_ceiling_without_prices" in capsys.readouterr().out
+
+
+def test_a_priced_ceiling_is_not_warned_about(monkeypatch, capsys):
+    from app.config import settings
+    from app.main import _assert_production_secrets
+
+    monkeypatch.setattr(settings, "DEMO_MODE", False, raising=False)
+    monkeypatch.setattr(settings, "AI_API_KEY", "k", raising=False)
+    monkeypatch.setattr(settings, "AI_DAILY_USD_CEILING", 10.0, raising=False)
+    monkeypatch.setattr(settings, "AI_PRICE_INPUT_USD_PER_1M", 2.50, raising=False)
+    _assert_production_secrets()
+    assert "ai_ceiling_without_prices" not in capsys.readouterr().out
+
+
 def test_production_boots_without_an_ai_key(monkeypatch):
     """A keyless self-hosted install is supported, not a boot failure.
 

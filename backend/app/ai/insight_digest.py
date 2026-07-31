@@ -30,7 +30,10 @@ async def summarize_change(
             prev=json.dumps(prev_rows[:_MAX_ROWS], ensure_ascii=False, default=str),
             curr=json.dumps(curr_rows[:_MAX_ROWS], ensure_ascii=False, default=str),
         )
-        raw = await chat_json(INSIGHT_DIGEST_PROMPT, user, temperature=0.2, localize=True)
+        raw = await chat_json(
+            INSIGHT_DIGEST_PROMPT, user, temperature=0.2, localize=True,
+            feature="insight_digest",
+        )
         if raw.get("notable") and isinstance(raw.get("insight"), str) and raw["insight"].strip():
             return raw["insight"].strip()
         return None

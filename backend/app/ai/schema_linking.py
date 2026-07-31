@@ -126,7 +126,7 @@ async def _descriptor_embeddings(
         hit = await cache.get(key)
         if isinstance(hit, dict) and all(t in hit for t in tables):
             return hit
-    vectors = await client.embed([descriptors[t] for t in tables])
+    vectors = await client.embed([descriptors[t] for t in tables], feature="schema_linking")
     if len(vectors) != len(tables):
         return None
     out = {t: vectors[i] for i, t in enumerate(tables)}
@@ -150,7 +150,7 @@ async def select_relevant(
         table_vecs = await _descriptor_embeddings(descriptors, cache)
         if table_vecs is None:
             return format_schema_for_prompt(schema)
-        qvec = np.asarray((await client.embed([nl_query]))[0], dtype=float)
+        qvec = np.asarray((await client.embed([nl_query], feature="schema_linking"))[0], dtype=float)
         qnorm = float(np.linalg.norm(qvec))
         # Score each table once (query norm hoisted). If descriptor and query vectors
         # disagree on dimension — e.g. one served from a real-model cache, the other a

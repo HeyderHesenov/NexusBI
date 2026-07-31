@@ -243,3 +243,45 @@ def test_no_hand_quoted_table_interpolation():
         "Hand-quoted identifier in composed SQL — breaks on MySQL, whose default "
         f"sql_mode reads \"x\" as a string literal. Use quote_ident: {offenders}"
     )
+
+
+def test_every_completion_is_bounded_by_max_tokens():
+    """An unbounded completion is an unbounded bill.
+
+    ai/client.py holds the only calls into the chat API, and each must pass
+    max_tokens. A fourth helper added later that forgets fails here rather than
+    in the invoice.
+    """
+    import re
+
+    source = (_APP / "ai" / "client.py").read_text(encoding="utf-8")
+    creates = re.findall(r"chat\.completions\.create\((.*?)\n        \)", source, re.S)
+    assert creates, "no chat.completions.create call found — did the file move?"
+    missing = [c for c in creates if "max_tokens" not in c]
+    assert not missing, (
+        "every chat.completions.create must pass max_tokens; "
+        f"{len(missing)} of {len(creates)} call(s) do not"
+    )
+
+
+def test_ai_call_sites_name_their_feature():
+    """Unattributed spend is spend you cannot act on.
+
+    Every chat_*/embed call outside client.py must pass feature=..., otherwise
+    its cost lands in ai_spend_daily under "unknown" and the operator cannot
+    tell which part of the product is expensive.
+    """
+    import re
+
+    offenders = []
+    for path in _python_files():
+        if path.name == "client.py" and path.parent.name == "ai":
+            continue
+        text = path.read_text(encoding="utf-8")
+        for match in re.finditer(
+            r"\b(chat_json|chat_text|chat_tools|embed)\(((?:[^()]|\([^()]*\))*)\)", text, re.S
+        ):
+            if "feature=" not in match.group(2):
+                offenders.append(f"{_module_name(path)}: {match.group(1)}")
+
+    assert not offenders, "AI calls without feature=: " + ", ".join(sorted(set(offenders)))

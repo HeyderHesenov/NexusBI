@@ -105,7 +105,7 @@ async def index_assets(db: AsyncSession, user_id: str) -> int:
         await db.flush()  # persist any dup/orphan deletions above
         return 0
 
-    vectors = await client.embed([t[2] for t in to_embed])
+    vectors = await client.embed([t[2] for t in to_embed], feature="search")
     for (kind, ref_id, text, title, row), vec in zip(to_embed, vectors):
         if not vec:
             continue
@@ -139,7 +139,7 @@ async def search_assets(
     if have is None:
         await index_assets(db, user_id)
 
-    embedded = await client.embed([query])
+    embedded = await client.embed([query], feature="search")
     qvec = np.array(embedded[0] if embedded else [], dtype=float)
     qnorm = float(np.linalg.norm(qvec))
     if qvec.size == 0 or qnorm == 0:
