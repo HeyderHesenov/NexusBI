@@ -15,6 +15,11 @@ def _uuid() -> str:
     return str(uuid.uuid4())
 
 
+# Row-level security posture of a source (see DataSource.rls_mode).
+RLS_OPEN = "open"
+RLS_STRICT = "strict"
+
+
 class DBType(str, enum.Enum):
     postgresql = "postgresql"
     mysql = "mysql"
@@ -33,6 +38,20 @@ class DataSource(Base, TimestampMixin):
     db_type: Mapped[DBType] = mapped_column(Enum(DBType), nullable=False)
     connection_string_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     schema_cache: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    # Deny-by-default switch. "open" = a member with no RLS rule sees every row
+    # (the original behaviour); "strict" = a member with no rule sees NO rows.
+    # The owner is never constrained by either mode.
+    #
+    # The two defaults differ ON PURPOSE: server_default backfills rows that
+    # existed before this column with "open" (an installed source must not change
+    # behaviour under a migration), while the Python-side default makes every
+    # source created from now on locked until the owner grants a rule.
+    # Plain String, not Enum() — an Enum would create a Postgres type that the
+    # SQLite path can't mirror, and every expression here must run on both.
+    rls_mode: Mapped[str] = mapped_column(
+        String(16), nullable=False, default=RLS_STRICT, server_default=RLS_OPEN
+    )
 
     # Freshness SLA (trust layer): how recent the data is expected to be, plus the
     # last time we successfully reached the source.
