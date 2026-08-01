@@ -30,6 +30,41 @@ jobs:
         run: ruff check --select F app
       - name: Tests (pytest)
         run: pytest -q
+      # The NL->SQL eval runs inside the suite above against the deterministic
+      # keyless engine, so it costs nothing and needs no job of its own — which
+      # also means the branch ruleset's required checks stay as they are.
+      # `always()`: a red suite is exactly when the score is worth reading.
+      - name: Publish nl2sql_exact@1
+        if: always()
+        run: |
+          test -f eval-report.json || { echo "no eval report produced"; exit 0; }
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          r = json.load(open("eval-report.json"))
+          def row(name, e):
+              score = "n/a" if e["score"] is None else f"{e['score']:.2f}"
+              return f"| {name} | {score} | {e['correct']}/{e['total']} |"
+          print(f"### NL→SQL eval — `nl2sql_exact@1` (engine: `{r['engine']}`)\n")
+          print("| slice | score | correct |")
+          print("|---|---|---|")
+          print(row("core (gated)", r["by_tier"]["core"]))
+          print(row("full", r["by_tier"]["full"]))
+          print(row("**all**", r["overall"]))
+          print(row("az", r["by_lang"]["az"]))
+          print(row("en", r["by_lang"]["en"]))
+          if r["failures"]:
+              print(f"\n<details><summary>{len(r['failures'])} unsolved</summary>\n")
+              for f in r["failures"]:
+                  print(f"- `{f['id']}` ({f['tier']}) — {f['question']}")
+              print("\n</details>")
+          PY
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nl2sql-eval-report
+          path: backend/eval-report.json
+          if-no-files-found: ignore
 
   frontend:
     name: Frontend (build)
