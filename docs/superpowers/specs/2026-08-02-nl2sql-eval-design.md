@@ -146,21 +146,47 @@ a capable engine, and that number is supposed to move when the model changes.
 
 ## Measured, 2026-08-02
 
-Engine `deterministic_fallback`, 80 cases:
+80 cases, both engines. The `llm` column is `gpt-4o` at `temperature=0`.
 
-| slice | `nl2sql_exact@1` | |
+| slice | `deterministic_fallback` | `llm` (gpt-4o) |
 |---|---|---|
-| core (gated) | **1.00** | 40/40 |
-| full | 0.00 | 0/40 |
-| all | 0.50 | 40/80 |
-| az | 0.50 | 20/40 |
-| en | 0.50 | 20/40 |
+| core (gated) | **1.00** (40/40) | **1.00** (40/40) |
+| full | 0.00 (0/40) | 0.95 (38/40) |
+| all | 0.50 (40/80) | **0.97** (78/80) |
+| az | 0.50 (20/40) | 0.97 (39/40) |
+| en | 0.50 (20/40) | 0.97 (39/40) |
 
-A keyword heuristic scoring ~0 outside its envelope is the expected and correct
+A keyword heuristic scoring 0 outside its envelope is the expected and correct
 reading, not a failure — the roadmap anticipated it ("eval pis rəqəm qaytara
-bilər… Bu *yaxşı* uğursuzluqdur"). The number's job is to make the gap between
-the offline fallback and the real model visible for the first time, and to let
-Faza 2 split its budget between features and quality by arithmetic.
+bilər… Bu *yaxşı* uğursuzluqdur"). What the pair of columns buys is the thing
+that did not exist before: **the cost of losing the model is now a number.** When
+the key is missing, the rate limit trips or the daily ceiling closes, answer
+quality goes 0.97 → 0.50, and the loss is entirely in questions needing a join,
+a filter or a subquery. That is the argument for or against widening the
+rule-based engine, made with arithmetic instead of intuition.
+
+The paid run also **cross-validates the golden set**: an independent model
+agreeing with 78 of 80 hand-written references is strong evidence the references
+are right, which no amount of internal review could establish.
+
+### The two the model missed
+
+Both are the same pair — "how many customers have no purchase event". The model
+answered with customers having no row in `sales`; the reference counts customers
+with no `purchase` row in `events` (40 vs 0). The first wording ("how many
+customers never purchased") was genuinely ambiguous on this schema, since a sale
+*is* a purchase, so it was tightened to name the event. **The model still went to
+`sales`** even though `events.event_type` advertises `'purchase'` among its
+sample values — so this is a real model error, now cleanly attributable rather
+than an artifact of the question. It stays in the set.
+
+### Spend from a paid run does not reach the ledger
+
+The eval runs under pytest against the test database, and `conftest` drops the
+schema at teardown, so `ai_spend_daily` never keeps the rows — `cost.record`
+logs `ai_spend_write_failed` and moves on (it never raises, by design). Nothing
+to fix: this is developer traffic against a throwaway database, not production.
+Just budget it by hand — roughly **$0.22 per full run** at ~860 tokens × 80 calls.
 
 ## What the first run found
 

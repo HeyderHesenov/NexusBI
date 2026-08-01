@@ -398,8 +398,19 @@ hər PR-də **sıfır API xərcinə** offline mühərriki qiymətləndirir və `
 ratchet mərtəbəsi ilə **qapıdır**; real model istəyə bağlıdır
 (`NEXUSBI_EVAL_LLM=1`, ~$0.22) və yalnız hesabatdır.
 
-Ölçüldü 2026-08-02 — `nl2sql_exact@1`: **core 1.00 · full 0.00 · ümumi 0.50**
-(dil parity: az 0.50 · en 0.50). Dizayn və yeni hal əlavə etmə qaydası:
+Ölçüldü 2026-08-02 — `nl2sql_exact@1`:
+
+| təbəqə | offline fallback | gpt-4o |
+|---|---|---|
+| core (qapı) | **1.00** (40/40) | **1.00** (40/40) |
+| full | 0.00 (0/40) | 0.95 (38/40) |
+| **ümumi** | **0.50** (40/80) | **0.97** (78/80) |
+| az / en | 0.50 / 0.50 | 0.97 / 0.97 |
+
+İki sütunun mənası budur: **modeli itirməyin qiyməti artıq rəqəmdir** — açar
+yoxdursa, rate-limit dəyibsə və ya gündəlik tavan bağlanıbsa cavab keyfiyyəti
+0.97 → 0.50 düşür, itkinin hamısı isə join/filtr/alt-sorğu tələb edən suallardadır.
+Dizayn və yeni hal əlavə etmə qaydası:
 `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
 **Frontend Vitest (610 test):** lib (CSV formula-injection escape · sample queries · login hint ·

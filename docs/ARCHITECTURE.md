@@ -273,9 +273,12 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   execute against ONE seeded snapshot, so the demo live-feed multipliers cannot make two runs
   disagree. Because `conftest` blanks `AI_API_KEY`, the run scores the deterministic
   fallback at zero cost inside the normal suite; the real model is opt-in
-  (`NEXUSBI_EVAL_LLM=1`, ~$0.22) and reported, never gated. Measured 2026-08-02:
-  `nl2sql_exact@1` **1.00 core (gated by a ratchet floor) · 0.00 full · 0.50 overall**,
-  parity az 0.50 / en 0.50. CI publishes the table to the job summary and uploads
+  (`NEXUSBI_EVAL_LLM=1`, ~$0.22) and reported, never gated. Measured 2026-08-02,
+  `nl2sql_exact@1`: fallback **0.50** overall (1.00 core — gated by a ratchet floor —
+  and 0.00 full), gpt-4o **0.97** (1.00 core / 0.95 full), parity 0.97 in both languages.
+  The pair is the point: **losing the model costs 0.97 → 0.50**, entirely in questions
+  needing a join, a filter or a subquery — so the case for widening the offline engine
+  is now arithmetic. CI publishes the table to the job summary and uploads
   `eval-report.json`; design and the rule for adding cases live in
   `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus
