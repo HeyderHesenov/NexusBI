@@ -100,10 +100,18 @@ and price of the 5 most expensive products" sits in the `full` tier: the
 rule-based engine returns a fixed `name, price, stock_quantity` triple there.
 
 **Known limitation** (shared with every execution-accuracy benchmark): a
-candidate can be right by coincidence. `az-distinct-products-sold` is scored
-correct because `COUNT(*) FROM products` and `COUNT(DISTINCT product_name) FROM
-sales` are both 20 on this data. Reference-SQL grading cannot distinguish that
-from understanding; only a larger, more separated dataset can.
+candidate can be right by coincidence, and no amount of grading rigor can tell
+that apart from understanding. The first run turned up a concrete instance —
+"how many distinct products were sold" was scored correct because `COUNT(*) FROM
+products` and `COUNT(DISTINCT product_name) FROM sales` are both 20 on this data,
+every product having been sold. It was replaced with the same question over
+`category` (5 distinct, vs a 5-row grouped answer from the engine), which
+discriminates.
+
+**The rule that follows:** a case whose right and wrong answers produce the same
+result set is a bad case, because it can neither catch a regression nor credit an
+improvement. Check new cases for this — it is not the same as tuning the set to
+the current engine, which would be authoring to the answer key.
 
 ## Tiers, and the ratchet
 
@@ -143,9 +151,9 @@ Engine `deterministic_fallback`, 80 cases:
 | slice | `nl2sql_exact@1` | |
 |---|---|---|
 | core (gated) | **1.00** | 40/40 |
-| full | 0.03 | 1/40 |
-| all | 0.51 | 41/80 |
-| az | 0.53 | 21/40 |
+| full | 0.00 | 0/40 |
+| all | 0.50 | 40/80 |
+| az | 0.50 | 20/40 |
 | en | 0.50 | 20/40 |
 
 A keyword heuristic scoring ~0 outside its envelope is the expected and correct

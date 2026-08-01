@@ -274,8 +274,8 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   disagree. Because `conftest` blanks `AI_API_KEY`, the run scores the deterministic
   fallback at zero cost inside the normal suite; the real model is opt-in
   (`NEXUSBI_EVAL_LLM=1`, ~$0.22) and reported, never gated. Measured 2026-08-02:
-  `nl2sql_exact@1` **1.00 core (gated by a ratchet floor) · 0.03 full · 0.51 overall**,
-  parity az 0.53 / en 0.50. CI publishes the table to the job summary and uploads
+  `nl2sql_exact@1` **1.00 core (gated by a ratchet floor) · 0.00 full · 0.50 overall**,
+  parity az 0.50 / en 0.50. CI publishes the table to the job summary and uploads
   `eval-report.json`; design and the rule for adding cases live in
   `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus
