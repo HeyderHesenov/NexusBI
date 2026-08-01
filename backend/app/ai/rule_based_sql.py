@@ -28,9 +28,13 @@ _EVENT_WORDS = (
 
 _DIMENSIONS: list[tuple[tuple[str, ...], str, str]] = [
     # (keywords, column expression, output label)
-    (("category", "kateqoriya"), "category", "category"),
+    # English -y → -ies plurals are listed explicitly: "categories" does not
+    # contain "category", so substring matching drops the dimension entirely and
+    # the question falls through to an unrelated top-N. (-s plurals like
+    # "regions"/"products" contain their singular and need no entry.)
+    (("category", "categories", "kateqoriya"), "category", "category"),
     (("region", "bölgə", "bolge"), "region", "region"),
-    (("country", "ölkə", "olke"), "country", "country"),
+    (("country", "countries", "ölkə", "olke"), "country", "country"),
     (("month", "ay ", "aylıq", "ayliq"), "substr(sale_date, 1, 7)", "month"),
     (("date", "gün", "tarix"), "sale_date", "sale_date"),
     (("product", "məhsul", "mehsul"), "product_name", "product_name"),
@@ -41,10 +45,20 @@ _DIMENSIONS: list[tuple[tuple[str, ...], str, str]] = [
 # calendar order, so it is ORDER BY the dimension ASC, not ranked by its measure.
 # (event_date is the events table's own daily axis, remapped in _pick_dimension.)
 _TIME_LABELS = {"month", "sale_date", "event_date"}
+# Row cap for a time series when the question named no number — roughly a year of
+# daily points. See the call site for why a trend must not inherit the top-N 20.
+_TREND_LIMIT = 400
 
 _DESC_WORDS = ("top", "ən çox", "en cox", "highest", "most", "biggest", "ən böyük")
 _ASC_WORDS = ("bottom", "ən az", "en az", "lowest", "least", "smallest", "ən kiçik")
 _COUNT_WORDS = ("count", "say", "neçə", "nece", "number of", "how many")
+# Words that merely CONTAIN a count keyword and would otherwise flip the measure
+# to COUNT(*): "country" contains "count", "sayı" is a wanted Azerbaijani suffix
+# form of "say" but "saytı" is not. Matching cannot be made word-exact instead —
+# Azerbaijani is agglutinative, so "müştəri sayı" must still match "say".
+# The demo schema has a `country` column, so this collision fires on every
+# "<measure> by country" question and silently answers a different one.
+_COUNT_FALSE_FRIENDS = ("country", "countries", "discount", "account")
 
 
 def _pick_table(q: str) -> str:
@@ -59,6 +73,13 @@ def _pick_table(q: str) -> str:
     if any(w in q for w in _PRODUCT_WORDS):
         return "products"
     return "sales"
+
+
+def _wants_count(q: str) -> bool:
+    """True when the question asks for a row count rather than a measure."""
+    for word in _COUNT_FALSE_FRIENDS:
+        q = q.replace(word, " ")
+    return any(w in q for w in _COUNT_WORDS)
 
 
 def _pick_limit(q: str, default: int) -> int:
@@ -122,7 +143,7 @@ def generate_sql_fallback(nl_query: str) -> Text2SQLResult:
     direction = _direction(q)
 
     # Pure count: "how many customers", "neçə məhsul".
-    if any(w in q for w in _COUNT_WORDS) and "by" not in q and "üzrə" not in q:
+    if _wants_count(q) and "by" not in q and "üzrə" not in q:
         dim = _pick_dimension(q, table)
         if dim is None:
             sql = f"SELECT COUNT(*) AS count FROM {table}"
@@ -132,13 +153,19 @@ def generate_sql_fallback(nl_query: str) -> Text2SQLResult:
     dim = _pick_dimension(q, table)
     if dim is not None:
         expr, label = dim
-        if any(w in q for w in _COUNT_WORDS):
+        if _wants_count(q):
             agg, agg_label = "COUNT(*)", "count"
         else:
             agg, agg_label = _metric(table)
-        limit = _pick_limit(q, 20)
+        is_trend = label in _TIME_LABELS
+        # A top-N list is meant to be cut at 20; a time series is not. Truncating
+        # a trend keeps only its earliest points and silently reshapes the chart —
+        # 48 days of events became the first 20. Monthly trends never exposed this
+        # because 12 < 20. Bounded rather than unlimited, in the same spirit as
+        # `demo_data._DEMO_MAX_ROWS`.
+        limit = _pick_limit(q, _TREND_LIMIT if is_trend else 20)
         # Time trend → chronological; every other dimension → top-N by measure.
-        order_by = f"ORDER BY {expr} ASC" if label in _TIME_LABELS else f"ORDER BY {agg} {direction}"
+        order_by = f"ORDER BY {expr} ASC" if is_trend else f"ORDER BY {agg} {direction}"
         sql = (
             f"SELECT {expr} AS {label}, {agg} AS {agg_label} "
             f"FROM {table} GROUP BY {expr} "

@@ -87,6 +87,57 @@ def test_default_preview_is_bounded():
     assert len(rows) <= 50
 
 
+@pytest.mark.parametrize(
+    "nl", ["customer spend by country", "ölkə üzrə müştəri xərci"]
+)
+def test_country_question_keeps_its_measure(nl):
+    """"country" contains "count" — the measure must not flip to COUNT(*).
+
+    Substring keyword matching read every "<measure> by country" question as a
+    row count and answered a different question. Found by the NL->SQL eval.
+    """
+    result, columns, _ = _run(nl)
+    assert "sum(total_spent)" in result.sql.lower()
+    assert "count(*)" not in result.sql.lower()
+    assert "country" in columns
+
+
+def test_count_by_country_still_counts():
+    """The false-friend guard must not disarm a genuine count question."""
+    result, columns, rows = _run("customer count by country")
+    assert "count(*)" in result.sql.lower()
+    assert sum(r["count"] for r in rows) == 60
+
+
+@pytest.mark.parametrize("nl", ["events by date", "gün üzrə hadisələr"])
+def test_time_trend_is_not_truncated_to_the_top_n_limit(nl):
+    """A trend keeps every point; only a ranked list is cut at 20.
+
+    The demo model has 48 distinct event dates, so the top-N default silently
+    dropped 28 of them and reshaped the chart. Monthly trends never exposed it
+    because 12 < 20.
+    """
+    _, _, rows = _run(nl)
+    assert len(rows) == 48
+
+
+def test_named_number_still_bounds_a_trend():
+    _, _, rows = _run("events by date last 5")
+    assert len(rows) == 5
+
+
+@pytest.mark.parametrize(
+    "nl,dimension",
+    # "countries" must route to customers — `country` is not a column on sales.
+    [("top 3 categories by revenue", "category"), ("customer spend by countries", "country")],
+)
+def test_english_ies_plurals_match_their_dimension(nl, dimension):
+    """"categories" does not contain "category", so the dimension was dropped
+    entirely and the question fell through to an unrelated top-N."""
+    _, columns, _ = _run(nl)
+    assert dimension in columns
+
+
 def test_products_by_revenue_uses_sales():
     """A sales metric must route to the sales table, ordering by revenue."""
     result, columns, _ = _run("top 5 products by revenue")

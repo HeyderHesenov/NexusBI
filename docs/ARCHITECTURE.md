@@ -255,7 +255,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   The e2e job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step
   kills its background processes on exit, the backend boot, `alembic upgrade head`, health-wait,
   and `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (706) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (819) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
@@ -265,6 +265,22 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   stores/panels — metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
   Playwright). E2E: `frontend/e2e/smoke.spec.ts` over login → query → dashboards against the preview.
+- **AI evaluation** (`backend/tests/golden/`, `test_eval_nl2sql.py`): 80 `(question,
+  reference SQL, shape assertion)` triples — 40 questions mirrored in az and en — scored
+  through the real `query_service._demo_pipeline` by **result-set equivalence**, never SQL
+  string match (column names, column order and, unless the question asks for an order, row
+  order are all free to vary; the values that share a row are not). Candidate and reference
+  execute against ONE seeded snapshot, so the demo live-feed multipliers cannot make two runs
+  disagree. Because `conftest` blanks `AI_API_KEY`, the run scores the deterministic
+  fallback at zero cost inside the normal suite; the real model is opt-in
+  (`NEXUSBI_EVAL_LLM=1`, ~$0.22) and reported, never gated. Measured 2026-08-02,
+  `nl2sql_exact@1`: fallback **0.50** overall (1.00 core — gated by a ratchet floor —
+  and 0.00 full), gpt-4o **0.97** (1.00 core / 0.95 full), parity 0.97 in both languages.
+  The pair is the point: **losing the model costs 0.97 → 0.50**, entirely in questions
+  needing a join, a filter or a subquery — so the case for widening the offline engine
+  is now arithmetic. CI publishes the table to the job summary and uploads
+  `eval-report.json`; design and the rule for adding cases live in
+  `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus
   `ai_latency_seconds` and `rag_retrievals_total` (hit/miss) at `/metrics`.
   Structured logs via structlog.

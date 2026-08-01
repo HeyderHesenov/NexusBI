@@ -367,7 +367,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 706 test
+cd backend && pytest        # 819 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -384,8 +384,34 @@ metrik ağacı (roll-up) · data müqavilələri
 (test_snapshots) · biliklər qrafı (test_graph) · BA frameworks + mermaid sanitizer (test_ba) ·
 AutoML guard zənciri + limitlər (test_automl) · LLM xərc uçotu + proporsional kvota
 (test_ai_cost, test_usage_quota) · RLS deny-by-default: scope matrisi + uçdan-uca kilid
-(test_rls_mode)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
+(test_rls_mode) · NL→SQL eval harness: 80 golden üçlük + qraderin öz testləri
+(test_eval_nl2sql, test_eval_grader)** · təhlükəsizlik (pentest fixes). Testlər **hermetik** — `conftest`
 `AI_API_KEY=""` qoyur (embed→hash, demo→rule-based; CI ilə eyni, real şəbəkə yox).
+
+### NL→SQL dəqiqliyi ölçülür
+
+`backend/tests/golden/nl2sql.jsonl` — 40 sual, az və en-də eyni cavabla, yəni 80 üçlük.
+Qiymətləndirmə **nəticə-dəsti ekvivalentliyidir**, SQL sətir uyğunluğu yox: sütun adları,
+sütun sırası və (sual sıra tələb etmirsə) sətir sırası sərbəst dəyişə bilər — bir sətirdə
+hansı dəyərlərin yan-yana durduğu isə yox. `AI_API_KEY` testlərdə boş olduğu üçün ölçmə
+hər PR-də **sıfır API xərcinə** offline mühərriki qiymətləndirir və `core` təbəqə üzrə
+ratchet mərtəbəsi ilə **qapıdır**; real model istəyə bağlıdır
+(`NEXUSBI_EVAL_LLM=1`, ~$0.22) və yalnız hesabatdır.
+
+Ölçüldü 2026-08-02 — `nl2sql_exact@1`:
+
+| təbəqə | offline fallback | gpt-4o |
+|---|---|---|
+| core (qapı) | **1.00** (40/40) | **1.00** (40/40) |
+| full | 0.00 (0/40) | 0.95 (38/40) |
+| **ümumi** | **0.50** (40/80) | **0.97** (78/80) |
+| az / en | 0.50 / 0.50 | 0.97 / 0.97 |
+
+İki sütunun mənası budur: **modeli itirməyin qiyməti artıq rəqəmdir** — açar
+yoxdursa, rate-limit dəyibsə və ya gündəlik tavan bağlanıbsa cavab keyfiyyəti
+0.97 → 0.50 düşür, itkinin hamısı isə join/filtr/alt-sorğu tələb edən suallardadır.
+Dizayn və yeni hal əlavə etmə qaydası:
+`docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
 **Frontend Vitest (610 test):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·

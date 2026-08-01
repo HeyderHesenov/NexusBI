@@ -119,6 +119,23 @@ async def db_session() -> AsyncGenerator:
         await session.commit()
 
 
+def pytest_terminal_summary(terminalreporter) -> None:
+    """Surface the NL->SQL eval number in the terminal report.
+
+    A passing test's stdout is captured and discarded, so without this the metric
+    would only exist inside `eval-report.json`. Prints nothing unless the eval
+    actually ran in this session (see `tests.golden.report`), so a stale report
+    file is never mistaken for a fresh measurement.
+    """
+    from tests.golden import report
+
+    lines = report.terminal_lines()
+    if lines:
+        terminalreporter.write_sep("─", "eval")
+        for line in lines:
+            terminalreporter.write_line(line)
+
+
 def seed_sqlite_file(schema_sql: str = "CREATE TABLE t (x INTEGER)") -> str:
     """Create an on-disk SQLite DB inside UPLOAD_DIR → its async conn string.
 
