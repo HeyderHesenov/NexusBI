@@ -29,6 +29,19 @@ wrong answer.
 a real source, schema linking and RLS), Power BI/DAX, and copilot tool selection.
 They can have their own golden sets later and reuse the grader and report here.
 
+Also out of scope, and easy to miss because it sits *inside* the production call:
+the **RAG grounding block**. In production `query_service` builds `prompt_context`
+— the metric catalog, the previous turn, and `retrieval.retrieve_context`'s
+similar prior NL→SQL pairs — and passes it to `_demo_pipeline`. The harness passes
+the question alone, so every number here is **cold-start, retrieval-free**.
+
+That is a deliberate trade, not an oversight. Real grounding would need a user
+row and an embedding index, and would make the score depend on whatever query
+history happened to be indexed — the measurement would stop being reproducible,
+which is the one property a regression gate cannot give up. The cost is stated
+plainly: a regression in `retrieval.retrieve_context` will not show up in this
+number. If retrieval quality needs a gate, it needs its own golden set.
+
 ## Two engines, one golden set
 
 | Engine | When | Cost | Gated |
@@ -113,6 +126,17 @@ result set is a bad case, because it can neither catch a regression nor credit a
 improvement. Check new cases for this — it is not the same as tuning the set to
 the current engine, which would be authoring to the answer key.
 
+The post-merge review of this PR found the rule broken by the same commit that
+wrote it: `products-never-sold` expected `scalar: 0`, because the seed sells every
+product, so its `NOT IN` predicate was empty and **any** candidate whose filter
+happened to match nothing scored correct — `WHERE stock_quantity = 0` included. It
+was replaced with the same shape narrowed to one region (`scalar: 16`), which
+separates all three outcomes: the right answer is 16, an empty subquery gives 20,
+and the old degenerate form gives 0. `customers-without-purchase-event`
+(`scalar: 40`) keeps the plain `NOT IN` pattern covered either way. The lesson is
+that a zero-valued expectation deserves a second look: zero is what an accident
+returns.
+
 ## Tiers, and the ratchet
 
 * **`core`** — the rule-based engine's documented envelope: aggregation by a
@@ -168,6 +192,18 @@ rule-based engine, made with arithmetic instead of intuition.
 The paid run also **cross-validates the golden set**: an independent model
 agreeing with 78 of 80 hand-written references is strong evidence the references
 are right, which no amount of internal review could establish.
+
+**Re-measured after the `products-never-sold` swap** (2026-08-02, same gpt-4o, second
+paid run, ~$0.22): identical — 0.97 overall, 1.00 core / 0.95 full, parity 0.97 in
+both languages, and **the same two misses**. So the table describes the current set,
+not a historical one.
+
+The replacement case is where the re-run earned its cost. The model answered it with
+an anti-join — `LEFT JOIN sales s ON p.name = s.product_name AND s.region = 'North'
+WHERE s.id IS NULL` — against a reference written as `NOT IN (subquery)`. Two
+independent formulations, same 16 rows, graded on result sets rather than SQL text.
+That is the evidence the old case could never produce: it returned 0, so agreement
+proved nothing.
 
 ### The two the model missed
 

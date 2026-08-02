@@ -13,7 +13,7 @@ from app.models.user import User
 from app.schemas.comment import CommentResponse
 from app.schemas.dashboard import DashboardFilterResponse, DashboardFilterSpec, DashboardResponse
 from app.schemas.embed import BrandConfigResponse, EmbeddedDashboard, SharedDashboard
-from app.services import brand_service, comment_service, embed_service
+from app.services import brand_service, comment_service, embed_service, rls_service
 from app.services import dashboard_service as svc
 from app.services.cache_service import CacheService
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,9 +62,17 @@ async def _shared_filter(
 
     widgets = list(dash.widgets)
     logs = await svc.load_widget_query_logs(db, widgets, dash.user_id)
+    # A locked source contributes no columns either. Its widget already comes back
+    # blank, but accepting a filter on one of its column names and rejecting every
+    # other name answers "does the locked source have a column called X?" one
+    # request at a time. The lock covers the schema, not just the rows.
+    blocked = await rls_service.restricted_datasource_ids(
+        db, {log.datasource_id for log in logs.values() if log.datasource_id}, None
+    )
     allowed = {
         str(col).lower()
         for log in logs.values()
+        if log.datasource_id not in blocked
         for col in (log.result_data or {}).get("columns", [])
     }
     requested = list(merged)
@@ -98,7 +106,9 @@ async def _owner_brand(db: AsyncSession, user_id: str) -> BrandConfigResponse:
 async def shared_dashboard(token: str, db: DbDep) -> SharedDashboard:
     """Serve a shared dashboard's read-only snapshot + the owner's white-label brand.
 
-    No auth — the token is the secret. Non-white-label owners get NexusBI defaults."""
+    No auth — the token is the secret. Non-white-label owners get NexusBI defaults.
+    ``anonymous=True``: widgets fed by an RLS-restricted source render blank, because
+    a token holder has no identity to grant a rule to."""
     dash = await svc.get_by_token(db, token)
     return SharedDashboard(
         dashboard=DashboardResponse(
@@ -106,7 +116,9 @@ async def shared_dashboard(token: str, db: DbDep) -> SharedDashboard:
             name=dash.name,
             description=dash.description,
             layout=dash.layout,
-            widgets=await svc.widgets_to_response(db, list(dash.widgets), dash.user_id),
+            widgets=await svc.widgets_to_response(
+                db, list(dash.widgets), dash.user_id, anonymous=True
+            ),
         ),
         brand=await _owner_brand(db, dash.user_id),
     )
@@ -114,7 +126,9 @@ async def shared_dashboard(token: str, db: DbDep) -> SharedDashboard:
 
 @router.get("/embed/{token}", response_model=EmbeddedDashboard, dependencies=[_share_limit])
 async def embedded_dashboard(token: str, db: DbDep) -> EmbeddedDashboard:
-    """Serve a read-only embedded dashboard + the owner's white-label brand."""
+    """Serve a read-only embedded dashboard + the owner's white-label brand.
+
+    Same anonymous row scope as the share link: a locked source renders blank."""
     dash = await embed_service.resolve(db, token)  # validates token + embed_enabled
     return EmbeddedDashboard(
         dashboard=DashboardResponse(
@@ -122,7 +136,9 @@ async def embedded_dashboard(token: str, db: DbDep) -> EmbeddedDashboard:
             name=dash.name,
             description=dash.description,
             layout=dash.layout,
-            widgets=await svc.widgets_to_response(db, list(dash.widgets), dash.user_id),
+            widgets=await svc.widgets_to_response(
+                db, list(dash.widgets), dash.user_id, anonymous=True
+            ),
         ),
         brand=await _owner_brand(db, dash.user_id),
     )

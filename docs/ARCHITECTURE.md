@@ -28,8 +28,9 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 |-------|------|----------------|
 | API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, **snapshot**, metric, **metric_tree**, saved_query, billing, branding, decision, integration, copilot, requirement, **ba**, **automl**, scenario, workspace, **data_contract**, **alert**, **search**, **graph**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
-| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, **billing/cost (per-call USD accounting + daily ceiling)**, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS incl. deny-all wrapper), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, graph_view_service, ba_service, automl_service** |
+| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS incl. deny-all wrapper), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, graph_view_service, ba_service, automl_service** |
 | AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding)**, sql_guard, schema_introspector, **schema_linking (wide-schema table selection: embed+cosine top-K + FK closure, metadata-only)**, rule_based_sql/dax, prompt_templates, **call_context (per-request AI call counter → proportional quota)**, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed)** |
+| Billing | `billing/*` | tiers (single source of truth for quotas), usage_service (monthly AI quota), **cost (per-call USD accounting + daily ceiling)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit (Redis-backed, per-process fallback), **leader (scheduler lease), health (/live + /ready), sql_ident (dialect-aware quoting)** |
 | Realtime | `realtime/*` | hub (WS rooms, per-worker), **bus (cross-worker eviction; delivery + presence behind a flag)**, live_refresh (canlı dashboard loop) |
@@ -163,8 +164,10 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   `rls_sql.deny_all_sql`, which wraps the query so even an aggregate returns zero rows).
   New sources are created `strict`. `rls_service.resolve_scope` is the sentinel every read
   path goes through — it distinguishes "no rule" from "no restriction", which a bare rule
-  list cannot. Owner-scoped fan-out paths (live broadcast, public/embed) ask
-  `datasource_is_restricted` and skip locked sources entirely. See SECURITY.md.
+  list cannot. Owner-scoped fan-out paths (live broadcast, public share, embed) render one
+  unfiltered dataset for a whole audience, so they ask `restricted_datasource_ids` instead:
+  a share token names nobody and blanks any restricted source, while the live loop names the
+  room's roster and so keeps ticking for an audience the lock never restricted. See SECURITY.md.
 - **Audit log:** `audit_service.log` appends to `audit_logs` on security-relevant actions
   (datasource create/delete, RLS create/delete, workspace member changes); `GET /audit` lists.
 - **Scenario planning:** `scenario_service` (numpy, no AI, deterministic) — `goal_seek`,
@@ -255,7 +258,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   The e2e job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step
   kills its background processes on exit, the backend boot, `alembic upgrade head`, health-wait,
   and `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (819) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (822) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
@@ -273,12 +276,15 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   execute against ONE seeded snapshot, so the demo live-feed multipliers cannot make two runs
   disagree. Because `conftest` blanks `AI_API_KEY`, the run scores the deterministic
   fallback at zero cost inside the normal suite; the real model is opt-in
-  (`NEXUSBI_EVAL_LLM=1`, ~$0.22) and reported, never gated. Measured 2026-08-02,
+  (`NEXUSBI_EVAL_LLM=1`, ~$0.22) and reported, never gated. Measured 2026-08-02 and
+  re-measured the same day after a golden case was replaced — unchanged,
   `nl2sql_exact@1`: fallback **0.50** overall (1.00 core — gated by a ratchet floor —
   and 0.00 full), gpt-4o **0.97** (1.00 core / 0.95 full), parity 0.97 in both languages.
   The pair is the point: **losing the model costs 0.97 → 0.50**, entirely in questions
   needing a join, a filter or a subquery — so the case for widening the offline engine
-  is now arithmetic. CI publishes the table to the job summary and uploads
+  is now arithmetic. Both numbers are **cold-start**: the harness passes the question
+  without production's `prompt_context`, so RAG grounding is out of scope by design and
+  a retrieval regression will not show here. CI publishes the table to the job summary and uploads
   `eval-report.json`; design and the rule for adding cases live in
   `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus

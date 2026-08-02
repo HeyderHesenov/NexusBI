@@ -138,10 +138,14 @@ Dependabot alerts + security updates, and CodeQL code scanning.
   - The **owner is exempt from the strict deny only.** A rule that names them still
     applies — that instruction was explicit. Without the exemption, locking a source
     would lock its author out of their own data.
-  - Anything that renders one dataset for a whole audience — the live-refresh
-    broadcast, public share links, embeds — refuses to render a **locked** source at
-    all, exactly as it already refused any source carrying a rule. An anonymous
-    viewer can never hold a rule, so there is no scope to render them.
+  - Anything that renders one dataset for a whole audience — public share links,
+    embeds, the live-refresh broadcast — asks `rls_service.restricted_datasource_ids`
+    before sending anything. A share token names no one, so a **locked** source is
+    blanked outright, exactly as any source carrying a rule already was: an anonymous
+    viewer can never hold a rule, so there is no scope to render them. The live loop
+    can name its room (only the owner authenticates; guests arrive as `user_id=None`)
+    and so blanks only what its actual audience is restricted on — it re-reads the
+    roster at send time so a guest joining mid-refresh gets no owner-scoped rows.
   - Enforcement is in the SQL, never after the fetch: `rls_service.resolve_scope`
     decides the scope, `rls_sql.constrain_sql` filters before aggregation, and
     `rls_sql.deny_all_sql` produces the zero-row form. All three fail closed — SQL

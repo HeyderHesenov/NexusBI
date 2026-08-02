@@ -105,6 +105,11 @@ async def _evaluate(cases: list[GoldenCase], expected_engine: str) -> report.Eva
             id=case.id, lang=case.lang, tier=case.tier, question=case.question, correct=False
         )
         try:
+            # The question alone: production also passes `prompt_context` (metric
+            # catalog + previous turn + RAG neighbours), which is deliberately out
+            # of scope — see the design doc. Every score here is cold-start and
+            # retrieval-free, so a regression in `retrieval.retrieve_context` will
+            # not show up in this number.
             sql, _cols, _rows, _conf, provenance = await query_service._demo_pipeline(
                 case.question
             )
@@ -164,7 +169,11 @@ def test_reference_sql_is_sane(case: GoldenCase):
     that executes but answers a different question usually disagrees with its own
     declared shape, and this is where that shows up.
     """
-    rows = demo_data.execute_demo_snapshot([case.reference_sql])[0]
+    # Pinned like every other execution here: `expect` declares exact row counts,
+    # and the live-feed multipliers move revenue enough to cross a HAVING boundary.
+    # Without this the case passes or fails on collection order.
+    with _pinned_live_factors():
+        rows = demo_data.execute_demo_snapshot([case.reference_sql])[0]
     assert rows is not None, f"{case.id}: reference SQL did not execute"
     assert rows, f"{case.id}: reference SQL returned no rows — nothing to grade against"
 

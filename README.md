@@ -367,7 +367,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 819 test
+cd backend && pytest        # 822 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -398,7 +398,8 @@ hər PR-də **sıfır API xərcinə** offline mühərriki qiymətləndirir və `
 ratchet mərtəbəsi ilə **qapıdır**; real model istəyə bağlıdır
 (`NEXUSBI_EVAL_LLM=1`, ~$0.22) və yalnız hesabatdır.
 
-Ölçüldü 2026-08-02 — `nl2sql_exact@1`:
+Ölçüldü 2026-08-02 (golden dəst dəyişəndən sonra **yenidən ölçüldü**, eyni rəqəm) —
+`nl2sql_exact@1`:
 
 | təbəqə | offline fallback | gpt-4o |
 |---|---|---|
@@ -410,7 +411,9 @@ ratchet mərtəbəsi ilə **qapıdır**; real model istəyə bağlıdır
 İki sütunun mənası budur: **modeli itirməyin qiyməti artıq rəqəmdir** — açar
 yoxdursa, rate-limit dəyibsə və ya gündəlik tavan bağlanıbsa cavab keyfiyyəti
 0.97 → 0.50 düşür, itkinin hamısı isə join/filtr/alt-sorğu tələb edən suallardadır.
-Dizayn və yeni hal əlavə etmə qaydası:
+Rəqəmin sərhədi: harness suala **RAG kontekstsiz** cavab verir (istehsalda
+`prompt_context` da ötürülür), yəni bu **soyuq-start** ölçmədir — ölçmənin təkrar
+oluna bilməsi üçün qəsdən belədir. Dizayn və yeni hal əlavə etmə qaydası:
 `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
 **Frontend Vitest (610 test):** lib (CSV formula-injection escape · sample queries · login hint ·

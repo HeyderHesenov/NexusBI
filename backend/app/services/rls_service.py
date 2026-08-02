@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import SchemaNotFoundError
@@ -142,23 +142,64 @@ async def resolve_scope_by_id(
     return await resolve_scope(db, ds, user_id)
 
 
-async def datasource_is_restricted(db: AsyncSession, datasource_id: str) -> bool:
-    """True if this datasource restricts ANYONE — a rule exists, or it is strict.
+async def restricted_datasource_ids(
+    db: AsyncSession, datasource_ids: set[str], viewer_ids: set[str] | None
+) -> set[str]:
+    """Which of these sources may NOT be served as one owner-scoped dataset.
 
-    Used by the live-refresh broadcast and the public/embed path, which render one
-    owner-executed (unfiltered) dataset for a whole audience: if any viewer could
-    be restricted, that dataset must not be sent at all.
+    Every fan-out path — public share, embed, live broadcast — renders a single
+    owner-executed (unfiltered) result for a whole audience, so the question is
+    never "may this viewer read it?" but "could ANYONE in the audience be denied?".
+
+    ``viewer_ids=None`` means the audience is unknown or anonymous: an anonymous
+    viewer can never hold a rule, so anything strict — or carrying any rule at all
+    — is excluded. That is the fail-closed default, and the only correct answer for
+    a share token. A NAMED audience is resolved viewer by viewer through
+    ``scope_for``, which is what lets a dashboard whose only watcher is its owner
+    keep updating over a locked source.
+
+    Two queries regardless of how many sources or viewers are involved: a source
+    that fails to load is reported restricted (we cannot prove anyone may see it).
     """
-    res = await db.execute(
-        select(DataSource.id)
-        .outerjoin(RLSRule, RLSRule.datasource_id == DataSource.id)
-        .where(
-            DataSource.id == datasource_id,
-            or_(DataSource.rls_mode == RLS_STRICT, RLSRule.id.isnot(None)),
+    if not datasource_ids:
+        return set()
+    if viewer_ids is not None and not viewer_ids:
+        # An empty audience is not "everyone is allowed" — it is an audience we
+        # failed to enumerate. Treat it like an unknown one.
+        viewer_ids = None
+
+    rows = await db.execute(select(DataSource).where(DataSource.id.in_(datasource_ids)))
+    sources = {ds.id: ds for ds in rows.scalars().all()}
+    missing = datasource_ids - set(sources)
+
+    if viewer_ids is None:
+        rule_stmt = select(RLSRule.datasource_id).where(
+            RLSRule.datasource_id.in_(datasource_ids)
         )
-        .limit(1)
+        ruled = set((await db.execute(rule_stmt)).scalars().all())
+        return missing | {
+            ds_id
+            for ds_id, ds in sources.items()
+            if ds.rls_mode == RLS_STRICT or ds_id in ruled
+        }
+
+    rule_rows = await db.execute(
+        select(RLSRule).where(
+            RLSRule.datasource_id.in_(datasource_ids), RLSRule.member_id.in_(viewer_ids)
+        )
     )
-    return res.first() is not None
+    by_pair: dict[tuple[str, str], list[RLSRule]] = {}
+    for rule in rule_rows.scalars().all():
+        by_pair.setdefault((rule.datasource_id, rule.member_id), []).append(rule)
+
+    return missing | {
+        ds_id
+        for ds_id, ds in sources.items()
+        if any(
+            scope_for(ds, viewer, by_pair.get((ds_id, viewer), [])).restricted
+            for viewer in viewer_ids
+        )
+    }
 
 
 def apply(rows: list[dict[str, Any]], rules: list[RLSRule]) -> list[dict[str, Any]]:

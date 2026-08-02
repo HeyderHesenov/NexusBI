@@ -43,10 +43,11 @@ class DataSource(Base, TimestampMixin):
     # (the original behaviour); "strict" = a member with no rule sees NO rows.
     # The owner is never constrained by either mode.
     #
-    # The two defaults differ ON PURPOSE: server_default backfills rows that
-    # existed before this column with "open" (an installed source must not change
-    # behaviour under a migration), while the Python-side default makes every
-    # source created from now on locked until the owner grants a rule.
+    # Both defaults are "strict" now and must stay in step: relying on the Python
+    # one alone would leave every non-ORM INSERT (bulk import, ops fix, a cloning
+    # migration) fail-OPEN. Rows that predate the column keep the "open" they were
+    # backfilled with in f3a4b5c6d7e8 — an installed source must not change
+    # behaviour under a migration — and a0b1c2d3e4f5 moved the default off it.
     # Plain String, not Enum() — an Enum would create a Postgres type that the
     # SQLite path can't mirror, and every expression here must run on both.
     rls_mode: Mapped[str] = mapped_column(

@@ -30,11 +30,44 @@ log = get_logger("nexusbi.live")
 _last_run: dict[str, float] = {}
 
 
+async def _room_audience(dash_id: str) -> set[str] | None:
+    """Who will receive this room's broadcast, or None when that can't be answered.
+
+    A share-link guest connects with ``user_id=None`` (``ws._resolve_access``), so a
+    single unnamed participant collapses the whole audience to None — the value
+    every RLS gate downstream reads as "assume someone is restricted". An empty or
+    unreadable roster collapses the same way: not naming anyone is not the same as
+    naming nobody.
+
+    This must keep reading the SAME population ``hub.broadcast`` writes to, or the
+    gate protects a set that isn't the one receiving data. It does in both modes:
+    with the bus off, presence and delivery are both this worker's rooms; with it
+    on, both cross workers through Redis. Anything that changes one has to change
+    the other.
+    """
+    try:
+        roster = await hub.presence(dash_id)
+    except Exception as exc:  # noqa: BLE001 — an unreadable roster is an unknown one
+        log.warning("live_presence_read_failed", dashboard_id=dash_id, error=str(exc)[:200])
+        return None
+    if not roster:
+        return None
+    ids = {p.get("user_id") for p in roster}
+    return None if None in ids else {str(i) for i in ids}
+
+
 async def _refresh_dashboard(dash_id: str, user_id: str) -> None:
-    """Re-run one dashboard's widgets and broadcast the fresh charts."""
+    """Re-run one dashboard's widgets and broadcast the fresh charts.
+
+    The room's roster decides how much of the owner-executed data may leave: see
+    ``dashboard_service.refresh_widget_data``. It is read twice — once to make the
+    decision and once to confirm it still holds at send time — because a guest who
+    joins in between would otherwise receive one tick of owner-scoped rows.
+    """
     from app.services.cache_service import build_cache_service
 
     updates: list[dict] = []
+    audience = await _room_audience(dash_id)
     cache = await build_cache_service()
     try:
         async with AsyncSessionLocal() as db:
@@ -53,7 +86,8 @@ async def _refresh_dashboard(dash_id: str, user_id: str) -> None:
                 # canonical unfiltered snapshot isn't corrupted (clearing the filter
                 # still returns the real baseline).
                 filtered = await dashboard_service.apply_global_filter(
-                    db, user_id, dash_id, dash.global_filter, cache, skip_rls=True
+                    db, user_id, dash_id, dash.global_filter, cache, skip_rls=True,
+                    audience_ids=audience,
                 )
                 updates = [
                     {"widget_id": fw["widget_id"], "chart": fw["chart"].model_dump(mode="json")}
@@ -65,7 +99,9 @@ async def _refresh_dashboard(dash_id: str, user_id: str) -> None:
                     if not widget.query_log_id:
                         continue
                     try:
-                        chart = await dashboard_service.refresh_widget_data(db, widget, user_id, cache)
+                        chart = await dashboard_service.refresh_widget_data(
+                            db, widget, user_id, cache, audience_ids=audience
+                        )
                     except Exception as exc:  # noqa: BLE001 — one widget failing can't sink the tick
                         log.warning("live_widget_failed", widget_id=widget.id, error=str(exc)[:200])
                         continue
@@ -74,8 +110,16 @@ async def _refresh_dashboard(dash_id: str, user_id: str) -> None:
                 await db.commit()
     finally:
         await cache.aclose()
-    if updates:
-        await hub.broadcast(dash_id, {"type": "live_update", "widgets": updates})
+    if not updates:
+        return
+    if audience is not None and await _room_audience(dash_id) != audience:
+        # Someone joined or left while we were querying, so the permissive decision
+        # made above may no longer describe who is listening. Drop this tick rather
+        # than fan out under a stale roster — the next one re-decides with fresh
+        # data, and a live board losing one interval is not a leak.
+        log.info("live_refresh_audience_changed", dashboard_id=dash_id)
+        return
+    await hub.broadcast(dash_id, {"type": "live_update", "widgets": updates})
 
 
 async def _tick() -> None:
