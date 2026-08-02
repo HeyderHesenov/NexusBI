@@ -17,6 +17,7 @@ from app.ai import sql_guard
 from app.core.exceptions import DataSourceConnectionError, SchemaNotFoundError
 from app.core.logging import get_logger
 from app.core.sql_ident import quote_ident
+from app.core.timeutil import is_temporal
 from app.db import demo_data
 from app.models.dashboard import Dashboard
 from app.models.datasource import DBType
@@ -31,8 +32,6 @@ _log = get_logger("nexusbi.explore")
 _SAMPLE_ROWS = 200
 _MAX_WIDGETS = 8
 _TOP_N = 10
-# Substrings that mark a column as a time axis (incl. az "tarix" = date).
-_TEMPORAL_HINTS = ("date", "time", "year", "month", "day", "_at", "tarix")
 
 
 @dataclass(frozen=True)
@@ -59,20 +58,15 @@ def _is_id_like(col: str) -> bool:
     return c == "id" or c.endswith("_id") or col.endswith(("Id", "ID"))
 
 
-def _is_temporal(col: str) -> bool:
-    c = col.lower()
-    return any(h in c for h in _TEMPORAL_HINTS)
-
-
 def _classify(
     columns: list[str], rows: list[dict[str, Any]]
 ) -> tuple[list[str], list[str], list[str]]:
     """Split columns into (measures, dimensions, temporals) from a value sample."""
     numeric = set(numeric_columns(columns, rows))
     measures = [
-        c for c in columns if c in numeric and not _is_id_like(c) and not _is_temporal(c)
+        c for c in columns if c in numeric and not _is_id_like(c) and not is_temporal(c)
     ]
-    temporals = [c for c in columns if _is_temporal(c)]
+    temporals = [c for c in columns if is_temporal(c)]
     dims = [
         c
         for c in columns
@@ -81,10 +75,12 @@ def _classify(
     return measures, dims, temporals
 
 
-# Re-exported: BA evidence and BCG already import it from here, and it now lives
-# in core so profiling/AutoML/data-prep don't have to import a service to quote
-# a table name.
-__all__ = ["SourceProfile", "build_explore_dashboard", "profile_source", "quote_ident"]
+# Re-exported: BA evidence and BCG already import these from here, and they now
+# live in core so profiling/AutoML/data-prep don't have to import a service to
+# quote a table name or ask whether a column is a time axis.
+__all__ = [
+    "SourceProfile", "build_explore_dashboard", "is_temporal", "profile_source", "quote_ident",
+]
 
 
 def _compose_queries(

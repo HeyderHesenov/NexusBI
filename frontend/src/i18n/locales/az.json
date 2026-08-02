@@ -627,7 +627,6 @@
     "alertCreated": "Alert quruldu.",
     "alertNameLabel": "Ad",
     "alertSubtitle": "“{{name}}” işləyəndə şərt pozulsa bildiriş gəlir.",
-    "cancel": "Ləğv et",
     "close": "Bağla",
     "columnLabel": "Sütun",
     "columnPlaceholder": "Sütun (məs. total)",
@@ -660,7 +659,13 @@
     "conditionLabel": "Şərt tipi",
     "conditionStatic": "Statik astana",
     "conditionAnomaly": "Anomaliya (z-score)",
-    "anomalyHint": "Sütun seriyasının son nöqtəsi statistik anomaliya (MAD z-score) olduqda alert işə düşür — sabit astana lazım deyil."
+    "anomalyHint": "Sütun seriyasının son nöqtəsi statistik anomaliya (MAD z-score) olduqda alert işə düşür — sabit astana lazım deyil.",
+    "cooldownLabel": "Sükut müddəti (dəqiqə)",
+    "cooldownHint": "Bir bildirişdən sonra bu qədər dəqiqə səssiz qalır. 0 = hər işləmədə bildiriş.",
+    "alertActive": "Yenidən aktivləşdir",
+    "alertPaused": "Müvəqqəti dayandır",
+    "alertUpdated": "Alert yeniləndi.",
+    "noAlerts": "Bu sorğu üçün hələ alert yoxdur."
   },
   "requirementsPage": {
     "buildDashboard": "Dashboard qur ({{count}})",

@@ -627,7 +627,6 @@
     "alertCreated": "Uyarı kuruldu.",
     "alertNameLabel": "Ad",
     "alertSubtitle": "“{{name}}” çalıştığında koşul ihlal edilirse bildirim alırsınız.",
-    "cancel": "İptal",
     "close": "Kapat",
     "columnLabel": "Sütun",
     "columnPlaceholder": "Sütun (örn. total)",
@@ -660,7 +659,13 @@
     "conditionLabel": "Koşul tipi",
     "conditionStatic": "Statik eşik",
     "conditionAnomaly": "Anomali (z-score)",
-    "anomalyHint": "Sütun serisinin son noktası istatistiksel anomali (MAD z-score) olduğunda tetiklenir — sabit eşik gerekmez."
+    "anomalyHint": "Sütun serisinin son noktası istatistiksel anomali (MAD z-score) olduğunda tetiklenir — sabit eşik gerekmez.",
+    "cooldownLabel": "Bekleme süresi (dakika)",
+    "cooldownHint": "Bir bildirimden sonra bu kadar dakika sessiz kalır. 0 = her çalıştırmada bildir.",
+    "alertActive": "Yeniden başlat",
+    "alertPaused": "Duraklat",
+    "alertUpdated": "Uyarı güncellendi.",
+    "noAlerts": "Bu sorgu için henüz uyarı yok."
   },
   "requirementsPage": {
     "buildDashboard": "Dashboard oluştur ({{count}})",

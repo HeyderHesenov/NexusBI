@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NexusBIException, SchemaNotFoundError
 from app.core.logging import get_logger
+from app.core.timeutil import aware
 from app.models.query_log import QueryLog
 from app.models.report_subscription import ReportSubscription
 from app.models.saved_query import SavedQuery
@@ -25,17 +26,11 @@ _FORMATS = ("pdf", "xlsx")
 _MAX_SUBS_PER_QUERY = 20  # cap recipients per saved query (each due tick can run its AI query)
 
 
-def _aware(dt: datetime | None) -> datetime | None:
-    if dt is None:
-        return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-
-
 def _is_due(sub: ReportSubscription, now: datetime) -> bool:
     interval = saved_query_service.INTERVALS.get(sub.schedule)
     if interval is None:
         return False
-    last = _aware(sub.last_sent_at)
+    last = aware(sub.last_sent_at)
     if last is None:
         return True
     return now - last >= timedelta(seconds=interval)

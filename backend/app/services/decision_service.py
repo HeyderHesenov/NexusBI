@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import SchemaNotFoundError
 from app.core.logging import get_logger
+from app.core.timeutil import aware
 from app.models.decision import Decision, DecisionMeasurement
 from app.services.cache_service import CacheService
 
@@ -49,12 +50,6 @@ _CADENCE_SECONDS = {"daily": 86400, "weekly": 604800}
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def _aware(dt: datetime | None) -> datetime | None:
-    if dt is None:
-        return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 # ─── Numeric extraction (shared metric→scalar logic) ───
@@ -245,7 +240,7 @@ def _is_due(d: Decision, now: datetime) -> bool:
     interval = _CADENCE_SECONDS.get(d.measure_cadence)
     if interval is None:
         return False
-    last = _aware(d.realized_at) or _aware(d.baseline_at)
+    last = aware(d.realized_at) or aware(d.baseline_at)
     if last is None:
         return True
     return now - last >= timedelta(seconds=interval)
@@ -314,13 +309,13 @@ def counterfactual(d: Decision, measurements: list[DecisionMeasurement]) -> dict
     """
     from app.services import stats
 
-    baseline_at = _aware(d.baseline_at)
+    baseline_at = aware(d.baseline_at)
     realized = d.realized_value
     if baseline_at is None or realized is None:
         return None
 
     def _at(m: DecisionMeasurement) -> datetime:
-        return _aware(m.measured_at)  # type: ignore[return-value]
+        return aware(m.measured_at)  # type: ignore[return-value]
 
     pre = sorted((m for m in measurements if _at(m) < baseline_at), key=_at)
     post = sorted((m for m in measurements if _at(m) >= baseline_at), key=_at)

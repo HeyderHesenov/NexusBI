@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
-import { BellPlus, Clock, Mail, Play, Trash2, BookMarked } from 'lucide-react'
+import { Bell, BellOff, BellPlus, Clock, Mail, Play, Trash2, BookMarked } from 'lucide-react'
 import { useSavedQueryStore } from '../store/savedQueryStore'
 import { ShareToChatButton } from '../components/chat/ShareToChatButton'
 import { ModalShell } from '../components/ui/ModalShell'
@@ -11,7 +11,7 @@ import { useFormatDate } from '../hooks/useFormatDate'
 import * as alertApi from '../api/alert'
 import * as subApi from '../api/reportSubscription'
 import type { ReportFormat, ReportSchedule, Subscription } from '../api/reportSubscription'
-import type { AlertConditionType, AlertOperator, Schedule } from '../types'
+import type { Alert, AlertConditionType, AlertOperator, Schedule } from '../types'
 
 const SCHEDULES: { value: Schedule; labelKey: string }[] = [
   { value: 'off', labelKey: 'reportsPage.scheduleOff' },
@@ -147,31 +147,69 @@ function AlertModal({
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  const [alerts, setAlerts] = useState<Alert[]>([])
   const [name, setName] = useState('')
   const [column, setColumn] = useState('')
   const [conditionType, setConditionType] = useState<AlertConditionType>('static')
   const [operator, setOperator] = useState<AlertOperator>('>')
   const [threshold, setThreshold] = useState('0')
+  const [cooldown, setCooldown] = useState('60')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    // One list endpoint for all of the user's alerts; filter here rather than add
+    // a per-query route for what is a handful of rows.
+    alertApi
+      .listAlerts()
+      .then((all) => setAlerts(all.filter((a) => a.saved_query_id === savedQueryId)))
+      .catch(() => undefined)
+  }, [savedQueryId])
 
   const submit = async () => {
     if (!name.trim() || !column.trim() || busy) return
     setBusy(true)
     try {
-      await alertApi.createAlert({
+      const created = await alertApi.createAlert({
         saved_query_id: savedQueryId,
         name: name.trim(),
         column: column.trim(),
         condition_type: conditionType,
         operator,
         threshold: Number(threshold) || 0,
+        // Clamp to the same bounds the input declares, so a typed-over value is
+        // corrected here instead of coming back as an opaque 422 toast.
+        cooldown_minutes: Math.min(10080, Math.max(0, Math.round(Number(cooldown) || 0))),
       })
+      setAlerts((prev) => [...prev, created])
+      setName('')
+      setColumn('')
       toast.success(t('reportsPage.alertCreated'))
-      onClose()
     } catch {
       /* interceptor toast */
     } finally {
       setBusy(false)
+    }
+  }
+
+  const togglePaused = async (a: Alert) => {
+    try {
+      const updated = await alertApi.updateAlert(a.id, { active: !a.active })
+      setAlerts((prev) => prev.map((x) => (x.id === a.id ? updated : x)))
+      toast.success(t('reportsPage.alertUpdated'))
+    } catch {
+      /* interceptor toast */
+    }
+  }
+
+  const del = async (id: string) => {
+    // Drop the row only once the server has actually deleted it. Swallowing the
+    // rejection and filtering anyway would hide a 429 from the new IP limit
+    // behind an "it's gone" list while the alert kept firing into Slack.
+    try {
+      await alertApi.removeAlert(id)
+      setAlerts((prev) => prev.filter((a) => a.id !== id))
+    } catch {
+      /* interceptor toast */
     }
   }
 
@@ -184,11 +222,11 @@ function AlertModal({
       footer={
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-ink-soft transition hover:text-ink">
-            {t('reportsPage.cancel')}
+            {t('reportsPage.close')}
           </button>
           <button
             onClick={submit}
-            disabled={busy}
+            disabled={busy || !name.trim() || !column.trim()}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px disabled:opacity-60"
           >
             {t('reportsPage.create')}
@@ -197,6 +235,44 @@ function AlertModal({
       }
     >
       <div className="space-y-4 p-5">
+        {alerts.length > 0 ? (
+          <ul className="space-y-1.5">
+            {alerts.map((a) => (
+              <li
+                key={a.id}
+                className={`flex items-center justify-between gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm ${a.active ? '' : 'opacity-60'}`}
+              >
+                <span className="min-w-0 flex-1 truncate text-ink">{a.name}</span>
+                <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+                  {a.condition_type === 'anomaly'
+                    ? 'z-score'
+                    : `${a.column} ${a.operator} ${a.threshold}`}
+                  {' · '}
+                  {a.cooldown_minutes > 0 ? `${a.cooldown_minutes}m` : '—'}
+                </span>
+                <button
+                  onClick={() => togglePaused(a)}
+                  aria-label={a.active ? t('reportsPage.alertPaused') : t('reportsPage.alertActive')}
+                  title={a.active ? t('reportsPage.alertPaused') : t('reportsPage.alertActive')}
+                  className="shrink-0 text-ink-faint transition hover:text-ink"
+                >
+                  {a.active ? <Bell size={14} /> : <BellOff size={14} />}
+                </button>
+                <button
+                  onClick={() => del(a.id)}
+                  aria-label={t('reportsPage.delete')}
+                  className="shrink-0 text-ink-faint transition hover:text-[#D87C6B]"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-xl border border-dashed border-line px-3 py-2 text-xs text-ink-soft">
+            {t('reportsPage.noAlerts')}
+          </p>
+        )}
         <Field id="alert-name" label={t('reportsPage.alertNameLabel')}>
           <input
             id="alert-name"
@@ -254,6 +330,23 @@ function AlertModal({
             {t('reportsPage.anomalyHint')}
           </p>
         )}
+        <Field
+          id="alert-cooldown"
+          label={t('reportsPage.cooldownLabel')}
+          hint={t('reportsPage.cooldownHint')}
+        >
+          <input
+            id="alert-cooldown"
+            type="number"
+            min={0}
+            max={10080}
+            step={5}
+            inputMode="numeric"
+            value={cooldown}
+            onChange={(e) => setCooldown(e.target.value)}
+            className={`${field} font-mono`}
+          />
+        </Field>
       </div>
     </ModalShell>
   )
