@@ -159,21 +159,21 @@ async def test_strict_source_is_treated_as_restricted_for_broadcasts(
 ):
     """A locked source restricts somebody even before anyone writes a rule.
 
-    This is the audience-BLIND primitive: it answers "could any viewer be denied
-    here?", which is the right question when the audience is a share token and
-    nobody can be named. Callers that CAN name their audience go through
-    ``restricted_datasource_ids`` instead — see the live-refresh test above.
+    ``viewer_ids=None`` is the anonymous branch: it answers "could any viewer be
+    denied here?", which is the right question when the audience is a share token
+    and nobody can be named. Callers that CAN name their audience pass one — see
+    the live-refresh test above, where the same source broadcasts freely.
     """
     _mock_chart_insight(monkeypatch)
     ds_id = await _materialize(client, auth, monkeypatch, "broadcast_src")
 
-    assert await rls_service.datasource_is_restricted(db_session, ds_id) is True
+    assert await rls_service.restricted_datasource_ids(db_session, {ds_id}, None) == {ds_id}
 
     await client.patch(
         f"/api/v1/datasource/{ds_id}/rls-mode", json={"rls_mode": "open"}, headers=auth
     )
     db_session.expire_all()
-    assert await rls_service.datasource_is_restricted(db_session, ds_id) is False
+    assert await rls_service.restricted_datasource_ids(db_session, {ds_id}, None) == set()
 
 
 async def _locked_source_dashboard(

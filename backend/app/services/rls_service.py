@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import SchemaNotFoundError
@@ -140,28 +140,6 @@ async def resolve_scope_by_id(
     if ds is None:
         return RLSScope([], True)
     return await resolve_scope(db, ds, user_id)
-
-
-async def datasource_is_restricted(db: AsyncSession, datasource_id: str) -> bool:
-    """True if this datasource restricts ANYONE — a rule exists, or it is strict.
-
-    The audience-blind question: "could some viewer be denied here?". Correct when
-    the audience is unknown or anonymous, and needlessly harsh when it is known —
-    a strict source restricts nobody in a room holding only its owner. Fan-out
-    paths therefore go through ``restricted_datasource_ids``, which answers the
-    audience-aware version and falls back to exactly this when there is no
-    audience to name.
-    """
-    res = await db.execute(
-        select(DataSource.id)
-        .outerjoin(RLSRule, RLSRule.datasource_id == DataSource.id)
-        .where(
-            DataSource.id == datasource_id,
-            or_(DataSource.rls_mode == RLS_STRICT, RLSRule.id.isnot(None)),
-        )
-        .limit(1)
-    )
-    return res.first() is not None
 
 
 async def restricted_datasource_ids(
