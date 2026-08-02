@@ -28,8 +28,9 @@ React SPA (Vite/TS/Zustand/Recharts)  ──HTTP/JSON──▶  FastAPI (async)
 |-------|------|----------------|
 | API | `api/v1/*` | Thin routers: auth, query, datasource, dataprep, dashboard, **snapshot**, metric, **metric_tree**, saved_query, billing, branding, decision, integration, copilot, requirement, **ba**, **automl**, scenario, workspace, **data_contract**, **alert**, **search**, **graph**, public, ws |
 | Schemas | `schemas/*` | Pydantic request/response contracts |
-| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, billing/usage_service, **billing/cost (per-call USD accounting + daily ceiling)**, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS incl. deny-all wrapper), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, graph_view_service, ba_service, automl_service** |
+| Services | `services/*` | Business logic: query_service, datasource_service, dashboard_service, metric_service, saved_query_service, scheduler, alert_service, insight_service, decision_service, cache_service, upload_service, digest_service, requirement_service, data_prep_service, profiling_service, lineage_service, workspace_service, rls_service, **rls_sql (SQL-level RLS incl. deny-all wrapper), auth_token_service (refresh rotation)**, audit_service, scenario_service, kpi_target_service, integration_service, integrations, embed_service, brand_service, powerbi/*, **report_renderer (PDF/Excel), report_delivery_service**, **explore_service, snapshot_service, graph_service, graph_view_service, ba_service, automl_service** |
 | AI | `ai/*` | text2sql, text2dax, chart_selector, insight_generator, insight_digest, analysis (forecast/anomaly), root_cause, requirements, data_prep, dashboard_planner, data_story, copilot, **retrieval (RAG vector grounding)**, sql_guard, schema_introspector, **schema_linking (wide-schema table selection: embed+cosine top-K + FK closure, metadata-only)**, rule_based_sql/dax, prompt_templates, **call_context (per-request AI call counter → proportional quota)**, **search (global asset semantic search)**, **ba_frameworks (SWOT/Porter/BCG/BPMN + mermaid sanitizer), textparse (shared AI-text parsing)**, **client (chat + embed)** |
+| Billing | `billing/*` | tiers (single source of truth for quotas), usage_service (monthly AI quota), **cost (per-call USD accounting + daily ceiling)** |
 | Models | `models/*` | SQLAlchemy 2.0 models |
 | Core | `core/*` | security (JWT/Fernet, **embed token**), exceptions (+ ForbiddenError), metrics, logging, google, net_guard (SSRF), rate_limit (Redis-backed, per-process fallback), **leader (scheduler lease), health (/live + /ready), sql_ident (dialect-aware quoting)** |
 | Realtime | `realtime/*` | hub (WS rooms, per-worker), **bus (cross-worker eviction; delivery + presence behind a flag)**, live_refresh (canlı dashboard loop) |
@@ -163,8 +164,10 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   `rls_sql.deny_all_sql`, which wraps the query so even an aggregate returns zero rows).
   New sources are created `strict`. `rls_service.resolve_scope` is the sentinel every read
   path goes through — it distinguishes "no rule" from "no restriction", which a bare rule
-  list cannot. Owner-scoped fan-out paths (live broadcast, public/embed) ask
-  `datasource_is_restricted` and skip locked sources entirely. See SECURITY.md.
+  list cannot. Owner-scoped fan-out paths (live broadcast, public share, embed) render one
+  unfiltered dataset for a whole audience, so they ask `restricted_datasource_ids` instead:
+  a share token names nobody and blanks any restricted source, while the live loop names the
+  room's roster and so keeps ticking for an audience the lock never restricted. See SECURITY.md.
 - **Audit log:** `audit_service.log` appends to `audit_logs` on security-relevant actions
   (datasource create/delete, RLS create/delete, workspace member changes); `GET /audit` lists.
 - **Scenario planning:** `scenario_service` (numpy, no AI, deterministic) — `goal_seek`,
