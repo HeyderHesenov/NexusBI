@@ -410,7 +410,9 @@ ratchet mərtəbəsi ilə **qapıdır**; real model istəyə bağlıdır
 İki sütunun mənası budur: **modeli itirməyin qiyməti artıq rəqəmdir** — açar
 yoxdursa, rate-limit dəyibsə və ya gündəlik tavan bağlanıbsa cavab keyfiyyəti
 0.97 → 0.50 düşür, itkinin hamısı isə join/filtr/alt-sorğu tələb edən suallardadır.
-Dizayn və yeni hal əlavə etmə qaydası:
+Rəqəmin sərhədi: harness suala **RAG kontekstsiz** cavab verir (istehsalda
+`prompt_context` da ötürülür), yəni bu **soyuq-start** ölçmədir — ölçmənin təkrar
+oluna bilməsi üçün qəsdən belədir. Dizayn və yeni hal əlavə etmə qaydası:
 `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
 **Frontend Vitest (610 test):** lib (CSV formula-injection escape · sample queries · login hint ·

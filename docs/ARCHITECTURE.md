@@ -281,7 +281,9 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   and 0.00 full), gpt-4o **0.97** (1.00 core / 0.95 full), parity 0.97 in both languages.
   The pair is the point: **losing the model costs 0.97 → 0.50**, entirely in questions
   needing a join, a filter or a subquery — so the case for widening the offline engine
-  is now arithmetic. CI publishes the table to the job summary and uploads
+  is now arithmetic. Both numbers are **cold-start**: the harness passes the question
+  without production's `prompt_context`, so RAG grounding is out of scope by design and
+  a retrieval regression will not show here. CI publishes the table to the job summary and uploads
   `eval-report.json`; design and the rule for adding cases live in
   `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 - **Observability:** `core/metrics` (Prometheus) exposes HTTP/AI/SQL counters plus
