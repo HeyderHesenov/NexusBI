@@ -41,7 +41,13 @@ async def update_alert(
     return AlertResponse.model_validate(alert)
 
 
-@router.delete("/alerts/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/alerts/{alert_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    # The ratchet in test_architecture only inspects POST/PUT/PATCH, so DELETE --
+    # the one destructive verb here -- can never be flagged for missing a limit.
+    dependencies=[_alert_writes],
+)
 async def delete_alert(alert_id: str, user: CurrentUser, db: DbDep) -> Response:
     await svc.delete(db, user.id, alert_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

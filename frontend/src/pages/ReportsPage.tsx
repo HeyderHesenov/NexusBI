@@ -202,8 +202,15 @@ function AlertModal({
   }
 
   const del = async (id: string) => {
-    await alertApi.removeAlert(id).catch(() => undefined)
-    setAlerts((prev) => prev.filter((a) => a.id !== id))
+    // Drop the row only once the server has actually deleted it. Swallowing the
+    // rejection and filtering anyway would hide a 429 from the new IP limit
+    // behind an "it's gone" list while the alert kept firing into Slack.
+    try {
+      await alertApi.removeAlert(id)
+      setAlerts((prev) => prev.filter((a) => a.id !== id))
+    } catch {
+      /* interceptor toast */
+    }
   }
 
   return (
@@ -323,7 +330,11 @@ function AlertModal({
             {t('reportsPage.anomalyHint')}
           </p>
         )}
-        <Field id="alert-cooldown" label={t('reportsPage.cooldownLabel')}>
+        <Field
+          id="alert-cooldown"
+          label={t('reportsPage.cooldownLabel')}
+          hint={t('reportsPage.cooldownHint')}
+        >
           <input
             id="alert-cooldown"
             type="number"
@@ -335,7 +346,6 @@ function AlertModal({
             onChange={(e) => setCooldown(e.target.value)}
             className={`${field} font-mono`}
           />
-          <p className="mt-1 text-xs text-ink-faint">{t('reportsPage.cooldownHint')}</p>
         </Field>
       </div>
     </ModalShell>

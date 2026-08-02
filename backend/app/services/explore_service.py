@@ -17,6 +17,7 @@ from app.ai import sql_guard
 from app.core.exceptions import DataSourceConnectionError, SchemaNotFoundError
 from app.core.logging import get_logger
 from app.core.sql_ident import quote_ident
+from app.core.timeutil import is_temporal
 from app.db import demo_data
 from app.models.dashboard import Dashboard
 from app.models.datasource import DBType
@@ -31,8 +32,6 @@ _log = get_logger("nexusbi.explore")
 _SAMPLE_ROWS = 200
 _MAX_WIDGETS = 8
 _TOP_N = 10
-# Substrings that mark a column as a time axis (incl. az "tarix" = date).
-_TEMPORAL_HINTS = ("date", "time", "year", "month", "day", "_at", "tarix")
 
 
 @dataclass(frozen=True)
@@ -59,17 +58,6 @@ def _is_id_like(col: str) -> bool:
     return c == "id" or c.endswith("_id") or col.endswith(("Id", "ID"))
 
 
-def is_temporal(col: str) -> bool:
-    """Name-based "is this a time axis?" test, shared with alert anomaly ordering.
-
-    Public so the alert service can order a result set by its time column with the
-    same rule the Explore dashboard uses to pick one — two heuristics disagreeing
-    about what counts as a date is a bug that only shows up as a wrong answer.
-    """
-    c = col.lower()
-    return any(h in c for h in _TEMPORAL_HINTS)
-
-
 def _classify(
     columns: list[str], rows: list[dict[str, Any]]
 ) -> tuple[list[str], list[str], list[str]]:
@@ -87,9 +75,9 @@ def _classify(
     return measures, dims, temporals
 
 
-# Re-exported: BA evidence and BCG already import it from here, and it now lives
-# in core so profiling/AutoML/data-prep don't have to import a service to quote
-# a table name.
+# Re-exported: BA evidence and BCG already import these from here, and they now
+# live in core so profiling/AutoML/data-prep don't have to import a service to
+# quote a table name or ask whether a column is a time axis.
 __all__ = [
     "SourceProfile", "build_explore_dashboard", "is_temporal", "profile_source", "quote_ident",
 ]

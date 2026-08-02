@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import operator as _op
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import SchemaNotFoundError
 from app.core.notification_types import NotificationCategory
-from app.core.timeutil import aware
+from app.core.timeutil import aware, is_temporal, to_instant
 from app.models.alert import Alert, Notification
 from app.models.saved_query import SavedQuery
 from app.schemas.query import QueryResult
@@ -68,12 +68,16 @@ async def _owned(db: AsyncSession, user_id: str, alert_id: str) -> Alert:
 
 
 async def update(db: AsyncSession, user_id: str, alert_id: str, payload) -> Alert:
-    """Patch the fields the management UI exposes: pause, rename, retune."""
+    """Patch the fields the management UI exposes: pause, rename, retune.
+
+    The writable set is AlertUpdate's own field list, not a second copy of it: a
+    field added to the schema would otherwise be accepted with a 200 and silently
+    dropped. ``exclude_none`` keeps today's meaning of a null (leave it alone) --
+    every column here is NOT NULL, so there is nothing a null could set.
+    """
     alert = await _owned(db, user_id, alert_id)
-    for attr in ("name", "active", "cooldown_minutes", "threshold"):
-        value = getattr(payload, attr, None)
-        if value is not None:
-            setattr(alert, attr, value)
+    for attr, value in payload.model_dump(exclude_unset=True, exclude_none=True).items():
+        setattr(alert, attr, value)
     await db.flush()
     await db.refresh(alert)
     return alert
@@ -110,57 +114,37 @@ def evaluate(alert: Alert, rows: list[dict[str, Any]]) -> bool:
     return False
 
 
-def _time_key(value: Any) -> str | None:
-    """Normalise a time-column value to ONE comparable type, or None if unusable.
-
-    A driver can hand back the same column as ``datetime``, ``date``, ``str`` or a
-    number, and ``sorted()`` raises TypeError the moment two of those meet -- which
-    here would take down the whole scheduler tick, not just one alert. Everything
-    therefore collapses to a string whose lexicographic order matches chronological
-    order: ISO for dates, zero-padded for a numeric axis (year, epoch, YYYYMM).
-    """
-    if value is None or isinstance(value, bool):
-        return None
-    if isinstance(value, datetime):
-        normalised = aware(value)
-        return normalised.isoformat() if normalised else None
-    if isinstance(value, date):
-        return value.isoformat()
-    if isinstance(value, (int, float)):
-        # Negative (pre-epoch) values would need a sign-aware encoding to keep
-        # lexicographic == numeric; they are dropped instead of mis-ordered.
-        return f"{value:020.3f}" if value >= 0 else None
-    if isinstance(value, str):
-        return value.strip() or None
-    return None
-
-
 def _ordered_rows(alert: Alert, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Rows in time order, when the result set carries a time column.
+    """Rows in time order, when the result set carries a usable time column.
 
     A SELECT without ORDER BY returns rows in whatever order the engine produced,
     so "the latest point" -- the entire basis of an anomaly alert, and what the
     notification text claims -- was really "whichever row happened to come last".
 
-    Two deliberate fallbacks to the engine's order: no time column at all, and a
-    time column no row can be keyed on (all NULL). Sorting is meaningless in both,
-    and dropping every row would silence alerts that fire today.
-    """
-    # Local import: explore_service pulls in the whole query pipeline, and this
-    # module is loaded by the alert API on every request.
-    from app.services.explore_service import is_temporal
+    A candidate column must clear BOTH bars: its name hints at time, and EVERY row
+    converts to an instant. Two reasons for demanding all of them rather than
+    sorting what converts:
 
+    * dropping the rest shrinks the series, and four points is already the floor --
+      one NULL date in a five-row result would take the alert below it and silence
+      it for good, with no error anywhere;
+    * the dropped rows are part of the population the z-score is measured against,
+      so removing them changes the verdict, not just the order.
+
+    Failing either bar therefore keeps the engine's order: no worse than before
+    this existed, and never a confident wrong answer.
+    """
     if not rows:
         return rows
-    col = next((c for c in rows[0] if c != alert.column and is_temporal(c)), None)
-    if col is None:
-        return rows
-    keyed = [(key, r) for r in rows if (key := _time_key(r.get(col))) is not None]
-    if not keyed:
-        return rows
-    # Key only, never the dict: comparing rows would raise on a tie.
-    keyed.sort(key=lambda pair: pair[0])
-    return [r for _key, r in keyed]
+    for col in rows[0]:
+        if col == alert.column or not is_temporal(col):
+            continue
+        keys = [to_instant(r.get(col)) for r in rows]
+        if any(k is None for k in keys):
+            continue  # partially unreadable -> not a time axis we can trust
+        # Key only, never the row: comparing dicts would raise on a tie.
+        return [r for _k, r in sorted(zip(keys, rows), key=lambda pair: pair[0])]
+    return rows
 
 
 def _evaluate_anomaly(alert: Alert, rows: list[dict[str, Any]]) -> bool:

@@ -84,24 +84,91 @@ def test_evaluate_anomaly_survives_a_mixed_type_time_column():
     from app.services import alert_service
 
     a = Alert(column="total", condition_type="anomaly")
+    # Every shape a driver can hand back for one column, spike last in time but
+    # NOT last in the list.
     mixed = [
+        {"created_at": "2026-01-06", "total": 500},
         {"created_at": datetime(2026, 1, 1, tzinfo=timezone.utc), "total": 100},
         {"created_at": datetime(2026, 1, 2), "total": 102},  # naive: the SQLite shape
         {"created_at": date(2026, 1, 3), "total": 98},
-        {"created_at": "2026-01-04", "total": 101},
-        {"created_at": None, "total": 99},  # unusable key -> dropped, not sorted last
-        {"created_at": "2026-01-06", "total": 500},
+        {"created_at": "2026-01-04T00:00:00Z", "total": 101},
+        {"created_at": "2026-01-05", "total": 99},
     ]
     assert alert_service.evaluate(a, mixed) is True
 
-    # A numeric time axis orders numerically, not lexicographically: 9 < 10.
-    years = [{"year": y, "total": v} for y, v in zip([7, 8, 9, 10, 11], [100, 101, 99, 102, 500])]
-    assert alert_service.evaluate(a, list(reversed(years))) is True
 
-    # An all-NULL time column keeps the engine's order rather than emptying the
-    # series -- otherwise alerts that fire today would go silent.
+def test_anomaly_ordering_compares_instants_not_wall_clocks():
+    """Two rows an hour apart in UTC can carry the same wall time in different
+    offsets; sorting the ISO text would interleave them."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.alert import Alert
+    from app.services import alert_service
+
+    a = Alert(column="total", condition_type="anomaly")
+    east, west = timezone(timedelta(hours=-4)), timezone(timedelta(hours=-5))
+    rows = [
+        {"created_at": datetime(2026, 11, 1, 0, 30, tzinfo=east), "total": 100},  # 04:30Z
+        {"created_at": datetime(2026, 11, 1, 1, 0, tzinfo=east), "total": 102},   # 05:00Z
+        {"created_at": datetime(2026, 11, 1, 1, 20, tzinfo=east), "total": 500},  # 05:20Z
+        {"created_at": datetime(2026, 11, 1, 1, 15, tzinfo=west), "total": 98},   # 06:15Z
+        {"created_at": datetime(2026, 11, 1, 1, 30, tzinfo=west), "total": 101},  # 06:30Z
+    ]
+    ordered = alert_service._ordered_rows(a, rows)
+    assert [r["total"] for r in ordered] == [100, 102, 500, 98, 101]
+    # The spike is mid-series in real time, so it must not fire.
+    assert alert_service.evaluate(a, rows) is False
+
+
+def test_anomaly_ordering_refuses_a_time_column_it_cannot_fully_read():
+    """Sorting only the readable rows would shrink the series past the 4-point
+    floor and silence the alert for good."""
+    from app.models.alert import Alert
+    from app.services import alert_service
+
+    a = Alert(column="total", condition_type="anomaly")
+
+    # One unreadable date among five: keep the engine's order, keep firing.
+    partial = [{"day": None, "total": v} for v in (100, 102, 98, 101)]
+    partial.append({"day": "2026-01-05", "total": 500})
+    assert alert_service._ordered_rows(a, partial) == partial
+    assert alert_service.evaluate(a, partial) is True
+
+    # An all-NULL axis is the same case.
     empty_axis = [{"created_at": None, "total": v} for v in [100, 102, 98, 101, 99, 103, 500]]
     assert alert_service.evaluate(a, empty_axis) is True
+
+    # A non-ISO text date: guessing whether 01/05 is January or May would silently
+    # mis-order it, so it is not treated as an axis at all.
+    us = [
+        {"order_date": d, "total": v}
+        for d, v in [("11/05/2025", 100), ("12/05/2025", 102), ("01/05/2026", 98),
+                     ("02/05/2026", 101), ("03/05/2026", 500)]
+    ]
+    assert alert_service._ordered_rows(a, us) == us
+
+
+def test_anomaly_ordering_ignores_a_numeric_column_that_merely_sounds_temporal():
+    """is_temporal is a loose NAME match — "delivery_time", "days_open" and even
+    "update_count" (it contains "date") all pass it. Ordering the series by one of
+    those would call the slowest-shipping row "the most recent point"."""
+    from app.models.alert import Alert
+    from app.services import alert_service
+    from app.core.timeutil import is_temporal
+
+    assert is_temporal("delivery_time") and is_temporal("days_open")
+    assert is_temporal("update_count")  # "upDATEcount"
+
+    a = Alert(column="revenue", condition_type="anomaly")
+    rows = [
+        {"delivery_time": t, "revenue": v}
+        for t, v in [(1.0, 100), (2.0, 102), (3.0, 500), (4.0, 98), (5.0, 101)]
+    ]
+    assert alert_service._ordered_rows(a, rows) == rows
+    # Sorted by delivery_time the 500 would be mid-series either way, so assert the
+    # decision directly: the engine's last row is the one judged latest.
+    assert alert_service.evaluate(a, rows) is False
+    assert alert_service.evaluate(a, rows[:2] + rows[3:] + rows[2:3]) is True
 
 
 async def test_alert_fires_notification(client: AsyncClient, auth: dict):
@@ -201,14 +268,16 @@ async def test_alert_fires_again_once_the_cooldown_elapses(
     from app.models.alert import Alert
 
     sq_id = await _saved_query(client, auth)
-    await _alert(client, auth, sq_id, cooldown_minutes=60)
+    alert = await _alert(client, auth, sq_id, cooldown_minutes=60)
     await client.post(f"/api/v1/saved/{sq_id}/run", headers=auth)
     assert len(await _alert_notifications(client, auth)) == 1
 
+    # Scoped by id: an unqualified UPDATE would rewrite every alert in the table
+    # and quietly start measuring the wrong row as soon as a second one exists.
     await db_session.execute(
-        update(Alert).values(
-            last_triggered_at=datetime.now(timezone.utc) - timedelta(minutes=61)
-        )
+        update(Alert)
+        .where(Alert.id == alert["id"])
+        .values(last_triggered_at=datetime.now(timezone.utc) - timedelta(minutes=61))
     )
     await db_session.commit()
 
