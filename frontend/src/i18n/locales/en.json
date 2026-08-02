@@ -620,7 +620,8 @@
     "saveToDashboard": "Save to dashboard",
     "sqlEditor": "SQL editor",
     "sqlSubtitle": "— write your own query, run without AI",
-    "tables": "Tables"
+    "tables": "Tables",
+    "addSource": "Add source"
   },
   "reportsPage": {
     "add": "Add",

@@ -620,7 +620,8 @@
     "saveToDashboard": "Сохранить в дашборд",
     "sqlEditor": "Редактор SQL",
     "sqlSubtitle": "— напишите свой запрос, без ИИ",
-    "tables": "Таблицы"
+    "tables": "Таблицы",
+    "addSource": "Добавить источник"
   },
   "reportsPage": {
     "add": "Добавить",
