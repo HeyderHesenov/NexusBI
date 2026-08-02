@@ -284,3 +284,41 @@ def test_ai_call_sites_name_their_feature():
                 offenders.append(f"{_module_name(path)}: {match.group(1)}")
 
     assert not offenders, "AI calls without feature=: " + ", ".join(sorted(set(offenders)))
+
+
+def test_every_database_enum_label_appears_in_a_migration():
+    """A Postgres ENUM type does not learn new members on its own.
+
+    SQLAlchemy does not diff enum members and neither does Alembic autogenerate,
+    so adding a value to a Python enum changes nothing in the database. SQLite
+    renders Enum as VARCHAR and accepts anything, which is what let this pass:
+    `powerbi` joined DBType, no migration ever taught the type about it, the whole
+    suite stayed green, and POST /datasource/connect-powerbi failed on every
+    Postgres deployment with `invalid input value for enum dbtype`.
+
+    Grepping the migrations is deliberately crude -- CI has no Postgres to ask, so
+    the check is "somebody wrote a migration mentioning this label" rather than
+    "the type really has it". It costs one line in the migration that adds the
+    member, which is exactly the line that was missing.
+    """
+    import sqlalchemy as sa
+
+    import app.models  # noqa: F401 — populates Base.metadata
+    from app.db.base import Base
+
+    versions = _APP / "db" / "migrations" / "versions"
+    migrations = "\n".join(p.read_text(encoding="utf-8") for p in versions.glob("*.py"))
+
+    missing = []
+    for table in Base.metadata.tables.values():
+        for col in table.columns:
+            if isinstance(col.type, sa.Enum):
+                for label in col.type.enums:
+                    if f"'{label}'" not in migrations and f'"{label}"' not in migrations:
+                        missing.append(f"{table.name}.{col.name} -> {label!r}")
+
+    assert not missing, (
+        "These enum labels exist in the models but in no migration, so the "
+        "Postgres type does not accept them (SQLite hides this). Add a migration "
+        f"with ALTER TYPE ... ADD VALUE: {missing}"
+    )
