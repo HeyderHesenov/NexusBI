@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.notification_types import NotificationCategory
@@ -34,6 +34,11 @@ class Alert(Base, TimestampMixin):
     operator: Mapped[str] = mapped_column(String(2), nullable=False)  # > < >= <= == != (static only)
     threshold: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Minutes of silence after a breach before the same alert may fire again. 0
+    # disables the cooldown (fire on every evaluation, the pre-1.6 behaviour).
+    cooldown_minutes: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=60, server_default="60"
+    )
     last_triggered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
