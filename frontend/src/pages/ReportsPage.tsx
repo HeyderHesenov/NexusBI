@@ -176,7 +176,9 @@ function AlertModal({
         condition_type: conditionType,
         operator,
         threshold: Number(threshold) || 0,
-        cooldown_minutes: Math.max(0, Number(cooldown) || 0),
+        // Clamp to the same bounds the input declares, so a typed-over value is
+        // corrected here instead of coming back as an opaque 422 toast.
+        cooldown_minutes: Math.min(10080, Math.max(0, Math.round(Number(cooldown) || 0))),
       })
       setAlerts((prev) => [...prev, created])
       setName('')
