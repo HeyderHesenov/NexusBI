@@ -157,8 +157,13 @@ async def test_rls_mode_is_owner_only(client: AsyncClient, auth: dict, monkeypat
 async def test_strict_source_is_treated_as_restricted_for_broadcasts(
     client: AsyncClient, auth: dict, monkeypatch, db_session
 ):
-    """A locked source must block the owner-scoped fan-out paths (live refresh,
-    public/embed) even before anyone writes a single rule."""
+    """A locked source restricts somebody even before anyone writes a rule.
+
+    This is the audience-BLIND primitive: it answers "could any viewer be denied
+    here?", which is the right question when the audience is a share token and
+    nobody can be named. Callers that CAN name their audience go through
+    ``restricted_datasource_ids`` instead — see the live-refresh test above.
+    """
     _mock_chart_insight(monkeypatch)
     ds_id = await _materialize(client, auth, monkeypatch, "broadcast_src")
 
@@ -261,6 +266,60 @@ async def test_clearing_the_public_filter_does_not_bypass_the_lock(
     cleared = await client.post(f"/api/v1/public/dashboard/{token}/filter", json={})
     assert cleared.status_code == 200, cleared.text
     assert cleared.json()["widgets"][0]["chart"] is None
+
+
+async def test_live_refresh_reads_the_room_instead_of_the_lock(
+    client: AsyncClient, auth: dict, monkeypatch
+):
+    """A lock restricts people, and a room holding only the owner restricts nobody.
+
+    The broadcast gate used to ask the audience-blind question ("does this source
+    restrict ANYONE?"), which is `True` for every source created since deny-by-
+    default landed — so a single-user dashboard on a real source showed a live
+    indicator over frozen numbers. The guest half is the reason the gate exists at
+    all and must keep holding.
+
+    Note the coverage this closes: every other live test runs on `datasource_id:
+    None` (demo mode), where the gate is never reached.
+    """
+    _mock_chart_insight(monkeypatch)
+    dash_id, _ds_id, owner_rows = await _locked_source_dashboard(
+        client, auth, monkeypatch, "live_lock"
+    )
+    owner_id = (await client.get("/api/v1/auth/me", headers=auth)).json()["id"]
+    await client.patch(
+        f"/api/v1/dashboard/{dash_id}/live",
+        json={"enabled": True, "interval_seconds": 3},
+        headers=auth,
+    )
+
+    from app.realtime import live_refresh
+
+    sent: list[tuple[str, dict]] = []
+    roster: list[dict] = [{"conn_id": "c1", "user_id": owner_id, "name": "", "color": ""}]
+
+    async def fake_broadcast(room, message, exclude=None):
+        sent.append((room, message))
+
+    async def fake_presence(room):
+        return roster
+
+    monkeypatch.setattr(live_refresh.hub, "broadcast", fake_broadcast)
+    monkeypatch.setattr(live_refresh.hub, "active_rooms", lambda: {dash_id})
+    monkeypatch.setattr(live_refresh.hub, "presence", fake_presence)
+
+    live_refresh._last_run.clear()
+    await live_refresh._tick()
+    assert len(sent) == 1, "the owner watching their own locked board gets updates"
+    assert len(sent[0][1]["widgets"][0]["chart"]["data"]) == owner_rows
+
+    # A share-link guest joins: user_id is None, so no rule can ever name them and
+    # the owner-executed dataset must not reach the room.
+    roster.append({"conn_id": "c2", "user_id": None, "name": "Qonaq 1", "color": ""})
+    sent.clear()
+    live_refresh._last_run.clear()
+    await live_refresh._tick()
+    assert sent == [], "an owner-scoped dataset must not fan out to a guest"
 
 
 async def test_shared_dashboard_denies_a_ruleless_member_on_a_strict_source(

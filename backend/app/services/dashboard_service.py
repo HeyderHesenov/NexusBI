@@ -577,13 +577,23 @@ async def refresh_all_widgets(
 
 
 async def refresh_widget_data(
-    db: AsyncSession, widget: Widget, user_id: str, cache: CacheService | None = None
+    db: AsyncSession,
+    widget: Widget,
+    user_id: str,
+    cache: CacheService | None = None,
+    audience_ids: set[str] | None = None,
 ) -> WidgetChart | None:
     """Re-run a widget's stored SQL in place (no AI) and return the fresh chart.
 
     Reuses the existing QueryLog (same id, same chart_type/insight) and only
     swaps its ``result_data``. This is the cheap path live dashboards tick on —
     no chart re-selection, no insight regeneration, no new log rows.
+
+    ``audience_ids`` names everyone who will receive the broadcast. ``None`` means
+    the caller could not name them (a share-link guest is in the room, or the
+    roster could not be read) and is the fail-closed default: any restricted source
+    is dropped. Naming the audience is what keeps a locked source ticking for the
+    only person watching it — usually its owner, whom the lock never restricted.
     """
     if not widget.query_log_id:
         return None
@@ -597,13 +607,14 @@ async def refresh_widget_data(
     if log is None:
         return None
     # RLS safety: live refresh runs as the dashboard OWNER and broadcasts one
-    # dataset to the whole room. If the source restricts anyone — a rule exists, or
-    # it is strict, so a ruleless member is denied — that dataset would be
-    # owner-unfiltered; never push it to potentially-restricted viewers.
+    # dataset to the whole room. That dataset is owner-unfiltered, so it may only
+    # go out when nobody in the room is restricted on its source.
     if log.datasource_id:
         from app.services import rls_service
 
-        if await rls_service.datasource_is_restricted(db, log.datasource_id):
+        if await rls_service.restricted_datasource_ids(
+            db, {log.datasource_id}, audience_ids
+        ):
             return None
     columns, rows = await query_service.reexecute_logged_query(log, db, user_id, cache)
     log.result_data = {"columns": columns, "rows": query_service.snapshot_rows(rows)}
@@ -628,6 +639,7 @@ async def apply_global_filter(
     cache: CacheService | None = None,
     skip_rls: bool = False,
     restrict_to_widget_columns: bool = False,
+    audience_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Re-run every widget's stored SQL with the dashboard's global filter AND-ed
     in, returning fresh [{widget_id, chart}] — data-only, NO AI, NOT persisted.
@@ -644,7 +656,10 @@ async def apply_global_filter(
     endpoint leaves it False (per-viewer RLS is applied normally). It binds the
     empty-spec early return too: clearing the filter returns stored snapshots, and
     those snapshots are the owner's — an anonymous ``{}`` must not read what a GET
-    of the same dashboard refuses to serve.
+    of the same dashboard refuses to serve. ``audience_ids`` refines that gate the
+    same way it does in ``refresh_widget_data``: name the recipients and only their
+    real restrictions count; leave it None (a share token names nobody) and any
+    restriction at all blocks the widget.
 
     ``restrict_to_widget_columns`` (anonymous public/embed path) binds each
     widget only by columns it actually displays: a name shown by one widget can't
@@ -667,7 +682,7 @@ async def apply_global_filter(
     # both the early return below and the per-widget loop agree.
     blocked: set[str] = set()
     if skip_rls and ds_ids:
-        blocked = await rls_service.restricted_datasource_ids(db, ds_ids, None)
+        blocked = await rls_service.restricted_datasource_ids(db, ds_ids, audience_ids)
 
     def _snapshot_chart(w: Widget) -> WidgetChart | None:
         log = logs.get(w.query_log_id)
