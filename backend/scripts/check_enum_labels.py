@@ -13,14 +13,20 @@ the migrations actually produced the type, which grepping their source cannot.
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import create_async_engine
 
-import app.models  # noqa: F401 — populates Base.metadata
-from app.config import settings
-from app.db.base import Base
+# Running a script BY PATH puts its own directory on sys.path, not the working
+# directory, so `import app` fails however sensible the CWD is. Same bootstrap as
+# scripts/measure_ai_cost.py; without it this only works under `python -m`.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import app.models  # noqa: E402,F401 — populates Base.metadata
+from app.config import settings  # noqa: E402
+from app.db.base import Base  # noqa: E402
 
 
 def _expected() -> dict[str, set[str]]:
