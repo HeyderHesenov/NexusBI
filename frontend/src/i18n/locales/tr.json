@@ -620,7 +620,10 @@
     "saveToDashboard": "Panoya kaydet",
     "sqlEditor": "SQL düzenleyici",
     "sqlSubtitle": "— kendi sorgunu yaz, AI olmadan çalıştır",
-    "tables": "Tablolar"
+    "tables": "Tablolar",
+    "addSource": "Kaynak ekle",
+    "demoData": "Demo veri",
+    "sourceLabel": "Sorgunun çalıştığı kaynak"
   },
   "reportsPage": {
     "add": "Ekle",

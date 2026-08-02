@@ -620,7 +620,10 @@
     "saveToDashboard": "Dashboard-a saxla",
     "sqlEditor": "SQL redaktoru",
     "sqlSubtitle": "— öz sorğunu yaz, AI-siz işlət",
-    "tables": "Cədvəllər"
+    "tables": "Cədvəllər",
+    "addSource": "Mənbə əlavə et",
+    "demoData": "Demo data",
+    "sourceLabel": "Sorğunun işlədiyi mənbə"
   },
   "reportsPage": {
     "add": "Əlavə et",

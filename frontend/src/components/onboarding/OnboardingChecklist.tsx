@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, Check, Rocket, X } from 'lucide-react'
+import { QUIET_LINK } from '../ui/form'
 import { useOnboarding, type OnboardingStepKey } from '../../hooks/useOnboarding'
 
 // Where each step points the user next. The query step has no route (they're
@@ -67,10 +68,7 @@ export function OnboardingChecklist() {
                 <p className="text-xs text-ink-soft">{t(`onboarding.steps.${s.key}.hint`)}</p>
               </div>
               {!s.done && link && (
-                <Link
-                  to={link}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 py-1 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-accent"
-                >
+                <Link to={link} className={`${QUIET_LINK} py-1`}>
                   {t('onboarding.go')} <ArrowRight size={12} />
                 </Link>
               )}

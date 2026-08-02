@@ -220,6 +220,17 @@ SURVIVED="$(curl -sf "$BASE_URL/api/v1/datasource/" -H "Authorization: Bearer $T
 pass "the uploaded data and the session survived"
 
 # ─────────────────────────────────────────────────────────────────────────────
+step "Checking the database enum types against the models"
+# This is the only place in CI with a real Postgres, so it is the only place the
+# question can actually be answered. `powerbi` sat in DBType with no matching
+# ALTER TYPE for months: SQLite renders Enum as VARCHAR, so every unit test
+# passed while connect-powerbi failed on Postgres alone. Reading pg_enum after
+# the migrations have run proves the type, not the intent.
+"${COMPOSE[@]}" exec -T backend python scripts/check_enum_labels.py \
+  || die "a model enum can write labels the database type does not have"
+pass "every model enum label exists in the database"
+
+# ─────────────────────────────────────────────────────────────────────────────
 step "Stopping the database"
 "${COMPOSE[@]}" stop db >/dev/null
 sleep 3

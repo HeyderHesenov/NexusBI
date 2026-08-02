@@ -5,6 +5,12 @@ import type { ReactNode, SelectHTMLAttributes } from 'react'
 export const FIELD =
   'w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none'
 
+/** Quiet bordered link ("go do this elsewhere"). Vertical padding is left to the
+ *  caller — one of these aligns with a form control, another sits in a dense
+ *  list — so the rest of the treatment can only be changed in one place. */
+export const QUIET_LINK =
+  'inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-accent'
+
 const DANGER = '#D87C6B'
 
 interface FieldProps {

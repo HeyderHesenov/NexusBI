@@ -94,6 +94,8 @@ docker compose -f docker-compose.prod.yml exec -T db pg_dump -U nexusbi nexusbi 
 
 **Yalnız `web` port açır.** Postgres və Redis compose şəbəkəsindən kənara çıxmır. Self-hosted quraşdırmanın brute-force yeyilməsi məhz açıq 5432-dən başlayır.
 
+**Minimum PostgreSQL 12.** Compose `postgres:15` işlədir, amma öz idarə olunan bazana (RDS, Cloud SQL) bağlanırsansa bu həddi yoxla: `c6d7e8f9a0b1` miqrasiyası `ALTER TYPE ... ADD VALUE` işlədir, bu isə 12-dən əvvəlki versiyalarda tranzaksiya blokunun içində **rədd olunur** — alembic bütün qaçışı bir tranzaksiyada işlətdiyi üçün `alembic upgrade head` tamamilə düşər və `migrate` servisi sıfırdan fərqli kodla çıxar. Alternativ (`autocommit_block`) qəsdən seçilməyib: o, əhatə edən tranzaksiyanı commit edərdi və miqrasiya advisory lock-u (tranzaksiya-əhatəli) vaxtından əvvəl buraxılardı.
+
 **Backend non-root işləyir** (uid 10001) və prod image-də test runner yoxdur.
 
 **Frontend nisbi API ünvanı ilə build olunur** (`VITE_API_URL=/api/v1`). Bu o deməkdir ki, eyni image istənilən domendə işləyir və CORS ümumiyyətlə iştirak etmir.
