@@ -398,7 +398,8 @@ hər PR-də **sıfır API xərcinə** offline mühərriki qiymətləndirir və `
 ratchet mərtəbəsi ilə **qapıdır**; real model istəyə bağlıdır
 (`NEXUSBI_EVAL_LLM=1`, ~$0.22) və yalnız hesabatdır.
 
-Ölçüldü 2026-08-02 — `nl2sql_exact@1`:
+Ölçüldü 2026-08-02 (golden dəst dəyişəndən sonra **yenidən ölçüldü**, eyni rəqəm) —
+`nl2sql_exact@1`:
 
 | təbəqə | offline fallback | gpt-4o |
 |---|---|---|

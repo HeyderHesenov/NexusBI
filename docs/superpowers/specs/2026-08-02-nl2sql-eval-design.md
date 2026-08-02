@@ -193,13 +193,17 @@ The paid run also **cross-validates the golden set**: an independent model
 agreeing with 78 of 80 hand-written references is strong evidence the references
 are right, which no amount of internal review could establish.
 
-> **The `llm` column is pinned to the set as it stood on 2026-08-02.** The
-> `products-never-sold` pair was replaced afterwards (it could not discriminate —
-> see below), so gpt-4o has never been scored on its replacement. 78/80 still
-> describes the run that happened; it describes 78 of the *current* 80 cases only
-> if the new pair behaves like the old one. Re-running costs ~$0.22 and is the way
-> to make the column current again. The `deterministic_fallback` column was
-> re-measured after the swap and is unchanged at 0.50.
+**Re-measured after the `products-never-sold` swap** (2026-08-02, same gpt-4o, second
+paid run, ~$0.22): identical — 0.97 overall, 1.00 core / 0.95 full, parity 0.97 in
+both languages, and **the same two misses**. So the table describes the current set,
+not a historical one.
+
+The replacement case is where the re-run earned its cost. The model answered it with
+an anti-join — `LEFT JOIN sales s ON p.name = s.product_name AND s.region = 'North'
+WHERE s.id IS NULL` — against a reference written as `NOT IN (subquery)`. Two
+independent formulations, same 16 rows, graded on result sets rather than SQL text.
+That is the evidence the old case could never produce: it returned 0, so agreement
+proved nothing.
 
 ### The two the model missed
 

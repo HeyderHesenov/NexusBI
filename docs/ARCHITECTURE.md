@@ -276,7 +276,8 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   execute against ONE seeded snapshot, so the demo live-feed multipliers cannot make two runs
   disagree. Because `conftest` blanks `AI_API_KEY`, the run scores the deterministic
   fallback at zero cost inside the normal suite; the real model is opt-in
-  (`NEXUSBI_EVAL_LLM=1`, ~$0.22) and reported, never gated. Measured 2026-08-02,
+  (`NEXUSBI_EVAL_LLM=1`, ~$0.22) and reported, never gated. Measured 2026-08-02 and
+  re-measured the same day after a golden case was replaced — unchanged,
   `nl2sql_exact@1`: fallback **0.50** overall (1.00 core — gated by a ratchet floor —
   and 0.00 full), gpt-4o **0.97** (1.00 core / 0.95 full), parity 0.97 in both languages.
   The pair is the point: **losing the model costs 0.97 → 0.50**, entirely in questions
