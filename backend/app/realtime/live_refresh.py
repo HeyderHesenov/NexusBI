@@ -38,6 +38,12 @@ async def _room_audience(dash_id: str) -> set[str] | None:
     every RLS gate downstream reads as "assume someone is restricted". An empty or
     unreadable roster collapses the same way: not naming anyone is not the same as
     naming nobody.
+
+    This must keep reading the SAME population ``hub.broadcast`` writes to, or the
+    gate protects a set that isn't the one receiving data. It does in both modes:
+    with the bus off, presence and delivery are both this worker's rooms; with it
+    on, both cross workers through Redis. Anything that changes one has to change
+    the other.
     """
     try:
         roster = await hub.presence(dash_id)
