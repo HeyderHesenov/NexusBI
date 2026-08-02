@@ -60,7 +60,6 @@ def test_execute_select_is_only_called_from_query_service():
 # deliberate edit to this list rather than an oversight. Removing an entry when a
 # route gains a limit is the point -- the list should only ever shrink.
 _UNLIMITED_MUTATING_ROUTES = frozenset({
-    "POST /api/v1/alerts",
     "POST /api/v1/auth/google",
     "POST /api/v1/billing/checkout",
     "POST /api/v1/billing/upgrade",

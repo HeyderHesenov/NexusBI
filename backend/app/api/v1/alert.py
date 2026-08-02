@@ -1,17 +1,28 @@
 """Alert (monitor) + notification endpoints."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Depends, Response, status
 
+from app.core.rate_limit import rate_limit
 from app.dependencies import CurrentUser, DbDep, RateLimitedUser
-from app.schemas.alert import AlertCreate, AlertResponse, NotificationResponse
+from app.schemas.alert import AlertCreate, AlertResponse, AlertUpdate, NotificationResponse
 from app.services import alert_service as svc
 from app.services import digest_service
 
 router = APIRouter(tags=["alerts"])
 
+# An IP limit, not RateLimitedUser: managing alerts is plain CRUD and makes no
+# model call, so charging it against the monthly AI quota would bill a user for
+# pausing their own notifications.
+_alert_writes = Depends(rate_limit("alerts", limit=30, window_seconds=60))
 
-@router.post("/alerts", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/alerts",
+    response_model=AlertResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_alert_writes],
+)
 async def create_alert(payload: AlertCreate, user: CurrentUser, db: DbDep) -> AlertResponse:
     alert = await svc.create(db, user.id, payload)
     return AlertResponse.model_validate(alert)
@@ -20,6 +31,14 @@ async def create_alert(payload: AlertCreate, user: CurrentUser, db: DbDep) -> Al
 @router.get("/alerts", response_model=list[AlertResponse])
 async def list_alerts(user: CurrentUser, db: DbDep) -> list[AlertResponse]:
     return [AlertResponse.model_validate(a) for a in await svc.list_for_user(db, user.id)]
+
+
+@router.patch("/alerts/{alert_id}", response_model=AlertResponse, dependencies=[_alert_writes])
+async def update_alert(
+    alert_id: str, payload: AlertUpdate, user: CurrentUser, db: DbDep
+) -> AlertResponse:
+    alert = await svc.update(db, user.id, alert_id, payload)
+    return AlertResponse.model_validate(alert)
 
 
 @router.delete("/alerts/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)

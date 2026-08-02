@@ -52,13 +52,35 @@ async def list_for_user(db: AsyncSession, user_id: str) -> list[Alert]:
     return list(result.scalars().all())
 
 
-async def delete(db: AsyncSession, user_id: str, alert_id: str) -> None:
+async def _owned(db: AsyncSession, user_id: str, alert_id: str) -> Alert:
+    """Fetch an alert only if it belongs to this user — else a 404, never a 403.
+
+    Same owner-scoped lookup for update and delete, so a second entry point cannot
+    end up with a laxer check than the first.
+    """
     result = await db.execute(
         select(Alert).where(Alert.id == alert_id, Alert.user_id == user_id)
     )
     alert = result.scalar_one_or_none()
     if alert is None:
         raise SchemaNotFoundError("Alert tapılmadı.")
+    return alert
+
+
+async def update(db: AsyncSession, user_id: str, alert_id: str, payload) -> Alert:
+    """Patch the fields the management UI exposes: pause, rename, retune."""
+    alert = await _owned(db, user_id, alert_id)
+    for attr in ("name", "active", "cooldown_minutes", "threshold"):
+        value = getattr(payload, attr, None)
+        if value is not None:
+            setattr(alert, attr, value)
+    await db.flush()
+    await db.refresh(alert)
+    return alert
+
+
+async def delete(db: AsyncSession, user_id: str, alert_id: str) -> None:
+    alert = await _owned(db, user_id, alert_id)
     await db.delete(alert)
     await db.flush()
 
