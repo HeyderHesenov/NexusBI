@@ -18,6 +18,9 @@ class AlertCreate(BaseModel):
     condition_type: ConditionType = "static"
     operator: Operator = ">"
     threshold: float = 0.0
+    # Minutes of silence after a breach; 0 = notify on every evaluation. Capped at
+    # a week, past which "muted" is the honest word and `active` is the control.
+    cooldown_minutes: int = Field(60, ge=0, le=10080)
 
 
 class AlertResponse(BaseModel):
@@ -29,6 +32,7 @@ class AlertResponse(BaseModel):
     operator: str
     threshold: float
     active: bool
+    cooldown_minutes: int
     last_triggered_at: datetime | None
     created_at: datetime
 

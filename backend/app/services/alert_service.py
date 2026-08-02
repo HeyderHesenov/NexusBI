@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import operator as _op
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import SchemaNotFoundError
 from app.core.notification_types import NotificationCategory
+from app.core.timeutil import aware
 from app.models.alert import Alert, Notification
 from app.models.saved_query import SavedQuery
 from app.schemas.query import QueryResult
@@ -36,6 +37,7 @@ async def create(db: AsyncSession, user_id: str, payload) -> Alert:
         condition_type=payload.condition_type,
         operator=payload.operator,
         threshold=payload.threshold,
+        cooldown_minutes=payload.cooldown_minutes,
     )
     db.add(alert)
     await db.flush()
@@ -96,18 +98,45 @@ def _evaluate_anomaly(alert: Alert, rows: list[dict[str, Any]]) -> bool:
     return (len(series) - 1) in set(stats.zscore_outliers(series))
 
 
+def _in_cooldown(alert: Alert, now: datetime) -> bool:
+    """True while the alert is still inside its post-breach silence window.
+
+    ``cooldown_minutes == 0`` disables it, which is the pre-1.6 behaviour: fire on
+    every evaluation.
+    """
+    if alert.cooldown_minutes <= 0:
+        return False
+    last = aware(alert.last_triggered_at)
+    if last is None:
+        return False
+    return now - last < timedelta(minutes=alert.cooldown_minutes)
+
+
 async def check_saved_query(db: AsyncSession, sq: SavedQuery, result: QueryResult) -> int:
-    """Evaluate active alerts on a saved query; create notifications on breach."""
+    """Evaluate active alerts on a saved query; create notifications on breach.
+
+    The cooldown is enforced HERE rather than in the scheduler because this is the
+    single chokepoint all three evaluation paths share: ``run_due`` (hourly at
+    most), ``POST /saved/{id}/run`` (every click of the Run button) and
+    ``report_delivery_service`` (every scheduled report). Gating the scheduler
+    would leave the two noisiest paths uncovered.
+    """
     rows = result.data
     res = await db.execute(
         select(Alert).where(Alert.saved_query_id == sq.id, Alert.active.is_(True))
     )
     from app.services import integration_service, notify_service
 
+    now = datetime.now(timezone.utc)
     fired = 0
     for alert in res.scalars().all():
         if evaluate(alert, rows):
-            alert.last_triggered_at = datetime.now(timezone.utc)
+            # Still silenced: leave last_triggered_at alone. Bumping it here would
+            # restart the window on every evaluation, so a breach that outlives one
+            # cooldown could never notify again.
+            if _in_cooldown(alert, now):
+                continue
+            alert.last_triggered_at = now
             title = f"Alert: {alert.name}"
             if alert.condition_type == "anomaly":
                 body = (

@@ -7,18 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import SchemaNotFoundError
+from app.core.timeutil import aware
 from app.models.saved_query import SavedQuery
 from app.schemas.query import QueryResult
 from app.services import query_service
 from app.services.cache_service import CacheService
 
 INTERVALS = {"hourly": 3600, "daily": 86400, "weekly": 604800}
-
-
-def _aware(dt: datetime | None) -> datetime | None:
-    if dt is None:
-        return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 async def create(db: AsyncSession, user_id: str, payload) -> SavedQuery:
@@ -99,7 +94,7 @@ def is_due(sq: SavedQuery, now: datetime) -> bool:
     interval = INTERVALS.get(sq.schedule)
     if interval is None:
         return False
-    last = _aware(sq.last_run_at)
+    last = aware(sq.last_run_at)
     if last is None:
         return True
     return now - last >= timedelta(seconds=interval)

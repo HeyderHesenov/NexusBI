@@ -10,19 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.billing.tiers import get_tier, is_unlimited
 from app.core.exceptions import RateLimitError
 from app.core.logging import get_logger
+from app.core.timeutil import aware
 from app.db.session import AsyncSessionLocal
 from app.models.user import User
 
 log = get_logger("nexusbi.usage")
 
 PERIOD = timedelta(days=30)
-
-
-def _aware(dt: datetime | None) -> datetime | None:
-    """Normalise to timezone-aware UTC (SQLite returns naive datetimes)."""
-    if dt is None:
-        return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def _window_elapsed(cutoff: datetime):
@@ -112,7 +106,7 @@ def get_usage(user: User) -> dict[str, Any]:
             "period_start": None,
             "resets_at": None,
         }
-    start = _aware(user.usage_period_start)
+    start = aware(user.usage_period_start)
     used = user.ai_calls_used
     if start is None or datetime.now(timezone.utc) - start >= PERIOD:
         used = 0  # window has lapsed; effective usage is zero until next call

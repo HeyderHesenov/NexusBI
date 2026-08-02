@@ -7,6 +7,8 @@ from typing import Any
 
 import numpy as np
 
+from app.core.timeutil import aware
+
 _PERIOD_DAYS = {"month": 30, "quarter": 91, "year": 365}
 
 
@@ -60,12 +62,6 @@ def monte_carlo(
     return {"start": round(start, 2), "mean_return_pct": round(mu * 100, 2), "bands": bands}
 
 
-def _aware(dt: datetime | None) -> datetime | None:
-    if dt is None:
-        return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-
-
 def pacing(
     target_value: float,
     current_value: float,
@@ -83,7 +79,7 @@ def pacing(
         }
     attainment = current_value / target_value * 100
     days = _PERIOD_DAYS.get(period, 30)
-    start = _aware(period_start)
+    start = aware(period_start)
     elapsed = (now - start).total_seconds() / 86400 if start else days / 2
     elapsed_pct = max(0.0, min(100.0, elapsed / days * 100))
     expected_value = target_value * (elapsed_pct / 100)
