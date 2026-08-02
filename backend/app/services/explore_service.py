@@ -59,7 +59,13 @@ def _is_id_like(col: str) -> bool:
     return c == "id" or c.endswith("_id") or col.endswith(("Id", "ID"))
 
 
-def _is_temporal(col: str) -> bool:
+def is_temporal(col: str) -> bool:
+    """Name-based "is this a time axis?" test, shared with alert anomaly ordering.
+
+    Public so the alert service can order a result set by its time column with the
+    same rule the Explore dashboard uses to pick one — two heuristics disagreeing
+    about what counts as a date is a bug that only shows up as a wrong answer.
+    """
     c = col.lower()
     return any(h in c for h in _TEMPORAL_HINTS)
 
@@ -70,9 +76,9 @@ def _classify(
     """Split columns into (measures, dimensions, temporals) from a value sample."""
     numeric = set(numeric_columns(columns, rows))
     measures = [
-        c for c in columns if c in numeric and not _is_id_like(c) and not _is_temporal(c)
+        c for c in columns if c in numeric and not _is_id_like(c) and not is_temporal(c)
     ]
-    temporals = [c for c in columns if _is_temporal(c)]
+    temporals = [c for c in columns if is_temporal(c)]
     dims = [
         c
         for c in columns
@@ -84,7 +90,9 @@ def _classify(
 # Re-exported: BA evidence and BCG already import it from here, and it now lives
 # in core so profiling/AutoML/data-prep don't have to import a service to quote
 # a table name.
-__all__ = ["SourceProfile", "build_explore_dashboard", "profile_source", "quote_ident"]
+__all__ = [
+    "SourceProfile", "build_explore_dashboard", "is_temporal", "profile_source", "quote_ident",
+]
 
 
 def _compose_queries(

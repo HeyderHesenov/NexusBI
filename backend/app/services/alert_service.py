@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import operator as _op
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -88,11 +88,65 @@ def evaluate(alert: Alert, rows: list[dict[str, Any]]) -> bool:
     return False
 
 
+def _time_key(value: Any) -> str | None:
+    """Normalise a time-column value to ONE comparable type, or None if unusable.
+
+    A driver can hand back the same column as ``datetime``, ``date``, ``str`` or a
+    number, and ``sorted()`` raises TypeError the moment two of those meet -- which
+    here would take down the whole scheduler tick, not just one alert. Everything
+    therefore collapses to a string whose lexicographic order matches chronological
+    order: ISO for dates, zero-padded for a numeric axis (year, epoch, YYYYMM).
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, datetime):
+        normalised = aware(value)
+        return normalised.isoformat() if normalised else None
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, (int, float)):
+        # Negative (pre-epoch) values would need a sign-aware encoding to keep
+        # lexicographic == numeric; they are dropped instead of mis-ordered.
+        return f"{value:020.3f}" if value >= 0 else None
+    if isinstance(value, str):
+        return value.strip() or None
+    return None
+
+
+def _ordered_rows(alert: Alert, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Rows in time order, when the result set carries a time column.
+
+    A SELECT without ORDER BY returns rows in whatever order the engine produced,
+    so "the latest point" -- the entire basis of an anomaly alert, and what the
+    notification text claims -- was really "whichever row happened to come last".
+
+    Two deliberate fallbacks to the engine's order: no time column at all, and a
+    time column no row can be keyed on (all NULL). Sorting is meaningless in both,
+    and dropping every row would silence alerts that fire today.
+    """
+    # Local import: explore_service pulls in the whole query pipeline, and this
+    # module is loaded by the alert API on every request.
+    from app.services.explore_service import is_temporal
+
+    if not rows:
+        return rows
+    col = next((c for c in rows[0] if c != alert.column and is_temporal(c)), None)
+    if col is None:
+        return rows
+    keyed = [(key, r) for r in rows if (key := _time_key(r.get(col))) is not None]
+    if not keyed:
+        return rows
+    # Key only, never the dict: comparing rows would raise on a tie.
+    keyed.sort(key=lambda pair: pair[0])
+    return [r for _key, r in keyed]
+
+
 def _evaluate_anomaly(alert: Alert, rows: list[dict[str, Any]]) -> bool:
     """Fire when the most recent point of the column series is a statistical outlier."""
     from app.services import stats
 
-    series = [v for r in rows if (v := stats.to_float(r.get(alert.column))) is not None]
+    ordered = _ordered_rows(alert, rows)
+    series = [v for r in ordered if (v := stats.to_float(r.get(alert.column))) is not None]
     if len(series) < 4:
         return False
     return (len(series) - 1) in set(stats.zscore_outliers(series))
