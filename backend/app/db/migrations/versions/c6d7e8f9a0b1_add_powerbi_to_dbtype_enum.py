@@ -32,9 +32,30 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     if op.get_bind().dialect.name != 'postgresql':
-        return  # SQLite/MySQL store the Enum as a plain string: nothing to alter
-    # IF NOT EXISTS keeps this safe on a database that was built by create_all
-    # from the current models rather than by replaying migrations.
+        # SQLite renders sa.Enum as VARCHAR, so there is no type to alter. This is
+        # NOT a general "other dialects are fine" claim -- MySQL renders it as a
+        # native ENUM and would need its own ALTER. The application database is
+        # SQLite (dev) or Postgres (docker-compose.prod.yml, docs/deploy.md); MySQL
+        # appears in this codebase only as a customer DATA SOURCE, never as our own.
+        return
+    # REQUIRES POSTGRES 12+. Alembic wraps the run in a transaction (env.py
+    # do_run_migrations) and PostgresqlImpl is transactional_ddl, so this lands
+    # inside BEGIN/COMMIT; before 12 that is rejected outright with "ALTER TYPE
+    # ... ADD cannot run inside a transaction block" and takes the whole upgrade
+    # down with it. 12 is not a new constraint -- docker-compose.prod.yml has
+    # pinned postgres:15 since the stack existed -- but it was undocumented.
+    #
+    # autocommit_block() is the usual escape and is deliberately NOT used: it
+    # commits the surrounding transaction, which would release the
+    # pg_advisory_xact_lock that migration_lock.py takes for the run, so two
+    # concurrent migrators could proceed past the mutex. A documented version
+    # floor is cheaper than trading the lock away.
+    #
+    # Note for whoever adds the next label: on 12+ the new value still cannot be
+    # USED by a later migration in the same run. Nothing here does.
+    #
+    # IF NOT EXISTS keeps this safe on a database built by create_all from the
+    # current models rather than by replaying migrations.
     op.execute("ALTER TYPE dbtype ADD VALUE IF NOT EXISTS 'powerbi'")
 
 

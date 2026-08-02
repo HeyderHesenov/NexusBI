@@ -35,7 +35,11 @@ class DataSource(Base, TimestampMixin):
         String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    db_type: Mapped[DBType] = mapped_column(Enum(DBType), nullable=False)
+    # name= is explicit, not decorative: without it the Postgres type name is
+    # derived from the class name, so renaming DBType would silently start
+    # emitting a differently-named type while the migrations keep altering
+    # 'dbtype'. Invisible on SQLite, `type "dbtype" does not exist` on Postgres.
+    db_type: Mapped[DBType] = mapped_column(Enum(DBType, name="dbtype"), nullable=False)
     connection_string_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     schema_cache: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 

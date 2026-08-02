@@ -621,7 +621,9 @@
     "sqlEditor": "SQL redaktoru",
     "sqlSubtitle": "— öz sorğunu yaz, AI-siz işlət",
     "tables": "Cədvəllər",
-    "addSource": "Mənbə əlavə et"
+    "addSource": "Mənbə əlavə et",
+    "demoData": "Demo data",
+    "sourceLabel": "Sorğunun işlədiyi mənbə"
   },
   "reportsPage": {
     "add": "Əlavə et",

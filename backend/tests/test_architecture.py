@@ -296,29 +296,49 @@ def test_every_database_enum_label_appears_in_a_migration():
     suite stayed green, and POST /datasource/connect-powerbi failed on every
     Postgres deployment with `invalid input value for enum dbtype`.
 
-    Grepping the migrations is deliberately crude -- CI has no Postgres to ask, so
-    the check is "somebody wrote a migration mentioning this label" rather than
-    "the type really has it". It costs one line in the migration that adds the
-    member, which is exactly the line that was missing.
+    This runs on SQLite, so it cannot ask a database; it reads the migrations for
+    a statement that would create the label. The authoritative check is
+    scripts/check_enum_labels.py, which deploy_smoke.sh runs against the real
+    Postgres after `alembic upgrade head` -- that one proves the type exists. This
+    one just fails in seconds instead of minutes.
+
+    Labels are collected from `sa.Enum(...)` and `ALTER TYPE ... ADD VALUE`
+    specifically, never from the file text. A first cut searched the whole file
+    and was satisfied by the fixing migration's own docstring: deleting its
+    op.execute left the test green, so the guard against this recurring did not
+    guard against anything.
     """
+    import re
+
     import sqlalchemy as sa
 
     import app.models  # noqa: F401 — populates Base.metadata
     from app.db.base import Base
 
     versions = _APP / "db" / "migrations" / "versions"
-    migrations = "\n".join(p.read_text(encoding="utf-8") for p in versions.glob("*.py"))
+    text = "\n".join(p.read_text(encoding="utf-8") for p in versions.glob("*.py"))
+
+    declared: set[str] = set()
+    for args in re.findall(r"sa\.Enum\(([^)]*)\)", text):
+        declared.update(re.findall(r"""['"]([^'"]+)['"]""", args))
+    for label in re.findall(
+        r"""ALTER\s+TYPE\s+\w+\s+ADD\s+VALUE\s+(?:IF\s+NOT\s+EXISTS\s+)?['"]([^'"]+)['"]""",
+        text, re.I,
+    ):
+        declared.add(label)
 
     missing = []
     for table in Base.metadata.tables.values():
         for col in table.columns:
-            if isinstance(col.type, sa.Enum):
+            # A non-native Enum is a VARCHAR on every dialect: no type, nothing to
+            # alter, and demanding a migration line for it would be busywork.
+            if isinstance(col.type, sa.Enum) and getattr(col.type, "native_enum", True):
                 for label in col.type.enums:
-                    if f"'{label}'" not in migrations and f'"{label}"' not in migrations:
+                    if label not in declared:
                         missing.append(f"{table.name}.{col.name} -> {label!r}")
 
     assert not missing, (
-        "These enum labels exist in the models but in no migration, so the "
-        "Postgres type does not accept them (SQLite hides this). Add a migration "
-        f"with ALTER TYPE ... ADD VALUE: {missing}"
+        "These enum labels exist in the models but no migration creates them, so "
+        "the Postgres type does not accept them (SQLite hides this). Add a "
+        f"migration with ALTER TYPE ... ADD VALUE: {missing}"
     )
