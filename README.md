@@ -367,7 +367,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 819 test
+cd backend && pytest        # 822 test
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
