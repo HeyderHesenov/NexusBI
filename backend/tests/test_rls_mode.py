@@ -267,6 +267,15 @@ async def test_clearing_the_public_filter_does_not_bypass_the_lock(
     assert cleared.status_code == 200, cleared.text
     assert cleared.json()["widgets"][0]["chart"] is None
 
+    # And the lock covers the schema, not only the rows: a filter naming one of the
+    # locked source's columns must be rejected like any unknown column, or the
+    # accept/reject split answers "does it have a column called X?" one call at a time.
+    probe = await client.post(
+        f"/api/v1/public/dashboard/{token}/filter",
+        json={"dimensions": [{"column": "product_name", "values": ["Product A0"]}]},
+    )
+    assert probe.status_code >= 400, probe.text
+
 
 async def test_live_refresh_reads_the_room_instead_of_the_lock(
     client: AsyncClient, auth: dict, monkeypatch

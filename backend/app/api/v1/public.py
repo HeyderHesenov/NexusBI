@@ -13,7 +13,7 @@ from app.models.user import User
 from app.schemas.comment import CommentResponse
 from app.schemas.dashboard import DashboardFilterResponse, DashboardFilterSpec, DashboardResponse
 from app.schemas.embed import BrandConfigResponse, EmbeddedDashboard, SharedDashboard
-from app.services import brand_service, comment_service, embed_service
+from app.services import brand_service, comment_service, embed_service, rls_service
 from app.services import dashboard_service as svc
 from app.services.cache_service import CacheService
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,9 +62,17 @@ async def _shared_filter(
 
     widgets = list(dash.widgets)
     logs = await svc.load_widget_query_logs(db, widgets, dash.user_id)
+    # A locked source contributes no columns either. Its widget already comes back
+    # blank, but accepting a filter on one of its column names and rejecting every
+    # other name answers "does the locked source have a column called X?" one
+    # request at a time. The lock covers the schema, not just the rows.
+    blocked = await rls_service.restricted_datasource_ids(
+        db, {log.datasource_id for log in logs.values() if log.datasource_id}, None
+    )
     allowed = {
         str(col).lower()
         for log in logs.values()
+        if log.datasource_id not in blocked
         for col in (log.result_data or {}).get("columns", [])
     }
     requested = list(merged)
