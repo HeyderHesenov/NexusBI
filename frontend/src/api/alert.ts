@@ -1,5 +1,5 @@
 import { client } from './client'
-import type { Alert, AlertCreate, AppNotification } from '../types'
+import type { Alert, AlertCreate, AlertUpdate, AppNotification } from '../types'
 
 export async function listAlerts(): Promise<Alert[]> {
   const { data } = await client.get<Alert[]>('/alerts')
@@ -8,6 +8,11 @@ export async function listAlerts(): Promise<Alert[]> {
 
 export async function createAlert(payload: AlertCreate): Promise<Alert> {
   const { data } = await client.post<Alert>('/alerts', payload)
+  return data
+}
+
+export async function updateAlert(id: string, payload: AlertUpdate): Promise<Alert> {
+  const { data } = await client.patch<Alert>(`/alerts/${id}`, payload)
   return data
 }
 

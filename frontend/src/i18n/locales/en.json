@@ -627,7 +627,6 @@
     "alertCreated": "Alert created.",
     "alertNameLabel": "Name",
     "alertSubtitle": "You get notified if the condition breaks when “{{name}}” runs.",
-    "cancel": "Cancel",
     "close": "Close",
     "columnLabel": "Column",
     "columnPlaceholder": "Column (e.g. total)",
@@ -660,7 +659,13 @@
     "conditionLabel": "Condition type",
     "conditionStatic": "Static threshold",
     "conditionAnomaly": "Anomaly (z-score)",
-    "anomalyHint": "Fires when the latest point of the column series is a statistical outlier (MAD z-score) — no fixed threshold needed."
+    "anomalyHint": "Fires when the latest point of the column series is a statistical outlier (MAD z-score) — no fixed threshold needed.",
+    "cooldownLabel": "Cooldown (minutes)",
+    "cooldownHint": "Stays silent this many minutes after a notification. 0 = notify on every run.",
+    "alertActive": "Resume",
+    "alertPaused": "Pause",
+    "alertUpdated": "Alert updated.",
+    "noAlerts": "No alerts on this query yet."
   },
   "requirementsPage": {
     "buildDashboard": "Build dashboard ({{count}})",

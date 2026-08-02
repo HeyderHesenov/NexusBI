@@ -144,6 +144,8 @@ export interface Alert {
   operator: string
   threshold: number
   active: boolean
+  /** Minutes of silence after a breach; 0 = notify on every evaluation. */
+  cooldown_minutes: number
   last_triggered_at: string | null
   created_at: string
 }
@@ -155,6 +157,16 @@ export interface AlertCreate {
   condition_type: AlertConditionType
   operator: AlertOperator
   threshold: number
+  cooldown_minutes: number
+}
+
+/** Partial edit — an omitted field is left untouched, which is what lets the
+ *  pause toggle send `active` on its own. */
+export interface AlertUpdate {
+  name?: string
+  active?: boolean
+  cooldown_minutes?: number
+  threshold?: number
 }
 
 export type NotificationCategory =
