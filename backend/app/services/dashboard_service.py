@@ -378,9 +378,20 @@ async def load_widget_query_logs(
 
 
 async def widgets_to_response(
-    db: AsyncSession, widgets: list[Widget], user_id: str
+    db: AsyncSession, widgets: list[Widget], user_id: str, *, anonymous: bool = False
 ) -> list[WidgetResponse]:
-    """Serialize widgets, batch-loading query logs + datasources (no N+1)."""
+    """Serialize widgets, batch-loading query logs + datasources (no N+1).
+
+    ``anonymous=True`` is the public share / embed path: the caller holds a token,
+    not an identity, so it cannot be granted an RLS rule and a restricted source
+    must come back ``chart=None``. This is the guarantee the RLS dialog makes to
+    the owner ("a locked source stays blank on public and embed links") — the
+    stored snapshot is the OWNER's, unfiltered, so serving it hands out exactly
+    the rows the lock was meant to withhold.
+
+    It stays opt-in because the same helper renders the owner's own dashboard,
+    where blanking their data would be the bug.
+    """
     by_id = await load_widget_query_logs(db, widgets, user_id)
 
     ds_ids = {q.datasource_id for q in by_id.values() if q.datasource_id}
@@ -391,6 +402,17 @@ async def widgets_to_response(
         )
         ds_names = {ds_id: name for ds_id, name in rows.all()}
 
+    blocked: set[str] = set()
+    if anonymous and ds_ids:
+        from app.services import rls_service
+
+        blocked = await rls_service.restricted_datasource_ids(db, ds_ids, None)
+
+    def _chart(log: QueryLog | None) -> WidgetChart | None:
+        if log is not None and log.datasource_id in blocked:
+            return None
+        return _widget_chart(log, ds_names)
+
     return [
         WidgetResponse(
             id=w.id,
@@ -400,7 +422,7 @@ async def widgets_to_response(
             position_y=w.position_y,
             width=w.width,
             height=w.height,
-            chart=_widget_chart(by_id.get(w.query_log_id) if w.query_log_id else None, ds_names),
+            chart=_chart(by_id.get(w.query_log_id) if w.query_log_id else None),
         )
         for w in widgets
     ]
@@ -616,10 +638,13 @@ async def apply_global_filter(
     unfiltered chart so the dashboard never breaks. An empty ``spec`` returns the
     original, unfiltered charts (used to clear the filter).
 
-    ``skip_rls`` is for the live BROADCAST path (one dataset fans out to the whole
-    room including restricted guests): widgets on an RLS-restricted source are
-    skipped (chart=None) so the owner's row scope never reaches a guest. The
-    owner-only HTTP endpoint leaves it False (per-viewer RLS is applied normally).
+    ``skip_rls`` marks a FAN-OUT caller (live broadcast, public share, embed): one
+    dataset reaches a whole audience, so widgets on an RLS-restricted source are
+    skipped (chart=None) rather than filtered per viewer. The owner-only HTTP
+    endpoint leaves it False (per-viewer RLS is applied normally). It binds the
+    empty-spec early return too: clearing the filter returns stored snapshots, and
+    those snapshots are the owner's — an anonymous ``{}`` must not read what a GET
+    of the same dashboard refuses to serve.
 
     ``restrict_to_widget_columns`` (anonymous public/embed path) binds each
     widget only by columns it actually displays: a name shown by one widget can't
@@ -638,14 +663,23 @@ async def apply_global_filter(
         )
         ds_names = {ds_id: name for ds_id, name in rows.all()}
 
+    # Sources this caller may not fan out at all. Resolved once (two queries) so
+    # both the early return below and the per-widget loop agree.
+    blocked: set[str] = set()
+    if skip_rls and ds_ids:
+        blocked = await rls_service.restricted_datasource_ids(db, ds_ids, None)
+
+    def _snapshot_chart(w: Widget) -> WidgetChart | None:
+        log = logs.get(w.query_log_id)
+        if log is not None and log.datasource_id in blocked:
+            return None
+        return _widget_chart(log, ds_names)
+
     # Clearing the filter (empty spec) returns the stored snapshots as-is — no
     # live re-execution, so numbers match what the user was viewing and we don't
     # hit the source once per widget for a no-op.
     if not dashboard_filter_sql.filter_active(spec):
-        return [
-            {"widget_id": w.id, "chart": _widget_chart(logs.get(w.query_log_id), ds_names)}
-            for w in widgets
-        ]
+        return [{"widget_id": w.id, "chart": _snapshot_chart(w)} for w in widgets]
 
     out: list[dict[str, Any]] = []
     # Sequential on the shared session (an AsyncSession is not concurrent-safe);
@@ -653,11 +687,12 @@ async def apply_global_filter(
     for w in widgets:
         log = logs.get(w.query_log_id) if w.query_log_id else None
         if log is None or not log.generated_sql:
-            out.append({"widget_id": w.id, "chart": _widget_chart(log, ds_names)})
+            # Falls back to the stored snapshot, so it must clear the same gate as
+            # every other snapshot return here — "no SQL to re-run" is not a reason
+            # to hand out the owner's rows.
+            out.append({"widget_id": w.id, "chart": _snapshot_chart(w)})
             continue
-        if skip_rls and log.datasource_id and await rls_service.datasource_is_restricted(
-            db, log.datasource_id
-        ):
+        if log.datasource_id in blocked:
             # Don't fan an owner-scoped filtered dataset out to restricted guests.
             # A locked (strict) source counts: an anonymous public viewer can never
             # hold a rule, so it is denied by definition.
