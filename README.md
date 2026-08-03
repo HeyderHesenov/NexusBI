@@ -164,8 +164,12 @@ klassik ML, LLM yox:
   saxta korrelyasiya). `POST /query/{id}/significance` → ChartView "Statistik yoxlama" paneli.
 - **Kauzal nəticə** — hədəf metriklə ən güclü əlaqəli sütunlar (Pearson r + p-dəyər + **BH-FDR**
   çox-müqayisə düzəlişi), dürüst caveat-larla. `POST /query/{id}/causal` → "Səbəb analizi" paneli.
-- **Metrik ağacı** — KPI dekompozisiyası (Gəlir = Qiymət × Həcm), dəyərlər aşağıdan-yuxarı
-  toplanır + valideynə töhfə %. `/metric-tree` · **Məlumat → Metrik ağacı**.
+- **Metrik ağacı (mənşəli)** — KPI dekompozisiyası (Gəlir = Qiymət × Həcm), dəyərlər aşağıdan-yuxarı
+  toplanır + valideynə töhfə %. Hər yarpaq **mənşə** daşıyır: `measured` (saxlanan sorğunun son
+  qaçışından ölçülüb — sum/avg/min/max/last/count, ölçmə vaxtı ilə), `manual` (əl ilə yazılmış
+  **fərziyyə**, belə də etiketlənir), `unknown` (dəyər yoxdur). **Naməlum heç vaxt səssizcə 0 olmur** —
+  yuxarı yayılır, çünki boş yarpağı sıfır saymaq `×` ağacında bütün KPI-nı sıfırlayır.
+  `/metric-tree` · **Məlumat → Metrik ağacı**.
 - **Data müqavilələri** — mənbə cədvəllərinə keyfiyyət zəmanəti (boş-deyil, unikal, diapazon,
   sxem-sabitliyi, təzəlik SLA); pozulmada bildiriş. `/contracts` · **Məlumat → Data müqavilələri**.
 - **Digital Twin simulyatoru (3 səth: Model · Simulyator · Risk)** — metrik ağacının tam
@@ -173,8 +177,10 @@ klassik ML, LLM yox:
   portu). **Model**: metrik ağacı redaktoru. **Simulyator**: KPI hero (count-up + delta + sparkline +
   P10–P90 qeyri-müəyyənlik zolağı), leaf ±% sliderlər, kumulyativ waterfall, ±10% tornado, goal-seek,
   ssenari müqayisəsi, KPI-hədəf pacing nişanı və "nə dəyişdi" driver narrativi. **Risk**:
-  2000-iterasiyalı Monte Carlo (per-lever diapazon → P10/P50/P90 + histoqram). Tam client-side,
-  backend dəyişikliyi yox. `/twin`.
+  2000-iterasiyalı Monte Carlo (per-lever diapazon → P10/P50/P90 + histoqram). Simulyasiya riyaziyyatı
+  tam client-side. **Dəyəri olmayan yarpağı olan KPI-da hər üç səth işləməkdən imtina edir** və
+  əvəzində boş yarpaqları adbaad sayır — naməlum üzərində çəkilən şəlalə/tornado/histoqram real
+  cavaba oxşayır, bu isə boş ekrandan pisdir. `/twin`.
 - **AutoML Studiyası** — cədvəldən bir kliklə model öyrət (**scikit-learn**: Linear/LogReg vs
   RandomForest, holdout üzrə yaxşısı seçilir) + **dərin diaqnostika**: model reytinqi
   (leaderboard), **k-fold çarpaz yoxlama**, qarışıqlıq matrisi / faktiki-vs-proqnoz + qalıq
@@ -313,7 +319,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST | `/api/v1/copilot/chat` (mode=plan/execute) | Agentik copilot (plan → icra) |
 | POST/GET/DELETE | `/api/v1/saved/...` · `/alerts` · `/notifications` (+ `/digest`) | Saxlanan sorğular · monitorlar · brif |
 | POST/GET/PUT/DELETE | `/api/v1/decisions/...` (+ `/{id}/measure` · `/roi` · `/trajectory` · `/accuracy`) | Qərar İntellekti Döngüsü — jurnal + metrik baseline/realized ölçmə · ROI · trayektoriya · dəqiqlik |
-| GET/POST/PATCH/DELETE | `/api/v1/metric-tree/...` (+ `/evaluate`) | Metrik ağacı — KPI dekompozisiya + roll-up |
+| GET/POST/PATCH/DELETE | `/api/v1/metric-tree/...` (+ `/evaluate` · `/bindable`) | Metrik ağacı — KPI dekompozisiya + roll-up + yarpaq mənşəsi; `/bindable` yarpağın bağlana biləcəyi saxlanan sorğuları və son qaçışın sütunlarını verir (sorğu İCRA ETMİR) |
 | POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
 | POST/GET/DELETE | `/api/v1/dashboard/{id}/snapshots` (+ `/{sid}`) | Zaman Maşını — snapshot çək · siyahı · bax · sil |
 | PATCH | `/api/v1/dashboard/{id}/filter` | Qlobal dashboard filtri — tarix aralığı + dimension slicer, hər widget-in SQL-inə server-side WHERE kimi qatılır (RLS içində, data-only) |
@@ -367,7 +373,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 822 test
+cd backend && pytest        # 868 test (+1 skip)
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -416,7 +422,7 @@ Rəqəmin sərhədi: harness suala **RAG kontekstsiz** cavab verir (istehsalda
 oluna bilməsi üçün qəsdən belədir. Dizayn və yeni hal əlavə etmə qaydası:
 `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
-**Frontend Vitest (610 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (651 test):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·

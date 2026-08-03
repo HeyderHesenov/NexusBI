@@ -122,6 +122,11 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   dashboards, AutoML train+predict, BA Studio generate, snapshots,
   decisions create/measure, insight scan, data-contract run, metric-tree
   evaluate + twin `simulate` (single backend home: `metric_tree_service.simulate`), alerts.
+  The metric-tree tools carry **provenance per leaf** (`measured`/`manual`/`unknown` + origin and
+  measurement time) and attach the reporting constraint to the tool RESULT, not only to
+  `SYSTEM_PROMPT`: a rule stated once at the top of a long tool-calling session competes with
+  everything since, while one travelling with the data is read where it applies. Same reasoning as
+  `ba_evidence` refusing to let the model self-attribute evidence.
   Tools are owner-scoped (user_id injected, never from the model) and delegate to existing
   services. Two modes: `plan` (propose steps, no execution, no quota) and `execute` (run;
   1 quota unit, the approved plan is injected so execution follows it). Guardrails: dispatch
@@ -258,7 +263,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   The e2e job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step
   kills its background processes on exit, the backend boot, `alembic upgrade head`, health-wait,
   and `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (822) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (868, +1 skip) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
@@ -335,7 +340,10 @@ design decisions are here.
 `alerts`, `notifications`, `decisions`, **`requirement_docs`, `kpi_targets`,
 `integration_channels`, `workspaces`, `workspace_members`, `rls_rules`, `audit_logs`,
 `brand_configs` (1:1), `refresh_tokens`, `query_embeddings`,
-**`metric_nodes` (self-FK tree), `data_contracts`**,
+**`metric_nodes` (self-FK tree; a leaf is either `source_kind='manual'` with a hand-typed
+`manual_value`, or `source_kind='query'` bound to `saved_query_id` + `value_column` + `agg` —
+`ON DELETE SET NULL`, so deleting the query leaves the KPI node alive and merely unmeasurable),
+`data_contracts`**,
 **`ba_artifacts`, `ml_models`**; `dashboards`
 (1)─<(N) `widgets`, `dashboard_comments` and **`dashboard_snapshots`**; `data_contracts` (1)─<(N) `contract_runs`;
 `decisions` (1)─<(N) `decision_measurements`; `alerts` → `saved_queries`; `widgets.query_log_id`
@@ -357,7 +365,10 @@ alerts), **`c4d5e6f7a8b9`** (drop `insights` — dedup cleanup), **`d5e6f7a8b9c0
 (`ml_models.leaderboard` + `.diagnostics` — AutoML k-fold CV / confusion / actual-vs-predicted /
 permutation importance / per-prediction explain stats). De-bloat + trust round: **`f7a8b9c0d1e2`**
 (drop `experiments`), **`a8b9c0d1e2f3`** (drop `eval_runs`), **`b1c2d3e4f5a6`** (`query_logs.confidence`
-+ `.provenance` — answer Trust Badge). Migrations are Alembic, chained under `db/migrations/versions`;
++ `.provenance` — answer Trust Badge), **`d7e8f9a0b1c2`** (`metric_nodes` provenance — the
+`source_kind`/`saved_query_id`/`value_column`/`agg` binding that lets a KPI leaf be measured instead
+of typed; `server_default='manual'` is spelled identically in the model and the migration so
+`check_schema_drift.py` stays at its baseline). Migrations are Alembic, chained under `db/migrations/versions`;
 current head = **`a4b5c6d7e8f9`** (`ba_artifacts.datasource_id`, for evidence + action promotion).
 `/ready` compares the database's applied revision against this head and answers 503 when they
 disagree, so "booted but unmigrated" is reported rather than surfacing as 500s. NOTE: the **demo**
@@ -368,6 +379,28 @@ cohort/funnel feature was later removed in `d23cdb2`; the events table now only 
 queries); `format_demo_schema` sends real column types + sample values to the prompt.
 
 ## Notable architecture deltas (this round)
+
+- **Metric-tree provenance (`d7e8f9a0b1c2`).** A leaf used to be a hand-typed float that nothing
+  downstream could distinguish from a measurement: `evaluate_metric_tree` handed the copilot
+  `{name, value, leaves}` with the origin stripped while `SYSTEM_PROMPT` told the model to trust
+  whatever a tool returned, and the same floats fed the entire Digital Twin (hero, waterfall,
+  tornado, Monte Carlo, goal seek, narrative prose). A leaf now declares itself **measured**
+  (aggregated from a saved query's last STORED run via `sum/avg/min/max/last/count`, carrying the
+  query name and run time), **manual** (an assumption, labelled as one), or **unknown**.
+  - *Unknown propagates.* `_combine` returns `None` if any input is `None`, so an ancestor of an
+    empty leaf has no value rather than one computed from a guess. Reading an empty leaf as 0
+    merely understates an `add` total but **zeroes a `mul` KPI outright**, and both rendered as
+    confident numbers. `lib/metricTreeMath.ts` mirrors the semantics exactly, including the
+    nullish check (`== null`, because JS has two nullish values and NaN would pass `isComplete`).
+  - *The read path executes nothing.* `evaluate()` runs on every copilot turn and every Twin load,
+    so a measured leaf reads rows already stored on the query's last run — the same source
+    `alert_service` evaluates against. The number can therefore be stale, which is why
+    `measured_at` travels with it; its bound (a cache hit can make the rows older than the stamp)
+    is documented at the point of use.
+  - *Refusal over invention.* `GET /metric-tree/bindable` lists bindable queries with their last
+    run's columns (JSON-member select, so a dropdown does not deserialise 1000-row snapshots), and
+    a KPI with an unknown leaf makes every what-if surface refuse and name the empty leaves instead.
+    Removing that gate does not compile — `TwinKpiHero` requires a number.
 
 - **Studio round (originally 6 features; the cohort/funnel item was later removed in `d23cdb2`,
   leaving 5 live).** (1) **Time Machine** — `DashboardSnapshot` (migration
@@ -444,7 +477,8 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   holds the shared numeric-column/row-alignment helpers. Built on it: **statistical guard** (`ai/stats_guard`
   + `POST /query/{id}/significance`), **causal driver analysis** (`services/causal` + `/causal`),
   **metric tree** (`metric_tree_service`
-  bottom-up roll-up, recursive subtree delete since SQLite cascade is inert), and **data contracts**
+  bottom-up roll-up with per-leaf provenance, recursive subtree delete since SQLite cascade is
+  inert), and **data contracts**
   (`data_contract_service` reuses `profiling_service` for safe sample-based checks + schema-hash drift +
   freshness; fail-CLOSED on unknown rules). Per-query analytics surface as lazy ChartView panels;
   the rest as their own pages (Planlama/Analiz/Məlumat sidebar groups).
