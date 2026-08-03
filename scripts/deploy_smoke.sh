@@ -236,9 +236,10 @@ step "Diffing the migrated schema against the models"
 # the general form of it: the unit suite builds its schema with
 # Base.metadata.create_all and stamps alembic_version by hand, so the schema it
 # tests comes from the models while production's comes from the migrations, and
-# nothing compares the two. Measured when this was added: they disagreed in 55
+# nothing compares the two. Measured when this was added: they disagreed in 56
 # places, one of them a server_default that left the model describing a
-# fail-open rls_mode. Ratchet against scripts/schema_drift_baseline.txt.
+# fail-open rls_mode. That one was fixed, so the baseline this ratchets against
+# holds the other 55. See scripts/schema_drift_baseline.txt.
 "${COMPOSE[@]}" exec -T backend python scripts/check_schema_drift.py \
   || die "the migrated schema and the models disagree outside the accepted baseline"
 pass "no schema drift outside the documented baseline"

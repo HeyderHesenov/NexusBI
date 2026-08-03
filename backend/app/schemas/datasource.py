@@ -38,7 +38,13 @@ class DataSourceResponse(BaseModel):
     id: str
     name: str
     db_type: str
-    rls_mode: str = "open"
+    # No default. Every construction today is model_validate() off an ORM row,
+    # so nothing relies on one — and a default here would be a third copy of a
+    # value the model comment says must stay in step, sitting at the permissive
+    # end. A caller that builds this from a dict or a cache entry would have
+    # reported "open" for a strict source, and the frontend's matching
+    # `?? 'open'` fallback would have drawn the unlocked icon.
+    rls_mode: str
     freshness_sla_hours: int | None = None
     last_refreshed_at: datetime | None = None
     created_at: datetime
