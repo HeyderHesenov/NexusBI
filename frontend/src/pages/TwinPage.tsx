@@ -15,6 +15,7 @@ import { Field, FIELD, Select } from '../components/ui/form'
 import { ModalShell } from '../components/ui/ModalShell'
 import { formatMetricValue as fmt } from '../lib/format'
 import { IncompleteNotice } from '../components/twin/IncompleteNotice'
+import { TwinEmptyState } from '../components/twin/TwinEmptyState'
 import {
   collectLeaves,
   isComplete,
@@ -156,20 +157,13 @@ export function TwinPage() {
           {mode === 'model' ? (
             <MetricTreeEditor onChange={refreshForest} />
           ) : !root || !leaves.length ? (
-            <div className="plot-grid grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-              <div>
-                <GitBranch size={24} className="mx-auto text-ink-faint" />
-                <p className="mt-3 font-display text-lg text-ink">{t('twinPage.emptyTitle')}</p>
-                <p className="mt-1 text-sm text-ink-soft">{t('twinPage.emptyBody')}</p>
-                <button
-                  type="button"
-                  onClick={() => setMode('model')}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press"
-                >
-                  {t('twinPage.goToTree')}
-                </button>
-              </div>
-            </div>
+            <TwinEmptyState
+              icon={GitBranch}
+              title={t('twinPage.emptyTitle')}
+              body={t('twinPage.emptyBody')}
+              cta={t('twinPage.goToTree')}
+              onCta={() => setMode('model')}
+            />
           ) : baseline === null || simulatedValue === null ? (
             <IncompleteNotice root={root} onGoToTree={() => setMode('model')} />
           ) : mode === 'risk' ? (

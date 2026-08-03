@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { leaf, measuredLeaf } from '../../test/metricTreeFixtures'
+import { leaf, measuredLeaf, unknownLeaf } from '../../test/metricTreeFixtures'
 import { TwinSliders } from './TwinSliders'
 
 // Test i18n is initialized with Azerbaijani (see src/test/setup.ts).
@@ -16,6 +16,18 @@ describe('TwinSliders', () => {
     // az-formatted: "." is the thousands separator.
     expect(row.textContent).toContain('3.200')
     expect(row.textContent).toContain('3.520') // 3200 × 1.1
+  })
+
+  it('shows no adjusted figure for a lever with no base value', () => {
+    // TwinPage gates this component on a complete tree, but the invariant lives
+    // here: a `?? 0` base would print '—' on the left and a confident '0' as the
+    // scenario result on the same row.
+    const leaves = [unknownLeaf('v', 'Həcm')]
+    render(<TwinSliders leaves={leaves} adjustments={{ v: 10 }} onChange={vi.fn()} onClear={vi.fn()} />)
+
+    const row = screen.getByText('Həcm').closest('.rounded-xl') as HTMLElement
+    expect(row.textContent).toContain('—')
+    expect(row.textContent).not.toContain('→')
   })
 
   it('labels each lever with where its number came from', () => {

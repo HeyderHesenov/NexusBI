@@ -39,11 +39,15 @@ export function TwinSliders({ leaves, adjustments, onChange, onClear }: Props) {
 
       {leaves.map((leaf) => {
         const pct = adjustments[leaf.id] ?? 0
-        // The RESOLVED value. This read used to be `manual_value ?? 0`, which is
-        // null for a leaf measured from a query — the lever's own readout said
-        // "0 → 0" while the KPI above it moved.
-        const base = leaf.value ?? 0
-        const adjusted = base * (1 + pct / 100)
+        // The RESOLVED value, and NOT defaulted to 0. This read used to be
+        // `manual_value ?? 0`, which is null for a leaf measured from a query —
+        // the lever's own readout said "0 → 0" while the KPI above it moved. A
+        // `?? 0` here would reintroduce the same fabrication for an unknown
+        // leaf: the base would render "—" while the adjusted figure beside it
+        // showed a confident 0. TwinPage gates this component on a complete
+        // tree, but the component is exported and the invariant belongs in it.
+        const base = leaf.value
+        const adjusted = base === null ? null : base * (1 + pct / 100)
         const sliderId = `twin-${leaf.id}`
         const up = pct > 0
         return (
@@ -83,7 +87,7 @@ export function TwinSliders({ leaves, adjustments, onChange, onClear }: Props) {
 
             <div className="mt-1 flex items-baseline justify-between font-mono text-xs">
               <MetricValue value={leaf.value} format={fmt} className="text-ink-faint" />
-              {pct !== 0 && (
+              {pct !== 0 && adjusted !== null && (
                 <span style={up ? undefined : { color: DANGER }}>
                   <span className={up ? 'text-accent' : ''}>
                     → {fmt(adjusted)} ({up ? '+' : ''}{pct}%)

@@ -31,6 +31,15 @@ describe('combine — backend _combine parity table', () => {
     expect(combine('sub', [10, null])).toBeNull()
     expect(combine('div', [null, 2])).toBeNull()
   })
+
+  it('treats undefined as unknown too, rather than turning it into NaN', () => {
+    // JS has two nullish values and Python has one. A strict === null check let
+    // undefined through the cast into the arithmetic, where it becomes NaN —
+    // and NaN passes isComplete(), so the hero and every chart would render it.
+    const missing = [2, undefined] as unknown as (number | null)[]
+    expect(combine('mul', missing)).toBeNull()
+    expect(combine('add', missing)).toBeNull()
+  })
 })
 
 describe('recompute', () => {

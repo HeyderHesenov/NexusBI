@@ -483,7 +483,8 @@
       "max": "Maksimum",
       "last": "Son satır",
       "count": "Adet"
-    }
+    },
+    "queryUnavailable": "⚠︎ Sorgu kullanılamıyor (silinmiş ya da saklı sonucu yok)"
   },
   "metricsPage": {
     "addMetric": "Metrik ekle",
@@ -1162,7 +1163,8 @@
       "never_run": "sorgu hiç çalışmadı",
       "no_rows": "son çalıştırma satır döndürmedi",
       "column_missing": "sütun sonuçta yok",
-      "not_numeric": "sütunda sayı yok"
+      "not_numeric": "sütunda sayı yok",
+      "result_missing": "çalıştırma sonuç saklamadı"
     },
     "incomplete": {
       "title": "Bu KPI’nin değeri yok",

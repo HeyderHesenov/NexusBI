@@ -11,11 +11,19 @@ const ICON: Record<LeafProvenance, typeof Database> = {
 /**
  * Where a leaf's number came from, said out loud next to the number.
  *
- * Colour choices are deliberate. `measured` gets a full-opacity accent ring
- * rather than accent text on accent-soft: that pairing measures 2.95:1 in light
- * mode and fails, while the ring measures 3.39:1 light / 6.56:1 dark and shifts
- * no layout. `unknown` is the only state that borrows the danger hue — it is
- * the one the user has to act on.
+ * Colour choices are deliberate, and every one of them was measured in BOTH
+ * themes — a ratio that passes in the dark says nothing about the light.
+ *
+ *  measured  full-opacity accent RING, not accent text on accent-soft: that
+ *            pairing is 2.95:1 in light mode and fails, while the ring is
+ *            3.39:1 light / 6.56:1 dark and shifts no layout.
+ *  unknown   danger-tinted border and icon, but the LABEL stays `text-ink`.
+ *            #D87C6B text measures 2.99:1 on --surface and 2.72:1 on
+ *            --surface-2 in light mode (it is a comfortable 5.56:1 in dark), so
+ *            tinting 10px text would fail WCAG 1.4.3 in exactly the state the
+ *            user is supposed to act on. Same call as ecbeb03: stop tinting
+ *            labels that measure under 4.5:1, keep the hue on the chrome. The
+ *            icon is aria-hidden and the word carries the meaning.
  */
 export function ProvenanceChip({ node, className = '' }: { node: EvaluatedNode; className?: string }) {
   const { t, i18n } = useTranslation()
@@ -27,7 +35,7 @@ export function ProvenanceChip({ node, className = '' }: { node: EvaluatedNode; 
     kind === 'measured'
       ? 'ring-1 ring-accent text-ink'
       : kind === 'unknown'
-        ? 'border border-[#D87C6B]/50 text-[#D87C6B]'
+        ? 'border border-[#D87C6B]/50 text-ink [&>svg]:text-[#D87C6B]'
         : 'border border-line text-ink-soft'
 
   // The tooltip carries the detail the chip has no room for: which query and

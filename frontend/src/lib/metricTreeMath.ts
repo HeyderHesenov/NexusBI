@@ -17,7 +17,12 @@ import type { EvaluatedNode, LeafProvenance } from '../types'
  * outright — and both would be drawn as a confident number.
  */
 export function combine(operator: string, values: (number | null)[]): number | null {
-  if (values.some((v) => v === null)) return null
+  // `== null`, not `=== null`: JS has two nullish values and the cast below
+  // trusts this check. An absent `value` (a hand-built node, a response shape
+  // change) would slip through a strict check as undefined, produce NaN through
+  // every operator, and pass isComplete() — NaN !== null — so the hero and the
+  // charts would render NaN, which is the failure this guard exists to prevent.
+  if (values.some((v) => v == null)) return null
   const known = values as number[]
   if (!known.length) return 0
   if (operator === 'add') return known.reduce((a, b) => a + b, 0)

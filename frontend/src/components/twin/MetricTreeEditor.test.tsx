@@ -116,6 +116,36 @@ describe('binding a leaf to a saved query', () => {
     })
   })
 
+  it('does not lock the editor when the bound query is gone', () => {
+    // /bindable omits queries with no stored run, so a leaf bound to a deleted
+    // one matches nothing in `sources`. Before the fallback the Mənbə select had
+    // no option for its own value, the query select rendered blank, and Save was
+    // disabled — the user could not even RENAME the node.
+    treeState.sources = []
+    treeState.forest = [
+      {
+        ...leaf('l', 0, 'Satış'),
+        value: null,
+        manual_value: null,
+        source_kind: 'query',
+        saved_query_id: 'sq-gone',
+        value_column: 'total',
+        agg: 'sum',
+        provenance: 'unknown',
+        unknown_reason: 'query_missing',
+        incomplete: true,
+      },
+    ]
+    render(<MetricTreeEditor />)
+    fireEvent.click(screen.getByLabelText('Redaktə'))
+
+    expect((screen.getByLabelText('Mənbə') as HTMLSelectElement).value).toBe('query')
+    const query = screen.getByLabelText('Saxlanan sorğu') as HTMLSelectElement
+    expect(query.value).toBe('sq-gone')
+    expect(query.selectedOptions[0].text).toMatch(/əlçatmazdır/)
+    expect(screen.getByRole('button', { name: /^Saxla$/ })).toBeEnabled()
+  })
+
   it('clears the column when the query changes', () => {
     treeState.sources = [source, { ...source, saved_query_id: 'sq-2', name: 'Digər', columns: ['x'] }]
     render(<MetricTreeEditor />)

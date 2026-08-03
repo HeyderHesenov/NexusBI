@@ -196,19 +196,87 @@ async def test_never_run_query_is_unknown_not_zero(client: AsyncClient, auth: di
     assert leaf["value"] is None
 
 
-async def test_missing_column_is_named_as_such(client: AsyncClient, auth: dict):
+async def test_a_column_the_query_does_not_return_is_rejected(client: AsyncClient, auth: dict):
+    sq_id, _ = await _ran_saved_query(client, auth)
+    resp = await client.post(
+        "/api/v1/metric-tree/",
+        json={"name": "Səhv sütun", "source_kind": "query", "saved_query_id": sq_id,
+              "value_column": "yoxdur", "agg": "sum"},
+        headers=auth,
+    )
+    # The frontend already guards this, but it is not the only caller: the
+    # copilot or any API client can post a typo, and the result would be a leaf
+    # that reads `column_missing` forever while the form that made it looked
+    # complete.
+    assert resp.status_code == 400, resp.text
+    assert "total" in resp.text  # names the columns that DO exist
+
+
+async def test_a_run_that_stored_nothing_is_not_reported_as_never_run(
+    client: AsyncClient, auth: dict
+):
+    """"It ran but there is no result to read" and "it never ran" need different
+    words — the first asks the user to do something they already did."""
+    from sqlalchemy import update
+
+    from app.models.query_log import QueryLog
+    from tests.conftest import _Session
+
     sq_id, _ = await _ran_saved_query(client, auth)
     root = await _node(client, auth, name="Gəlir", operator="add")
     await _node(
         client, auth, name="Satış", parent_id=root["id"],
-        source_kind="query", saved_query_id=sq_id, value_column="yoxdur", agg="sum",
+        source_kind="query", saved_query_id=sq_id, value_column="total", agg="sum",
     )
+    # result_data is nullable — an RLS-denied or failed execution leaves it empty
+    # while the run itself is recorded. Note DELETING the log would NOT reproduce
+    # this: the FK is ON DELETE SET NULL and SQLite enforces it here, so a purged
+    # log blanks last_query_log_id and correctly reads `never_run` instead.
+    async with _Session() as session:
+        await session.execute(update(QueryLog).values(result_data=None))
+        await session.commit()
+
     leaf = (await _forest(client, auth))[0]["children"][0]
-    assert leaf["unknown_reason"] == "column_missing"
+    assert leaf["unknown_reason"] == "result_missing"
+
+
+async def test_patch_cannot_blank_a_name(client: AsyncClient, auth: dict):
+    leaf = await _node(client, auth, name="A", manual_value=1)
+    resp = await client.patch(f"/api/v1/metric-tree/{leaf['id']}", json={"name": ""}, headers=auth)
+    # POST rejects an empty name; PATCH used to accept it. simulate() matches
+    # levers BY NAME, so a blank one is a lever nothing can address.
+    assert resp.status_code == 422, resp.text
+
+
+async def test_missing_column_is_named_as_such(client: AsyncClient, auth: dict):
+    """The write-time check is a guard, not a guarantee.
+
+    The saved query can be edited to stop returning the column afterwards, so
+    the resolver still has to report the runtime state honestly.
+    """
+    from sqlalchemy import update
+
+    from app.models.metric_node import MetricNode
+    from tests.conftest import _Session
+
+    sq_id, _ = await _ran_saved_query(client, auth)
+    root = await _node(client, auth, name="Gəlir", operator="add")
+    leaf = await _node(
+        client, auth, name="Satış", parent_id=root["id"],
+        source_kind="query", saved_query_id=sq_id, value_column="total", agg="sum",
+    )
+    async with _Session() as session:
+        await session.execute(
+            update(MetricNode).where(MetricNode.id == leaf["id"]).values(value_column="yoxdur")
+        )
+        await session.commit()
+
+    got = (await _forest(client, auth))[0]["children"][0]
+    assert got["unknown_reason"] == "column_missing"
     # A wrong column must NOT quietly measure a different one — the reason a
     # decision_service.extract_scalar-style "first numeric column" fallback is
     # not reused here.
-    assert leaf["value"] is None
+    assert got["value"] is None
 
 
 async def test_bindable_lists_only_queries_with_a_stored_run(client: AsyncClient, auth: dict):
@@ -316,12 +384,17 @@ async def test_copilot_tool_labels_every_leaf(client: AsyncClient, auth: dict):
         ctx = copilot._ToolContext(session, None, me["id"])  # type: ignore[arg-type]
         out = await ctx.dispatch("evaluate_metric_tree", {})
 
-    assert out["measured_leaves"] == ["Satış"]
+    # measured_leaves is NOT repeated here — every leaf already carries its own
+    # name and source below, and this tool runs before every simulation.
+    assert "measured_leaves" not in out
+    assert out["measured_count"] == 1
     assert out["manual_leaves"] == ["Təxmin"]
     assert out["unknown_leaves"] == ["Bilinmir"]
     assert out["fully_measured"] is False and out["has_unknown"] is True
-    # The constraint travels WITH the data, not only in the system prompt.
-    assert "rəqəm söyləmə" in out["reporting_rule"].lower()
+    # The constraint travels WITH the data, not only in the system prompt, and
+    # it is scoped per root rather than silencing the whole answer.
+    rule = out["reporting_rule"].lower()
+    assert "rəqəm söyləmə" in rule and "incomplete=true" in rule
 
     leaves = {leaf["name"]: leaf for leaf in out["roots"][0]["leaves"]}
     assert leaves["Satış"]["source"] == "measured"
@@ -382,6 +455,31 @@ async def test_simulation_scales_the_measured_value(client: AsyncClient, auth: d
     # lever did nothing.
     assert res["baseline"] == pytest.approx(round(expected, 2))
     assert res["simulated"] == pytest.approx(round(expected * 1.1, 2))
+
+
+async def test_a_valueless_leaf_is_matched_not_reported_as_a_typo(client: AsyncClient, auth: dict):
+    root = await _node(client, auth, name="Gəlir", operator="mul")
+    await _node(client, auth, name="Qiymət", parent_id=root["id"], manual_value=20)
+    await _node(client, auth, name="Həcm", parent_id=root["id"])  # exists, has no value
+
+    from app.ai import copilot
+    from tests.conftest import _Session
+
+    me = (await client.get("/api/v1/auth/me", headers=auth)).json()
+    async with _Session() as session:
+        ctx = copilot._ToolContext(session, None, me["id"])  # type: ignore[arg-type]
+        out = await ctx.dispatch(
+            "simulate_metric_tree",
+            {"changes": [{"leaf_name": "Həcm", "pct": 10}, {"leaf_name": "yox-belə", "pct": 5}]},
+        )
+
+    # "Həcm" names a real leaf, so it is NOT a misspelling — the same response
+    # already lists it under unknown_leaves. Reporting it as unmatched would send
+    # the user to fix a spelling that is correct.
+    assert out["unmatched_leaves"] == ["yox-belə"]
+    assert out["unknown_leaves"] == ["Həcm"]
+    # It still did not move anything: there was no number to scale.
+    assert out["applied"] == []
 
 
 async def test_simulation_refuses_a_root_with_an_unknown_leaf(client: AsyncClient, auth: dict):

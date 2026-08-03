@@ -72,7 +72,11 @@ class MetricNodeCreate(_Binding):
 
 
 class MetricNodeUpdate(_Binding):
-    name: str | None = Field(default=None, max_length=255)
+    # min_length matches MetricNodeCreate. Without it PATCH accepted "" where
+    # POST rejects it, and an empty name is not cosmetic: simulate() matches
+    # levers BY NAME and summarize() reports names, so a blank one produces a
+    # copilot warning that names nothing.
+    name: str | None = Field(default=None, min_length=1, max_length=255)
     operator: Operator | None = None
     manual_value: float | None = None
     position: int | None = None

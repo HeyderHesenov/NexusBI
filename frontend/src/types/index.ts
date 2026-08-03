@@ -515,6 +515,7 @@ export type UnknownReason =
   | 'bad_binding'
   | 'query_missing'
   | 'never_run'
+  | 'result_missing'
   | 'no_rows'
   | 'column_missing'
   | 'not_numeric'

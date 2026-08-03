@@ -39,9 +39,10 @@ SYSTEM_PROMPT = (
     "\"source\" daşıyır. \"measured\" — saxlanan sorğunun son qaçışından ölçülüb. "
     "\"manual\" — istifadəçinin əl ilə yazdığı FƏRZİYYƏDİR, ölçmə deyil: onu heç vaxt "
     "\"ölçülmüş\", \"faktiki\", \"real\" və ya \"data göstərir\" kimi təqdim etmə, "
-    "fərziyyə olduğunu de. \"unknown\" — dəyər yoxdur. Ağacda unknown leaf varsa "
-    "(has_unknown=true və ya value=null) KPI rəqəmini ÜMUMİYYƏTLƏ söyləmə; əvəzində "
-    "hansı leaf-lərin boş olduğunu ad-ad de və doldurulmasını təklif et."
+    "fərziyyə olduğunu de. \"unknown\" — dəyər yoxdur. Bu, ROOT-BAŞINA qərardır: "
+    "incomplete=true və ya value=null olan root üçün rəqəm söyləmə, boş leaf-ləri ad-ad "
+    "de və doldurulmasını təklif et; eyni nəticədəki digər root-ların rəqəmini isə "
+    "normal söylə."
 )
 
 # The rule above is also attached to each tool RESULT, not only to the system
@@ -50,12 +51,17 @@ SYSTEM_PROMPT = (
 # moment it applies. Same reasoning as ba_evidence.py refusing to let the model
 # self-attribute evidence: make the honest path the easy one.
 _MANUAL_NOTE = (
-    "Bu ağacda əl ilə yazılmış (manual) dəyərlər var — onlar fərziyyədir, ölçmə deyil. "
-    "Rəqəmi təqdim edərkən bunu açıq de."
+    "Bəzi leaf-lər əl ilə yazılıb (source=\"manual\") — onlar fərziyyədir, ölçmə deyil. "
+    "Həmin leaf-lərdən asılı KPI-nı təqdim edərkən bunu açıq de."
 )
+# Scoped to the affected roots, not to the whole answer. The roll-up is
+# forest-wide, so a single empty leaf in one tree would otherwise silence a
+# second tree whose every leaf is measured — the tool result already says which
+# is which (incomplete / value=null per root).
 _UNKNOWN_NOTE = (
-    "Bu ağacda dəyəri olmayan (unknown) leaf-lər var, ona görə KPI-nin dəqiq rəqəmi "
-    "YOXDUR. Rəqəm söyləmə; hansı leaf-lərin boş olduğunu de."
+    "Dəyəri olmayan (unknown) leaf-lər var. YALNIZ incomplete=true və ya value=null olan "
+    "root-lar üçün rəqəm söyləmə — onlarda hansı leaf-in boş olduğunu ad-ad de. "
+    "value-su olan digər root-ların rəqəmini normal şəkildə söylə."
 )
 
 
@@ -798,6 +804,13 @@ class _ToolContext:
         forest = await metric_tree_service.evaluate(self.db, self.user_id)
         summary = metric_tree_service.summarize(forest)
         self.actions.append({"type": "metric_tree", "label": "Metrik ağacı hesablandı"})
+        # measured_leaves is dropped here and only here: every leaf already
+        # travels with its own name and source below, so repeating the measured
+        # ones is pure token cost on a tool the model calls before every
+        # simulation. The two lists that stay are the ones it must be able to
+        # NAME back to the user. simulate_metric_tree keeps all three — it sends
+        # no per-leaf payload, so there the lists are the only source.
+        listed = {k: v for k, v in summary.items() if k != "measured_leaves"}
         return {
             "roots": [
                 {
@@ -808,7 +821,8 @@ class _ToolContext:
                 }
                 for r in forest
             ],
-            **summary,
+            **listed,
+            "measured_count": len(summary["measured_leaves"]),
             **_provenance_note(summary),
         }
 

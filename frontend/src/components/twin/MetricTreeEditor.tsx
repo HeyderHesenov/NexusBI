@@ -244,10 +244,23 @@ function NodeModal({
   const field =
     'w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none'
   const picked = sources.find((s) => s.saved_query_id === queryId) ?? null
+  // /bindable omits queries with no stored run, so a leaf bound to a deleted (or
+  // never-re-run) query has a queryId that matches nothing here. Without these
+  // fallbacks the select renders blank and Save is disabled forever: the user
+  // could not so much as RENAME the node without first discarding its binding.
+  const orphaned = kind === 'query' && !!queryId && !picked
+  const queryOptions = [
+    ...(orphaned ? [{ value: queryId, label: t('metricTreePage.queryUnavailable') }] : []),
+    ...sources.map((s) => ({ value: s.saved_query_id, label: s.name })),
+  ]
+  const columnOptions = picked?.columns ?? (orphaned && column ? [column] : [])
   // A binding is all-or-nothing: the API rejects a half-filled one rather than
   // storing a leaf that silently resolves to `bad_binding`, so the button has to
-  // agree with that rule instead of letting the user hit a 422.
-  const bindingOk = kind === 'manual' || (!!picked && !!column && picked.columns.includes(column))
+  // agree with that rule instead of letting the user hit a 422. An orphaned
+  // binding is left submittable — the server re-checks ownership, and the leaf
+  // is no worse off than it already is.
+  const bindingOk =
+    kind === 'manual' || (!!queryId && !!column && (!picked || picked.columns.includes(column)))
   const valid = name.trim() !== '' && bindingOk
 
   const submit = async () => {
@@ -314,9 +327,13 @@ function NodeModal({
               onChange={(e) => setKind(e.target.value as SourceKind)}
               options={[
                 { value: 'manual', label: t('metricTreePage.sourceManual') },
-                // Offered only when there is something to bind to; an empty
-                // dropdown behind a choice is a dead end, not a feature.
-                ...(sources.length ? [{ value: 'query', label: t('metricTreePage.sourceQuery') }] : []),
+                // Offered when there is something to bind to; an empty dropdown
+                // behind a choice is a dead end, not a feature. Also kept when
+                // the leaf ALREADY is query-bound, or the select would have no
+                // option matching its own value and render blank.
+                ...(sources.length || kind === 'query'
+                  ? [{ value: 'query', label: t('metricTreePage.sourceQuery') }]
+                  : []),
               ]}
             />
           </Field>
@@ -351,7 +368,7 @@ function NodeModal({
                 }}
                 options={[
                   { value: '', label: t('metricTreePage.queryPlaceholder') },
-                  ...sources.map((s) => ({ value: s.saved_query_id, label: s.name })),
+                  ...queryOptions,
                 ]}
               />
             </Field>
@@ -360,11 +377,11 @@ function NodeModal({
                 <Select
                   id="tree-column"
                   value={column}
-                  disabled={!picked}
+                  disabled={!columnOptions.length}
                   onChange={(e) => setColumn(e.target.value)}
                   options={[
                     { value: '', label: t('metricTreePage.columnPlaceholder') },
-                    ...(picked?.columns ?? []).map((c) => ({ value: c, label: c })),
+                    ...columnOptions.map((c) => ({ value: c, label: c })),
                   ]}
                 />
               </Field>

@@ -483,7 +483,8 @@
       "max": "Maksimum",
       "last": "Sonuncu sətir",
       "count": "Say"
-    }
+    },
+    "queryUnavailable": "⚠︎ Sorğu əlçatmazdır (silinib və ya nəticəsi yoxdur)"
   },
   "metricsPage": {
     "addMetric": "Metrik əlavə et",
@@ -1162,7 +1163,8 @@
       "never_run": "sorğu heç qaçmayıb",
       "no_rows": "son nəticə boşdur",
       "column_missing": "sütun nəticədə yoxdur",
-      "not_numeric": "sütunda rəqəm yoxdur"
+      "not_numeric": "sütunda rəqəm yoxdur",
+      "result_missing": "qaçış nəticə saxlamayıb"
     },
     "incomplete": {
       "title": "Bu KPI-nın dəyəri yoxdur",

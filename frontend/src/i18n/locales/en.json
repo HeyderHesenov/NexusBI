@@ -483,7 +483,8 @@
       "max": "Maximum",
       "last": "Last row",
       "count": "Count"
-    }
+    },
+    "queryUnavailable": "⚠︎ Query unavailable (deleted or has no stored result)"
   },
   "metricsPage": {
     "addMetric": "Add metric",
@@ -1162,7 +1163,8 @@
       "never_run": "the query has never run",
       "no_rows": "the last run returned no rows",
       "column_missing": "column is not in the result",
-      "not_numeric": "the column holds no numbers"
+      "not_numeric": "the column holds no numbers",
+      "result_missing": "that run stored no result"
     },
     "incomplete": {
       "title": "This KPI has no value",

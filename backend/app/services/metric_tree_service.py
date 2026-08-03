@@ -24,6 +24,7 @@ why measured_at travels with it — but reading the tree costs two SELECTs.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from math import prod
@@ -52,7 +53,8 @@ UNKNOWN = "unknown"
 REASON_EMPTY = "empty"                    # manual leaf, nothing entered
 REASON_BAD_BINDING = "bad_binding"        # query leaf missing query/column/agg
 REASON_QUERY_MISSING = "query_missing"    # bound saved query no longer exists
-REASON_NEVER_RUN = "never_run"            # bound query has no stored result yet
+REASON_NEVER_RUN = "never_run"            # bound query has not been run at all
+REASON_RESULT_MISSING = "result_missing"  # it ran, but no stored result survives
 REASON_NO_ROWS = "no_rows"                # last run returned zero rows
 REASON_COLUMN_MISSING = "column_missing"  # column absent from the stored result
 REASON_NOT_NUMERIC = "not_numeric"        # column present, nothing to aggregate
@@ -87,23 +89,42 @@ async def get(db: AsyncSession, user_id: str, node_id: str) -> MetricNode:
 
 
 async def _check_binding(db: AsyncSession, user_id: str, payload) -> None:
-    """A query-bound leaf may only point at a saved query THIS user owns.
+    """A query-bound leaf may only point at a saved query THIS user owns, and at
+    a column that query actually returns.
 
     Owner-scoped lookup, so an id belonging to someone else 404s exactly like a
     made-up one — the same shape alert_service.create uses, and for the same
     reason: the difference between "not yours" and "does not exist" is itself a
     disclosure.
+
+    The column check matters because the frontend is not the only caller: the
+    copilot and any API client can post a typo, and the result is a leaf that
+    reports `column_missing` forever while the form that created it looked
+    complete. It is a check, not a guarantee — the query can be edited later, so
+    `column_missing` stays a runtime state either way.
     """
     if getattr(payload, "source_kind", None) != SOURCE_QUERY:
         return
     sq_id = getattr(payload, "saved_query_id", None)
     if not sq_id:
         raise NexusBIException("Sorğuya bağlı leaf üçün saved_query_id tələb olunur.")
-    owned = await db.execute(
-        select(SavedQuery.id).where(SavedQuery.id == sq_id, SavedQuery.user_id == user_id)
+    res = await db.execute(
+        select(SavedQuery).where(SavedQuery.id == sq_id, SavedQuery.user_id == user_id)
     )
-    if owned.scalar_one_or_none() is None:
+    sq = res.scalar_one_or_none()
+    if sq is None:
         raise SchemaNotFoundError("Saxlanan sorğu tapılmadı.")
+
+    column = getattr(payload, "value_column", None)
+    columns = await _stored_columns(db, user_id, sq.last_query_log_id)
+    # No stored run means nothing to check against — binding to a query that has
+    # not run yet is legitimate (it resolves to `never_run` until it does), so
+    # this stays silent rather than inventing a rule the user cannot satisfy.
+    if columns and column not in columns:
+        raise NexusBIException(
+            f"«{column}» sütunu bu sorğunun nəticəsində yoxdur. Mövcud sütunlar: "
+            + ", ".join(columns)
+        )
 
 
 async def create(db: AsyncSession, user_id: str, payload) -> MetricNode:
@@ -260,16 +281,72 @@ def resolve_leaf(
         return LeafValue(None, UNKNOWN, reason=REASON_QUERY_MISSING)
 
     source = f"{sq.name} / {node.value_column} ({node.agg})"
-    log = logs.get(sq.last_query_log_id or "")
+    if not sq.last_query_log_id:
+        return LeafValue(None, UNKNOWN, source=source, reason=REASON_NEVER_RUN)
+    log = logs.get(sq.last_query_log_id)
     rows = (log.result_data or {}).get("rows") if log is not None else None
     if not isinstance(rows, list):
-        return LeafValue(None, UNKNOWN, source=source, reason=REASON_NEVER_RUN)
+        # The query HAS run, but that run stored no rows to read — result_data is
+        # nullable and an RLS-denied or failed execution leaves it empty. Telling
+        # the user "never run" here asks them to do something they already did,
+        # and these strings are a contract in four locales and to the model.
+        #
+        # Measured: DELETING the log is NOT this case. The FK is ON DELETE SET
+        # NULL and db/session.py turns SQLite's foreign_keys pragma on, so a
+        # purged log blanks last_query_log_id and lands on `never_run` above.
+        # This branch is for a live id whose row carries no result — including
+        # one owned by someone else, which the user_id filter turns into a miss.
+        return LeafValue(None, UNKNOWN, source=source, reason=REASON_RESULT_MISSING)
 
+    # When the RUN was recorded — not necessarily when the DATA was fetched.
+    # query_service serves repeated questions from a result cache and _finalize
+    # persists that cached snapshot under a fresh log, so the rows can be up to
+    # CACHE_TTL_SECONDS older than this stamp; dashboard_service.refresh_widget
+    # can also rewrite a shared log's rows in place without moving it. QueryLog
+    # carries only created_at (no updated_at), so there is no truer timestamp to
+    # read today — closing that needs a persisted "data as of" column, which is
+    # its own change.
     measured_at = aware(sq.last_run_at)
     value, reason = _aggregate(rows, node.value_column, node.agg)
     if value is None:
         return LeafValue(None, UNKNOWN, source=source, measured_at=measured_at, reason=reason)
     return LeafValue(value, MEASURED, source=source, measured_at=measured_at)
+
+
+def _columns_expr():
+    """Just the column-NAME list out of a stored result, never the row snapshot.
+
+    result_data is ``{"columns": [...], "rows": [...]}`` and the rows are capped
+    at 1000 per query (query_service.snapshot_rows). Loading whole QueryLog rows
+    to populate a dropdown deserialises megabytes of JSON to read a handful of
+    strings — and the tree tab does it on every mount.
+    """
+    return QueryLog.result_data["columns"]
+
+
+def _as_columns(raw: Any) -> list[str]:
+    """Accept either dialect's shape for that JSON member.
+
+    SQLite's JSON_EXTRACT returns a JSON *string* for an array; Postgres returns
+    the parsed list. Betting on one is exactly the SQLite-vs-Postgres gap that
+    makes a green unit suite and a broken deployment — so handle both.
+    """
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return []
+    return [str(c) for c in raw] if isinstance(raw, list) else []
+
+
+async def _stored_columns(db: AsyncSession, user_id: str, log_id: str | None) -> list[str]:
+    """Columns of one stored result, owner-scoped. Empty when there is no run."""
+    if not log_id:
+        return []
+    res = await db.execute(
+        select(_columns_expr()).where(QueryLog.id == log_id, QueryLog.user_id == user_id)
+    )
+    return _as_columns(res.scalar_one_or_none())
 
 
 async def bindable_sources(db: AsyncSession, user_id: str) -> list[dict]:
@@ -293,27 +370,21 @@ async def bindable_sources(db: AsyncSession, user_id: str) -> list[dict]:
     if not log_ids:
         return []
     res = await db.execute(
-        select(QueryLog).where(QueryLog.id.in_(log_ids), QueryLog.user_id == user_id)
+        select(QueryLog.id, _columns_expr()).where(
+            QueryLog.id.in_(log_ids), QueryLog.user_id == user_id
+        )
     )
-    logs = {log.id: log for log in res.scalars().all()}
+    columns_by_log = {log_id: _as_columns(raw) for log_id, raw in res.all()}
 
     out: list[dict] = []
     for sq in queries:
-        data = (logs.get(sq.last_query_log_id or "") or None)
-        result = (data.result_data or {}) if data is not None else {}
-        rows = result.get("rows")
-        columns = result.get("columns")
-        if not isinstance(columns, list) or not columns:
-            # Fall back to the row keys: `columns` is what the query API stores,
-            # but a result written by another path may only carry rows.
-            first = next((r for r in (rows or []) if isinstance(r, dict)), None)
-            columns = list(first.keys()) if first else []
+        columns = columns_by_log.get(sq.last_query_log_id or "") or []
         if not columns:
             continue
         out.append({
             "saved_query_id": sq.id,
             "name": sq.name,
-            "columns": [str(c) for c in columns],
+            "columns": columns,
             "last_run_at": aware(sq.last_run_at),
         })
     return out
@@ -371,12 +442,25 @@ def _combine(operator: str, values: list[float | None]) -> float | None:
     raise NexusBIException(f"Naməlum operator: {operator}")
 
 
-def _leaf_dict(node: MetricNode, lv: LeafValue) -> dict:
+def _base_dict(node: MetricNode) -> dict:
+    """The fields a node carries regardless of what it resolved to.
+
+    Shared so that adding one is a single edit: spelled twice, a new field could
+    land on leaves and not on branches, and EvaluatedNode's defaults would paper
+    over the gap instead of rejecting it.
+    """
     return {
         "id": node.id, "name": node.name, "operator": node.operator,
-        "manual_value": node.manual_value, "value": lv.value,
+        "manual_value": node.manual_value,
         "source_kind": node.source_kind, "saved_query_id": node.saved_query_id,
         "value_column": node.value_column, "agg": node.agg,
+    }
+
+
+def _leaf_dict(node: MetricNode, lv: LeafValue) -> dict:
+    return {
+        **_base_dict(node),
+        "value": lv.value,
         "provenance": lv.provenance, "source": lv.source, "measured_at": lv.measured_at,
         "unknown_reason": lv.reason, "incomplete": lv.provenance == UNKNOWN,
         "children": [],
@@ -385,10 +469,8 @@ def _leaf_dict(node: MetricNode, lv: LeafValue) -> dict:
 
 def _branch_dict(node: MetricNode, value: float | None, children: list[dict]) -> dict:
     return {
-        "id": node.id, "name": node.name, "operator": node.operator,
-        "manual_value": node.manual_value, "value": value,
-        "source_kind": node.source_kind, "saved_query_id": node.saved_query_id,
-        "value_column": node.value_column, "agg": node.agg,
+        **_base_dict(node),
+        "value": value,
         # An internal node has no provenance of its own — it inherits its
         # trustworthiness from the leaves under it, which `incomplete` reports.
         "provenance": None, "source": None, "measured_at": None, "unknown_reason": None,
@@ -456,21 +538,31 @@ def summarize(forest: list[dict]) -> dict:
 
 # ─── Digital-twin simulation ───
 
-def _simulate_node(node: dict, pct_by_name: dict[str, float], applied: set[str]) -> float | None:
+def _simulate_node(
+    node: dict, pct_by_name: dict[str, float], applied: set[str], matched: set[str]
+) -> float | None:
     kids = node.get("children") or []
     if not kids:
+        pct = pct_by_name.get(str(node.get("name") or "").strip().lower())
+        # A name that hit a real leaf is MATCHED even when that leaf has no
+        # value. Deciding this after the None check below would report the name
+        # as unmatched — i.e. as a typo — for a leaf the very same response lists
+        # under unknown_leaves, sending the user to fix a spelling that is right.
+        if pct is not None:
+            matched.add(node["name"])
         # The RESOLVED value, not manual_value: a measured leaf has no
         # manual_value at all, and reading that field would scale it from 0 and
         # report the scenario as if the lever did nothing.
         base = node.get("value")
         if base is None:
             return None
-        pct = pct_by_name.get(str(node.get("name") or "").strip().lower())
         if pct is not None:
             applied.add(node["name"])
             return float(base) * (1 + pct / 100)
         return float(base)
-    return _combine(node["operator"], [_simulate_node(k, pct_by_name, applied) for k in kids])
+    return _combine(
+        node["operator"], [_simulate_node(k, pct_by_name, applied, matched) for k in kids]
+    )
 
 
 def _round(value: float | None) -> float | None:
@@ -499,21 +591,23 @@ async def simulate(
                 continue
     forest = await evaluate(db, user_id)
     applied: set[str] = set()
+    matched: set[str] = set()
     results = [
         {
             "root": r["name"],
             "baseline": _round(r["value"]),
-            "simulated": _round(_simulate_node(r, pct_by_name, applied)),
+            "simulated": _round(_simulate_node(r, pct_by_name, applied, matched)),
             "incomplete": r["incomplete"],
         }
         for r in forest
     ]
-    applied_lower = {a.lower() for a in applied}
-    # Requested names that matched no leaf. Renamed from "unknown_leaves", which
-    # now means something else entirely (leaves with no value) — one key
-    # carrying both senses is how a caller ends up reporting a typo as missing
-    # data.
-    unmatched = sorted({name for name in pct_by_name if name not in applied_lower})
+    matched_lower = {m.lower() for m in matched}
+    # Requested names that matched NO LEAF AT ALL — a misspelling. Keyed on
+    # `matched`, not on `applied`: a leaf that exists but has no value is a
+    # different problem, and it is already named in unknown_leaves. Renamed from
+    # "unknown_leaves", which now means something else entirely — one key
+    # carrying both senses is how a caller reports missing data as a typo.
+    unmatched = sorted({name for name in pct_by_name if name not in matched_lower})
     return {
         "results": results,
         "applied": sorted(applied),
