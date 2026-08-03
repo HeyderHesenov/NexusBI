@@ -1,0 +1,106 @@
+# Schema differences between the migrated database and the models that were
+# present when scripts/check_schema_drift.py was written, and the reason each is
+# accepted for now.
+#
+# RATCHET. This list may only shrink. A difference that is not listed fails the
+# guard, and so does a listed one that no longer reproduces -- fixing drift
+# without deleting its line here would leave the door open for it to come back.
+# Same contract as _UNLIMITED_MUTATING_ROUTES in tests/test_architecture.py.
+#
+# A modify_* key ends in "<database value>-><model value>", where "-" means the
+# side declares nothing. The values are part of the key on purpose: a line here
+# accepts ONE disagreement, not the column forever. Change either side and the
+# key changes, so the guard reports it.
+#
+# Blank lines and everything after a "#" are ignored.
+
+# ── Server defaults the migrations applied and the models never declared (52)
+#
+# Read the direction carefully, because it is the opposite of the intuitive one.
+# The DATABASE is the more permissive side: it supplies a value when an INSERT
+# omits the column. The schema built from the models -- which is what
+# tests/conftest.py builds -- has no default, so the same INSERT fails there.
+#
+# These columns were added NOT NULL by a migration, which has to supply a
+# server_default to backfill the rows already in the table; the model kept only
+# a Python-side default=, which is all the ORM needs. Verified: in every one of
+# these 52, the database default equals the model's Python default, so the ORM
+# path agrees with the raw-SQL path today.
+#
+# The direction is the safe one only in the sense that the stricter schema is
+# the tested one: a code path that leans on the default breaks in tests rather
+# than silently in production. It is NOT a licence to file a new entry here
+# without checking -- rls_mode looked like one of these and was the reverse.
+#
+# Fixing them means adding server_default= to 52 columns across 24 tables in 21
+# model files. That is its own change, deliberately not bundled with the guard
+# that found it.
+
+modify_default:ai_spend_daily.calls:0->-
+modify_default:ai_spend_daily.completion_tokens:0->-
+modify_default:ai_spend_daily.micro_usd:0->-
+modify_default:ai_spend_daily.prompt_tokens:0->-
+modify_default:alerts.active:true->-
+modify_default:alerts.threshold:0->-
+modify_default:audit_logs.entity:-->-
+modify_default:ba_artifacts.context:-->-
+modify_default:ba_artifacts.title:-->-
+modify_default:brand_configs.app_name:nexusbi->-
+modify_default:brand_configs.logo_url:-->-
+modify_default:brand_configs.primary_color:#0e9f6e->-
+modify_default:dashboard_comments.author_name:-->-
+modify_default:dashboard_snapshots.label:-->-
+modify_default:dashboard_snapshots.origin:manual->-
+modify_default:dashboards.embed_enabled:false->-
+modify_default:dashboards.live_enabled:false->-
+modify_default:dashboards.live_interval_seconds:8->-
+modify_default:data_contracts.last_status:unknown->-
+modify_default:decisions.action:-->-
+modify_default:decisions.impact_status:pending->-
+modify_default:decisions.insight:-->-
+modify_default:decisions.measure_cadence:off->-
+modify_default:decisions.outcome:-->-
+modify_default:decisions.status:open->-
+modify_default:integration_channels.active:true->-
+modify_default:integration_channels.name:-->-
+modify_default:kpi_targets.current_value:0->-
+modify_default:kpi_targets.period:month->-
+modify_default:kpi_targets.target_value:0->-
+modify_default:metric_nodes.operator:add->-
+modify_default:metric_nodes.position:0->-
+modify_default:metrics.description:-->-
+modify_default:metrics.expression:-->-
+modify_default:metrics.synonyms:-->-
+modify_default:metrics.verified:false->-
+modify_default:ml_models.name:-->-
+modify_default:ml_models.row_count:0->-
+modify_default:notifications.body:-->-
+modify_default:notifications.read:false->-
+modify_default:query_embeddings.kind:query->-
+modify_default:refresh_tokens.revoked:false->-
+modify_default:report_subscriptions.active:true->-
+modify_default:report_subscriptions.format:pdf->-
+modify_default:report_subscriptions.schedule:daily->-
+modify_default:requirement_docs.name:-->-
+modify_default:requirement_docs.raw_text:-->-
+modify_default:saved_queries.schedule:off->-
+modify_default:users.ai_calls_used:0->-
+modify_default:users.subscription_tier:free->-
+modify_default:workspace_members.role:viewer->-
+modify_default:workspace_resources.permission:view->-
+
+# ── brand_configs.user_id: one uniqueness rule expressed two ways (3)
+#
+# The database enforces uniqueness with a UNIQUE CONSTRAINT
+# (brand_configs_user_id_key) and additionally carries a plain index
+# (ix_brand_configs_user_id); migration d6e7f8a9b0c1 creates both. The model
+# asks for a single UNIQUE INDEX of that name. Uniqueness holds either way --
+# verified against pg_constraint -- so this is representational, plus one
+# redundant index the database does not need.
+#
+# Worth cleaning up in a migration that drops the plain index and lets the
+# model's unique index be the one rule. Not urgent, and not this change.
+
+add_index:brand_configs.ix_brand_configs_user_id
+remove_constraint:brand_configs.brand_configs_user_id_key
+remove_index:brand_configs.ix_brand_configs_user_id

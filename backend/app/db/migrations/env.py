@@ -39,6 +39,15 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         render_as_batch=True,
+        # Both default to off, and both are on in scripts/check_schema_drift.py.
+        # They have to match: the guard audits for differences autogenerate is
+        # not even looking for, so with them off here every new NOT NULL column
+        # would land in the database with a server_default the model never
+        # declares — new drift the guard then demands a new baseline line for.
+        # The ratchet could only ever grow. Fixing it at the point migrations are
+        # produced is what lets the list shrink.
+        compare_type=True,
+        compare_server_default=True,
     )
     with context.begin_transaction():
         # Inside the transaction on purpose: the lock is transaction-scoped, so
