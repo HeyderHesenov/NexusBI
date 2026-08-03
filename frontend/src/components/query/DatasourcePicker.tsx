@@ -52,7 +52,14 @@ export function DatasourcePicker() {
           // Only when the icon stands alone — repeating a visible label in a
           // tooltip buys nothing and screen readers read it twice.
           title={showLabel ? undefined : t('queryPage.addSource')}
-          className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 text-xs font-medium text-ink-soft transition-colors hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+          // Hover is bg-line-strong, not bg-surface: this segment sits on the
+          // shell's bg-surface-2, and surface against surface-2 is 1.10:1 in
+          // light and 1.12:1 in dark — no perceptible change on a 14px unlabelled
+          // target — and it inverts direction between the two (lighter in light,
+          // darker in dark). line-strong measures 1.36:1 and 1.59:1 and moves the
+          // same way in both. Still a quiet hover by design; the glyph going
+          // ink-soft -> ink (2.32:1) is the other half of the feedback.
+          className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 text-xs font-medium text-ink-soft transition-colors hover:bg-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
         >
           <Plus size={14} aria-hidden="true" />
           {showLabel && t('queryPage.addSource')}

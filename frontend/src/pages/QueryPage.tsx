@@ -409,12 +409,25 @@ function ModeToggle({ mode, onChange }: { mode: 'nl' | 'sql'; onChange: (m: 'nl'
   const { t } = useTranslation()
   const base =
     'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition'
-  // Accent tint on accent-soft is 3.0:1 — under the 4.5:1 the label needs, so
-  // the active chip states itself in ink. Fill plus text weight carry the mode,
-  // and aria-pressed carries it programmatically. (An accent hairline was tried
-  // here and dropped: at any opacity it measures under 3:1 against the fill it
-  // sits on, so it read as decoration that wasn't actually visible.)
-  const ACTIVE_CHIP = 'bg-accent-soft text-ink'
+  // Every number here is measured, because an earlier pass got this wrong twice.
+  //
+  // The fill cannot carry the state on its own: accent-soft against this
+  // container's own bg-surface is 1.15:1 light and 1.14:1 dark — invisible, and
+  // it was invisible before this file was touched too. Text alone cannot carry
+  // it either: ink vs ink-soft is only 2.32:1, and both states already get
+  // font-medium from `base`, so there is no weight difference to lean on.
+  //
+  // So the state is carried by a full-opacity accent ring, which is the one cue
+  // that measures: 3.39:1 against the container in light, 6.56:1 in dark, i.e.
+  // over the 3:1 WCAG 1.4.11 asks of a state indicator. (A translucent
+  // accent/40 hairline was tried first and is genuinely too faint — that is
+  // what made an earlier pass drop the idea instead of raising the opacity.)
+  //
+  // The label goes to ink in both modes: 14.5:1 on the light fill, 12.2:1 on the
+  // dark one. Accent text was only a light-mode failure (2.95:1 vs 5.78:1 dark),
+  // so dropping it globally cost dark mode a working hue cue for nothing — the
+  // ring is what pays that back.
+  const ACTIVE_CHIP = 'bg-accent-soft text-ink ring-1 ring-accent'
   return (
     <div className="inline-flex rounded-lg border border-line bg-surface p-0.5">
       <button

@@ -14,16 +14,25 @@ const SIZES: Record<SourceSelectSize, { shell: string; label: string; select: st
   // Height is stated, not derived: Gecko forces `line-height: normal` on
   // <select>, so a height inferred from text-xs lands a couple of px short
   // there while the neighbouring buttons stay put.
+  //
+  // Width is stated for a different reason. A select shrink-to-fits to its
+  // *widest option*, not its selected one, so a cap alone let the control size
+  // itself from whatever the user happens to have connected: ~95px on first
+  // paint with only "Demo data", then a jump to the cap once load() resolved,
+  // and it stayed there even while demo data was selected. Measured in a
+  // browser, not assumed. A fixed width costs some empty space on short names
+  // and buys a control whose footprint — and whose trailing action's hit area —
+  // does not move when the source list arrives.
   toolbar: {
     shell: 'rounded-lg',
     label: 'pl-2.5 gap-2',
-    select: 'h-7 max-w-[180px] pr-7 text-xs',
+    select: 'h-7 w-[180px] pr-7 text-xs',
     chevron: 'right-1.5',
   },
   field: {
     shell: 'rounded-xl',
     label: 'pl-3 gap-2',
-    select: 'h-9 max-w-[240px] pr-8 text-sm',
+    select: 'h-9 w-[240px] pr-8 text-sm',
     chevron: 'right-2.5',
   },
 }
@@ -38,7 +47,6 @@ interface SourceSelectProps {
   demoLabel: string
   sources: DataSource[]
   size?: SourceSelectSize
-  disabled?: boolean
   /** Rendered inside the same shell, behind a hairline divider.
    *
    *  The slot owns its own horizontal padding and text size, and must use
@@ -62,7 +70,6 @@ export function SourceSelect({
   demoLabel,
   sources,
   size = 'toolbar',
-  disabled,
   trailing,
 }: SourceSelectProps) {
   const s = SIZES[size]
@@ -82,6 +89,10 @@ export function SourceSelect({
         <Database
           size={14}
           aria-hidden="true"
+          // Named for the tests: this and the chevron are both svgs and both can
+          // carry text-ink-faint, so "the first svg in the container" would keep
+          // asserting happily after this element was deleted.
+          data-testid="source-icon"
           className={`shrink-0 transition-colors ${selected ? 'text-accent' : 'text-ink-faint'}`}
         />
         <select
@@ -90,9 +101,8 @@ export function SourceSelect({
           // in full — nothing else in the row can.
           title={selected?.name ?? demoLabel}
           value={value ?? ''}
-          disabled={disabled}
           onChange={(e) => onChange(e.target.value || null)}
-          className={`cursor-pointer appearance-none truncate bg-transparent font-medium text-ink focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${s.select}`}
+          className={`cursor-pointer appearance-none truncate bg-transparent font-medium text-ink focus:outline-none ${s.select}`}
         >
           <option value="">{demoLabel}</option>
           {sources.map((src) => (

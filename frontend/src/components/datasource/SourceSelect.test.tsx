@@ -47,11 +47,18 @@ describe('SourceSelect', () => {
     expect(onChange).toHaveBeenCalledWith(null)
   })
 
-  it('spends accent on the icon only when the data is actually yours', () => {
-    const { container, rerender } = setup()
-    const icon = () => container.querySelector('svg')!
+  // Addressed by name and by exact class token, both deliberately. The chevron
+  // is also an svg and also carries `text-ink-faint`, so `querySelector('svg')`
+  // would go on passing after the Database icon was deleted; and `toContain`
+  // would accept `text-accent-soft` as `text-accent`.
+  const iconClasses = () =>
+    (screen.getByTestId('source-icon').getAttribute('class') ?? '').split(/\s+/)
 
-    expect(icon().getAttribute('class')).toContain('text-ink-faint')
+  it('spends accent on the icon only when the data is actually yours', () => {
+    const { rerender } = setup()
+
+    expect(iconClasses()).toContain('text-ink-faint')
+    expect(iconClasses()).not.toContain('text-accent')
 
     rerender(
       <SourceSelect
@@ -62,14 +69,16 @@ describe('SourceSelect', () => {
         sources={sources}
       />,
     )
-    expect(icon().getAttribute('class')).toContain('text-accent')
+    expect(iconClasses()).toContain('text-accent')
+    expect(iconClasses()).not.toContain('text-ink-faint')
   })
 
   it('keeps the icon faint when the selected id no longer exists', () => {
-    // A source deleted in another tab leaves a dangling id until the picker
+    // A source deleted in another tab leaves a dangling id until the caller
     // reconciles; an accent icon there would claim data that is gone.
-    const { container } = setup({ value: 'deleted-id' })
-    expect(container.querySelector('svg')!.getAttribute('class')).toContain('text-ink-faint')
+    setup({ value: 'deleted-id' })
+    expect(iconClasses()).toContain('text-ink-faint')
+    expect(iconClasses()).not.toContain('text-accent')
   })
 
   it('exposes the full source name on hover, since the visible one is capped', () => {
@@ -86,6 +95,17 @@ describe('SourceSelect', () => {
     const field = setup({ size: 'field' })
     expect(field.container.firstElementChild?.className).toContain('rounded-xl')
     expect(screen.getByLabelText('Sorğunun işlədiyi mənbə').className).toContain('text-sm')
+  })
+
+  it('states its width instead of inheriting it from the longest source name', () => {
+    // A select shrink-to-fits to its widest option, so a cap alone let the
+    // control resize when load() resolved — and stay wide on "Demo data".
+    const { unmount } = setup()
+    expect(screen.getByLabelText('Sorğunun işlədiyi mənbə').className).toContain('w-[180px]')
+    unmount()
+
+    setup({ size: 'field' })
+    expect(screen.getByLabelText('Sorğunun işlədiyi mənbə').className).toContain('w-[240px]')
   })
 
   it('overrides the browser dropdown chrome so the control owns its height', () => {
@@ -112,10 +132,5 @@ describe('SourceSelect', () => {
     expect(screen.getByTestId('trailing')).toBeInTheDocument()
     // One shared border around both segments, split by a hairline.
     expect(container.querySelector('.w-px')).toBeInTheDocument()
-  })
-
-  it('can be disabled', () => {
-    setup({ disabled: true })
-    expect(screen.getByLabelText('Sorğunun işlədiyi mənbə')).toBeDisabled()
   })
 })

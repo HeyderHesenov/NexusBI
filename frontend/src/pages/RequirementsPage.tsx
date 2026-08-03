@@ -25,6 +25,22 @@ export function RequirementsPage() {
     loadSources().catch(() => undefined)
   }, [loadSources])
 
+  // A source can vanish while this page is open: datasourceStore.remove()
+  // filters the list and clears queryStore's selection, but it has no way to
+  // know about this page's local state. SourceSelect would then hold a value
+  // matching no option, which a browser renders as the first one ("Demo data")
+  // while onBuild still posts the dead id. DatasourcePicker documents this bug;
+  // sharing the picker did not share the guard, so /requirements still had it.
+  //
+  // Keyed on `sources`, not on the initial load: `datasourceId` starts null and
+  // only becomes an id the user picked from a list that had already arrived, so
+  // there is no "not loaded yet" state this can misread — and load() swaps the
+  // whole array in a single set(), never blanking it first. Reconciling only
+  // after the first load would be close to a no-op for the same reason.
+  useEffect(() => {
+    setDatasourceId((cur) => (cur && !sources.some((s) => s.id === cur) ? null : cur))
+  }, [sources])
+
   // Select all KPIs by default whenever a fresh extraction arrives.
   useEffect(() => {
     if (doc) setSelected(new Set(doc.kpis.map((k) => k.question)))
