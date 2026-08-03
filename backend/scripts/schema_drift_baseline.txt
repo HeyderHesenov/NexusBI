@@ -1,0 +1,93 @@
+# Schema differences between the migrated database and the models that were
+# present when scripts/check_schema_drift.py was written, and the reason each is
+# accepted for now.
+#
+# RATCHET. This list may only shrink. A difference that is not listed fails the
+# guard, and so does a listed one that no longer reproduces -- fixing drift
+# without deleting its line here would leave the door open for it to come back.
+# Same contract as _UNLIMITED_MUTATING_ROUTES in tests/test_architecture.py.
+#
+# Blank lines and everything after a "#" are ignored.
+
+# ── Server defaults the migrations applied and the models never declared (52)
+#
+# Direction matters: the DATABASE is the more constrained side here. These
+# columns were added NOT NULL by a migration, which has to supply a
+# server_default to backfill the rows already in the table; the model kept only
+# a Python-side default=, which is all the ORM needs.
+#
+# The cost is real but narrow: a schema built from the models -- which is what
+# tests/conftest.py does -- has no default on these columns, so an INSERT that
+# omits one fails there and succeeds in production. Nothing in the app inserts
+# by raw SQL today, so nothing hits it.
+#
+# Fixing these means adding server_default= to 52 columns across 24 model files.
+# That is its own change, deliberately not bundled with the guard that found it.
+
+modify_default:ai_spend_daily.calls
+modify_default:ai_spend_daily.completion_tokens
+modify_default:ai_spend_daily.micro_usd
+modify_default:ai_spend_daily.prompt_tokens
+modify_default:alerts.active
+modify_default:alerts.threshold
+modify_default:audit_logs.entity
+modify_default:ba_artifacts.context
+modify_default:ba_artifacts.title
+modify_default:brand_configs.app_name
+modify_default:brand_configs.logo_url
+modify_default:brand_configs.primary_color
+modify_default:dashboard_comments.author_name
+modify_default:dashboard_snapshots.label
+modify_default:dashboard_snapshots.origin
+modify_default:dashboards.embed_enabled
+modify_default:dashboards.live_enabled
+modify_default:dashboards.live_interval_seconds
+modify_default:data_contracts.last_status
+modify_default:decisions.action
+modify_default:decisions.impact_status
+modify_default:decisions.insight
+modify_default:decisions.measure_cadence
+modify_default:decisions.outcome
+modify_default:decisions.status
+modify_default:integration_channels.active
+modify_default:integration_channels.name
+modify_default:kpi_targets.current_value
+modify_default:kpi_targets.period
+modify_default:kpi_targets.target_value
+modify_default:metric_nodes.operator
+modify_default:metric_nodes.position
+modify_default:metrics.description
+modify_default:metrics.expression
+modify_default:metrics.synonyms
+modify_default:metrics.verified
+modify_default:ml_models.name
+modify_default:ml_models.row_count
+modify_default:notifications.body
+modify_default:notifications.read
+modify_default:query_embeddings.kind
+modify_default:refresh_tokens.revoked
+modify_default:report_subscriptions.active
+modify_default:report_subscriptions.format
+modify_default:report_subscriptions.schedule
+modify_default:requirement_docs.name
+modify_default:requirement_docs.raw_text
+modify_default:saved_queries.schedule
+modify_default:users.ai_calls_used
+modify_default:users.subscription_tier
+modify_default:workspace_members.role
+modify_default:workspace_resources.permission
+
+# ── brand_configs.user_id: one uniqueness rule expressed two ways (3)
+#
+# The database enforces uniqueness with a UNIQUE CONSTRAINT
+# (brand_configs_user_id_key) and additionally carries a plain index
+# (ix_brand_configs_user_id). The model asks for a single UNIQUE INDEX of that
+# name. Uniqueness holds either way -- verified against pg_constraint -- so this
+# is representational, plus one redundant index the database does not need.
+#
+# Worth cleaning up in a migration that drops the plain index and lets the
+# model's unique index be the one rule. Not urgent, and not this change.
+
+add_index:brand_configs.ix_brand_configs_user_id
+remove_constraint:brand_configs.brand_configs_user_id_key
+remove_index:brand_configs.ix_brand_configs_user_id

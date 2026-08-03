@@ -47,15 +47,23 @@ class DataSource(Base, TimestampMixin):
     # (the original behaviour); "strict" = a member with no rule sees NO rows.
     # The owner is never constrained by either mode.
     #
-    # Both defaults are "strict" now and must stay in step: relying on the Python
-    # one alone would leave every non-ORM INSERT (bulk import, ops fix, a cloning
+    # Both defaults are "strict" and must stay in step: relying on the Python one
+    # alone would leave every non-ORM INSERT (bulk import, ops fix, a cloning
     # migration) fail-OPEN. Rows that predate the column keep the "open" they were
     # backfilled with in f3a4b5c6d7e8 — an installed source must not change
     # behaviour under a migration — and a0b1c2d3e4f5 moved the default off it.
+    #
+    # That sentence was already here while the line below still said
+    # server_default=RLS_OPEN: a0b1c2d3e4f5 flipped the database and the model was
+    # never brought along. Postgres was right ('strict'); the models, which are
+    # what the test suite builds its schema from, described the fail-open shape
+    # this comment warns about. Nothing could see it, because tests never run the
+    # migrations — see scripts/check_schema_drift.py, which now compares the two.
+    #
     # Plain String, not Enum() — an Enum would create a Postgres type that the
     # SQLite path can't mirror, and every expression here must run on both.
     rls_mode: Mapped[str] = mapped_column(
-        String(16), nullable=False, default=RLS_STRICT, server_default=RLS_OPEN
+        String(16), nullable=False, default=RLS_STRICT, server_default=RLS_STRICT
     )
 
     # Freshness SLA (trust layer): how recent the data is expected to be, plus the
