@@ -684,6 +684,7 @@
     "namePlaceholder": "Sənəd adı (ixtiyari)",
     "sampleButton": "Nümunə",
     "sampleText": "Biznes tələbləri:\n- Aylıq gəlir trendi izlənməlidir.\n- Ən çox satan 5 məhsul göstərilməlidir.\n- Region üzrə satış payı analiz edilməlidir.\n- Müştəri sayının aylıq dəyişməsi vacibdir.",
+    "sourceLabel": "Dashboard-un qurulacağı mənbə",
     "subtitle": "BRD və ya user story yapışdır — NexusBI ölçülə bilən KPI-ları çıxarıb dashboard qurur.",
     "textPlaceholder": "Tələb mətnini bura yapışdır…",
     "title": "Tələbnamə"

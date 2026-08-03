@@ -684,6 +684,7 @@
     "namePlaceholder": "Belge adı (isteğe bağlı)",
     "sampleButton": "Örnek",
     "sampleText": "İş gereksinimleri:\n- Aylık gelir trendi izlenmelidir.\n- En çok satan 5 ürün gösterilmelidir.\n- Bölgeye göre satış payı analiz edilmelidir.\n- Müşteri sayısının aylık değişimi önemlidir.",
+    "sourceLabel": "Dashboard'un oluşturulacağı kaynak",
     "subtitle": "Bir BRD veya user story yapıştırın — NexusBI ölçülebilir KPI'ları çıkarıp dashboard oluşturur.",
     "textPlaceholder": "Gereksinim metnini buraya yapıştırın…",
     "title": "Gereksinimler"

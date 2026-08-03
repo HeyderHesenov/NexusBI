@@ -684,6 +684,7 @@
     "namePlaceholder": "Document name (optional)",
     "sampleButton": "Sample",
     "sampleText": "Business requirements:\n- Monthly revenue trend must be tracked.\n- Top 5 best-selling products must be shown.\n- Sales share by region must be analyzed.\n- Monthly change in customer count is important.",
+    "sourceLabel": "Source the dashboard is built from",
     "subtitle": "Paste a BRD or user story — NexusBI extracts measurable KPIs and builds a dashboard.",
     "textPlaceholder": "Paste the requirement text here…",
     "title": "Requirements"

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
-import { Database, FileText, LayoutDashboard, Sparkles, Upload } from 'lucide-react'
+import { FileText, LayoutDashboard, Sparkles, Upload } from 'lucide-react'
+import { SourceSelect } from '../components/datasource/SourceSelect'
 import { useRequirementStore } from '../store/requirementStore'
 import { useDatasourceStore } from '../store/datasourceStore'
 import { useDashboardStore } from '../store/dashboardStore'
@@ -162,21 +163,17 @@ export function RequirementsPage() {
           </ul>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <label className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
-              <Database size={14} className="text-accent" />
-              <select
-                value={datasourceId ?? ''}
-                onChange={(e) => setDatasourceId(e.target.value || null)}
-                className="bg-transparent text-ink focus:outline-none"
-              >
-                <option value="">{t('requirementsPage.demoData')}</option>
-                {sources.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SourceSelect
+              value={datasourceId}
+              onChange={setDatasourceId}
+              label={t('requirementsPage.sourceLabel')}
+              demoLabel={t('requirementsPage.demoData')}
+              sources={sources}
+              // This card speaks the form dialect (rounded-xl, text-sm), not the
+              // query console's toolbar dialect — a 30px control here would
+              // recreate the very mismatch this component was extracted to fix.
+              size="field"
+            />
             <button
               onClick={onBuild}
               disabled={building || chosen.length === 0}
