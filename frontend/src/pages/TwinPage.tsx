@@ -14,7 +14,15 @@ import { DANGER } from '../components/charts/theme'
 import { Field, FIELD, Select } from '../components/ui/form'
 import { ModalShell } from '../components/ui/ModalShell'
 import { formatMetricValue as fmt } from '../lib/format'
-import { collectLeaves, recompute, sensitivity, waterfall } from '../lib/metricTreeMath'
+import { IncompleteNotice } from '../components/twin/IncompleteNotice'
+import {
+  collectLeaves,
+  isComplete,
+  kpiValue,
+  provenanceSummary,
+  sensitivity,
+  waterfall,
+} from '../lib/metricTreeMath'
 import { activeRanges, monteCarlo } from '../lib/twinAnalysis'
 import { buildNarrative, scenarioPacing } from '../lib/twinNarrative'
 import { useTargetStore } from '../store/targetStore'
@@ -69,28 +77,42 @@ export function TwinPage() {
     () => leaves.filter((l) => adjustments[l.id] !== undefined).length,
     [leaves, adjustments],
   )
-  const baseline = root ? root.value : 0
+  // null when a leaf under this KPI has no value. Every what-if surface below is
+  // gated on it: with an unknown leaf the KPI has no number, and a waterfall or
+  // a Monte Carlo histogram drawn anyway would look exactly like an answer.
+  const baseline = root && isComplete(root) ? root.value : null
   const simulatedValue = useMemo(
-    () => (root && activeCount ? recompute(root, adjustments).value : baseline),
+    () => (root && activeCount ? kpiValue(root, adjustments) : baseline),
     [root, adjustments, activeCount, baseline],
   )
-  const steps = useMemo(() => (root ? waterfall(root, adjustments, leaves, baseline) : []), [root, adjustments, leaves, baseline])
-  const sens = useMemo(() => (root ? sensitivity(root, SENS_PCT, baseline) : []), [root, baseline])
+  const steps = useMemo(
+    () => (root && baseline !== null ? waterfall(root, adjustments, leaves, baseline) : []),
+    [root, adjustments, leaves, baseline],
+  )
+  const sens = useMemo(
+    () => (root && baseline !== null ? sensitivity(root, SENS_PCT, baseline) : []),
+    [root, baseline],
+  )
   const rootScenarios = scenarios.filter((s) => s.rootId === (root?.id ?? ''))
-  const deltaPct = baseline ? ((simulatedValue - baseline) / Math.abs(baseline)) * 100 : null
+  const deltaPct =
+    baseline && simulatedValue !== null ? ((simulatedValue - baseline) / Math.abs(baseline)) * 100 : null
   const narrative = useMemo(
-    () => (root && activeCount ? buildNarrative(root, adjustments, leaves, baseline) : null),
+    () => (root && activeCount && baseline !== null ? buildNarrative(root, adjustments, leaves, baseline) : null),
     [root, adjustments, leaves, baseline, activeCount],
   )
   // P10–P90 for the hero, only when Monte Carlo ranges are set (Risk surface).
   const uncertainty = useMemo(() => {
     const active = root ? activeRanges(leaves, ranges) : {}
-    if (!root || !Object.keys(active).length) return null
+    if (!root || baseline === null || !Object.keys(active).length) return null
     const r = monteCarlo(root, active, baseline, { iterations: MC_ITERATIONS, seed: 1 })
-    return { p10: r.p10, p90: r.p90 }
+    return r && { p10: r.p10, p90: r.p90 }
   }, [root, leaves, ranges, baseline])
   const linkedTarget = targets.find((tg) => tg.id === targetId) ?? null
-  const pacing = linkedTarget ? scenarioPacing(simulatedValue, linkedTarget) : null
+  const pacing =
+    linkedTarget && simulatedValue !== null ? scenarioPacing(simulatedValue, linkedTarget) : null
+  // Named, not counted. "Rests on 2 assumptions" is a disclaimer; naming the
+  // levers is what lets someone go and measure them.
+  const assumptions = useMemo(() => (root ? provenanceSummary(root).manual : []), [root])
 
   return (
     <div className="mx-auto w-full max-w-7xl">
@@ -148,6 +170,8 @@ export function TwinPage() {
                 </button>
               </div>
             </div>
+          ) : baseline === null || simulatedValue === null ? (
+            <IncompleteNotice root={root} onGoToTree={() => setMode('model')} />
           ) : mode === 'risk' ? (
             <MonteCarloPanel
               root={root}
@@ -171,6 +195,11 @@ export function TwinPage() {
                   pacing={pacing}
                   target={linkedTarget ? { name: linkedTarget.name, value: linkedTarget.target_value } : null}
                 />
+                {assumptions.length > 0 && (
+                  <p className="mt-2 text-xs text-ink-faint">
+                    {t('twinPage.provenance.caveat', { names: assumptions.join(', ') })}
+                  </p>
+                )}
               </div>
 
               {(targets.length > 0 || narrative) && (

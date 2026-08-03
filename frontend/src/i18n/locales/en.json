@@ -465,7 +465,25 @@
     "subtitle": "Break down a KPI (e.g. Revenue = Price × Volume) — values roll up from the bottom.",
     "title": "Metric tree",
     "valueLabel": "Value (leaf)",
-    "valuePlaceholder": "empty = computed"
+    "valuePlaceholder": "empty = unknown",
+    "sourceLabel": "Source",
+    "sourceManual": "Typed in (assumption)",
+    "sourceQuery": "From a saved query (measured)",
+    "queryLabel": "Saved query",
+    "queryPlaceholder": "Pick a query",
+    "columnLabel": "Column",
+    "columnPlaceholder": "Pick a column",
+    "aggLabel": "Aggregation",
+    "queryHint": "The value is read from the query’s last run — nothing is executed now.",
+    "valueHint": "Left empty, the leaf becomes “unknown” — not zero.",
+    "agg": {
+      "sum": "Sum",
+      "avg": "Average",
+      "min": "Minimum",
+      "max": "Maximum",
+      "last": "Last row",
+      "count": "Count"
+    }
   },
   "metricsPage": {
     "addMetric": "Add metric",
@@ -1128,6 +1146,28 @@
       "p10": "P10",
       "p50": "Median",
       "p90": "P90"
+    },
+    "provenance": {
+      "measured": "measured",
+      "manual": "assumption",
+      "unknown": "unknown",
+      "measuredAt": "measured: {{at}}",
+      "noValue": "This KPI has no value",
+      "caveat": "This KPI rests on values typed in by hand — {{names}}. They are assumptions, not measurements."
+    },
+    "reason": {
+      "empty": "no value entered",
+      "bad_binding": "binding is incomplete",
+      "query_missing": "the bound query was deleted",
+      "never_run": "the query has never run",
+      "no_rows": "the last run returned no rows",
+      "column_missing": "column is not in the result",
+      "not_numeric": "the column holds no numbers"
+    },
+    "incomplete": {
+      "title": "This KPI has no value",
+      "body": "The leaves below are empty. Reading an empty leaf as zero would misstate the KPI, so scenarios, tornado and Monte Carlo stay off.",
+      "cta": "Fill it in the tree"
     }
   },
   "baStudio": {

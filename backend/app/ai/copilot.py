@@ -34,8 +34,55 @@ SYSTEM_PROMPT = (
     "uyğun list_* və ya search_assets aləti ilə tap — id UYDURMA. Ağır əməliyyatı "
     "(model öyrətmə, AI generasiya) bir dəfə çağır, təkrarlama. Uydurma rəqəm vermə — "
     "yalnız alətlərin qaytardığına istinad et. İstifadəçinin dilində qısa, aydın cavab "
-    "ver; iş bitəndə nəticənin əsas rəqəmlərini bir-iki cümlə ilə yekunla."
+    "ver; iş bitəndə nəticənin əsas rəqəmlərini bir-iki cümlə ilə yekunla.\n"
+    "MƏNŞƏ QAYDASI (metrik ağacı və Digital Twin): alətin qaytardığı hər leaf "
+    "\"source\" daşıyır. \"measured\" — saxlanan sorğunun son qaçışından ölçülüb. "
+    "\"manual\" — istifadəçinin əl ilə yazdığı FƏRZİYYƏDİR, ölçmə deyil: onu heç vaxt "
+    "\"ölçülmüş\", \"faktiki\", \"real\" və ya \"data göstərir\" kimi təqdim etmə, "
+    "fərziyyə olduğunu de. \"unknown\" — dəyər yoxdur. Ağacda unknown leaf varsa "
+    "(has_unknown=true və ya value=null) KPI rəqəmini ÜMUMİYYƏTLƏ söyləmə; əvəzində "
+    "hansı leaf-lərin boş olduğunu ad-ad de və doldurulmasını təklif et."
 )
+
+# The rule above is also attached to each tool RESULT, not only to the system
+# prompt. A constraint stated once at the top of a long tool-calling session
+# competes with everything since; one that travels with the data is read at the
+# moment it applies. Same reasoning as ba_evidence.py refusing to let the model
+# self-attribute evidence: make the honest path the easy one.
+_MANUAL_NOTE = (
+    "Bu ağacda əl ilə yazılmış (manual) dəyərlər var — onlar fərziyyədir, ölçmə deyil. "
+    "Rəqəmi təqdim edərkən bunu açıq de."
+)
+_UNKNOWN_NOTE = (
+    "Bu ağacda dəyəri olmayan (unknown) leaf-lər var, ona görə KPI-nin dəqiq rəqəmi "
+    "YOXDUR. Rəqəm söyləmə; hansı leaf-lərin boş olduğunu de."
+)
+
+
+def _leaf_payload(leaf: dict[str, Any]) -> dict[str, Any]:
+    """One leaf as the model sees it — the number never travels without its origin."""
+    measured_at = leaf.get("measured_at")
+    return {
+        "name": leaf["name"],
+        "value": leaf["value"],
+        # "source" rather than "provenance": short, and it is the word the system
+        # prompt uses. The human-readable origin is a separate field so the model
+        # cannot confuse a label with a citation.
+        "source": leaf.get("provenance"),
+        "measured_from": leaf.get("source"),
+        "measured_at": measured_at.isoformat() if measured_at else None,
+        "unknown_reason": leaf.get("unknown_reason"),
+    }
+
+
+def _provenance_note(summary: dict[str, Any]) -> dict[str, Any]:
+    """Attach the reporting constraint that this particular result implies."""
+    notes = []
+    if summary.get("has_unknown"):
+        notes.append(_UNKNOWN_NOTE)
+    if summary.get("manual_leaves"):
+        notes.append(_MANUAL_NOTE)
+    return {"reporting_rule": " ".join(notes)} if notes else {}
 
 # Tool (function) schemas exposed to the AI engine.
 TOOLS: list[dict[str, Any]] = [
@@ -332,7 +379,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "evaluate_metric_tree",
-            "description": "Metrik ağacını (KPI dekompozisiyası) hesablayır — root-lar, dəyərlər, leaf-lər.",
+            "description": (
+                "Metrik ağacını (KPI dekompozisiyası) hesablayır — root-lar, dəyərlər, leaf-lər. "
+                "Hər leaf source daşıyır: measured (sorğudan ölçülüb) | manual (əl ilə yazılmış "
+                "fərziyyə) | unknown (dəyər yoxdur). value=null olan düyünün rəqəmi YOXDUR."
+            ),
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -340,7 +391,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "simulate_metric_tree",
-            "description": "Digital Twin ssenarisi: leaf metrikləri ADLA ±% dəyişdirib KPI-lara təsirini hesablayır. Əvvəl evaluate_metric_tree ilə leaf adlarını öyrən.",
+            "description": (
+                "Digital Twin ssenarisi: leaf metrikləri ADLA ±% dəyişdirib KPI-lara təsirini "
+                "hesablayır. Əvvəl evaluate_metric_tree ilə leaf adlarını öyrən. Dəyəri olmayan "
+                "leaf-i olan root üçün baseline/simulated null qayıdır — orada ssenari cavabsızdır."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -741,18 +796,20 @@ class _ToolContext:
         from app.services import metric_tree_service
 
         forest = await metric_tree_service.evaluate(self.db, self.user_id)
-
-        def leaves(node: dict[str, Any]) -> list[str]:
-            kids = node.get("children") or []
-            if not kids:
-                return [node["name"]]
-            return [name for k in kids for name in leaves(k)]
-
+        summary = metric_tree_service.summarize(forest)
         self.actions.append({"type": "metric_tree", "label": "Metrik ağacı hesablandı"})
         return {
             "roots": [
-                {"name": r["name"], "value": r["value"], "leaves": leaves(r)} for r in forest
-            ]
+                {
+                    "name": r["name"],
+                    "value": r["value"],
+                    "incomplete": r["incomplete"],
+                    "leaves": [_leaf_payload(leaf) for leaf in metric_tree_service.collect_leaves(r)],
+                }
+                for r in forest
+            ],
+            **summary,
+            **_provenance_note(summary),
         }
 
     async def simulate_metric_tree(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -765,7 +822,7 @@ class _ToolContext:
         if not out["results"]:
             return {"error": "Metrik ağacı boşdur — əvvəl KPI dekompozisiyası qurun."}
         self.actions.append({"type": "twin", "label": "Twin ssenarisi hesablandı"})
-        return out
+        return {**out, **_provenance_note(out)}
 
     # ── Alert ──
 

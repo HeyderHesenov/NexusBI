@@ -5,6 +5,7 @@ from fastapi import APIRouter, Response, status
 
 from app.dependencies import CurrentUser, DbDep
 from app.schemas.metric_tree import (
+    BindableSource,
     EvaluatedNode,
     MetricNodeCreate,
     MetricNodeResponse,
@@ -23,6 +24,12 @@ async def list_nodes(user: CurrentUser, db: DbDep) -> list[MetricNodeResponse]:
 @router.get("/evaluate", response_model=list[EvaluatedNode])
 async def evaluate(user: CurrentUser, db: DbDep) -> list[EvaluatedNode]:
     return [EvaluatedNode.model_validate(n) for n in await svc.evaluate(db, user.id)]
+
+
+@router.get("/bindable", response_model=list[BindableSource])
+async def bindable(user: CurrentUser, db: DbDep) -> list[BindableSource]:
+    """Saved queries (with their last run's columns) a leaf can be bound to."""
+    return [BindableSource.model_validate(s) for s in await svc.bindable_sources(db, user.id)]
 
 
 @router.post("/", response_model=MetricNodeResponse, status_code=status.HTTP_201_CREATED)

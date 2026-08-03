@@ -465,7 +465,25 @@
     "subtitle": "KPI'yı parçalayın (örn. Gelir = Fiyat × Hacim) — değerler aşağıdan yukarıya toplanır.",
     "title": "Metrik ağacı",
     "valueLabel": "Değer (yaprak)",
-    "valuePlaceholder": "boş = hesaplanır"
+    "valuePlaceholder": "boş = bilinmiyor",
+    "sourceLabel": "Kaynak",
+    "sourceManual": "Elle (varsayım)",
+    "sourceQuery": "Kayıtlı sorgudan (ölçülmüş)",
+    "queryLabel": "Kayıtlı sorgu",
+    "queryPlaceholder": "Sorgu seç",
+    "columnLabel": "Sütun",
+    "columnPlaceholder": "Sütun seç",
+    "aggLabel": "Toplama",
+    "queryHint": "Değer sorgunun son çalıştırmasından okunur — şimdi bir şey çalıştırılmaz.",
+    "valueHint": "Boş bırakılırsa yaprak “bilinmiyor” olur — sıfır değil.",
+    "agg": {
+      "sum": "Toplam",
+      "avg": "Ortalama",
+      "min": "Minimum",
+      "max": "Maksimum",
+      "last": "Son satır",
+      "count": "Adet"
+    }
   },
   "metricsPage": {
     "addMetric": "Metrik ekle",
@@ -1128,6 +1146,28 @@
       "p10": "P10",
       "p50": "Medyan",
       "p90": "P90"
+    },
+    "provenance": {
+      "measured": "ölçülmüş",
+      "manual": "varsayım",
+      "unknown": "bilinmiyor",
+      "measuredAt": "ölçüm: {{at}}",
+      "noValue": "Bu KPI’nin değeri yok",
+      "caveat": "Bu KPI elle girilmiş değerlere dayanıyor — {{names}}. Bunlar varsayımdır, ölçüm değil."
+    },
+    "reason": {
+      "empty": "değer girilmedi",
+      "bad_binding": "bağlama eksik",
+      "query_missing": "bağlı sorgu silinmiş",
+      "never_run": "sorgu hiç çalışmadı",
+      "no_rows": "son çalıştırma satır döndürmedi",
+      "column_missing": "sütun sonuçta yok",
+      "not_numeric": "sütunda sayı yok"
+    },
+    "incomplete": {
+      "title": "Bu KPI’nin değeri yok",
+      "body": "Aşağıdaki yapraklar boş. Boş yaprağı sıfır saymak KPI’yi yanlış gösterir; bu yüzden senaryo, tornado ve Monte Carlo kapalı.",
+      "cta": "Ağaçta doldur"
     }
   },
   "baStudio": {

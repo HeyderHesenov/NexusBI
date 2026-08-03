@@ -1,20 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { buildNarrative, scenarioPacing } from './twinNarrative'
-import type { EvaluatedNode } from '../types'
+import { leaf, node, unknownLeaf } from '../test/metricTreeFixtures'
 
 // Revenue = Price × Volume  (10 × 100 = 1000)
-const leaf = (id: string, name: string, v: number): EvaluatedNode => ({
-  id, name, operator: 'add', value: v, manual_value: v, contribution_pct: null, children: [],
-})
-const tree = (): EvaluatedNode => ({
-  id: 'r', name: 'Revenue', operator: 'mul', value: 1000, manual_value: null, contribution_pct: null,
-  children: [leaf('p', 'Price', 10), leaf('v', 'Volume', 100)],
-})
+const tree = (): ReturnType<typeof node> =>
+  node('r', 'mul', [leaf('p', 10, 'Price'), leaf('v', 100, 'Volume')], 1000)
 const leaves = [{ id: 'p', name: 'Price' }, { id: 'v', name: 'Volume' }]
 
 describe('buildNarrative', () => {
   it('reports the KPI move and the drivers behind it', () => {
-    const n = buildNarrative(tree(), { p: 10 }, leaves, 1000)
+    const n = buildNarrative(tree(), { p: 10 }, leaves, 1000)!
     expect(n.simulated).toBeCloseTo(1100)
     expect(n.deltaPct).toBeCloseTo(10)
     expect(n.drivers).toHaveLength(1)
@@ -23,7 +18,7 @@ describe('buildNarrative', () => {
   })
 
   it('ranks drivers by absolute KPI contribution, biggest first', () => {
-    const n = buildNarrative(tree(), { p: 10, v: 5 }, leaves, 1000)
+    const n = buildNarrative(tree(), { p: 10, v: 5 }, leaves, 1000)!
     // Price +10% then Volume +5% (cumulative): Price moves 1000→1100 (+100),
     // Volume moves 1100→1155 (+55). Price is the bigger mover.
     expect(n.drivers.map((d) => d.id)).toEqual(['p', 'v'])
@@ -33,8 +28,16 @@ describe('buildNarrative', () => {
   })
 
   it('has no drivers and a null deltaPct edge case', () => {
-    expect(buildNarrative(tree(), {}, leaves, 1000).drivers).toEqual([])
-    expect(buildNarrative(tree(), { p: 10 }, leaves, 0).deltaPct).toBeNull()
+    expect(buildNarrative(tree(), {}, leaves, 1000)!.drivers).toEqual([])
+    expect(buildNarrative(tree(), { p: 10 }, leaves, 0)!.deltaPct).toBeNull()
+  })
+
+  it('writes no sentence at all when a leaf has no value', () => {
+    // This is the surface where a fabricated number does the most damage: it
+    // becomes prose a consultant pastes into a deliverable, with no chart beside
+    // it to check against.
+    const broken = node('r', 'mul', [leaf('p', 10, 'Price'), unknownLeaf('v', 'Volume')], null)
+    expect(buildNarrative(broken, { p: 10 }, leaves, 1000)).toBeNull()
   })
 })
 

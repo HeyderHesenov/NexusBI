@@ -333,4 +333,12 @@ async def test_simulate_metric_tree_math_matches_combine(client: AsyncClient, au
     assert res["baseline"] == 300.0
     assert res["simulated"] == 330.0  # 22 × 15 — parity with _combine
     assert out["applied"] == ["Qiymət"]  # case-insensitive name match
-    assert out["unknown_leaves"] == ["yox-belə"]
+    # A requested name that matched no leaf. This used to be called
+    # "unknown_leaves"; that key now means leaves with no VALUE, and both senses
+    # are live at once — a caller reading the old name would report a typo in the
+    # scenario as missing data.
+    assert out["unmatched_leaves"] == ["yox-belə"]
+    assert out["unknown_leaves"] == []  # both leaves carry a manual value
+    assert out["manual_leaves"] == ["Qiymət", "Həcm"]
+    assert out["fully_measured"] is False
+    assert "fərziyyə" in out["reporting_rule"]

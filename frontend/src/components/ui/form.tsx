@@ -55,7 +55,12 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'cla
 export function Select({ options, className, ...rest }: SelectProps) {
   return (
     <span className={`relative block ${className ?? ''}`}>
-      <select {...rest} className={`${FIELD} cursor-pointer appearance-none pr-8`}>
+      {/* `disabled` reaches the native element through ...rest; without these
+          variants it only stops interaction, giving no visible reason why. */}
+      <select
+        {...rest}
+        className={`${FIELD} cursor-pointer appearance-none pr-8 disabled:cursor-not-allowed disabled:opacity-60`}
+      >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

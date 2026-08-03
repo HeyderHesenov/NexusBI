@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { RotateCcw } from 'lucide-react'
 import { formatMetricValue as fmt } from '../../lib/format'
 import { DANGER } from '../charts/theme'
+import { MetricValue, ProvenanceChip } from './ProvenanceChip'
 import type { Adjustments } from '../../lib/metricTreeMath'
 import type { EvaluatedNode } from '../../types'
 
@@ -38,16 +39,24 @@ export function TwinSliders({ leaves, adjustments, onChange, onClear }: Props) {
 
       {leaves.map((leaf) => {
         const pct = adjustments[leaf.id] ?? 0
-        const base = leaf.manual_value ?? 0
+        // The RESOLVED value. This read used to be `manual_value ?? 0`, which is
+        // null for a leaf measured from a query — the lever's own readout said
+        // "0 → 0" while the KPI above it moved.
+        const base = leaf.value ?? 0
         const adjusted = base * (1 + pct / 100)
         const sliderId = `twin-${leaf.id}`
         const up = pct > 0
         return (
           <div key={leaf.id} className="rounded-xl border border-line bg-surface-2 p-3">
             <div className="flex items-center justify-between gap-2">
-              <label htmlFor={sliderId} className="truncate text-sm font-medium text-ink">
-                {leaf.name}
-              </label>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <label htmlFor={sliderId} className="truncate text-sm font-medium text-ink">
+                  {leaf.name}
+                </label>
+                {/* The lever says what it is pulling: an assumption reads the
+                    same as a measurement once it is on a slider. */}
+                <ProvenanceChip node={leaf} />
+              </div>
               <div className="flex items-center gap-1">
                 <input
                   type="number"
@@ -73,7 +82,7 @@ export function TwinSliders({ leaves, adjustments, onChange, onClear }: Props) {
             />
 
             <div className="mt-1 flex items-baseline justify-between font-mono text-xs">
-              <span className="text-ink-faint">{fmt(base)}</span>
+              <MetricValue value={leaf.value} format={fmt} className="text-ink-faint" />
               {pct !== 0 && (
                 <span style={up ? undefined : { color: DANGER }}>
                   <span className={up ? 'text-accent' : ''}>

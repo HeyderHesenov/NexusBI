@@ -500,7 +500,33 @@ export interface DataContractCreate {
 
 export type TreeOperator = 'add' | 'sub' | 'mul' | 'div'
 
-export interface MetricNode {
+/** Where a metric-tree leaf's number comes from. `manual` is an assumption the
+ *  user typed, not a measurement — the distinction the whole Twin surface now
+ *  respects. Named LeafProvenance because `Provenance` above is already taken by
+ *  a different idea (how a query's SQL was produced). */
+export type LeafProvenance = 'measured' | 'manual' | 'unknown'
+export type SourceKind = 'manual' | 'query'
+export type MetricAgg = 'sum' | 'avg' | 'min' | 'max' | 'last' | 'count'
+
+/** Why a leaf has no value. Mirrors the constants in metric_tree_service.py;
+ *  each maps to a `twinPage.reason.*` i18n key. */
+export type UnknownReason =
+  | 'empty'
+  | 'bad_binding'
+  | 'query_missing'
+  | 'never_run'
+  | 'no_rows'
+  | 'column_missing'
+  | 'not_numeric'
+
+export interface MetricNodeBinding {
+  source_kind: SourceKind
+  saved_query_id: string | null
+  value_column: string | null
+  agg: MetricAgg | null
+}
+
+export interface MetricNode extends MetricNodeBinding {
   id: string
   parent_id: string | null
   name: string
@@ -510,12 +536,24 @@ export interface MetricNode {
   created_at: string
 }
 
-export interface EvaluatedNode {
+export interface EvaluatedNode extends MetricNodeBinding {
   id: string
   name: string
   operator: string
-  value: number
+  /** null means UNKNOWN, not zero: some leaf below has no value, so there is no
+   *  honest number here. Rendered as "—"; the what-if tools refuse to run. */
+  value: number | null
+  /** The stored hand-typed number, kept for the edit form. It survives a switch
+   *  to source_kind='query', so it is NOT the leaf's value — read `value`. */
   manual_value: number | null
+  /** Leaves only. An internal node inherits trust from below via `incomplete`. */
+  provenance: LeafProvenance | null
+  /** Human-readable origin, e.g. "Aylıq satış / revenue (sum)". */
+  source: string | null
+  measured_at: string | null
+  unknown_reason: UnknownReason | null
+  /** This subtree contains at least one unknown leaf. */
+  incomplete: boolean
   contribution_pct: number | null
   children: EvaluatedNode[]
 }
@@ -525,6 +563,31 @@ export interface MetricNodeCreate {
   parent_id?: string | null
   operator?: TreeOperator
   manual_value?: number | null
+  source_kind?: SourceKind
+  saved_query_id?: string | null
+  value_column?: string | null
+  agg?: MetricAgg | null
+}
+
+/** PATCH body. The binding fields are applied as a UNIT and only when
+ *  `source_kind` is present — sending them alone is rejected by the API rather
+ *  than silently ignored. */
+export interface MetricNodeUpdate {
+  name?: string
+  operator?: TreeOperator
+  manual_value?: number | null
+  source_kind?: SourceKind
+  saved_query_id?: string | null
+  value_column?: string | null
+  agg?: MetricAgg | null
+}
+
+/** A saved query a leaf can measure from, plus its last run's columns. */
+export interface BindableSource {
+  saved_query_id: string
+  name: string
+  columns: string[]
+  last_run_at: string | null
 }
 
 export interface CausalDriver {
