@@ -7,9 +7,11 @@ export const FIELD =
 
 /** Quiet bordered link ("go do this elsewhere"). Vertical padding is left to the
  *  caller — one of these aligns with a form control, another sits in a dense
- *  list — so the rest of the treatment can only be changed in one place. */
+ *  list — so the rest of the treatment can only be changed in one place.
+ *  Hover darkens the label rather than tinting it accent: accent on the page
+ *  background is 3.2:1, so tinting made the text harder to read on hover. */
 export const QUIET_LINK =
-  'inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-accent'
+  'inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink'
 
 const DANGER = '#D87C6B'
 

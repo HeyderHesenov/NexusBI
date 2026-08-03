@@ -409,19 +409,25 @@ function ModeToggle({ mode, onChange }: { mode: 'nl' | 'sql'; onChange: (m: 'nl'
   const { t } = useTranslation()
   const base =
     'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition'
+  // Accent tint on accent-soft is 3.0:1 — under the 4.5:1 the label needs, so
+  // the active chip states itself in ink. Fill plus text weight carry the mode,
+  // and aria-pressed carries it programmatically. (An accent hairline was tried
+  // here and dropped: at any opacity it measures under 3:1 against the fill it
+  // sits on, so it read as decoration that wasn't actually visible.)
+  const ACTIVE_CHIP = 'bg-accent-soft text-ink'
   return (
     <div className="inline-flex rounded-lg border border-line bg-surface p-0.5">
       <button
         onClick={() => onChange('nl')}
         aria-pressed={mode === 'nl'}
-        className={`${base} ${mode === 'nl' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink'}`}
+        className={`${base} ${mode === 'nl' ? ACTIVE_CHIP : 'text-ink-soft hover:text-ink'}`}
       >
         <Sparkles size={13} /> {t('queryPage.naturalLanguage')}
       </button>
       <button
         onClick={() => onChange('sql')}
         aria-pressed={mode === 'sql'}
-        className={`${base} ${mode === 'sql' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink'}`}
+        className={`${base} ${mode === 'sql' ? ACTIVE_CHIP : 'text-ink-soft hover:text-ink'}`}
       >
         <Code2 size={13} /> SQL
       </button>
