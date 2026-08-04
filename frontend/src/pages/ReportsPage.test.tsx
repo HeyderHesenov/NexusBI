@@ -1,12 +1,24 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { SavedQuery } from '../types'
+import type { useSavedQueryStore } from '../store/savedQueryStore'
 
-const savedQuery = {
+type SavedQueryState = ReturnType<typeof useSavedQueryStore>
+
+// Typed on purpose. An untyped literal lets the fixture and the mocks drift
+// away from the real modules without tsc noticing, and the drift then surfaces
+// inside an unrelated assertion as "x is not a function" instead of pointing at
+// the mock. `satisfies typeof import(...)` below turns any new export, renamed
+// export or changed signature into a compile error.
+const savedQuery: SavedQuery = {
   id: 'sq-1',
+  datasource_id: null,
   name: 'Aylıq gəlir',
   nl_query: 'aylıq gəlir nə qədərdir',
   schedule: 'daily',
   last_run_at: '2026-08-01T09:00:00Z',
+  last_query_log_id: null,
+  created_at: '2026-08-01T09:00:00Z',
 }
 
 const listSubscriptions = vi.fn()
@@ -16,14 +28,22 @@ vi.mock('../api/reportSubscription', () => ({
   listSubscriptions: (...a: unknown[]) => listSubscriptions(...a),
   createSubscription: (...a: unknown[]) => createSubscription(...a),
   deleteSubscription: (...a: unknown[]) => deleteSubscription(...a),
-}))
+} satisfies typeof import('../api/reportSubscription')))
 
+// All eight exports, not just the four this page reaches for today. The page's
+// import graph is free to grow, and a partial mock fails as
+// "listNotifications is not a function" inside whatever assertion happens to
+// run first, which points at the wrong file.
 vi.mock('../api/alert', () => ({
   listAlerts: vi.fn().mockResolvedValue([]),
   createAlert: vi.fn(),
   updateAlert: vi.fn(),
   removeAlert: vi.fn(),
-}))
+  listNotifications: vi.fn().mockResolvedValue([]),
+  readAll: vi.fn(),
+  readOne: vi.fn(),
+  buildDigest: vi.fn(),
+} satisfies typeof import('../api/alert')))
 
 vi.mock('../components/chat/ShareToChatButton', () => ({
   ShareToChatButton: () => null,
@@ -31,10 +51,11 @@ vi.mock('../components/chat/ShareToChatButton', () => ({
 
 const load = vi.fn()
 vi.mock('../store/savedQueryStore', () => ({
-  useSavedQueryStore: () => ({
+  useSavedQueryStore: (): SavedQueryState => ({
     items: [savedQuery],
     loading: false,
     load,
+    save: vi.fn(),
     run: vi.fn(),
     remove: vi.fn(),
     setSchedule: vi.fn(),

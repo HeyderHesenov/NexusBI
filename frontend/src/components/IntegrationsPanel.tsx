@@ -46,8 +46,16 @@ export function IntegrationsPanel() {
   }
 
   const remove = async (id: string) => {
-    await api.deleteChannel(id).catch(() => undefined)
-    setChannels((c) => c.filter((x) => x.id !== id))
+    // Drop the row only once the server has confirmed — the same shape as
+    // ReportsPage.del. Filtering regardless made a refused delete read as done
+    // while the channel kept receiving every alert, and the only signal was a
+    // toast that appeared next to a row which had already vanished.
+    try {
+      await api.deleteChannel(id)
+      setChannels((c) => c.filter((x) => x.id !== id))
+    } catch {
+      /* interceptor toast */
+    }
   }
 
   const hintKey = TYPES.find((x) => x.value === type)?.hintKey ?? ''

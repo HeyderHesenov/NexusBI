@@ -43,7 +43,8 @@ data_as_of: Mapped[datetime | None] = mapped_column(
 | `query_service.py` cache payload | gains `"fetched_at"` — when the rows were actually fetched (miss path only) |
 | `query_service._finalize` | new `data_as_of` argument, written onto the log: miss → **the same timestamp written into the cache payload**, hit → the payload's `fetched_at` |
 | `dashboard_service.refresh_widget_data` | sets `log.data_as_of = now` beside the rewritten rows — this path genuinely re-executed |
-| `metric_tree_service._leaf_from_query` | `measured_at = aware(log.data_as_of) or aware(sq.last_run_at)` |
+| `metric_tree_service.resolve_leaf` | `measured_at = to_instant(log.data_as_of) or aware(sq.last_run_at)` |
+| `query_service.run_user_sql` | stamps its own fetch — `_finalize`'s argument is required, so this path cannot silently write NULL |
 
 `log` is guaranteed non-`None` at the read: the `rows` guard above it returns
 `result_missing` first.
@@ -54,7 +55,9 @@ data_as_of: Mapped[datetime | None] = mapped_column(
 migration, which is its whole appeal. It loses on four counts:
 
 1. `result_data` is **wholesale-replaced** in both write sites
-   (`query_service.py:473`, `dashboard_service.py:620`). A sibling key dropped by
+   (`query_service._finalize`, `dashboard_service.refresh_widget_data` — named,
+   not line-numbered, because line numbers in this file went stale within the
+   same change that introduced them). A sibling key dropped by
    a future third writer fails **silently** — straight back to `last_run_at`,
    the exact lie being fixed. A column cannot be lost by forgetting.
 2. `result_data` is nullable. The stamp would vanish precisely when a run failed
@@ -99,11 +102,18 @@ Each must fail against the current code — the repo's discrimination-power rule
 3. The user-visible claim: a leaf's `measured_at` reports the data age, so
    `measured_at < last_run_at` after a cache hit.
 4. A legacy NULL falls back to `last_run_at` — no `None` leaks into the AI payload.
-5. Migration up → down → up.
+5. Migration up → down → up. **Not an automated test — verified by execution
+   instead**, on a throwaway `nexusbi_asof_probe` Postgres database that was
+   dropped afterwards. There is no automated one because the unit suite never
+   runs migrations at all (`conftest.py` builds the schema straight off the
+   models with `create_all` and stamps `alembic_version` by hand), so a test
+   here would assert against a schema this file never produced. A real
+   migration harness is a separate ticket; until it exists, a broken
+   `downgrade` surfaces only on a rollback.
 
 ## Also in this change: delivery delete no longer lies
 
-`ReportsPage.tsx:400` swallows the rejection (`.catch(() => undefined)`) and
+`ReportsPage`'s `DeliveryModal.del` swallows the rejection (`.catch(() => undefined)`) and
 filters the row out regardless, so a failed delete reads as "it's gone" while the
 scheduled report keeps sending. The fix is the shape already sitting at
 `:204-214` in the same file, where `AlertModal.del` was corrected during Faza 1.6:

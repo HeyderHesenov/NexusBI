@@ -373,6 +373,7 @@ function DeliveryModal({
   const [format, setFormat] = useState<ReportFormat>('pdf')
   const [schedule, setSchedule] = useState<ReportSchedule>('daily')
   const [busy, setBusy] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   useEffect(() => {
     subApi.listSubscriptions(savedQueryId).then(setSubs).catch(() => undefined)
@@ -402,11 +403,21 @@ function DeliveryModal({
     // AlertModal.del above. Swallowing the rejection and filtering anyway showed
     // the subscription as gone while the schedule kept mailing the report out,
     // and the only signal the user got was a toast they had already dismissed.
+    //
+    // Guarded per row because the row now survives until the response lands: a
+    // double-click used to be harmless (the row left on the first click), and
+    // without this the second DELETE 404s and toasts a failure on top of a
+    // delete that actually succeeded — the catch cannot tell "already gone"
+    // from a real refusal.
+    if (deleting) return
+    setDeleting(id)
     try {
       await subApi.deleteSubscription(id)
       setSubs((prev) => prev.filter((s) => s.id !== id))
     } catch {
       /* interceptor toast */
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -440,7 +451,12 @@ function DeliveryModal({
                 <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
                   {s.format} · {s.schedule}
                 </span>
-                <button onClick={() => del(s.id)} aria-label={t('reportsPage.delete')} className="shrink-0 text-ink-faint transition hover:text-[#D87C6B]">
+                <button
+                  onClick={() => del(s.id)}
+                  disabled={deleting === s.id}
+                  aria-label={t('reportsPage.delete')}
+                  className="shrink-0 text-ink-faint transition hover:text-[#D87C6B] disabled:opacity-50"
+                >
                   <Trash2 size={14} />
                 </button>
               </li>

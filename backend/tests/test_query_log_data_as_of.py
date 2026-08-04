@@ -105,11 +105,43 @@ async def test_fetch_stamp_survives_cache_serialisation(_stub_sql):
         user = await _user(db, "asof-serial@nexusbi.io")
         await query_service.process_nl_query("serialleşmə sualı", None, user.id, db, cache)
 
-    payload = next(iter(cache.store.values()))
+    # Select by key prefix, not by "the only entry". This passes today only
+    # because DEMO_MODE routes to _demo_pipeline, which skips the sqlgen and
+    # schema caches; conftest supports DEMO_MODE=false, and on that path the
+    # same FakeCache also holds those entries. `next(iter(...))` would then pick
+    # an arbitrary payload and die on a KeyError that reads as a product bug.
+    result_entries = [v for k, v in cache.store.items() if k.startswith("qcache:")]
+    assert len(result_entries) == 1
+    payload = result_entries[0]
     assert isinstance(payload["fetched_at"], str)
     from app.core.timeutil import to_instant
 
     assert to_instant(payload["fetched_at"]) is not None
+
+
+# ─── Write path: analyst-authored SQL ───
+
+async def test_manual_sql_run_stamps_its_own_fetch():
+    """The third _finalize caller. It executes for real, so it must stamp.
+
+    This path takes no AI and no result cache, which is exactly why it is easy to
+    overlook: nothing about it looks time-sensitive. Left unstamped it writes NULL
+    on a row created after the column shipped, which quietly falsifies the
+    fallback's premise — readers would treat a live analyst run as a legacy row
+    and report the saved query's run stamp instead of this fetch.
+    """
+    async with AsyncSessionLocal() as db:
+        user = await _user(db, "asof-usersql@nexusbi.io")
+        before = datetime.now(timezone.utc)
+
+        result = await query_service.run_user_sql(
+            "SELECT product_name, revenue FROM sales LIMIT 3",
+            None, "Əl ilə", user.id, db, FakeCache(),
+        )
+
+        log = await db.get(QueryLog, result.query_log_id)
+        assert log.data_as_of is not None, "a live run must not be written as a legacy NULL"
+        assert before <= svc.aware(log.data_as_of) <= datetime.now(timezone.utc)
 
 
 # ─── Write path: the in-place widget refresh ───
