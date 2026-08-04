@@ -398,8 +398,16 @@ function DeliveryModal({
   }
 
   const del = async (id: string) => {
-    await subApi.deleteSubscription(id).catch(() => undefined)
-    setSubs((prev) => prev.filter((s) => s.id !== id))
+    // Drop the row only once the server has actually deleted it — same reason as
+    // AlertModal.del above. Swallowing the rejection and filtering anyway showed
+    // the subscription as gone while the schedule kept mailing the report out,
+    // and the only signal the user got was a toast they had already dismissed.
+    try {
+      await subApi.deleteSubscription(id)
+      setSubs((prev) => prev.filter((s) => s.id !== id))
+    } catch {
+      /* interceptor toast */
+    }
   }
 
   return (
