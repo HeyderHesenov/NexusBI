@@ -103,4 +103,42 @@ describe('DeliveryModal delete', () => {
 
     await waitFor(() => expect(screen.queryByText('ceo@nexusbi.az')).toBeNull())
   })
+
+  it('ignores a second click on the row already being deleted', async () => {
+    // The row now survives until the response lands, so a double-click would
+    // send two DELETEs; the second 404s and toasts a failure on top of a delete
+    // that succeeded. What blocks it is the button's `disabled` — measured by
+    // removing that attribute, which fails this test and only this one.
+    let release: () => void = () => {}
+    deleteSubscription.mockReturnValue(new Promise<void>((r) => { release = r }))
+    await openDeliveryModal()
+
+    const button = screen.getByLabelText('Sil')
+    fireEvent.click(button)
+    fireEvent.click(button)
+
+    expect(deleteSubscription).toHaveBeenCalledTimes(1)
+    release()
+    await waitFor(() => expect(screen.queryByText('ceo@nexusbi.az')).toBeNull())
+  })
+
+  it('still deletes a DIFFERENT row while one is in flight', async () => {
+    // Only the in-flight row's button is disabled, so the in-flight state must
+    // be keyed on that row. This failed against an `if (deleting) return` early
+    // return, which swallowed clicks on every other row while their buttons
+    // stayed enabled — the same lie about state this whole change removes.
+    listSubscriptions.mockResolvedValue([
+      { id: 'sub-1', recipient: 'ceo@nexusbi.az', format: 'pdf', schedule: 'daily' },
+      { id: 'sub-2', recipient: 'cfo@nexusbi.az', format: 'xlsx', schedule: 'weekly' },
+    ])
+    deleteSubscription.mockReturnValue(new Promise<void>(() => {}))  // never settles
+    await openDeliveryModal()
+
+    const [first, second] = screen.getAllByLabelText('Sil')
+    fireEvent.click(first)
+    fireEvent.click(second)
+
+    expect(deleteSubscription).toHaveBeenNthCalledWith(1, 'sub-1')
+    expect(deleteSubscription).toHaveBeenNthCalledWith(2, 'sub-2')
+  })
 })

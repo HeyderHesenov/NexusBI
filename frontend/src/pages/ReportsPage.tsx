@@ -404,12 +404,19 @@ function DeliveryModal({
     // the subscription as gone while the schedule kept mailing the report out,
     // and the only signal the user got was a toast they had already dismissed.
     //
-    // Guarded per row because the row now survives until the response lands: a
-    // double-click used to be harmless (the row left on the first click), and
+    // `deleting` exists because the row now survives until the response lands.
+    // A double-click used to be harmless (the row left on the first click);
     // without this the second DELETE 404s and toasts a failure on top of a
-    // delete that actually succeeded — the catch cannot tell "already gone"
+    // delete that actually succeeded, and the catch cannot tell "already gone"
     // from a real refusal.
-    if (deleting) return
+    //
+    // It is held per ROW and spent entirely on the button's `disabled`, with no
+    // early return in here. Measured: `disabled` alone blocks the second click
+    // (React commits the state between two discrete click events, so the button
+    // is already inert), and an `if (deleting) return` on top of it made things
+    // WORSE — it also swallowed clicks on every OTHER row, whose buttons stayed
+    // enabled, which is the same "UI says one thing, state says another" defect
+    // this change exists to remove.
     setDeleting(id)
     try {
       await subApi.deleteSubscription(id)
