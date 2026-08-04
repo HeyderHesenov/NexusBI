@@ -1,16 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { compareScenarios, goalSeek, histogram, monteCarlo } from './twinAnalysis'
-import type { EvaluatedNode } from '../types'
-
-const leaf = (id: string, value: number, name = id): EvaluatedNode => ({
-  id, name, operator: 'add', value, manual_value: value, contribution_pct: null, children: [],
-})
-const node = (id: string, operator: string, children: EvaluatedNode[]): EvaluatedNode => ({
-  id, name: id, operator, value: 0, manual_value: null, contribution_pct: null, children,
-})
+import { leaf, node, unknownLeaf } from '../test/metricTreeFixtures'
 
 // revenue = price(20) × volume(15) = 300
-const revenue = node('rev', 'mul', [leaf('price', 20), leaf('volume', 15)])
+const revenue = node('rev', 'mul', [leaf('price', 20), leaf('volume', 15)], 300)
+// The same tree with one leaf the user never filled in.
+const broken = node('rev', 'mul', [leaf('price', 20), unknownLeaf('volume')], null)
 
 describe('goalSeek', () => {
   it('solves a lever to hit an exact target', () => {
@@ -64,15 +59,15 @@ describe('compareScenarios', () => {
 describe('monteCarlo', () => {
   it('is deterministic for a fixed seed', () => {
     const ranges = { price: { min: -10, max: 10 }, volume: { min: -5, max: 5 } }
-    const a = monteCarlo(revenue, ranges, 300, { iterations: 500, seed: 42 })
-    const b = monteCarlo(revenue, ranges, 300, { iterations: 500, seed: 42 })
+    const a = monteCarlo(revenue, ranges, 300, { iterations: 500, seed: 42 })!
+    const b = monteCarlo(revenue, ranges, 300, { iterations: 500, seed: 42 })!
     expect(a.p50).toBe(b.p50)
     expect(a.samples).toEqual(b.samples)
   })
 
   it('produces ordered percentiles bracketing the mean region', () => {
     const ranges = { price: { min: -20, max: 20 }, volume: { min: -20, max: 20 } }
-    const r = monteCarlo(revenue, ranges, 300, { iterations: 2000, seed: 7 })
+    const r = monteCarlo(revenue, ranges, 300, { iterations: 2000, seed: 7 })!
     expect(r.min).toBeLessThanOrEqual(r.p10)
     expect(r.p10).toBeLessThanOrEqual(r.p50)
     expect(r.p50).toBeLessThanOrEqual(r.p90)
@@ -83,8 +78,19 @@ describe('monteCarlo', () => {
   })
 
   it('samples are sorted ascending', () => {
-    const r = monteCarlo(revenue, { price: { min: -50, max: 50 } }, 300, { iterations: 100, seed: 3 })
+    const r = monteCarlo(revenue, { price: { min: -50, max: 50 } }, 300, { iterations: 100, seed: 3 })!
     for (let i = 1; i < r.samples.length; i++) expect(r.samples[i]).toBeGreaterThanOrEqual(r.samples[i - 1])
+  })
+})
+
+describe('an incomplete tree answers nothing', () => {
+  // Each of these would otherwise emit confident output about a KPI that has no
+  // value — a solved percentage, a ranked comparison, a bell curve with
+  // percentiles printed on it.
+  it('refuses goal seek, comparison and Monte Carlo alike', () => {
+    expect(goalSeek(broken, 'price', 330)).toBeNull()
+    expect(compareScenarios(broken, [{ id: 's', name: 'x', adjustments: { price: 10 } }], 300)).toEqual([])
+    expect(monteCarlo(broken, { price: { min: -10, max: 10 } }, 300, { iterations: 10, seed: 1 })).toBeNull()
   })
 })
 

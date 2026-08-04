@@ -1,5 +1,5 @@
 import type { EvaluatedNode } from '../types'
-import { recompute, waterfall, type Adjustments } from './metricTreeMath'
+import { isComplete, kpiValue, waterfall, type Adjustments } from './metricTreeMath'
 
 export interface NarrativeDriver {
   id: string
@@ -22,14 +22,20 @@ export interface Narrative {
  * Plain-language "what changed" data for a scenario: the KPI's % move and the
  * ranked levers behind it. Contributions reuse the waterfall decomposition so
  * they sum exactly to the total delta.
+ *
+ * Returns null for an incomplete tree. This is the surface where an invented
+ * number does the most damage — it becomes a sentence a consultant pastes into
+ * a deliverable, with no chart nearby to check it against.
  */
 export function buildNarrative(
   root: EvaluatedNode,
   adjustments: Adjustments,
   leaves: { id: string; name: string }[],
   baseline: number,
-): Narrative {
-  const simulated = recompute(root, adjustments).value
+): Narrative | null {
+  if (!isComplete(root)) return null
+  const simulated = kpiValue(root, adjustments)
+  if (simulated === null) return null
   const deltaPct = baseline ? ((simulated - baseline) / Math.abs(baseline)) * 100 : null
   const drivers = waterfall(root, adjustments, leaves, baseline)
     .filter((s) => s.kind === 'delta')

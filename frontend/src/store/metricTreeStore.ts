@@ -1,21 +1,28 @@
 import { create } from 'zustand'
 import toast from 'react-hot-toast'
-import type { EvaluatedNode, MetricNodeCreate, TreeOperator } from '../types'
+import type { BindableSource, EvaluatedNode, MetricNodeCreate, MetricNodeUpdate } from '../types'
 import * as api from '../api/metricTree'
 import i18n from '../i18n'
 
 interface MetricTreeState {
   forest: EvaluatedNode[]
+  /** Saved queries a leaf can measure from. Loaded on demand by the editor. */
+  sources: BindableSource[]
   load: () => Promise<void>
+  loadSources: () => Promise<void>
   add: (payload: MetricNodeCreate) => Promise<void>
-  edit: (id: string, payload: { name?: string; operator?: TreeOperator; manual_value?: number | null }) => Promise<void>
+  edit: (id: string, payload: MetricNodeUpdate) => Promise<void>
   remove: (id: string) => Promise<void>
 }
 
 export const useMetricTreeStore = create<MetricTreeState>((set, get) => ({
   forest: [],
+  sources: [],
   load: async () => {
     set({ forest: await api.evaluate() })
+  },
+  loadSources: async () => {
+    set({ sources: await api.bindable() })
   },
   add: async (payload) => {
     await api.create(payload)

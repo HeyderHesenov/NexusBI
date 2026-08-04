@@ -465,7 +465,26 @@
     "subtitle": "KPI-nı parçala (məs. Gəlir = Qiymət × Həcm) — dəyərlər aşağıdan-yuxarı toplanır.",
     "title": "Metrik ağacı",
     "valueLabel": "Dəyər (yarpaq)",
-    "valuePlaceholder": "boş = hesablanır"
+    "valuePlaceholder": "boş = naməlum",
+    "sourceLabel": "Mənbə",
+    "sourceManual": "Əl ilə (fərziyyə)",
+    "sourceQuery": "Saxlanan sorğudan (ölçülmüş)",
+    "queryLabel": "Saxlanan sorğu",
+    "queryPlaceholder": "Sorğu seç",
+    "columnLabel": "Sütun",
+    "columnPlaceholder": "Sütun seç",
+    "aggLabel": "Yığım",
+    "queryHint": "Dəyər sorğunun son qaçışından oxunur — indi yeni sorğu işlədilmir.",
+    "valueHint": "Boş buraxsan yarpaq «naməlum» olur — sıfır yox.",
+    "agg": {
+      "sum": "Cəm",
+      "avg": "Orta",
+      "min": "Minimum",
+      "max": "Maksimum",
+      "last": "Sonuncu sətir",
+      "count": "Say"
+    },
+    "queryUnavailable": "⚠︎ Sorğu əlçatmazdır (silinib və ya nəticəsi yoxdur)"
   },
   "metricsPage": {
     "addMetric": "Metrik əlavə et",
@@ -1128,6 +1147,29 @@
       "p10": "P10",
       "p50": "Median",
       "p90": "P90"
+    },
+    "provenance": {
+      "measured": "ölçülmüş",
+      "manual": "əl ilə",
+      "unknown": "naməlum",
+      "measuredAt": "ölçülüb: {{at}}",
+      "noValue": "Bu KPI-nın dəyəri yoxdur",
+      "caveat": "Bu KPI-da əl ilə yazılmış dəyərlər var — {{names}}. Onlar fərziyyədir, ölçmə deyil."
+    },
+    "reason": {
+      "empty": "dəyər yazılmayıb",
+      "bad_binding": "bağlama yarımçıqdır",
+      "query_missing": "bağlı sorğu silinib",
+      "never_run": "sorğu heç qaçmayıb",
+      "no_rows": "son nəticə boşdur",
+      "column_missing": "sütun nəticədə yoxdur",
+      "not_numeric": "sütunda rəqəm yoxdur",
+      "result_missing": "qaçış nəticə saxlamayıb"
+    },
+    "incomplete": {
+      "title": "Bu KPI-nın dəyəri yoxdur",
+      "body": "Aşağıdakı yarpaqlar boşdur. Boş yarpağı sıfır saymaq KPI-nı yanlış göstərərdi, ona görə ssenari, tornado və Monte Carlo işlədilmir.",
+      "cta": "Ağacda doldur"
     }
   },
   "baStudio": {

@@ -1,8 +1,20 @@
 import { client } from './client'
-import type { EvaluatedNode, MetricNode, MetricNodeCreate, TreeOperator } from '../types'
+import type {
+  BindableSource,
+  EvaluatedNode,
+  MetricNode,
+  MetricNodeCreate,
+  MetricNodeUpdate,
+} from '../types'
 
 export async function evaluate(): Promise<EvaluatedNode[]> {
   const { data } = await client.get<EvaluatedNode[]>('/metric-tree/evaluate')
+  return data
+}
+
+/** Saved queries a leaf can measure from, with their last run's columns. */
+export async function bindable(): Promise<BindableSource[]> {
+  const { data } = await client.get<BindableSource[]>('/metric-tree/bindable')
   return data
 }
 
@@ -11,10 +23,7 @@ export async function create(payload: MetricNodeCreate): Promise<MetricNode> {
   return data
 }
 
-export async function update(
-  id: string,
-  payload: { name?: string; operator?: TreeOperator; manual_value?: number | null },
-): Promise<MetricNode> {
+export async function update(id: string, payload: MetricNodeUpdate): Promise<MetricNode> {
   const { data } = await client.patch<MetricNode>(`/metric-tree/${id}`, payload)
   return data
 }

@@ -34,8 +34,61 @@ SYSTEM_PROMPT = (
     "uyğun list_* və ya search_assets aləti ilə tap — id UYDURMA. Ağır əməliyyatı "
     "(model öyrətmə, AI generasiya) bir dəfə çağır, təkrarlama. Uydurma rəqəm vermə — "
     "yalnız alətlərin qaytardığına istinad et. İstifadəçinin dilində qısa, aydın cavab "
-    "ver; iş bitəndə nəticənin əsas rəqəmlərini bir-iki cümlə ilə yekunla."
+    "ver; iş bitəndə nəticənin əsas rəqəmlərini bir-iki cümlə ilə yekunla.\n"
+    "MƏNŞƏ QAYDASI (metrik ağacı və Digital Twin): alətin qaytardığı hər leaf "
+    "\"source\" daşıyır. \"measured\" — saxlanan sorğunun son qaçışından ölçülüb. "
+    "\"manual\" — istifadəçinin əl ilə yazdığı FƏRZİYYƏDİR, ölçmə deyil: onu heç vaxt "
+    "\"ölçülmüş\", \"faktiki\", \"real\" və ya \"data göstərir\" kimi təqdim etmə, "
+    "fərziyyə olduğunu de. \"unknown\" — dəyər yoxdur. Bu, ROOT-BAŞINA qərardır: "
+    "incomplete=true və ya value=null olan root üçün rəqəm söyləmə, boş leaf-ləri ad-ad "
+    "de və doldurulmasını təklif et; eyni nəticədəki digər root-ların rəqəmini isə "
+    "normal söylə."
 )
+
+# The rule above is also attached to each tool RESULT, not only to the system
+# prompt. A constraint stated once at the top of a long tool-calling session
+# competes with everything since; one that travels with the data is read at the
+# moment it applies. Same reasoning as ba_evidence.py refusing to let the model
+# self-attribute evidence: make the honest path the easy one.
+_MANUAL_NOTE = (
+    "Bəzi leaf-lər əl ilə yazılıb (source=\"manual\") — onlar fərziyyədir, ölçmə deyil. "
+    "Həmin leaf-lərdən asılı KPI-nı təqdim edərkən bunu açıq de."
+)
+# Scoped to the affected roots, not to the whole answer. The roll-up is
+# forest-wide, so a single empty leaf in one tree would otherwise silence a
+# second tree whose every leaf is measured — the tool result already says which
+# is which (incomplete / value=null per root).
+_UNKNOWN_NOTE = (
+    "Dəyəri olmayan (unknown) leaf-lər var. YALNIZ incomplete=true və ya value=null olan "
+    "root-lar üçün rəqəm söyləmə — onlarda hansı leaf-in boş olduğunu ad-ad de. "
+    "value-su olan digər root-ların rəqəmini normal şəkildə söylə."
+)
+
+
+def _leaf_payload(leaf: dict[str, Any]) -> dict[str, Any]:
+    """One leaf as the model sees it — the number never travels without its origin."""
+    measured_at = leaf.get("measured_at")
+    return {
+        "name": leaf["name"],
+        "value": leaf["value"],
+        # "source" rather than "provenance": short, and it is the word the system
+        # prompt uses. The human-readable origin is a separate field so the model
+        # cannot confuse a label with a citation.
+        "source": leaf.get("provenance"),
+        "measured_from": leaf.get("source"),
+        "measured_at": measured_at.isoformat() if measured_at else None,
+        "unknown_reason": leaf.get("unknown_reason"),
+    }
+
+
+def _provenance_note(summary: dict[str, Any]) -> dict[str, Any]:
+    """Attach the reporting constraint that this particular result implies."""
+    notes = []
+    if summary.get("has_unknown"):
+        notes.append(_UNKNOWN_NOTE)
+    if summary.get("manual_leaves"):
+        notes.append(_MANUAL_NOTE)
+    return {"reporting_rule": " ".join(notes)} if notes else {}
 
 # Tool (function) schemas exposed to the AI engine.
 TOOLS: list[dict[str, Any]] = [
@@ -332,7 +385,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "evaluate_metric_tree",
-            "description": "Metrik ağacını (KPI dekompozisiyası) hesablayır — root-lar, dəyərlər, leaf-lər.",
+            "description": (
+                "Metrik ağacını (KPI dekompozisiyası) hesablayır — root-lar, dəyərlər, leaf-lər. "
+                "Hər leaf source daşıyır: measured (sorğudan ölçülüb) | manual (əl ilə yazılmış "
+                "fərziyyə) | unknown (dəyər yoxdur). value=null olan düyünün rəqəmi YOXDUR."
+            ),
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -340,7 +397,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "simulate_metric_tree",
-            "description": "Digital Twin ssenarisi: leaf metrikləri ADLA ±% dəyişdirib KPI-lara təsirini hesablayır. Əvvəl evaluate_metric_tree ilə leaf adlarını öyrən.",
+            "description": (
+                "Digital Twin ssenarisi: leaf metrikləri ADLA ±% dəyişdirib KPI-lara təsirini "
+                "hesablayır. Əvvəl evaluate_metric_tree ilə leaf adlarını öyrən. Dəyəri olmayan "
+                "leaf-i olan root üçün baseline/simulated null qayıdır — orada ssenari cavabsızdır."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -741,18 +802,28 @@ class _ToolContext:
         from app.services import metric_tree_service
 
         forest = await metric_tree_service.evaluate(self.db, self.user_id)
-
-        def leaves(node: dict[str, Any]) -> list[str]:
-            kids = node.get("children") or []
-            if not kids:
-                return [node["name"]]
-            return [name for k in kids for name in leaves(k)]
-
+        summary = metric_tree_service.summarize(forest)
         self.actions.append({"type": "metric_tree", "label": "Metrik ağacı hesablandı"})
+        # measured_leaves is dropped here and only here: every leaf already
+        # travels with its own name and source below, so repeating the measured
+        # ones is pure token cost on a tool the model calls before every
+        # simulation. The two lists that stay are the ones it must be able to
+        # NAME back to the user. simulate_metric_tree keeps all three — it sends
+        # no per-leaf payload, so there the lists are the only source.
+        listed = {k: v for k, v in summary.items() if k != "measured_leaves"}
         return {
             "roots": [
-                {"name": r["name"], "value": r["value"], "leaves": leaves(r)} for r in forest
-            ]
+                {
+                    "name": r["name"],
+                    "value": r["value"],
+                    "incomplete": r["incomplete"],
+                    "leaves": [_leaf_payload(leaf) for leaf in metric_tree_service.collect_leaves(r)],
+                }
+                for r in forest
+            ],
+            **listed,
+            "measured_count": len(summary["measured_leaves"]),
+            **_provenance_note(summary),
         }
 
     async def simulate_metric_tree(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -765,7 +836,7 @@ class _ToolContext:
         if not out["results"]:
             return {"error": "Metrik ağacı boşdur — əvvəl KPI dekompozisiyası qurun."}
         self.actions.append({"type": "twin", "label": "Twin ssenarisi hesablandı"})
-        return out
+        return {**out, **_provenance_note(out)}
 
     # ── Alert ──
 

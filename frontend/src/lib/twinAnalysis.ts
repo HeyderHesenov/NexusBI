@@ -1,18 +1,23 @@
 import type { EvaluatedNode } from '../types'
-import { recompute, type Adjustments } from './metricTreeMath'
+import { isComplete, kpiValue, type Adjustments } from './metricTreeMath'
 
 /**
  * Twin analytics built on top of the backend-parity core (metricTreeMath).
  * Three what-if tools: goal seek (solve a lever for a target KPI), scenario
  * comparison (value each saved scenario against baseline), and Monte Carlo
  * (sample lever ranges into a KPI distribution). All client-side.
+ *
+ * Every entry point refuses an incomplete tree (`isComplete`). A KPI built on an
+ * unknown leaf has no value, so solving for it, ranking levers against it, or
+ * sampling a distribution around it would all produce confident output about a
+ * number that does not exist.
  */
 
 const round1 = (n: number): number => Math.round(n * 10) / 10
 
 /** Value of the root KPI when a single leaf is scaled by `pct` percent. */
-function valueAt(root: EvaluatedNode, leafId: string, pct: number): number {
-  return recompute(root, { [leafId]: pct }).value
+function valueAt(root: EvaluatedNode, leafId: string, pct: number): number | null {
+  return kpiValue(root, { [leafId]: pct })
 }
 
 export interface GoalSeekResult {
@@ -34,26 +39,37 @@ export function goalSeek(
   target: number,
   opts: { minPct?: number; maxPct?: number } = {},
 ): GoalSeekResult | null {
+  // No target is reachable on a KPI that has no value. Returning null puts this
+  // in the same bucket as "unreachable in range", which the panel already
+  // explains — and which is exactly what it is.
+  if (!isComplete(root)) return null
+
   const lo = opts.minPct ?? -95
   const hi = opts.maxPct ?? 500
-  const g = (pct: number) => valueAt(root, leafId, pct) - target
+  const g = (pct: number): number | null => {
+    const v = valueAt(root, leafId, pct)
+    return v === null ? null : v - target
+  }
   const EPS = Math.max(Math.abs(target) * 1e-9, 1e-9)
 
   // Report the KPI at the ROUNDED pct — that is the value the simulator will
   // show after Apply, so the "reached" readout must match it, not the raw root.
-  const solution = (pct: number): GoalSeekResult => {
+  const solution = (pct: number): GoalSeekResult | null => {
     const r = round1(pct)
-    return { pct: r, reached: valueAt(root, leafId, r) }
+    const reached = valueAt(root, leafId, r)
+    return reached === null ? null : { pct: r, reached }
   }
 
   let prevX = lo
   let prevG = g(lo)
+  if (prevG === null) return null
   if (Math.abs(prevG) <= EPS) return solution(lo)
 
   const N = 240
   for (let i = 1; i <= N; i++) {
     const x = lo + ((hi - lo) * i) / N
     const gx = g(x)
+    if (gx === null) return null
     if (Math.abs(gx) <= EPS) return solution(x)
     if (prevG < 0 !== gx < 0) {
       let a = prevX
@@ -61,6 +77,7 @@ export function goalSeek(
       for (let k = 0; k < 60; k++) {
         const mid = (a + b) / 2
         const gm = g(mid)
+        if (gm === null) return null
         if (Math.abs(gm) <= EPS) {
           a = b = mid
           break
@@ -90,16 +107,20 @@ export function compareScenarios(
   scenarios: { id: string; name: string; adjustments: Adjustments }[],
   baseline: number,
 ): CompareRow[] {
-  return scenarios.map((sc) => {
-    const value = recompute(root, sc.adjustments).value
+  if (!isComplete(root)) return []
+  return scenarios.flatMap((sc) => {
+    const value = kpiValue(root, sc.adjustments)
+    // Unreachable past the guard; dropping the row is still the right failure —
+    // a comparison table is a ranking, and a fabricated number would reorder it.
+    if (value === null) return []
     const delta = value - baseline
-    return {
+    return [{
       id: sc.id,
       name: sc.name,
       value,
       delta,
       deltaPct: baseline ? (delta / Math.abs(baseline)) * 100 : null,
-    }
+    }]
   })
 }
 
@@ -137,7 +158,10 @@ export function monteCarlo(
   ranges: LeverRanges,
   baseline: number,
   opts: { iterations?: number; seed?: number } = {},
-): MonteCarloResult {
+): MonteCarloResult | null {
+  // A distribution around an unknown KPI is the most misleading output on this
+  // page: it renders as a confident bell curve with percentiles attached.
+  if (!isComplete(root)) return null
   const iterations = Math.max(1, opts.iterations ?? 1000)
   const rand = mulberry32(opts.seed ?? 1)
   const ids = Object.keys(ranges)
@@ -148,7 +172,9 @@ export function monteCarlo(
       const { min, max } = ranges[id]
       adj[id] = min + (max - min) * rand()
     }
-    samples[i] = recompute(root, adj).value
+    const v = kpiValue(root, adj)
+    if (v === null) return null
+    samples[i] = v
   }
   samples.sort((a, b) => a - b)
   const quantile = (p: number) =>

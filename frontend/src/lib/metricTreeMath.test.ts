@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { collectLeaves, combine, recompute, sensitivity, waterfall } from './metricTreeMath'
+import {
+  collectLeaves,
+  combine,
+  isComplete,
+  provenanceSummary,
+  recompute,
+  sensitivity,
+  waterfall,
+} from './metricTreeMath'
+import { leaf, measuredLeaf, node, unknownLeaf } from '../test/metricTreeFixtures'
 import type { EvaluatedNode } from '../types'
-
-const leaf = (id: string, value: number, name = id): EvaluatedNode => ({
-  id, name, operator: 'add', value, manual_value: value, contribution_pct: null, children: [],
-})
-const node = (
-  id: string, operator: string, children: EvaluatedNode[], value = 0,
-): EvaluatedNode => ({
-  id, name: id, operator, value, manual_value: null, contribution_pct: null, children,
-})
 
 describe('combine — backend _combine parity table', () => {
   // Mirrors backend/tests/test_metric_tree.py::test_combine_operators exactly.
@@ -22,6 +22,23 @@ describe('combine — backend _combine parity table', () => {
     expect(combine('add', [])).toBe(0)
     expect(combine('div', [7])).toBe(7) // single value → denom 1 (backend: prod of empty)
     expect(combine('sub', [5])).toBe(5)
+  })
+
+  // Mirrors test_metric_tree_provenance.py::test_combine_propagates_unknown.
+  it('propagates unknown under every operator', () => {
+    expect(combine('mul', [2, null])).toBeNull()
+    expect(combine('add', [1, null, 3])).toBeNull()
+    expect(combine('sub', [10, null])).toBeNull()
+    expect(combine('div', [null, 2])).toBeNull()
+  })
+
+  it('treats undefined as unknown too, rather than turning it into NaN', () => {
+    // JS has two nullish values and Python has one. A strict === null check let
+    // undefined through the cast into the arithmetic, where it becomes NaN —
+    // and NaN passes isComplete(), so the hero and every chart would render it.
+    const missing = [2, undefined] as unknown as (number | null)[]
+    expect(combine('mul', missing)).toBeNull()
+    expect(combine('add', missing)).toBeNull()
   })
 })
 
@@ -51,13 +68,52 @@ describe('recompute', () => {
     expect(recompute(tree, { l0: 50 }).value).toBe(3)
   })
 
-  it('treats null manual_value leaves as 0', () => {
-    const n = node('root', 'add', [{ ...leaf('x', 0), manual_value: null }])
-    expect(recompute(n, { x: 50 }).value).toBe(0)
+  it('scales a MEASURED leaf from its measured value, not from manual_value', () => {
+    // A measured leaf has manual_value: null. Reading that field would move the
+    // lever from 0 and report the scenario as if it did nothing.
+    const tree = node('root', 'add', [measuredLeaf('sales', 200)], 200)
+    expect(recompute(tree, { sales: 10 }).value).toBeCloseTo(220)
+  })
+
+  it('leaves an unknown leaf unknown instead of scaling 0', () => {
+    const tree = node('root', 'mul', [leaf('price', 20), unknownLeaf('volume')], null)
+    const out = recompute(tree, { price: 50 })
+    // The old port read `manual_value ?? 0` and returned 0 here — a number the
+    // hero, the waterfall and the narrative would all have presented as the KPI.
+    expect(out.value).toBeNull()
+    expect(out.children[1].value).toBeNull()
   })
 
   it('ignores adjustments for unknown node ids', () => {
     expect(recompute(revenue, { ghost: 40 }).value).toBe(300)
+  })
+})
+
+describe('isComplete / provenanceSummary', () => {
+  it('refuses a tree with an unknown leaf and names the leaves either way', () => {
+    const mixed = node('root', 'add', [measuredLeaf('a', 5), leaf('b', 2), unknownLeaf('c')], null)
+    expect(isComplete(mixed)).toBe(false)
+    expect(provenanceSummary(mixed)).toEqual({
+      measured: ['a'], manual: ['b'], unknown: ['c'], fullyMeasured: false,
+    })
+  })
+
+  it('is fullyMeasured only when every leaf is measured', () => {
+    const all = node('root', 'add', [measuredLeaf('a', 5), measuredLeaf('b', 2)], 7)
+    expect(isComplete(all)).toBe(true)
+    expect(provenanceSummary(all).fullyMeasured).toBe(true)
+    // One hand-typed assumption is enough to disqualify it.
+    const one = node('root', 'add', [measuredLeaf('a', 5), leaf('b', 2)], 7)
+    expect(provenanceSummary(one).fullyMeasured).toBe(false)
+  })
+})
+
+describe('what-if tools refuse an incomplete tree', () => {
+  const broken = node('root', 'mul', [leaf('price', 20), unknownLeaf('volume')], null)
+
+  it('draws no waterfall and ranks no sensitivity', () => {
+    expect(waterfall(broken, { price: 10 }, collectLeaves(broken))).toEqual([])
+    expect(sensitivity(broken, 10)).toEqual([])
   })
 })
 
