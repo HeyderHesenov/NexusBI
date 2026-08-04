@@ -66,6 +66,10 @@ class DecisionMeasurementResponse(BaseModel):
     id: str
     value: float
     measured_at: datetime
+    # How old the data behind `value` was, which is NOT `measured_at` — that one
+    # is the point's position on the decision timeline. `None` means unknown
+    # (a row written before the column existed), never "same as measured_at".
+    data_as_of: datetime | None
     query_log_id: str | None
 
     model_config = {"from_attributes": True}

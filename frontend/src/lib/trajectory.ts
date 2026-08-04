@@ -6,7 +6,15 @@ export interface TrajectoryRow {
   counterfactual?: number
   bandBase?: number
   bandSpan?: number
+  /** Set only when the data behind this point is meaningfully older than the
+   *  point itself — i.e. when naming one timestamp would be misleading. */
+  asOf?: string
 }
+
+/** Below this the two stamps describe the same reading and saying so twice is
+ *  noise: a live re-measure writes them microseconds apart, and the baseline
+ *  path writes them from two different clock reads of the same instant. */
+const STALE_AFTER_MS = 60_000
 
 /** Merge a decision's measurement points with its counterfactual band (matched by
  *  timestamp) into recharts rows. Points with no band entry — the pre-decision
@@ -22,6 +30,21 @@ export function trajectoryRows(trajectory: DecisionTrajectory): TrajectoryRow[] 
       counterfactual: b?.yhat,
       bandBase: b?.lower,
       bandSpan: b != null ? b.upper - b.lower : undefined,
+      asOf: staleAsOf(p.measured_at, p.data_as_of),
     }
   })
+}
+
+/** The point's data age, but only when it disagrees with the point's own stamp.
+ *
+ *  A baseline is lifted from the spawning query's stored result with no re-run,
+ *  so it can be hours older than the moment the decision was made — the chart
+ *  would otherwise plot a day-old number on today's tick with nothing saying so.
+ *  `null` means unknown (a row written before the column existed) and must not be
+ *  shown as if it were equal. */
+function staleAsOf(measuredAt: string, dataAsOf: string | null): string | undefined {
+  if (!dataAsOf) return undefined
+  const gap = Date.parse(measuredAt) - Date.parse(dataAsOf)
+  if (!Number.isFinite(gap) || gap < STALE_AFTER_MS) return undefined
+  return dataAsOf
 }

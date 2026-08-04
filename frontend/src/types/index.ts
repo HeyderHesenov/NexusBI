@@ -262,7 +262,14 @@ export interface DecisionROI {
 export interface DecisionMeasurement {
   id: string
   value: number
+  /** Where this point sits on the decision's timeline — NOT how old its data is.
+   *  The counterfactual splits pre/post history on this, so it stays the moment
+   *  the measurement was recorded. */
   measured_at: string
+  /** How old the data behind `value` was. A baseline is lifted from the spawning
+   *  query's stored result with no re-run, so it can be hours older than
+   *  `measured_at`. `null` means unknown, never "same as measured_at". */
+  data_as_of: string | null
   query_log_id: string | null
 }
 

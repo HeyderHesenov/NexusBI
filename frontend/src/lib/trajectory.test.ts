@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { trajectoryRows } from './trajectory'
 import type { DecisionTrajectory } from '../types'
 
-const pt = (id: string, measured_at: string, value: number) => ({
+const pt = (id: string, measured_at: string, value: number, data_as_of: string | null = null) => ({
   id,
   measured_at,
   value,
+  data_as_of,
   query_log_id: null,
 })
 
@@ -47,5 +48,33 @@ describe('trajectoryRows', () => {
     const rows = trajectoryRows(traj)
     expect(rows.every((r) => r.counterfactual === undefined && r.bandSpan === undefined)).toBe(true)
     expect(rows.map((r) => r.realized)).toEqual([100, 140])
+  })
+
+  describe('data age', () => {
+    const rowsFor = (measured: string, asOf: string | null) =>
+      trajectoryRows({ points: [pt('a', measured, 100, asOf)], counterfactual: null })
+
+    it('surfaces the data age when the point is plotted later than its data', () => {
+      // The baseline case: capturing a decision re-runs nothing, so the number
+      // can be hours older than the tick it is drawn on.
+      const rows = rowsFor('2026-01-10T12:00:00Z', '2026-01-10T09:00:00Z')
+      expect(rows[0].asOf).toBe('2026-01-10T09:00:00Z')
+    })
+
+    it('stays quiet when the two stamps describe the same reading', () => {
+      // A live re-measure writes them from two clock reads of the same instant;
+      // repeating that in the tooltip is noise, not information.
+      expect(rowsFor('2026-01-10T12:00:00Z', '2026-01-10T11:59:30Z')[0].asOf).toBeUndefined()
+    })
+
+    it('stays quiet when the age is unknown rather than implying they match', () => {
+      // A row written before the column existed. `null` is not "same as
+      // measured_at" and must not be rendered as a confirmation of freshness.
+      expect(rowsFor('2026-01-10T12:00:00Z', null)[0].asOf).toBeUndefined()
+    })
+
+    it('ignores an unparseable stamp instead of rendering NaN', () => {
+      expect(rowsFor('2026-01-10T12:00:00Z', 'not-a-date')[0].asOf).toBeUndefined()
+    })
   })
 })

@@ -330,6 +330,7 @@
     "targetsReached": "{{achieved}}/{{total}} targets reached",
     "trajectory": "Trajectory",
     "counterfactualBand": "Counterfactual band",
+    "dataAsOf": "data as of {{at}}",
     "counterfactualLine": "No-decision projection",
     "vsCounterfactual": "vs counterfactual",
     "counterfactualBaselineNote": "Not enough history before the decision — showing the absolute change instead."

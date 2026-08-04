@@ -74,7 +74,26 @@ class DecisionMeasurement(Base):
         String(36), ForeignKey("decisions.id", ondelete="CASCADE"), index=True, nullable=False
     )
     value: Mapped[float] = mapped_column(Float, nullable=False)
+    # WHERE THIS POINT SITS ON THE DECISION'S TIMELINE — not how old its data is.
+    # counterfactual() splits pre/post history on `measured_at < baseline_at`, so
+    # this must keep answering "when was this recorded", or a baseline taken from
+    # an older query would silently move itself into the pre-decision history and
+    # change which counterfactual method runs.
     measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # HOW OLD THE DATA BEHIND `value` WAS — the other question, kept apart for the
+    # reason above. The two come apart whenever a measurement is not a live run:
+    # _capture_baseline reuses the spawning query's STORED result (no re-run, so
+    # the number can be hours old while the decision is being made now), and
+    # process_nl_query can serve that query from cache. `_measure` genuinely
+    # re-executes, so there the two agree.
+    #
+    # NULL on rows written before this column existed. Deliberately not
+    # backfilled: copying `measured_at` in would assert the very equality this
+    # column exists to stop assuming. Readers must treat NULL as "unknown", never
+    # as "same as measured_at".
+    data_as_of: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     query_log_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("query_logs.id", ondelete="SET NULL"), nullable=True
     )

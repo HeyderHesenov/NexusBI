@@ -13,7 +13,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { DecisionTrajectory } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
-import { trajectoryRows } from '../../lib/trajectory'
+import { trajectoryRows, type TrajectoryRow } from '../../lib/trajectory'
 import { useChartTheme } from '../charts/theme'
 
 interface Props {
@@ -27,7 +27,7 @@ interface Props {
  *  back to the "baseline" method (no pre-decision history) the band/projection are
  *  simply absent — the parent shows an honest caption instead. */
 export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const fmtNum = useFormatNumber()
   const { ACCENT, AXIS, GRID, INK_SOFT, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
 
@@ -50,7 +50,27 @@ export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
           axisLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
         />
-        <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} itemStyle={tooltipItem} />
+        <Tooltip
+          contentStyle={tooltipStyle}
+          labelStyle={tooltipLabel}
+          itemStyle={tooltipItem}
+          // A baseline is read out of the spawning query's stored result without
+          // re-running it, so its number can be much older than the tick it sits
+          // on. Say so on the point rather than letting the x-axis imply the two
+          // are the same; `asOf` is set only when they actually differ.
+          labelFormatter={(label, payload) => {
+            const asOf = (payload?.[0]?.payload as TrajectoryRow | undefined)?.asOf
+            if (!asOf) return label
+            return (
+              <>
+                {label}
+                <span className="mt-0.5 block text-[10px] font-normal text-ink-soft">
+                  {t('decisionsPage.dataAsOf', { at: new Date(asOf).toLocaleString(i18n.language) })}
+                </span>
+              </>
+            )
+          }}
+        />
         <Legend wrapperStyle={{ fontSize: 11, color: 'rgb(var(--ink-soft))' }} />
 
         {baseline != null && (

@@ -330,6 +330,7 @@
     "targetsReached": "Достигнуто целей: {{achieved}}/{{total}}",
     "trajectory": "Траектория",
     "counterfactualBand": "Контрфактный диапазон",
+    "dataAsOf": "данные на {{at}}",
     "counterfactualLine": "Прогноз без решения",
     "vsCounterfactual": "против контрфакта",
     "counterfactualBaselineNote": "Недостаточно истории до решения — показано абсолютное изменение."

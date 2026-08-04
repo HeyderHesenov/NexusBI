@@ -133,15 +133,33 @@ def _compute_impact_status(d: Decision) -> str:
 
 # ─── Measurement engine ───
 
+async def _log_data_age(db: AsyncSession, log_id: str | None, user_id: str) -> datetime | None:
+    """How old the rows behind a freshly written log are, or ``None`` if unknown.
+
+    query_service stamps `data_as_of` on every log it writes, but a CACHE HIT
+    carries the original fetch time forward, so "we just called process_nl_query"
+    does not mean "this data is from now". Reading it back is the only way to
+    tell the two apart. The log was flushed in this same session, so this is an
+    identity-map lookup rather than a second round trip.
+    """
+    if log_id is None:
+        return None
+    log = await _owned_query_log(db, log_id, user_id)
+    return aware(log.data_as_of) if log is not None else None
+
+
 async def _measure(
     db: AsyncSession, cache: CacheService, d: Decision, *, allow_ai_fallback: bool = True
-) -> tuple[float | None, str | None]:
-    """Return (value, query_log_id) for the decision's bound metric, now.
+) -> tuple[float | None, str | None, datetime | None]:
+    """Return (value, query_log_id, data_as_of) for the decision's bound metric.
 
     Prefers an AI-free re-run of the bound query's stored SQL. A full NL→SQL pass
     (which costs AI inference) is only used when no prior log is usable AND
     ``allow_ai_fallback`` is set — scheduled re-measures pass False so a transient
     re-run failure can never silently escalate to paid inference on every tick.
+
+    ``data_as_of`` is how old the returned NUMBER is, which the caller records
+    beside the measurement — see DecisionMeasurement.data_as_of.
     """
     from app.services import query_service
 
@@ -150,15 +168,25 @@ async def _measure(
         if log is not None and log.generated_sql:
             try:
                 _cols, rows = await query_service.reexecute_logged_query(log, db, d.user_id, cache)
-                return extract_scalar(rows, d.metric_column), log.id
+                # This path really re-executes, so the value is from now. The log
+                # it credits is NOT rewritten (unlike refresh_widget_data): its
+                # stored rows and stamp still describe the earlier run, and other
+                # readers depend on that. `query_log_id` is provenance for the
+                # SQL that produced this number, not for a matching row snapshot —
+                # which is exactly why the freshness has to travel separately.
+                return extract_scalar(rows, d.metric_column), log.id, _now()
             except Exception as exc:  # noqa: BLE001
                 _log.warning("decision_reexecute_failed", decision_id=d.id, error=str(exc)[:200])
     if not d.metric_query or not allow_ai_fallback:
-        return None, None
+        return None, None, None
     result = await query_service.process_nl_query(
         d.metric_query, d.datasource_id, d.user_id, db, cache, bypass_cache=True
     )
-    return extract_scalar(result.data, d.metric_column), result.query_log_id
+    return (
+        extract_scalar(result.data, d.metric_column),
+        result.query_log_id,
+        await _log_data_age(db, result.query_log_id, d.user_id),
+    )
 
 
 async def _capture_baseline(db: AsyncSession, cache: CacheService, d: Decision) -> None:
@@ -168,6 +196,7 @@ async def _capture_baseline(db: AsyncSession, cache: CacheService, d: Decision) 
 
     value: float | None = None
     log_id: str | None = None
+    data_as_of: datetime | None = None
     if d.query_log_id:
         # Scope by owner: query_log_id is client-supplied at create time, so an
         # unscoped db.get would read another user's cached result (IDOR).
@@ -175,6 +204,13 @@ async def _capture_baseline(db: AsyncSession, cache: CacheService, d: Decision) 
         if log is not None and log.result_data:
             value = extract_scalar(log.result_data.get("rows", []), d.metric_column)
             log_id = log.id
+            # NOTHING IS EXECUTED HERE — this reads the query's stored snapshot,
+            # which is the whole point (no re-run, no quota). So the number is as
+            # old as that query, not as old as this decision. Falling back to
+            # created_at rather than leaving it unknown is safe in this one place:
+            # for a log with no stamp, the row's own write time is still an upper
+            # bound on the data's age, and it is strictly better than implying now.
+            data_as_of = aware(log.data_as_of) or aware(log.created_at)
     if value is None and d.metric_query:
         # A live metric run can fail (bad source, AI error) — a failed baseline must
         # not 500 the decision create. Capture what we can; leave baseline null otherwise.
@@ -184,22 +220,32 @@ async def _capture_baseline(db: AsyncSession, cache: CacheService, d: Decision) 
             )
             value = extract_scalar(result.data, d.metric_column)
             log_id = result.query_log_id
+            # No bypass_cache here (deliberately — a baseline is not worth forcing
+            # paid inference for), so this can be served from cache and be older
+            # than it looks. The log carries the real fetch time; read it back.
+            data_as_of = await _log_data_age(db, log_id, d.user_id)
         except Exception as exc:  # noqa: BLE001
             _log.warning("decision_baseline_failed", decision_id=d.id, error=str(exc)[:200])
             return
     if value is None:
         return
     d.baseline_value = value
+    # Stays `now`: this is WHEN THE DECISION WAS MADE, the boundary counterfactual()
+    # splits its pre/post history on. How old the number itself is goes to
+    # data_as_of, which is a different question with a different answer.
     d.baseline_at = _now()
     d.last_query_log_id = log_id
-    db.add(DecisionMeasurement(decision_id=d.id, value=value, measured_at=d.baseline_at, query_log_id=log_id))
+    db.add(DecisionMeasurement(
+        decision_id=d.id, value=value, measured_at=d.baseline_at,
+        data_as_of=data_as_of, query_log_id=log_id,
+    ))
 
 
 async def measure(
     db: AsyncSession, cache: CacheService, d: Decision, *, allow_ai_fallback: bool = True
 ) -> Decision:
     """Re-measure the realized value, append to the trajectory, update status."""
-    value, log_id = await _measure(db, cache, d, allow_ai_fallback=allow_ai_fallback)
+    value, log_id, data_as_of = await _measure(db, cache, d, allow_ai_fallback=allow_ai_fallback)
     if value is None:
         return d
     now = _now()
@@ -207,7 +253,10 @@ async def measure(
     d.realized_at = now
     if log_id:
         d.last_query_log_id = log_id
-    db.add(DecisionMeasurement(decision_id=d.id, value=value, measured_at=now, query_log_id=log_id))
+    db.add(DecisionMeasurement(
+        decision_id=d.id, value=value, measured_at=now,
+        data_as_of=data_as_of, query_log_id=log_id,
+    ))
     prev_status = d.impact_status
     d.impact_status = _compute_impact_status(d)
     await db.flush()
