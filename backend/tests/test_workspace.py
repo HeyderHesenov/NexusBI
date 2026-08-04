@@ -1,7 +1,6 @@
 """Workspaces (RBAC), RLS rules + enforcement, and audit log."""
 from __future__ import annotations
 
-import pytest
 from httpx import AsyncClient
 
 from app.ai.types import ChartConfig, Text2SQLResult
@@ -156,6 +155,16 @@ async def test_workspace_change_role(client: AsyncClient, auth: dict):
         json={"role": "viewer"}, headers=auth,
     )
     assert demote.status_code == 403, demote.text
+
+    # A MEMBER cannot change roles at all — change_role is owner-only. Every
+    # assertion above was made as the owner, so the guard that stops a viewer
+    # promoting itself to editor was the one branch nothing exercised; `t2` was
+    # registered for this and then left unused, which is how it stayed uncovered.
+    escalation = await client.patch(
+        f"/api/v1/workspaces/{ws['id']}/members/{mate['id']}",
+        json={"role": "editor"}, headers={"Authorization": f"Bearer {t2}"},
+    )
+    assert escalation.status_code == 403, escalation.text
 
 
 async def test_workspace_transfer_ownership(client: AsyncClient, auth: dict):
