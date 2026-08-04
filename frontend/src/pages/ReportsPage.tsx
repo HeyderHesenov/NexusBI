@@ -373,6 +373,7 @@ function DeliveryModal({
   const [format, setFormat] = useState<ReportFormat>('pdf')
   const [schedule, setSchedule] = useState<ReportSchedule>('daily')
   const [busy, setBusy] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   useEffect(() => {
     subApi.listSubscriptions(savedQueryId).then(setSubs).catch(() => undefined)
@@ -398,8 +399,33 @@ function DeliveryModal({
   }
 
   const del = async (id: string) => {
-    await subApi.deleteSubscription(id).catch(() => undefined)
-    setSubs((prev) => prev.filter((s) => s.id !== id))
+    // Drop the row only once the server has actually deleted it — same reason as
+    // AlertModal.del above. Swallowing the rejection and filtering anyway showed
+    // the subscription as gone while the schedule kept mailing the report out,
+    // and the only signal the user got was a toast they had already dismissed.
+    //
+    // `deleting` exists because the row now survives until the response lands.
+    // A double-click used to be harmless (the row left on the first click);
+    // without this the second DELETE 404s and toasts a failure on top of a
+    // delete that actually succeeded, and the catch cannot tell "already gone"
+    // from a real refusal.
+    //
+    // It is held per ROW and spent entirely on the button's `disabled`, with no
+    // early return in here. Measured: `disabled` alone blocks the second click
+    // (React commits the state between two discrete click events, so the button
+    // is already inert), and an `if (deleting) return` on top of it made things
+    // WORSE — it also swallowed clicks on every OTHER row, whose buttons stayed
+    // enabled, which is the same "UI says one thing, state says another" defect
+    // this change exists to remove.
+    setDeleting(id)
+    try {
+      await subApi.deleteSubscription(id)
+      setSubs((prev) => prev.filter((s) => s.id !== id))
+    } catch {
+      /* interceptor toast */
+    } finally {
+      setDeleting(null)
+    }
   }
 
   return (
@@ -432,7 +458,12 @@ function DeliveryModal({
                 <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
                   {s.format} · {s.schedule}
                 </span>
-                <button onClick={() => del(s.id)} aria-label={t('reportsPage.delete')} className="shrink-0 text-ink-faint transition hover:text-[#D87C6B]">
+                <button
+                  onClick={() => del(s.id)}
+                  disabled={deleting === s.id}
+                  aria-label={t('reportsPage.delete')}
+                  className="shrink-0 text-ink-faint transition hover:text-[#D87C6B] disabled:opacity-50"
+                >
                   <Trash2 size={14} />
                 </button>
               </li>

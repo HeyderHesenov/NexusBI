@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import secrets
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -618,6 +619,11 @@ async def refresh_widget_data(
             return None
     columns, rows = await query_service.reexecute_logged_query(log, db, user_id, cache)
     log.result_data = {"columns": columns, "rows": query_service.snapshot_rows(rows)}
+    # This path really did re-execute, but it reuses the log row, so created_at
+    # still points at the ORIGINAL run. Without moving this stamp the rows change
+    # underneath anything reading the number's age — the metric tree would show a
+    # new value under an old timestamp.
+    log.data_as_of = datetime.now(timezone.utc)
     await db.flush()
 
     ds_names: dict[str, str] = {}

@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -19,6 +20,7 @@ from app.ai.types import ChartConfig, Text2SQLResult
 from app.config import settings
 from app.core.exceptions import AIGenerationError, NexusBIException, QueryExecutionError
 from app.core.logging import get_logger
+from app.core.timeutil import to_instant
 from app.models.datasource import DBType
 from app.models.query_log import QueryLog
 from app.schemas.query import ColumnInfo, QueryResult, StatFact
@@ -152,6 +154,12 @@ async def process_nl_query(
             confidence=cached.get("confidence"),
             provenance=cached.get("provenance"),
             rls_denied=await _rls_denied(db, datasource_id, user_id, cached["rows"]),
+            # The rows are as old as the MISS that filled this entry, not as old
+            # as this hit. Without carrying it over, the fresh log below would
+            # claim data up to CACHE_TTL_SECONDS old was fetched just now.
+            # `to_instant` returns None for a missing or unparseable value, which
+            # leaves the column NULL and readers on the old run-stamp fallback.
+            data_as_of=to_instant(cached.get("fetched_at")),
         )
 
     # Cache miss → ground generation with RAG (similar prior queries + verified
@@ -178,6 +186,12 @@ async def process_nl_query(
             nl_query, datasource_id, user_id, db, cache, prompt_context
         )
         resolved_ds_id = datasource_id
+
+    # Stamp the rows HERE, not after the block below. Chart selection and insight
+    # generation are LLM calls that can take seconds, and they do not touch the
+    # data — stamping after them would age every fresh result by however long the
+    # model took to answer.
+    fetched_at = datetime.now(timezone.utc)
 
     # Chart selection and insight generation are independent — run concurrently.
     # return_exceptions keeps one failing path from sinking the whole query;
@@ -208,6 +222,10 @@ async def process_nl_query(
             "insight": insight,
             "confidence": confidence,
             "provenance": provenance,
+            # Travels with the rows so a later cache HIT can log how old the data
+            # it is serving actually is, instead of stamping the moment it was
+            # served. Entries written before this key shipped simply lack it.
+            "fetched_at": fetched_at.isoformat(),
         },
         ttl=settings.CACHE_TTL_SECONDS,
     )
@@ -226,6 +244,7 @@ async def process_nl_query(
         confidence=confidence,
         provenance=provenance,
         rls_denied=await _rls_denied(db, resolved_ds_id, user_id, rows),
+        data_as_of=fetched_at,
     )
 
     # Index this fresh NL→SQL pair so future questions retrieve it (RAG). Only real
@@ -414,6 +433,12 @@ async def run_user_sql(
         exc.sql = clean_sql  # surface the user's SQL in the error card
         raise
 
+    # Stamped against the read above, not against the log write below, for the
+    # same reason as the AI path: this is the moment the rows came out of the
+    # source. Nothing here is cached — guarded_read caches the SCHEMA, never the
+    # result — so this run's data really is as fresh as this instant.
+    fetched_at = datetime.now(timezone.utc)
+
     # No AI: deterministic chart, empty insight. On-demand panels (forecast/anomaly/
     # root-cause) still work later off the persisted query_log_id + result_data.
     chart_config = rule_based_chart(columns, rows)
@@ -434,6 +459,7 @@ async def run_user_sql(
         # Analyst-authored SQL: no LLM guessed it, so the number is exact-by-construction.
         provenance="user_sql",
         rls_denied=await _rls_denied(db, datasource_id, user_id, rows),
+        data_as_of=fetched_at,
     )
 
 
@@ -455,6 +481,7 @@ async def _finalize(
     confidence: float | None = None,
     provenance: str | None = None,
     rls_denied: bool = False,
+    data_as_of: datetime | None,
 ) -> QueryResult:
     """Persist a QueryLog and build the response (shared by cache hit + miss).
 
@@ -462,6 +489,16 @@ async def _finalize(
     snapshot persisted to the log (already computed by the caller).
     ``confidence``/``provenance`` are the answer-trust signal shown as a badge.
     ``rls_denied`` tells the client the emptiness is a permission, not a fact.
+    ``data_as_of`` is when the ROWS were fetched, which on the cache-hit path is
+    older than this log row — see the column comment on QueryLog. ``None`` stays
+    NULL and leaves readers on the run-stamp fallback.
+
+    REQUIRED with no default, deliberately: the whole point of a column over a
+    JSON key was that it cannot be lost by forgetting, and an optional argument
+    would hand that back — a new caller would silently write NULL and regress
+    every reader to the run-stamp lie with nothing failing. Only the cache-hit
+    path may pass ``None``, and it does so explicitly because a pre-``fetched_at``
+    entry genuinely has no fetch time to report.
     """
     log = QueryLog(
         user_id=user_id,
@@ -475,6 +512,7 @@ async def _finalize(
         execution_time_ms=elapsed_ms,
         confidence=confidence,
         provenance=provenance,
+        data_as_of=data_as_of,
     )
     db.add(log)
     await db.flush()
