@@ -298,15 +298,15 @@ def resolve_leaf(
         # one owned by someone else, which the user_id filter turns into a miss.
         return LeafValue(None, UNKNOWN, source=source, reason=REASON_RESULT_MISSING)
 
-    # When the RUN was recorded — not necessarily when the DATA was fetched.
-    # query_service serves repeated questions from a result cache and _finalize
-    # persists that cached snapshot under a fresh log, so the rows can be up to
-    # CACHE_TTL_SECONDS older than this stamp; dashboard_service.refresh_widget
-    # can also rewrite a shared log's rows in place without moving it. QueryLog
-    # carries only created_at (no updated_at), so there is no truer timestamp to
-    # read today — closing that needs a persisted "data as of" column, which is
-    # its own change.
-    measured_at = aware(sq.last_run_at)
+    # How old the DATA is, which is not the same question as when the run was
+    # recorded. query_service persists a cache hit under a fresh log (rows up to
+    # CACHE_TTL_SECONDS older than the run) and dashboard_service
+    # .refresh_widget_data rewrites a shared log's rows in place without moving
+    # any run stamp — the two err in opposite directions, so neither can be
+    # papered over with a fudge factor. QueryLog.data_as_of records the fetch
+    # itself; it is NULL only on rows written before that column existed, and
+    # those fall back to the run stamp, which is what this line read before.
+    measured_at = aware(log.data_as_of) or aware(sq.last_run_at)
     value, reason = _aggregate(rows, node.value_column, node.agg)
     if value is None:
         return LeafValue(None, UNKNOWN, source=source, measured_at=measured_at, reason=reason)

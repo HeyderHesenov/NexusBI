@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import JSON, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -36,3 +37,19 @@ class QueryLog(Base, TimestampMixin):
     # wrote it). NULL on rows logged before this feature → the UI shows no badge.
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     provenance: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    # When the ROWS were fetched — NOT when this row was written. `created_at`
+    # answers the second question and the two come apart in both directions:
+    # query_service._finalize persists a cache hit under a FRESH log, so the rows
+    # can be CACHE_TTL_SECONDS older than created_at; dashboard_service
+    # .refresh_widget_data rewrites an existing log's rows IN PLACE, so they can
+    # be newer. Anything presenting a number's age (metric_tree_service) must read
+    # this, not the run stamp.
+    #
+    # NULL on rows written before this column existed, and on a cache entry that
+    # was already in flight when it shipped — readers fall back to the run stamp,
+    # which is what they did before. Deliberately not backfilled: writing
+    # created_at into old rows would MATERIALISE the overstatement being fixed for
+    # every one of them that was a cache hit.
+    data_as_of: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
