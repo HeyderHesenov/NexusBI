@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { CircleDashed, Database, PenLine } from 'lucide-react'
 import type { EvaluatedNode, LeafProvenance } from '../../types'
+import { useFormatDate } from '../../hooks/useFormatDate'
 
 const ICON: Record<LeafProvenance, typeof Database> = {
   measured: Database,
@@ -26,7 +27,8 @@ const ICON: Record<LeafProvenance, typeof Database> = {
  *            icon is aria-hidden and the word carries the meaning.
  */
 export function ProvenanceChip({ node, className = '' }: { node: EvaluatedNode; className?: string }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
+  const fmtDate = useFormatDate()
   const kind = node.provenance
   if (!kind) return null
   const Icon = ICON[kind]
@@ -40,9 +42,11 @@ export function ProvenanceChip({ node, className = '' }: { node: EvaluatedNode; 
 
   // The tooltip carries the detail the chip has no room for: which query and
   // column, and how old the number is. An unknown leaf explains itself instead.
-  const measuredAt = node.measured_at
-    ? new Date(node.measured_at).toLocaleString(i18n.language)
-    : null
+  // Via the shared formatter, not `new Date(...).toLocaleString(i18n.language)`:
+  // an offset-less stamp (what SQLite deployments send) parses as local time
+  // there, so the "how old is this number" tooltip was off by the viewer's
+  // offset — in the one place whose whole job is stating when a number was true.
+  const measuredAt = node.measured_at ? fmtDate(node.measured_at, { mode: 'short' }) : null
   const title =
     kind === 'unknown'
       ? t(`twinPage.reason.${node.unknown_reason ?? 'empty'}`)

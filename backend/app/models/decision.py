@@ -87,10 +87,13 @@ class DecisionMeasurement(Base):
     # process_nl_query can serve that query from cache. `_measure` genuinely
     # re-executes, so there the two agree.
     #
-    # NULL on rows written before this column existed. Deliberately not
-    # backfilled: copying `measured_at` in would assert the very equality this
-    # column exists to stop assuming. Readers must treat NULL as "unknown", never
-    # as "same as measured_at".
+    # NULL means UNKNOWN, and a live writer can still produce it: a row from
+    # before this column existed, a baseline lifted from a log that predates
+    # QueryLog.data_as_of, or a cache entry that was already in flight when that
+    # stamp shipped. So NULL is not a reliable "this is a legacy row" marker —
+    # it is only ever "we do not know", and must never be read as "same as
+    # measured_at". Deliberately not backfilled: copying `measured_at` in would
+    # assert the very equality this column exists to stop assuming.
     data_as_of: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

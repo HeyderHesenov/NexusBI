@@ -57,12 +57,32 @@ const DATE_CONFIG: Record<NonNullable<FormatDateOptions['mode']>, Intl.DateTimeF
   time: { hour: '2-digit', minute: '2-digit' },
 }
 
+/** ISO date-time with no timezone designator — what the API emits whenever the
+ *  value came back from SQLite, which hands back naive datetimes even for a
+ *  `DateTime(timezone=True)` column (see backend core/timeutil.py). */
+const NAIVE_ISO = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/
+
+/** Parse a backend timestamp as the UTC instant it actually is.
+ *
+ *  Per ES2015 a date-time string WITHOUT an offset is parsed as LOCAL time, so
+ *  `new Date('2026-01-10T09:00:00')` reads 09:00 in the viewer's zone for a
+ *  value the backend stored as 09:00 UTC — a silent error equal to the viewer's
+ *  offset, and one that never shows up on a Postgres deployment because that
+ *  driver round-trips the offset. The backend stores UTC everywhere, so the
+ *  missing designator is the only thing to restore. */
+export const parseInstant = (value: string | number | Date): Date =>
+  typeof value === 'string' && NAIVE_ISO.test(value.trim())
+    ? new Date(`${value.trim().replace(' ', 'T')}Z`)
+    : value instanceof Date
+      ? value
+      : new Date(value)
+
 /** Single date/time formatter for the whole app — locale-aware via the same
  *  lang→locale map as numbers, so timestamps localize with the picked language
  *  instead of a hardcoded 'az-AZ'. Invalid/empty input renders as an em dash. */
 export const formatDate = (value: string | number | Date, opts: FormatDateOptions = {}): string => {
   const { locale = 'az-AZ', mode = 'datetime' } = opts
-  const d = value instanceof Date ? value : new Date(value)
+  const d = parseInstant(value)
   if (Number.isNaN(d.getTime())) return '—'
   return new Intl.DateTimeFormat(locale, DATE_CONFIG[mode]).format(d)
 }

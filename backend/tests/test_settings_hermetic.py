@@ -57,5 +57,10 @@ def test_a_dotenv_value_cannot_reach_the_suite(tmp_path, monkeypatch):
     """
     (tmp_path / ".env").write_text("DIGEST_HOUR_UTC=23\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
+    # The seam closes the FILE channel only — a real environment variable still
+    # wins, on purpose. Without clearing it here this test would fail for any
+    # developer who exports DIGEST_HOUR_UTC while CI stayed green, which is the
+    # exact red-locally/green-in-CI split the whole module exists to remove.
+    monkeypatch.delenv("DIGEST_HOUR_UTC", raising=False)
 
-    assert Settings().DIGEST_HOUR_UTC == 6, "the code default, not the file's"
+    assert Settings().DIGEST_HOUR_UTC == 6, "the code default, not the file's 23"

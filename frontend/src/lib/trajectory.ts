@@ -1,4 +1,5 @@
 import type { DecisionTrajectory } from '../types'
+import { parseInstant } from './format'
 
 export interface TrajectoryRow {
   label: string
@@ -11,9 +12,21 @@ export interface TrajectoryRow {
   asOf?: string
 }
 
-/** Below this the two stamps describe the same reading and saying so twice is
- *  noise: a live re-measure writes them microseconds apart, and the baseline
- *  path writes them from two different clock reads of the same instant. */
+/** Below this the gap is process time, not data age, and repeating the stamp is
+ *  noise. A live re-measure writes the two microseconds apart.
+ *
+ *  It is 60s rather than a few seconds because a cache MISS stamps the fetch
+ *  BEFORE chart selection and insight generation (the backend does that on
+ *  purpose, so a slow model does not age a fresh result), while `measured_at` is
+ *  taken after the whole call returns — so the gap on that path is however long
+ *  the LLM took.
+ *
+ *  This does NOT separate the two cases cleanly and cannot: LLM latency and
+ *  cache staleness both live in 0–CACHE_TTL_SECONDS (300s). Raising the
+ *  threshold to clear the slowest model would swallow real cache staleness,
+ *  which is the case worth reporting. So a >60s AI pass shows a caption that is
+ *  accurate but uninteresting — the tolerable failure of the two, since the
+ *  timestamp it names is still exactly when the rows were fetched. */
 const STALE_AFTER_MS = 60_000
 
 /** Merge a decision's measurement points with its counterfactual band (matched by
@@ -44,7 +57,12 @@ export function trajectoryRows(trajectory: DecisionTrajectory): TrajectoryRow[] 
  *  shown as if it were equal. */
 function staleAsOf(measuredAt: string, dataAsOf: string | null): string | undefined {
   if (!dataAsOf) return undefined
-  const gap = Date.parse(measuredAt) - Date.parse(dataAsOf)
+  // `parseInstant`, not `Date.parse`: both stamps happen to share a convention
+  // today (same column type, same serializer), so the raw difference is right by
+  // luck rather than by construction. Parsing each as the instant it is makes
+  // the gap correct even if one side ever arrives with an offset and the other
+  // without.
+  const gap = parseInstant(measuredAt).getTime() - parseInstant(dataAsOf).getTime()
   if (!Number.isFinite(gap) || gap < STALE_AFTER_MS) return undefined
   return dataAsOf
 }

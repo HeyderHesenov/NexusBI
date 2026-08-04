@@ -58,6 +58,25 @@ describe('formatDate', () => {
     expect(formatDate(iso, { locale: 'en-US', mode: 'datetime' })).toContain(':')
   })
 
+  it('reads an offset-less stamp as UTC, not as the viewer\'s local time', () => {
+    // What the API sends whenever the value came back from SQLite, which hands
+    // back naive datetimes even for a tz-aware column. Per ES2015 such a string
+    // parses as LOCAL time, so without the fix this rendered the viewer's offset
+    // away from the truth — and only on SQLite, never on Postgres, which is the
+    // worst place for a difference to hide.
+    expect(formatDate('2026-01-10T09:00:00', { locale: 'en-US' })).toBe(
+      formatDate('2026-01-10T09:00:00Z', { locale: 'en-US' }),
+    )
+    // A space separator (some drivers) and a fractional part must land the same.
+    expect(formatDate('2026-01-10 09:00:00.123456', { locale: 'en-US' })).toBe(
+      formatDate('2026-01-10T09:00:00Z', { locale: 'en-US' }),
+    )
+    // An explicit offset is still honoured, not overwritten with Z.
+    expect(formatDate('2026-01-10T09:00:00+04:00', { locale: 'en-US' })).toBe(
+      formatDate('2026-01-10T05:00:00Z', { locale: 'en-US' }),
+    )
+  })
+
   it('localizes: different locales yield different month names', () => {
     const en = formatDate(iso, { locale: 'en-US', mode: 'date' })
     const ru = formatDate(iso, { locale: 'ru-RU', mode: 'date' })

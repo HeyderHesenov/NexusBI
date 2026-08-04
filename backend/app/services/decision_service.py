@@ -133,28 +133,6 @@ def _compute_impact_status(d: Decision) -> str:
 
 # ─── Measurement engine ───
 
-async def _log_data_age(db: AsyncSession, log_id: str | None, user_id: str) -> datetime | None:
-    """How old the rows behind a freshly written log are, or ``None`` if unknown.
-
-    query_service stamps `data_as_of` on every log it writes, but a CACHE HIT
-    carries the original fetch time forward, so "we just called process_nl_query"
-    does not mean "this data is from now". Reading it back is the only way to
-    tell the two apart.
-
-    This does emit a second SELECT (measured: `session.execute(select(...))`
-    always goes to the database — only `session.get()` can answer from the
-    identity map). That is the deliberate trade: the id reaching here is
-    client-supplied on the baseline path, so the lookup goes through the
-    owner-scoped helper rather than a bare primary-key get. One indexed read in
-    the same transaction, on a path that has just done a query round trip
-    anyway, is not worth duplicating an ownership check to avoid.
-    """
-    if log_id is None:
-        return None
-    log = await _owned_query_log(db, log_id, user_id)
-    return aware(log.data_as_of) if log is not None else None
-
-
 async def _measure(
     db: AsyncSession, cache: CacheService, d: Decision, *, allow_ai_fallback: bool = True
 ) -> tuple[float | None, str | None, datetime | None]:
@@ -181,7 +159,20 @@ async def _measure(
                 # readers depend on that. `query_log_id` is provenance for the
                 # SQL that produced this number, not for a matching row snapshot —
                 # which is exactly why the freshness has to travel separately.
-                return extract_scalar(rows, d.metric_column), log.id, _now()
+                value = extract_scalar(rows, d.metric_column)
+                if value is None:
+                    # The re-run SUCCEEDED and still produced no number — the
+                    # metric column is gone or renamed. Returning here (rather
+                    # than falling through) is deliberate: a missing column is
+                    # permanent, so escalating to a paid NL→SQL pass would repeat
+                    # on every scheduled tick forever. But it must not be SILENT
+                    # too — without this the decision just stops measuring and
+                    # `run_measurements_due` counts it as an uneventful skip.
+                    _log.warning(
+                        "decision_metric_column_missing",
+                        decision_id=d.id, metric_column=d.metric_column, query_log_id=log.id,
+                    )
+                return value, log.id, _now()
             except Exception as exc:  # noqa: BLE001
                 _log.warning("decision_reexecute_failed", decision_id=d.id, error=str(exc)[:200])
     if not d.metric_query or not allow_ai_fallback:
@@ -189,11 +180,11 @@ async def _measure(
     result = await query_service.process_nl_query(
         d.metric_query, d.datasource_id, d.user_id, db, cache, bypass_cache=True
     )
-    return (
-        extract_scalar(result.data, d.metric_column),
-        result.query_log_id,
-        await _log_data_age(db, result.query_log_id, d.user_id),
-    )
+    # `bypass_cache=True` above forces a real fetch, so this is "now" — but read
+    # it off the result rather than stamping `_now()`, so that if the bypass is
+    # ever relaxed the age stops being a lie by itself instead of needing someone
+    # to notice this line.
+    return extract_scalar(result.data, d.metric_column), result.query_log_id, result.data_as_of
 
 
 async def _capture_baseline(db: AsyncSession, cache: CacheService, d: Decision) -> None:
@@ -213,11 +204,19 @@ async def _capture_baseline(db: AsyncSession, cache: CacheService, d: Decision) 
             log_id = log.id
             # NOTHING IS EXECUTED HERE — this reads the query's stored snapshot,
             # which is the whole point (no re-run, no quota). So the number is as
-            # old as that query, not as old as this decision. Falling back to
-            # created_at rather than leaving it unknown is safe in this one place:
-            # for a log with no stamp, the row's own write time is still an upper
-            # bound on the data's age, and it is strictly better than implying now.
-            data_as_of = aware(log.data_as_of) or aware(log.created_at)
+            # old as that query, not as old as this decision.
+            #
+            # No `or created_at` fallback. It was tried and is wrong in BOTH
+            # directions, which QueryLog.data_as_of's own comment already spells
+            # out: a cache hit is persisted under a FRESH log (rows older than
+            # created_at, so the fallback overstates freshness by up to
+            # CACHE_TTL_SECONDS), and refresh_widget_data rewrites a log's rows
+            # IN PLACE (rows newer than created_at, by an unbounded amount — a
+            # month-old log refreshed yesterday would be captioned "data as of a
+            # month ago"). An unknown age renders as no caption at all, which is
+            # the honest answer; a wrong one is worse than none, and that is the
+            # whole reason this column exists.
+            data_as_of = aware(log.data_as_of)
     if value is None and d.metric_query:
         # A live metric run can fail (bad source, AI error) — a failed baseline must
         # not 500 the decision create. Capture what we can; leave baseline null otherwise.
@@ -229,8 +228,10 @@ async def _capture_baseline(db: AsyncSession, cache: CacheService, d: Decision) 
             log_id = result.query_log_id
             # No bypass_cache here (deliberately — a baseline is not worth forcing
             # paid inference for), so this can be served from cache and be older
-            # than it looks. The log carries the real fetch time; read it back.
-            data_as_of = await _log_data_age(db, log_id, d.user_id)
+            # than it looks. The result carries the real fetch time, and it is
+            # None when even that is unknown (an entry cached before the stamp
+            # shipped) — which stays None rather than being rounded up to "now".
+            data_as_of = result.data_as_of
         except Exception as exc:  # noqa: BLE001
             _log.warning("decision_baseline_failed", decision_id=d.id, error=str(exc)[:200])
             return

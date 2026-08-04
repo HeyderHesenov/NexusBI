@@ -168,22 +168,26 @@ async def _seed_decisions(db, cache, user_id, user_name) -> None:
         )
         db.add(d)
         await db.flush()  # populate d.id for the measurement FKs
+        # `data_as_of` is set on every point, never left to default. NULL means
+        # "we do not know how old this number is", and a demo that shrugs is a
+        # demo that teaches the wrong thing about the column.
+        #
+        # The OLDEST point is the baseline, and it is backdated by four hours on
+        # purpose. That is what `_capture_baseline` actually produces: it lifts
+        # the number out of the spawning query's stored result without re-running
+        # it, so a decision recorded at noon routinely carries a number fetched
+        # that morning. Stamping every point with `measured_at` would have shown
+        # only the live-re-measure branch, where the two agree — and the
+        # stale-baseline caption, the entire reason this column exists, would
+        # never appear anywhere in the demo.
+        oldest = max(days for days, _ in points)
         db.add_all(
             [
                 DecisionMeasurement(
                     decision_id=d.id,
                     value=val,
                     measured_at=now - timedelta(days=days),
-                    # Set, not left NULL. NULL on this column means "unknown —
-                    # written before the column existed", and the demo is not
-                    # that; leaving it out here would put a live writer into the
-                    # legacy bucket and make both the model comment and the
-                    # migration's "the application always sets it" false. These
-                    # points are fabricated readings taken AT `measured_at`, so
-                    # the two stamps genuinely agree — which is also what a real
-                    # live re-measure produces, so the demo exercises the same
-                    # branch the product does.
-                    data_as_of=now - timedelta(days=days),
+                    data_as_of=now - timedelta(days=days, hours=4 if days == oldest else 0),
                 )
                 for days, val in points
             ]

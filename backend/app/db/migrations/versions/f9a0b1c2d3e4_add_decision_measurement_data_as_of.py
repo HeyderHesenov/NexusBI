@@ -29,6 +29,11 @@ Existing rows stay NULL, meaning "unknown". Backfilling `measured_at` was
 rejected — it would assert the exact equality this column exists to stop
 assuming, turning a known-unknown into a confident wrong answer.
 
+NULL is NOT a marker for "written before this migration": a live write lands
+there too whenever the source log predates `query_logs.data_as_of`, or was
+served from a cache entry already in flight when that stamp shipped. The column
+answers "do we know?" first and "how old?" second.
+
 Revision ID: f9a0b1c2d3e4
 Revises: e8f9a0b1c2d3
 Create Date: 2026-08-04 15:30:00.000000

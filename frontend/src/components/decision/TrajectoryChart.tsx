@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { DecisionTrajectory } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
+import { useFormatDate } from '../../hooks/useFormatDate'
 import { trajectoryRows, type TrajectoryRow } from '../../lib/trajectory'
 import { useChartTheme } from '../charts/theme'
 
@@ -27,8 +28,13 @@ interface Props {
  *  back to the "baseline" method (no pre-decision history) the band/projection are
  *  simply absent — the parent shows an honest caption instead. */
 export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const fmtNum = useFormatNumber()
+  // Not `new Date(x).toLocaleString(i18n.language)`: that parses an
+  // offset-less stamp as local time (SQLite deployments send those), and
+  // i18n.language is an app code, not a BCP-47 locale — it throws RangeError on
+  // i18next's 'cimode'. The shared formatter handles both.
+  const fmtDate = useFormatDate()
   const { ACCENT, AXIS, GRID, INK_SOFT, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
 
   const rows = trajectoryRows(trajectory)
@@ -65,7 +71,7 @@ export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
               <>
                 {label}
                 <span className="mt-0.5 block text-[10px] font-normal text-ink-soft">
-                  {t('decisionsPage.dataAsOf', { at: new Date(asOf).toLocaleString(i18n.language) })}
+                  {t('decisionsPage.dataAsOf', { at: fmtDate(asOf, { mode: 'short' }) })}
                 </span>
               </>
             )
