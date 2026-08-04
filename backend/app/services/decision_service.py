@@ -139,8 +139,15 @@ async def _log_data_age(db: AsyncSession, log_id: str | None, user_id: str) -> d
     query_service stamps `data_as_of` on every log it writes, but a CACHE HIT
     carries the original fetch time forward, so "we just called process_nl_query"
     does not mean "this data is from now". Reading it back is the only way to
-    tell the two apart. The log was flushed in this same session, so this is an
-    identity-map lookup rather than a second round trip.
+    tell the two apart.
+
+    This does emit a second SELECT (measured: `session.execute(select(...))`
+    always goes to the database — only `session.get()` can answer from the
+    identity map). That is the deliberate trade: the id reaching here is
+    client-supplied on the baseline path, so the lookup goes through the
+    owner-scoped helper rather than a bare primary-key get. One indexed read in
+    the same transaction, on a path that has just done a query round trip
+    anyway, is not worth duplicating an ownership check to avoid.
     """
     if log_id is None:
         return None

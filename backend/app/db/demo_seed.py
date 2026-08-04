@@ -170,7 +170,21 @@ async def _seed_decisions(db, cache, user_id, user_name) -> None:
         await db.flush()  # populate d.id for the measurement FKs
         db.add_all(
             [
-                DecisionMeasurement(decision_id=d.id, value=val, measured_at=now - timedelta(days=days))
+                DecisionMeasurement(
+                    decision_id=d.id,
+                    value=val,
+                    measured_at=now - timedelta(days=days),
+                    # Set, not left NULL. NULL on this column means "unknown —
+                    # written before the column existed", and the demo is not
+                    # that; leaving it out here would put a live writer into the
+                    # legacy bucket and make both the model comment and the
+                    # migration's "the application always sets it" false. These
+                    # points are fabricated readings taken AT `measured_at`, so
+                    # the two stamps genuinely agree — which is also what a real
+                    # live re-measure produces, so the demo exercises the same
+                    # branch the product does.
+                    data_as_of=now - timedelta(days=days),
+                )
                 for days, val in points
             ]
         )
