@@ -330,6 +330,7 @@
     "targetsReached": "{{achieved}}/{{total}} hedefe ulaşıldı",
     "trajectory": "Yörünge",
     "counterfactualBand": "Karşıolgusal bant",
+    "dataAsOf": "veri: {{at}}",
     "counterfactualLine": "Kararsız projeksiyon",
     "vsCounterfactual": "karşıolgusala göre",
     "counterfactualBaselineNote": "Karardan önce yeterli geçmiş yok — mutlak değişim gösteriliyor."

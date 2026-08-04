@@ -13,7 +13,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { DecisionTrajectory } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
-import { trajectoryRows } from '../../lib/trajectory'
+import { useFormatDate } from '../../hooks/useFormatDate'
+import { trajectoryRows, type TrajectoryRow } from '../../lib/trajectory'
 import { useChartTheme } from '../charts/theme'
 
 interface Props {
@@ -29,6 +30,11 @@ interface Props {
 export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
   const { t } = useTranslation()
   const fmtNum = useFormatNumber()
+  // Not `new Date(x).toLocaleString(i18n.language)`: that parses an
+  // offset-less stamp as local time (SQLite deployments send those), and
+  // i18n.language is an app code, not a BCP-47 locale — it throws RangeError on
+  // i18next's 'cimode'. The shared formatter handles both.
+  const fmtDate = useFormatDate()
   const { ACCENT, AXIS, GRID, INK_SOFT, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
 
   const rows = trajectoryRows(trajectory)
@@ -50,7 +56,27 @@ export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
           axisLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
         />
-        <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabel} itemStyle={tooltipItem} />
+        <Tooltip
+          contentStyle={tooltipStyle}
+          labelStyle={tooltipLabel}
+          itemStyle={tooltipItem}
+          // A baseline is read out of the spawning query's stored result without
+          // re-running it, so its number can be much older than the tick it sits
+          // on. Say so on the point rather than letting the x-axis imply the two
+          // are the same; `asOf` is set only when they actually differ.
+          labelFormatter={(label, payload) => {
+            const asOf = (payload?.[0]?.payload as TrajectoryRow | undefined)?.asOf
+            if (!asOf) return label
+            return (
+              <>
+                {label}
+                <span className="mt-0.5 block text-[10px] font-normal text-ink-soft">
+                  {t('decisionsPage.dataAsOf', { at: fmtDate(asOf, { mode: 'short' }) })}
+                </span>
+              </>
+            )
+          }}
+        />
         <Legend wrapperStyle={{ fontSize: 11, color: 'rgb(var(--ink-soft))' }} />
 
         {baseline != null && (

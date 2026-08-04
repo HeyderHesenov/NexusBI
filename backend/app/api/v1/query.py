@@ -114,6 +114,11 @@ async def get_one(query_id: str, user: CurrentUser, db: DbDep) -> QueryResult:
         query_log_id=log.id,
         confidence=log.confidence,
         provenance=log.provenance,
+        # Replaying a stored log: the rows are as old as that log says, not as
+        # old as this request. Omitting it here would make the field mean
+        # "unknown" for every history replay, which is the third-caller gap this
+        # column keeps falling into.
+        data_as_of=log.data_as_of,
     )
 
 

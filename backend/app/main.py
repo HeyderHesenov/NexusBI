@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api.v1.router import api_router
+from app import config
 from app.config import settings
 from app.core import metrics
 from app.core import i18n
@@ -183,6 +184,18 @@ async def _seed_rag_examples() -> None:
 async def lifespan(app: FastAPI):
     _assert_production_secrets()
     _harden_demo_secrets()
+    if config._IGNORE_DOTENV and not settings.DEMO_MODE:
+        # The test suite's opt-out (conftest sets it) reached a real deployment.
+        # It suppresses the .env FILE, so every value configured there silently
+        # reverts to its code default while real environment variables keep
+        # working — which is why nothing else here catches it: SECRET_KEY set in
+        # the environment still passes _assert_production_secrets, and the flag
+        # is not a Settings field so it appears in no config dump.
+        log.warning(
+            "dotenv_ignored_in_production",
+            msg="NEXUSBI_IGNORE_DOTENV=1 — .env oxunmur, oradakı hər dəyər koddakı "
+                "default-a qayıdıb. Bu bayraq yalnız test suiti üçündür.",
+        )
     if not settings.AI_API_KEY:
         # Demo mode still works via the rule-based SQL fallback, but warn loudly
         # so a misconfigured key is obvious in the logs instead of silent 401s.

@@ -119,6 +119,10 @@ async def test_run_digests_due_gating(client, auth, monkeypatch):
     await _make_query(client, auth)
     # Gate to the current hour so the scheduler branch actually fires in-test.
     monkeypatch.setattr(settings, "DIGEST_HOUR_UTC", datetime.now(timezone.utc).hour)
+    # Pin the OTHER gate too. run_digests_due checks DIGEST_ENABLED first and
+    # returns 0, so leaving it ambient made this assertion a statement about the
+    # runner's configuration rather than about the scheduler.
+    monkeypatch.setattr(settings, "DIGEST_ENABLED", True)
 
     async with AsyncSessionLocal() as db:
         created = await digest_service.run_digests_due(db)

@@ -537,6 +537,11 @@ async def _finalize(
         confidence=confidence,
         provenance=provenance,
         rls_denied=rls_denied,
+        # Same value just persisted, handed back rather than left for the caller
+        # to re-read: decision_service used to SELECT this log again purely to
+        # recover it, and a caller that has to go looking is a caller that will
+        # eventually look at `created_at` instead.
+        data_as_of=data_as_of,
     )
 
 

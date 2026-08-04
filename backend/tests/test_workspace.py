@@ -1,7 +1,6 @@
 """Workspaces (RBAC), RLS rules + enforcement, and audit log."""
 from __future__ import annotations
 
-import pytest
 from httpx import AsyncClient
 
 from app.ai.types import ChartConfig, Text2SQLResult
@@ -156,6 +155,25 @@ async def test_workspace_change_role(client: AsyncClient, auth: dict):
         json={"role": "viewer"}, headers=auth,
     )
     assert demote.status_code == 403, demote.text
+
+    # A MEMBER cannot change roles at all — change_role is owner-only. Every
+    # assertion above was made as the owner, so this guard was the one branch
+    # nothing exercised; `t2` was registered for it and then left unused.
+    #
+    # Ask for a role `mate` does NOT already hold. Re-requesting "editor" (which
+    # it was promoted to above) would leave the database identical whether the
+    # guard rejected the call or applied it, so the only thing separating pass
+    # from fail would be the status code — and a variant that returned 403 while
+    # still writing would sail through.
+    escalation = await client.patch(
+        f"/api/v1/workspaces/{ws['id']}/members/{mate['id']}",
+        json={"role": "viewer"}, headers={"Authorization": f"Bearer {t2}"},
+    )
+    assert escalation.status_code == 403, escalation.text
+    after = (await client.get(f"/api/v1/workspaces/{ws['id']}/members", headers=auth)).json()
+    assert next(m for m in after if m["id"] == mate["id"])["role"] == "editor", (
+        "rejected with 403 AND unchanged — the guard must block the write, not just the response"
+    )
 
 
 async def test_workspace_transfer_ownership(client: AsyncClient, auth: dict):

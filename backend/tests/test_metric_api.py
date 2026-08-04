@@ -1,7 +1,6 @@
 """Metric (semantic layer) CRUD + injection into the Text2SQL prompt."""
 from __future__ import annotations
 
-import pytest
 from httpx import AsyncClient
 
 from app.ai.types import ChartConfig, Text2SQLResult

@@ -1,6 +1,7 @@
 """Query request/response schemas."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -57,6 +58,14 @@ class QueryResult(BaseModel):
     # (strict source, no rule for this viewer) — the client says so instead of
     # rendering an unexplained blank chart.
     rls_denied: bool = False
+    # When the ROWS were fetched, which is NOT when this response was produced: a
+    # cache HIT carries the original fetch time forward, so "the call just
+    # returned" does not mean "the data is from now". Mirrors
+    # QueryLog.data_as_of, and exists so a caller that needs the age does not
+    # have to re-SELECT the log this request just wrote.
+    # None means unknown (a legacy log, or a cache entry from before the stamp
+    # shipped) — never "same as now".
+    data_as_of: datetime | None = None
 
 
 class QueryHistoryItem(BaseModel):

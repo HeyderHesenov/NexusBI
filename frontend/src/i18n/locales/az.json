@@ -330,6 +330,7 @@
     "targetsReached": "{{achieved}}/{{total}} hədəfə çatdı",
     "trajectory": "Trayektoriya",
     "counterfactualBand": "Kontrfaktual bant",
+    "dataAsOf": "data: {{at}}",
     "counterfactualLine": "Qərarsız proqnoz",
     "vsCounterfactual": "Kontrfaktuala qarşı",
     "counterfactualBaselineNote": "Qərardan əvvəl kifayət tarixçə yoxdur — mütləq dəyişiklik göstərilir."

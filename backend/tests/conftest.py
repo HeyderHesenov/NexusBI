@@ -7,7 +7,6 @@ import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text
@@ -20,6 +19,14 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 # outside the demo — that mode is what a real deployment runs, and forcing the
 # variable here is how it stayed untested. SECRET_KEY is >= 32 chars because
 # `main._assert_production_secrets` rejects anything shorter when demo is off.
+# Ignore any .env on disk. CI has none, so every setting a developer happens to
+# keep locally was silently reconfiguring the suite away from the pipeline it
+# exists to predict — measured: DIGEST_ENABLED=false in the repo-root .env made
+# test_run_digests_due_gating fail locally and pass in CI, for months, which
+# trains everyone to read a red local suite as noise. Assignment, not
+# setdefault: this one is not a preference a caller should be able to weaken,
+# and real environment variables still take precedence over the file anyway.
+os.environ["NEXUSBI_IGNORE_DOTENV"] = "1"
 os.environ.setdefault("DEMO_MODE", "true")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test_nexusbi.db")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-at-least-32-characters-long")
