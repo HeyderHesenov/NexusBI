@@ -1,10 +1,19 @@
 """Application settings loaded from environment via pydantic-settings."""
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Opt-out seam for the test suite (see tests/conftest.py). CI never writes a
+# .env, so a developer's local one silently made the suite configure itself
+# differently from the pipeline it is supposed to predict: DIGEST_ENABLED=false
+# in a personal .env turned test_run_digests_due_gating red on every local run
+# while CI stayed green, which is the worst direction for that error to point.
+# Real env vars still win — this only removes the FILE, not the environment.
+_IGNORE_DOTENV = os.getenv("NEXUSBI_IGNORE_DOTENV") == "1"
 
 
 class Settings(BaseSettings):
@@ -12,7 +21,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         # Supports running from repo root (.env) or backend/ (../.env).
-        env_file=(".env", "../.env"),
+        env_file=None if _IGNORE_DOTENV else (".env", "../.env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
