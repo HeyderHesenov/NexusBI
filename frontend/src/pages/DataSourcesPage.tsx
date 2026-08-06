@@ -28,7 +28,7 @@ function freshness(s: { last_refreshed_at?: string | null; freshness_sla_hours?:
   if (!s.last_refreshed_at) return { tone: 'text-ink-faint', dot: 'bg-ink-faint', labelKey: 'dataSourcesPage.freshnessUnknown' }
   const ageH = (Date.now() - parseUtc(s.last_refreshed_at)) / 3_600_000
   if (s.freshness_sla_hours && ageH > s.freshness_sla_hours)
-    return { tone: 'text-[#D87C6B]', dot: 'bg-[#D87C6B]', labelKey: 'dataSourcesPage.freshnessStale' }
+    return { tone: 'text-danger', dot: 'bg-danger', labelKey: 'dataSourcesPage.freshnessStale' }
   return { tone: 'text-accent', dot: 'bg-accent', labelKey: 'dataSourcesPage.freshnessFresh' }
 }
 
@@ -265,7 +265,7 @@ export function DataSourcesPage() {
                   <button
                     onClick={() => remove(s.id)}
                     title={t('dataSourcesPage.deleteTitle')}
-                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-danger/50 hover:text-danger"
                   >
                     <Trash2 size={15} />
                   </button>

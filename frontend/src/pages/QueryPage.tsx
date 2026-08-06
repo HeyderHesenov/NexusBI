@@ -103,9 +103,9 @@ export function QueryPage() {
           {loading && <LoadingState />}
 
           {error && !loading && (
-            <div className="space-y-2 rounded-2xl border border-[#D87C6B]/40 bg-[#D87C6B]/10 px-5 py-4">
+            <div className="space-y-2 rounded-2xl border border-danger/40 bg-danger/10 px-5 py-4">
               <div className="flex items-center gap-2">
-                <AlertTriangle size={16} className="text-[#D87C6B]" />
+                <AlertTriangle size={16} className="text-danger" />
                 <p className="text-sm font-medium text-ink">{error.message}</p>
               </div>
               {error.detail && <p className="text-xs text-ink-soft">{error.detail}</p>}
@@ -183,7 +183,7 @@ export function QueryPage() {
                     <button
                       onClick={() => del.askDelete(item.id)}
                       aria-label={t('queryPage.deleteQuery')}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-faint opacity-0 transition hover:bg-surface-2 hover:text-[#D87C6B] focus:opacity-100 group-hover:opacity-100"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-faint opacity-0 transition hover:bg-surface-2 hover:text-danger focus:opacity-100 group-hover:opacity-100"
                     >
                       <Trash2 size={14} />
                     </button>

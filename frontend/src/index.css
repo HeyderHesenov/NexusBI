@@ -18,9 +18,10 @@
   --ink: 31 30 29;
   --ink-soft: 91 87 80;
   --ink-faint: 140 135 126;
-  --accent: 14 159 110;
-  --accent-press: 11 126 88;
+  --accent: 10 110 76;
+  --accent-press: 7 86 60;
   --accent-soft: 227 243 236;
+  --danger: 171 74 55;
   --shadow: 60 50 40;
 }
 
@@ -37,6 +38,7 @@
   --accent: 16 185 129;
   --accent-press: 14 159 110;
   --accent-soft: 20 45 38;
+  --danger: 216 124 107;
   --shadow: 0 0 0;
 }
 
@@ -322,9 +324,10 @@
     --ink: 31 30 29;
     --ink-soft: 91 87 80;
     --ink-faint: 140 135 126;
-    --accent: 14 159 110;
-    --accent-press: 11 126 88;
+    --accent: 10 110 76;
+    --accent-press: 7 86 60;
     --accent-soft: 227 243 236;
+    --danger: 171 74 55;
     --shadow: 60 50 40;
   }
 

@@ -261,7 +261,7 @@ export function ActionMenu({
                         : item.active
                           ? 'text-accent'
                           : item.danger
-                            ? 'text-[#D87C6B]'
+                            ? 'text-danger'
                             : 'text-ink-soft'
                     }`}
                   >
@@ -272,7 +272,7 @@ export function ActionMenu({
                           item.active
                             ? 'text-accent'
                             : item.danger
-                              ? 'text-[#D87C6B]'
+                              ? 'text-danger'
                               : 'text-ink-faint'
                         }`}
                       />

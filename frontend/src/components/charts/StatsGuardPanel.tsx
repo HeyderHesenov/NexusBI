@@ -15,7 +15,7 @@ export function StatsGuardPanel({ result }: { result: SignificanceResult }) {
           <li key={i} className="flex items-start gap-2 text-sm">
             <span
               className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md ${
-                c.passed ? 'bg-accent-soft text-accent' : 'bg-[#D87C6B]/15 text-[#D87C6B]'
+                c.passed ? 'bg-accent-soft text-accent' : 'bg-danger/15 text-danger'
               }`}
             >
               {c.passed ? <Check size={13} /> : <AlertTriangle size={13} />}

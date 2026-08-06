@@ -15,9 +15,11 @@ import { useMounted } from '../components/twin/chartkit'
 import { useCountUp } from '../hooks/useCountUp'
 import { contrastRatio, deriveAccentVariants, hexToTriplet, readableTextColor } from '../lib/color'
 
-const DEFAULTS = { app_name: 'NexusBI', primary_color: '#0E9F6E', logo_url: '' }
+// primary_color mirrors the app's --accent token (index.css). Kept in sync so a
+// default (non-white-label) workspace reskins public dashboards to the exact
+// app accent — #0A6E4C, the AA-darkened green, not the old brighter #0E9F6E.
+const DEFAULTS = { app_name: 'NexusBI', primary_color: '#0A6E4C', logo_url: '' }
 const HEX = /^#[0-9a-fA-F]{6}$/
-const DANGER = '#D87C6B'
 
 // Curated brand presets — one click instead of hunting hex codes. All pass the
 // 3:1 both-themes contrast check below (no preset triggers the warning chip).
@@ -26,7 +28,7 @@ const PRESETS = ['#0E9F6E', '#2563EB', '#6366F1', '#8B5CF6', '#E11D48', '#D97706
 // The upgrade CTA must stay an <a> (role=link → /pricing), so it can't be a
 // <Button> (renders a <button>). Mirror the primary-button styling here.
 const PRIMARY_LINK =
-  'inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50'
+  'inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-bg transition hover:bg-accent-press active:translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
 
 type Form = { app_name: string; primary_color: string; logo_url: string }
 type Errors = Partial<Record<keyof Form, string>>
@@ -143,7 +145,7 @@ export function BrandingPage() {
     ...(variants ? { '--accent-press': variants.press, '--accent-soft': variants.soft } : {}),
   } as CSSProperties
 
-  const errBorder = (bad: boolean) => (bad ? '!border-[#D87C6B]' : '')
+  const errBorder = (bad: boolean) => (bad ? '!border-danger' : '')
 
   return (
     <div className="w-full">
@@ -265,8 +267,7 @@ export function BrandingPage() {
                     </span>
                   ) : (
                     <span
-                      className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                      style={{ backgroundColor: 'rgba(216, 124, 107, 0.15)', color: DANGER }}
+                      className="ml-auto inline-flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-[11px] font-semibold text-danger"
                     >
                       <AlertTriangle size={12} /> {t('brandingPage.contrastLow')}
                     </span>

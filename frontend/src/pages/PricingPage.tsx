@@ -82,7 +82,7 @@ function PlanCard({
     <div
       className={`relative flex flex-col rounded-2xl border bg-surface p-5 transition-colors ${
         current
-          ? 'border-accent ring-1 ring-accent/40'
+          ? 'border-accent ring-1 ring-accent'
           : featured
             ? 'border-line-strong'
             : 'border-line'

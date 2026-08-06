@@ -216,7 +216,7 @@ export function HistoryPage() {
                           <button
                             onClick={() => setConfirmId(h.id)}
                             aria-label={t('historyPage.deleteQuery')}
-                            className="rounded-md p-1.5 text-ink-faint opacity-0 transition hover:bg-surface hover:text-[#D87C6B] focus:opacity-100 group-hover:opacity-100"
+                            className="rounded-md p-1.5 text-ink-faint opacity-0 transition hover:bg-surface hover:text-danger focus:opacity-100 group-hover:opacity-100"
                           >
                             <Trash2 size={15} />
                           </button>

@@ -201,7 +201,7 @@ export function WorkspacePage() {
                       onClick={() => setLeaveId(w.id)}
                       title={t('workspacePage.leave')}
                       aria-label={t('workspacePage.leave')}
-                      className="rounded-md border border-line p-1 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                      className="rounded-md border border-line p-1 text-ink-faint transition hover:border-danger/50 hover:text-danger"
                     >
                       <LogOut size={13} />
                     </button>
@@ -211,7 +211,7 @@ export function WorkspacePage() {
                       onClick={() => setDeleteId(w.id)}
                       title={t('workspacePage.deleteWorkspace')}
                       aria-label={t('workspacePage.deleteWorkspace')}
-                      className="rounded-md border border-line p-1 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                      className="rounded-md border border-line p-1 text-ink-faint transition hover:border-danger/50 hover:text-danger"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -259,7 +259,7 @@ export function WorkspacePage() {
                               <button
                                 onClick={() => removeMember(w.id, m.id)}
                                 aria-label={t('workspacePage.deleteWorkspace')}
-                                className="rounded-md border border-line p-1 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                                className="rounded-md border border-line p-1 text-ink-faint transition hover:border-danger/50 hover:text-danger"
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -348,7 +348,7 @@ export function WorkspacePage() {
                                   onClick={() => unshare(w.id, s.resource_type, s.resource_id)}
                                   title={t('workspacePage.unshare')}
                                   aria-label={t('workspacePage.unshare')}
-                                  className="rounded-md border border-line p-1 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                                  className="rounded-md border border-line p-1 text-ink-faint transition hover:border-danger/50 hover:text-danger"
                                 >
                                   <Trash2 size={13} />
                                 </button>

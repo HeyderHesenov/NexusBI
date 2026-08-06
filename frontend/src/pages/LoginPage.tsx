@@ -238,7 +238,7 @@ export function LoginPage() {
             {error && (
               <p
                 role="alert"
-                className="rounded-xl border border-[#D87C6B]/40 bg-[#D87C6B]/10 px-3 py-2 text-sm text-[#E0998A]"
+                className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
               >
                 {error}
               </p>

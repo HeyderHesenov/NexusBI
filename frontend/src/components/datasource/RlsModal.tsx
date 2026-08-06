@@ -134,7 +134,7 @@ export function RlsModal({ open, onClose, datasourceId, datasourceName, rlsMode 
                 </span>
                 <button
                   onClick={() => remove(r.id)}
-                  className="rounded-md border border-line p-1 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                  className="rounded-md border border-line p-1 text-ink-faint transition hover:border-danger/50 hover:text-danger"
                 >
                   <Trash2 size={13} />
                 </button>

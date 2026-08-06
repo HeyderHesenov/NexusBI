@@ -14,7 +14,7 @@ describe('Button', () => {
     const { rerender } = render(<Button variant="secondary">X</Button>)
     expect(screen.getByRole('button').className).toContain('border-line')
     rerender(<Button variant="danger">X</Button>)
-    expect(screen.getByRole('button').className).toContain('#D87C6B')
+    expect(screen.getByRole('button').className).toContain('text-danger')
     rerender(<Button variant="ghost">X</Button>)
     expect(screen.getByRole('button').className).not.toContain('bg-accent')
   })

@@ -5,7 +5,10 @@ import type { RootCauseNode, RootCauseResult } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { RevealText } from './RevealText'
 
-const DOWN = '#D87C6B' // coral — matches the app's "negative" accent
+// The --danger token, not a raw hex: DOWN colours both the contribution BAR and
+// the percentage LABEL text (a text-xs span), so it must clear AA as text in
+// light mode. Dark resolves to the old coral; light darkens for contrast.
+const DOWN = 'rgb(var(--danger))'
 const MAX_DEPTH = 6 // bound DOM/recursion against a pathologically deep AI tree
 
 function clampPct(p: number | null): number {

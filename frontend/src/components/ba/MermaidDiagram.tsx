@@ -54,7 +54,7 @@ export function MermaidDiagram({ code }: { code: string }) {
   if (failed) {
     return (
       <div>
-        <p role="alert" className="mb-2 text-xs text-[#D87C6B]">
+        <p role="alert" className="mb-2 text-xs text-danger">
           {t('baStudio.mermaidError')}
         </p>
         <pre className="overflow-x-auto rounded-xl border border-line bg-surface-2 p-4 font-mono text-xs text-ink-soft">

@@ -121,9 +121,9 @@ export function SQLEditorInner({ initialValue, schema, onRun, onCancel, runLabel
       <div ref={hostRef} className="overflow-hidden rounded-xl" />
 
       {err && (
-        <div className="space-y-1 rounded-xl border border-[#D87C6B]/40 bg-[#D87C6B]/10 px-4 py-3">
+        <div className="space-y-1 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3">
           <div className="flex items-center gap-2">
-            <AlertTriangle size={14} className="text-[#D87C6B]" />
+            <AlertTriangle size={14} className="text-danger" />
             <p className="text-sm font-medium text-ink">{err.message}</p>
           </div>
           {err.detail && <p className="font-mono text-[11px] text-ink-soft">{err.detail}</p>}

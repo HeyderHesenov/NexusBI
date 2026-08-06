@@ -16,19 +16,19 @@ interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'cla
 }
 
 const BASE =
-  'inline-flex items-center justify-center gap-1.5 rounded-xl font-medium transition disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50'
+  'inline-flex items-center justify-center gap-1.5 rounded-xl font-medium transition disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
 
 const SIZES: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5 text-xs',
   md: 'px-3.5 py-2 text-sm',
 }
 
-// Danger uses the app-wide danger hex (#D87C6B) — the codebase has no danger token.
+// The 'danger' variant resolves to the --danger token (index.css / tailwind.config.js).
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-accent font-semibold text-bg hover:bg-accent-press active:translate-y-px',
   secondary: 'border border-line text-ink-soft hover:border-accent hover:text-ink',
   ghost: 'text-ink-soft hover:bg-surface-2 hover:text-ink',
-  danger: 'border border-[#D87C6B]/40 text-[#D87C6B] hover:bg-[#D87C6B]/10',
+  danger: 'border border-danger/40 text-danger hover:bg-danger/10',
 }
 
 /** The one primary/secondary/ghost/danger button for the whole app — replaces the

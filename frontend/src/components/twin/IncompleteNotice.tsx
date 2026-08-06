@@ -35,7 +35,7 @@ export function IncompleteNotice({
           {unknown.map((leaf) => (
             <li
               key={leaf.id}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#D87C6B]/50 px-2.5 py-1 text-xs text-ink"
+              className="inline-flex items-center gap-1.5 rounded-full border border-danger/50 px-2.5 py-1 text-xs text-ink"
             >
               <span className="font-medium">{leaf.name}</span>
               <span className="text-ink-faint">

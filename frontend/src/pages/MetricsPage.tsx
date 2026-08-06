@@ -100,7 +100,7 @@ export function MetricsPage() {
                   <button
                     onClick={() => remove(m.id)}
                     title={t('metricsPage.delete')}
-                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-danger/50 hover:text-danger"
                   >
                     <Trash2 size={15} />
                   </button>

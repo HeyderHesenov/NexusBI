@@ -116,7 +116,7 @@ export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
         </label>
         <span className="font-mono text-xs text-ink-faint">
           {fmtNum(actual)} → <span className="text-ink">{fmtNum(projected)}</span>{' '}
-          <span className={delta >= 0 ? 'text-accent' : 'text-[#D87C6B]'}>
+          <span className={delta >= 0 ? 'text-accent' : 'text-danger'}>
             ({delta >= 0 ? '+' : ''}{fmtNum(delta)})
           </span>
         </span>

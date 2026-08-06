@@ -103,7 +103,7 @@ export function ReportsPage() {
                   <button
                     onClick={() => remove(s.id)}
                     title={t('reportsPage.delete')}
-                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-danger/50 hover:text-danger"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -261,7 +261,7 @@ function AlertModal({
                 <button
                   onClick={() => del(a.id)}
                   aria-label={t('reportsPage.delete')}
-                  className="shrink-0 text-ink-faint transition hover:text-[#D87C6B]"
+                  className="shrink-0 text-ink-faint transition hover:text-danger"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -462,7 +462,7 @@ function DeliveryModal({
                   onClick={() => del(s.id)}
                   disabled={deleting === s.id}
                   aria-label={t('reportsPage.delete')}
-                  className="shrink-0 text-ink-faint transition hover:text-[#D87C6B] disabled:opacity-50"
+                  className="shrink-0 text-ink-faint transition hover:text-danger disabled:opacity-50"
                 >
                   <Trash2 size={14} />
                 </button>

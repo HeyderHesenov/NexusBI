@@ -547,7 +547,7 @@ function PillContextMenu({
       <button
         role="menuitem"
         onClick={onDelete}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#D87C6B] transition hover:bg-surface-2"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger transition hover:bg-surface-2"
       >
         <Trash2 size={14} /> {t('dashboardPage.delete')}
       </button>

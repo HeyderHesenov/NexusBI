@@ -24,7 +24,7 @@ export function KpiTilePreview({ data, config }: { data: Row[]; config: ChartCon
         {series.deltaPct != null && (
           <p
             className={`text-xs font-medium ${
-              rounded === 0 ? 'text-ink-soft' : rounded! > 0 ? 'text-accent' : 'text-[#D87C6B]'
+              rounded === 0 ? 'text-ink-soft' : rounded! > 0 ? 'text-accent' : 'text-danger'
             }`}
           >
             {formatSignedPct(series.deltaPct)}

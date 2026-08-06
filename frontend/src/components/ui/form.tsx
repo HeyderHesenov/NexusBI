@@ -13,7 +13,7 @@ export const FIELD =
 export const QUIET_LINK =
   'inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 text-xs font-medium text-ink-soft transition hover:border-accent hover:text-ink'
 
-const DANGER = '#D87C6B'
+const DANGER = 'rgb(var(--danger))'
 
 interface FieldProps {
   id: string
