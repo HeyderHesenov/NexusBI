@@ -73,7 +73,7 @@ export function SnapshotTimeline({
                 type="button"
                 onClick={() => onDelete(s.id)}
                 aria-label={t('timeMachine.delete')}
-                className="ml-0.5 inline-flex rounded-md p-1 text-ink-faint opacity-0 transition hover:text-[#D87C6B] focus-visible:opacity-100 group-hover:opacity-100"
+                className="ml-0.5 inline-flex rounded-md p-1 text-ink-faint opacity-0 transition hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
               >
                 <Trash2 size={12} />
               </button>

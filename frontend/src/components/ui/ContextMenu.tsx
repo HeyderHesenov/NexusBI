@@ -60,7 +60,7 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
               onClose()
             }}
             className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition hover:bg-surface-2 ${
-              item.destructive ? 'text-[#D87C6B]' : 'text-ink-soft hover:text-ink'
+              item.destructive ? 'text-danger' : 'text-ink-soft hover:text-ink'
             }`}
           >
             {item.icon && <item.icon size={15} />}

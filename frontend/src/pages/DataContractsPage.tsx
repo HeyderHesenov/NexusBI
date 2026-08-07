@@ -20,7 +20,7 @@ const field = 'w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-
 
 const STATUS: Record<string, { cls: string; labelKey: string }> = {
   pass: { cls: 'bg-accent-soft text-accent', labelKey: 'dataContractsPage.statusPass' },
-  fail: { cls: 'bg-[#D87C6B]/15 text-[#D87C6B]', labelKey: 'dataContractsPage.statusFail' },
+  fail: { cls: 'bg-danger/15 text-danger', labelKey: 'dataContractsPage.statusFail' },
   unknown: { cls: 'bg-surface-2 text-ink-faint', labelKey: 'dataContractsPage.statusUnknown' },
 }
 
@@ -140,7 +140,7 @@ function ContractCard({
             <Play size={13} /> {busy ? t('dataContractsPage.checking') : t('dataContractsPage.check')}
           </button>
           <ShareToChatButton resourceType="contract" resourceId={contract.id} iconSize={13} />
-          <button onClick={onRemove} aria-label={t('dataContractsPage.delete')} className="rounded-lg border border-line p-1.5 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]">
+          <button onClick={onRemove} aria-label={t('dataContractsPage.delete')} className="rounded-lg border border-line p-1.5 text-ink-faint transition hover:border-danger/50 hover:text-danger">
             <Trash2 size={13} />
           </button>
         </div>
@@ -153,7 +153,7 @@ function ContractCard({
               {r.passed ? (
                 <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-accent" />
               ) : (
-                <XCircle size={15} className="mt-0.5 shrink-0 text-[#D87C6B]" />
+                <XCircle size={15} className="mt-0.5 shrink-0 text-danger" />
               )}
               <span className="min-w-0 text-ink-soft">
                 <span className="font-medium text-ink">{r.column ? `${r.column} · ` : ''}{r.rule}</span> — {r.detail}
@@ -263,7 +263,7 @@ function CreateModal({
                   <button
                     onClick={() => setExps((c) => c.filter((_, idx) => idx !== i))}
                     aria-label={t('dataContractsPage.delete')}
-                    className="rounded-md p-1.5 text-ink-faint transition hover:text-[#D87C6B]"
+                    className="rounded-md p-1.5 text-ink-faint transition hover:text-danger"
                   >
                     <X size={14} />
                   </button>

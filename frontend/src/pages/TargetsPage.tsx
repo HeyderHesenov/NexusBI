@@ -12,7 +12,10 @@ function PacingGauge({ t }: { t: KPITarget }) {
   const { t: translate } = useTranslation()
   const attain = Math.max(0, Math.min(100, t.pacing.attainment_pct))
   const expected = Math.max(0, Math.min(100, t.pacing.elapsed_pct))
-  const color = t.pacing.on_track ? 'rgb(var(--accent))' : '#D87C6B'
+  // Both the bar fill and the attainment LABEL (a text-[10px] span below) read
+  // this, so the off-track branch uses the --danger token — not a raw hex — to
+  // clear AA as text in light mode, mirroring the on-track accent var.
+  const color = t.pacing.on_track ? 'rgb(var(--accent))' : 'rgb(var(--danger))'
   return (
     <div className="mt-2">
       <div className="relative h-3 w-full overflow-hidden rounded-full bg-surface-2">
@@ -162,7 +165,7 @@ export function TargetsPage() {
                   />
                   <button
                     onClick={() => remove(kpi.id)}
-                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                    className="rounded-lg border border-line p-1.5 text-ink-soft transition hover:border-danger/50 hover:text-danger"
                   >
                     <Trash2 size={15} />
                   </button>

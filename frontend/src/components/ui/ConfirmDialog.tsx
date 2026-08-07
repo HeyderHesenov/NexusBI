@@ -51,7 +51,7 @@ export function ConfirmDialog({
           <button
             onClick={confirm}
             disabled={busy}
-            className="rounded-xl bg-[#D87C6B] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 active:translate-y-px disabled:opacity-60"
+            className="rounded-xl bg-danger px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 active:translate-y-px disabled:opacity-60"
           >
             {busy ? '…' : confirmLabel ?? t('confirmDialog.delete')}
           </button>

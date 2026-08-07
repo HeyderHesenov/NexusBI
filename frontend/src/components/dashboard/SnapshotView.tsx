@@ -15,7 +15,7 @@ function DeltaBadge({ delta }: { delta: WidgetDelta }) {
   const { t } = useTranslation()
   if (delta.status === 'missing_now') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-[#D87C6B]/10 px-2 py-0.5 text-[11px] font-medium text-[#D87C6B]">
+      <span className="inline-flex items-center gap-1 rounded-full bg-danger/10 px-2 py-0.5 text-[11px] font-medium text-danger">
         <Trash2 size={11} /> {t('timeMachine.missingNow')}
       </span>
     )
@@ -44,7 +44,7 @@ function DeltaBadge({ delta }: { delta: WidgetDelta }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-        up ? 'bg-accent-soft text-accent' : 'bg-[#D87C6B]/10 text-[#D87C6B]'
+        up ? 'bg-accent-soft text-accent' : 'bg-danger/10 text-danger'
       }`}
       title={`${delta.before ?? '—'} → ${delta.after ?? '—'}`}
     >

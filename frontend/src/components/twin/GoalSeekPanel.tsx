@@ -106,7 +106,7 @@ export function GoalSeekPanel({ root, leaves, baseline, onApply }: Props) {
             </p>
             <p
               className={`mt-1 font-mono text-4xl font-bold ${
-                result.pct >= 0 ? 'text-accent' : 'text-[#D87C6B]'
+                result.pct >= 0 ? 'text-accent' : 'text-danger'
               }`}
             >
               {result.pct >= 0 ? '+' : ''}

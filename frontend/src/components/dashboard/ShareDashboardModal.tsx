@@ -78,7 +78,7 @@ export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
       footer={
         <div className="flex justify-between gap-2">
           {token ? (
-            <button onClick={revoke} disabled={busy} className="rounded-xl px-4 py-2 text-sm text-[#D87C6B] transition hover:opacity-80">
+            <button onClick={revoke} disabled={busy} className="rounded-xl px-4 py-2 text-sm text-danger transition hover:opacity-80">
               {t('shareDashboardModal.revokeShare')}
             </button>
           ) : (
@@ -129,7 +129,7 @@ export function ShareDashboardModal({ open, onClose, dashboardId }: Props) {
               <button
                 onClick={toggleEmbed}
                 disabled={busy}
-                className="text-sm text-[#D87C6B] transition hover:opacity-80"
+                className="text-sm text-danger transition hover:opacity-80"
               >
                 {t('shareDashboardModal.disableEmbed')}
               </button>

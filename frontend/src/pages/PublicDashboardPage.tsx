@@ -54,8 +54,8 @@ export function PublicDashboardPage() {
 
   // Re-skin the shared page with the owner's primary color (white-label). Override
   // the full accent set so nothing stays default emerald, and restore prior values
-  // on unmount so the global <html> style doesn't leak. Default #0E9F6E == the
-  // current accent, so non-white-label shared links look unchanged.
+  // on unmount so the global <html> style doesn't leak. Default #0A6E4C == the
+  // current --accent, so non-white-label shared links look unchanged.
   useEffect(() => {
     if (!brand) return
     const root = document.documentElement

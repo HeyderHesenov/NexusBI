@@ -56,7 +56,7 @@ class ErrorBoundaryInner extends Component<Props, State> {
             : 'flex min-h-[40vh] flex-col items-center justify-center gap-3 rounded-2xl border border-line bg-surface p-8 text-center'
         }
       >
-        <AlertTriangle size={variant === 'widget' ? 18 : 24} className="text-[#D87C6B]" />
+        <AlertTriangle size={variant === 'widget' ? 18 : 24} className="text-danger" />
         <p className="text-sm font-medium text-ink">{title}</p>
         {variant === 'panel' && (
           <p className="max-w-sm text-sm text-ink-soft">

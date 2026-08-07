@@ -54,7 +54,7 @@ export function KPICard({ data, config, target }: Props) {
       ? 'text-ink-soft'
       : rounded > 0
         ? 'text-accent'
-        : 'text-[#D87C6B]'
+        : 'text-danger'
 
   return (
     <div className="plot-grid relative flex flex-col items-start justify-center rounded-2xl border border-line bg-surface-2 p-10">
@@ -82,7 +82,7 @@ export function KPICard({ data, config, target }: Props) {
           <span className="tabular-nums">· {pacing.attainmentPct}%</span>
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-              pacing.onTrack ? 'bg-accent-soft text-accent' : 'bg-surface text-[#D87C6B]'
+              pacing.onTrack ? 'bg-accent-soft text-accent' : 'bg-surface text-danger'
             }`}
           >
             {pacing.onTrack ? t('kpi.onTrack') : t('kpi.behind')}

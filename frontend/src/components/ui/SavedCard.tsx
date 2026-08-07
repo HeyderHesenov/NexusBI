@@ -31,7 +31,7 @@ export function SavedCard({ active, title, subtitle, deleteLabel, onSelect, onDe
           type="button"
           onClick={onDelete}
           aria-label={deleteLabel}
-          className="rounded-md p-1 text-ink-faint transition hover:text-[#D87C6B]"
+          className="rounded-md p-1 text-ink-faint transition hover:text-danger"
         >
           <Trash2 size={14} />
         </button>

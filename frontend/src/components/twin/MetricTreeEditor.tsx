@@ -195,7 +195,7 @@ function TreeNode({
           <button
             onClick={() => onRemove(node.id)}
             aria-label={t('metricTreePage.delete')}
-            className="rounded-md border border-line p-1 text-ink-faint hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+            className="rounded-md border border-line p-1 text-ink-faint hover:border-danger/50 hover:text-danger"
           >
             <Trash2 size={13} />
           </button>

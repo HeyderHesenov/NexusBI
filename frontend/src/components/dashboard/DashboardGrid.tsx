@@ -156,7 +156,7 @@ export function DashboardGrid({
                   <button
                     onClick={() => onRemoveWidget(w.id)}
                     aria-label={t('dashboardGrid.remove')}
-                    className="text-ink-faint transition hover:text-[#D87C6B]"
+                    className="text-ink-faint transition hover:text-danger"
                   >
                     <X size={15} />
                   </button>

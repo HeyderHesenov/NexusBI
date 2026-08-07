@@ -128,7 +128,7 @@ export function IntegrationsPanel() {
                 <button
                   onClick={() => remove(c.id)}
                   title={t('integrationsPanel.deleteTooltip')}
-                  className="rounded-md border border-line p-1.5 text-ink-faint transition hover:border-[#D87C6B]/50 hover:text-[#D87C6B]"
+                  className="rounded-md border border-line p-1.5 text-ink-faint transition hover:border-danger/50 hover:text-danger"
                 >
                   <Trash2 size={14} />
                 </button>
