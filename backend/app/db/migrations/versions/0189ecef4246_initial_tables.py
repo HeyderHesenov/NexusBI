@@ -121,3 +121,30 @@ def downgrade() -> None:
 
     op.drop_table('users')
     # ### end Alembic commands ###
+
+    # Everything above is stock autogenerate, and stock autogenerate does not
+    # know about this. `sa.Enum(..., name='dbtype')` inside create_table emits a
+    # CREATE TYPE on Postgres, but `op.drop_table('datasources')` takes a bare
+    # table name with no metadata attached, so it drops the table and leaves the
+    # type. `alembic downgrade base` then succeeded while leaving `dbtype`
+    # behind, and the next `alembic upgrade head` died on
+    #
+    #     type "dbtype" already exists
+    #     [SQL: CREATE TYPE dbtype AS ENUM ('postgresql', 'mysql', 'sqlite')]
+    #
+    # i.e. a rollback to base made the database un-redeployable. Measured on a
+    # real Postgres probe, not reasoned about.
+    #
+    # Invisible on SQLite, where sa.Enum renders as VARCHAR and there is no type
+    # to leak — the same blind spot that let the missing `powerbi` label ship for
+    # months (see c6d7e8f9a0b1). Which is why the round-trip is exercised against
+    # a real Postgres in scripts/deploy_smoke.sh, and only the dialect-agnostic
+    # half in the unit suite.
+    #
+    # `Enum.drop`, not `op.execute('DROP TYPE IF EXISTS dbtype')`: it carries the
+    # dialect check (a no-op where the dialect has no native enum) and the
+    # IF EXISTS (`checkfirst`) itself, so neither has to be hand-written and
+    # neither can be hand-written wrong. The name here must keep matching the
+    # `sa.Enum` in upgrade() — test_migrations_roundtrip pins that for every
+    # migration, not just this one.
+    sa.Enum('postgresql', 'mysql', 'sqlite', name='dbtype').drop(op.get_bind(), checkfirst=True)
