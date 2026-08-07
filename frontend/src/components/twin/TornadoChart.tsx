@@ -67,8 +67,8 @@ export function TornadoChart({ rows, pct }: { rows: SensitivityRow[]; pct: numbe
           const onMove = (e: React.MouseEvent) =>
             move(e, (
               <span>
-                <b>{r.name}</b> · <span style={{ color: theme.ACCENT }} className="font-mono">+{fmt(r.up)}</span>{' '}
-                <span style={{ color: DANGER }} className="font-mono">{fmt(r.down)}</span>
+                <b>{r.name}</b> · <span className="font-mono text-accent">+{fmt(r.up)}</span>{' '}
+                <span className="font-mono text-danger">{fmt(r.down)}</span>
               </span>
             ))
           return (

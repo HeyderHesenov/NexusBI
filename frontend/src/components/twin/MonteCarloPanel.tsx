@@ -204,7 +204,12 @@ function Distribution({ result, baseline }: { result: MonteCarloResult; baseline
           m.v >= lo && m.v <= hi ? (
             <g key={m.label}>
               <line x1={x(m.v)} y1={PAD_T - 8} x2={x(m.v)} y2={yBase} stroke={m.color} strokeWidth={1.5} strokeDasharray={m.dash} />
-              <text x={x(m.v)} y={PAD_T - 11} fontSize={10} textAnchor="middle" fill={m.color} className="font-mono">{m.label}</text>
+              {/* The rule carries the color; the label does not. Measured as text
+                  in light mode these all fail AA — P50/accent 3.21, P10-P90/dusty
+                  blue 2.69, baseline/axis 3.39 — and the rule sits directly under
+                  each label, so nothing is lost by inking it. Same precedent as
+                  the `unknown` health chip (ecbeb03). */}
+              <text x={x(m.v)} y={PAD_T - 11} fontSize={10} textAnchor="middle" fill={theme.INK_SOFT} className="font-mono">{m.label}</text>
             </g>
           ) : null,
         )}

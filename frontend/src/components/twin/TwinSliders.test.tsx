@@ -30,6 +30,22 @@ describe('TwinSliders', () => {
     expect(row.textContent).not.toContain('→')
   })
 
+  it('colors the adjusted readout from the theme tokens, not the chart hex', () => {
+    // The negative arm used to be `style={{ color: DANGER }}` — the chart hex
+    // #D87C6B, which measures 2.72:1 as text on this card's surface-2 and so
+    // failed AA in light mode. Both arms now carry a token class, and the pair
+    // is asserted together: a fix that only moved one arm would leave the two
+    // directions rendering on different color systems.
+    const leaves = [measuredLeaf('s', 100, 'Satış'), measuredLeaf('t', 100, 'Təxmin')]
+    const { container } = render(
+      <TwinSliders leaves={leaves} adjustments={{ s: 10, t: -10 }} onChange={vi.fn()} onClear={vi.fn()} />,
+    )
+    expect(container.querySelector('.text-accent')).not.toBeNull()
+    expect(container.querySelector('.text-danger')).not.toBeNull()
+    // No inline color survives on the readout — that is the shape being banned.
+    expect(container.querySelector('[style*="color"]')).toBeNull()
+  })
+
   it('labels each lever with where its number came from', () => {
     const leaves = [measuredLeaf('s', 100, 'Satış'), leaf('t', 5, 'Təxmin')]
     const { container } = render(

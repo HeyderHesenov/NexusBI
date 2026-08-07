@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { Check, TrendingDown, TrendingUp } from 'lucide-react'
 import { formatMetricValue as fmt, formatSignedPct } from '../../lib/format'
 import { useCountUp } from '../../hooks/useCountUp'
-import { DANGER } from '../charts/theme'
 import { Sparkline } from '../charts/Sparkline'
 
 interface Props {
@@ -38,7 +37,7 @@ export function TwinKpiHero({ baseline, simulated, deltaPct, points, active, unc
           <div className="flex items-center gap-3 pb-1">
             <span
               className="flex items-center gap-1 text-sm font-semibold tabular-nums"
-              style={up ? { color: 'rgb(var(--accent))' } : { color: DANGER }}
+              style={up ? { color: 'rgb(var(--accent))' } : { color: 'rgb(var(--danger))' }}
             >
               {up ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
               {formatSignedPct(deltaPct!)}
@@ -64,7 +63,7 @@ export function TwinKpiHero({ baseline, simulated, deltaPct, points, active, unc
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
               pacing.hit ? 'bg-accent text-bg' : pacing.onTrack ? 'bg-accent-soft text-accent' : 'bg-surface'
             }`}
-            style={!pacing.hit && !pacing.onTrack ? { color: DANGER } : undefined}
+            style={!pacing.hit && !pacing.onTrack ? { color: 'rgb(var(--danger))' } : undefined}
           >
             {pacing.hit && <Check size={11} />}
             {pacing.hit ? t('twinPage.pacing.hit') : pacing.onTrack ? t('kpi.onTrack') : t('kpi.behind')}

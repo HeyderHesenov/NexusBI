@@ -48,10 +48,16 @@ export function ConfirmDialog({
           >
             {t('confirmDialog.cancel')}
           </button>
+          {/* `text-bg`, not `text-white`. White reads 5.58:1 on the light
+              --danger but only 2.99:1 on the lighter dark-mode one, so this
+              button failed AA in dark mode while passing in light. --bg follows
+              the theme and clears 4.5:1 both ways (light 5.29, dark 6.04) —
+              measured, not assumed. This is the app's only solid `bg-danger`
+              surface; every other danger fill is /10–/15 under text-danger. */}
           <button
             onClick={confirm}
             disabled={busy}
-            className="rounded-xl bg-danger px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 active:translate-y-px disabled:opacity-60"
+            className="rounded-xl bg-danger px-4 py-2 text-sm font-semibold text-bg transition hover:opacity-90 active:translate-y-px disabled:opacity-60"
           >
             {busy ? '…' : confirmLabel ?? t('confirmDialog.delete')}
           </button>

@@ -34,7 +34,13 @@ export function PorterForces({ content }: { content: BAContent }) {
                     />
                   ))}
                 </span>
-                <span className="text-xs font-medium" style={{ color: meta.color }}>
+                {/* Ink, not meta.color: as text in light mode every level fails
+                    AA — high/danger 2.72, medium/tan 2.13, low/emerald 3.07 —
+                    and swapping only `high` for the token would leave the other
+                    two failing. The three segments to the left already carry the
+                    color, so this follows the house rule (ecbeb03): the shape
+                    keeps the hue, the label keeps the contrast. */}
+                <span className="text-xs font-medium text-ink-soft">
                   {t(`baStudio.level_${f.level}`)}
                 </span>
               </span>

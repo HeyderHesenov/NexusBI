@@ -10,7 +10,6 @@ import { TornadoChart } from '../components/twin/TornadoChart'
 import { TwinKpiHero } from '../components/twin/TwinKpiHero'
 import { TwinSliders } from '../components/twin/TwinSliders'
 import { WaterfallChart } from '../components/twin/WaterfallChart'
-import { DANGER } from '../components/charts/theme'
 import { Field, FIELD, Select } from '../components/ui/form'
 import { ModalShell } from '../components/ui/ModalShell'
 import { formatMetricValue as fmt } from '../lib/format'
@@ -205,7 +204,7 @@ export function TwinPage() {
                         <span key={d.id} className="text-ink">
                           {i > 0 ? ', ' : ''}
                           {d.name}{' '}
-                          <span style={d.pct >= 0 ? undefined : { color: DANGER }} className={d.pct >= 0 ? 'text-accent' : ''}>
+                          <span className={d.pct >= 0 ? 'text-accent' : 'text-danger'}>
                             ({d.pct > 0 ? '+' : ''}{d.pct}%)
                           </span>
                         </span>
