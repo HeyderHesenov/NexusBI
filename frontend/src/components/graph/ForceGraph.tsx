@@ -446,6 +446,10 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               markerEnd={active ? 'url(#graph-arrow-active)' : 'url(#graph-arrow)'}
               pointerEvents="none"
             />
+            {/* Ink, not ACCENT. The halo makes SURFACE the effective background,
+                where #0E9F6E measures 3.07:1 at 10px. The edge under this label
+                is already accent-stroked, thicker, and carries the active arrow
+                marker, so "active" still reads without the label's color. */}
             {active && (
               <text
                 x={g.cxp}
@@ -453,7 +457,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fontSize={10}
-                fill={theme.ACCENT}
+                fill={theme.INK_SOFT}
                 stroke={theme.SURFACE}
                 strokeWidth={3}
                 paintOrder="stroke"
@@ -586,12 +590,17 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               stroke={theme.GRID}
               strokeWidth={tipScale}
             />
+            {/* Ink, matching the node-name text below it. GRAPH_TYPE_COLORS are
+                built to carry a dark glyph at >=3:1 — a graphics target — and as
+                9px text on the SURFACE-filled tooltip they measure 2.09 (metric)
+                to 3.07 (ds). The colored node itself sits directly under this
+                tooltip, so the type is still cued by hue. */}
             <text
               x={0}
               y={-h + 15 * tipScale}
               textAnchor="middle"
               fontSize={9 * tipScale}
-              fill={GRAPH_TYPE_COLORS[hoveredNode.type] ?? theme.ACCENT}
+              fill={theme.INK_SOFT}
               fontWeight={600}
               letterSpacing={0.4 * tipScale}
             >

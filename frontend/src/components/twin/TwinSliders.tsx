@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { RotateCcw } from 'lucide-react'
 import { formatMetricValue as fmt } from '../../lib/format'
-import { DANGER } from '../charts/theme'
 import { MetricValue, ProvenanceChip } from './ProvenanceChip'
 import type { Adjustments } from '../../lib/metricTreeMath'
 import type { EvaluatedNode } from '../../types'
@@ -88,10 +87,8 @@ export function TwinSliders({ leaves, adjustments, onChange, onClear }: Props) {
             <div className="mt-1 flex items-baseline justify-between font-mono text-xs">
               <MetricValue value={leaf.value} format={fmt} className="text-ink-faint" />
               {pct !== 0 && adjusted !== null && (
-                <span style={up ? undefined : { color: DANGER }}>
-                  <span className={up ? 'text-accent' : ''}>
-                    → {fmt(adjusted)} ({up ? '+' : ''}{pct}%)
-                  </span>
+                <span className={up ? 'text-accent' : 'text-danger'}>
+                  → {fmt(adjusted)} ({up ? '+' : ''}{pct}%)
                 </span>
               )}
             </div>

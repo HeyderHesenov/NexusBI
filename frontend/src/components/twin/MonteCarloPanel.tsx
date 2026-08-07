@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Dices, RotateCcw } from 'lucide-react'
 import { formatMetricValue as fmt, formatSignedPct } from '../../lib/format'
 import { activeRanges, histogram, monteCarlo, type MonteCarloResult } from '../../lib/twinAnalysis'
-import { DANGER, useChartTheme } from '../charts/theme'
+import { useChartTheme } from '../charts/theme'
 import { ChartTip, niceTicks, useChartHover, useMounted } from './chartkit'
 import type { LeverRanges } from '../../lib/twinAnalysis'
 import type { EvaluatedNode } from '../../types'
@@ -122,8 +122,8 @@ function Stat({ label, value, baseline, emphasize }: { label: string; value: num
       <p className="text-xs uppercase tracking-wider text-ink-faint">{label}</p>
       <p className="mt-1 font-mono text-2xl font-bold text-ink tabular-nums">{fmt(value)}</p>
       {delta !== null && (
-        <p className="mt-0.5 font-mono text-xs" style={{ color: delta >= 0 ? undefined : DANGER }}>
-          <span className={delta >= 0 ? 'text-accent' : ''}>{formatSignedPct(delta)}</span>
+        <p className={`mt-0.5 font-mono text-xs ${delta >= 0 ? 'text-accent' : 'text-danger'}`}>
+          {formatSignedPct(delta)}
         </p>
       )}
     </div>
@@ -169,11 +169,19 @@ function Distribution({ result, baseline }: { result: MonteCarloResult; baseline
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bins])
 
+  // The baseline label anchors to the left of its rule while the percentiles
+  // stay centred on theirs. With symmetric lever ranges — the ordinary case —
+  // P50 lands within a pixel or two of the baseline, and these labels have no
+  // collision avoidance. Painting each its own color used to make that overlap
+  // readable as two things; once they all share the ink token (below) it would
+  // be one smear, so they are separated by anchor instead of by hue. Anchor and
+  // not a second row: PAD_T is 20 and the labels already sit at y=9, so a row
+  // above would be clipped out of the viewBox.
   const marks = [
-    { v: baseline, label: t('twinPage.baseline'), color: theme.AXIS, dash: '4 3' },
-    { v: result.p10, label: 'P10', color: theme.SERIES[2] },
-    { v: result.p50, label: 'P50', color: theme.ACCENT },
-    { v: result.p90, label: 'P90', color: theme.SERIES[2] },
+    { v: baseline, label: t('twinPage.baseline'), color: theme.AXIS, dash: '4 3', anchor: 'end' as const, dx: -4 },
+    { v: result.p10, label: 'P10', color: theme.SERIES[2], anchor: 'middle' as const, dx: 0 },
+    { v: result.p50, label: 'P50', color: theme.ACCENT, anchor: 'middle' as const, dx: 0 },
+    { v: result.p90, label: 'P90', color: theme.SERIES[2], anchor: 'middle' as const, dx: 0 },
   ]
   const ticks = niceTicks(lo, hi, 5)
 
@@ -204,7 +212,12 @@ function Distribution({ result, baseline }: { result: MonteCarloResult; baseline
           m.v >= lo && m.v <= hi ? (
             <g key={m.label}>
               <line x1={x(m.v)} y1={PAD_T - 8} x2={x(m.v)} y2={yBase} stroke={m.color} strokeWidth={1.5} strokeDasharray={m.dash} />
-              <text x={x(m.v)} y={PAD_T - 11} fontSize={10} textAnchor="middle" fill={m.color} className="font-mono">{m.label}</text>
+              {/* The rule carries the color; the label does not. Measured as text
+                  in light mode these all fail AA — P50/accent 3.21, P10-P90/dusty
+                  blue 2.69, baseline/axis 3.39 — and the rule sits directly under
+                  each label, so the hue is still on screen next to the word. Same
+                  precedent as the `unknown` health chip (ecbeb03). */}
+              <text x={x(m.v) + m.dx} y={PAD_T - 11} fontSize={10} textAnchor={m.anchor} fill={theme.INK_SOFT} className="font-mono">{m.label}</text>
             </g>
           ) : null,
         )}

@@ -3,7 +3,20 @@ import type { GraphHealthStatus, GraphNodeType } from '../../types'
 
 type Mode = 'light' | 'dark'
 
-// App-wide danger/negative color (same hex the rest of the UI uses inline).
+// Danger/negative for GRAPHICS ONLY — strokes, fills, backgrounds.
+//
+// Never as text: it measures 2.72–2.99:1 in light mode, and theme.contrast.test
+// fails the build if it lands behind a `style` color or an SVG text `fill`. Text
+// takes `rgb(var(--danger))` / the `text-danger` class.
+//
+// ⚠️ KNOWN DIVERGENCE, deliberate and currently unresolved: PR #29 darkened the
+// app tokens for AA but left these hexes alone, because SVG attributes and the
+// chart libraries cannot resolve CSS custom properties. So a chart now draws its
+// bar in #D87C6B while the label describing that bar renders --danger #AB4A37 —
+// two reds in one viewport (same for #0E9F6E vs --accent #0A6E4C). Association
+// there is positional, not color-coded, so nothing is misread; but closing the
+// gap means repainting every chart in the product, which is the same design
+// decision the axis-label ticket is waiting on. Decide both at once.
 export const DANGER = '#D87C6B'
 
 // Trust-overlay ring color per health severity. Extracted (not inline) so the

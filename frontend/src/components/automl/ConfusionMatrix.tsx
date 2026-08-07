@@ -18,7 +18,7 @@ function tint(hex: string, intensity: number): string | undefined {
  *  are where it confused two classes. */
 export function ConfusionMatrix({ cm }: { cm: NonNullable<MLDiagnostics['confusion']> }) {
   const { t } = useTranslation()
-  const { ACCENT, AXIS } = useChartTheme()
+  const { ACCENT } = useChartTheme()
   const { labels, matrix } = cm
   // Scale each cell against its own row's max so a rare class still reads.
   const rowMax = matrix.map((row) => Math.max(1, ...row))
@@ -72,7 +72,12 @@ export function ConfusionMatrix({ cm }: { cm: NonNullable<MLDiagnostics['confusi
                       style={{ backgroundColor: bg }}
                       title={`${labels[i]} → ${labels[j]}: ${count}`}
                     >
-                      <span style={count === 0 ? { color: AXIS } : undefined}>{count}</span>
+                      {/* A zero cell is a result, not decoration — "the model
+                          never confused these two" is the matrix's best news —
+                          so it dims to ink-soft (7.18:1) rather than to AXIS,
+                          which measures 3.57:1 on the untinted background a zero
+                          cell always has (tint() returns undefined at 0). */}
+                      <span className={count === 0 ? 'text-ink-soft' : undefined}>{count}</span>
                     </td>
                   )
                 })}

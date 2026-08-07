@@ -122,7 +122,7 @@ export function ScenarioCompare({ root, baseline, scenarios }: Props) {
                   {r.isBaseline ? (
                     <span className="text-ink-faint">—</span>
                   ) : (
-                    <span style={r.delta >= 0 ? { color: theme.ACCENT } : { color: DANGER }}>
+                    <span className={r.delta >= 0 ? 'text-accent' : 'text-danger'}>
                       {r.delta >= 0 ? '+' : ''}{fmt(r.delta)}
                       {r.deltaPct !== null && ` (${formatSignedPct(r.deltaPct)})`}
                     </span>
