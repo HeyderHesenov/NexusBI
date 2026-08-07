@@ -20,7 +20,7 @@ export default {
           press: token('--accent-press'),
           soft: token('--accent-soft'),
         },
-        danger: token('--danger'),
+        danger: { DEFAULT: token('--danger'), press: token('--danger-press') },
       },
       fontFamily: {
         display: ['"Source Serif 4"', 'Georgia', 'serif'],

@@ -26,10 +26,15 @@ describe('PorterForces', () => {
     const colored = [...container.querySelectorAll('[style*="background"]')]
     expect(colored.length).toBeGreaterThan(0)
 
-    // No level label carries an inline text color.
-    for (const label of screen.getAllByText(/^(low|medium|high|aşağı|orta|yüksək)/i)) {
-      expect(label.getAttribute('style')).toBeNull()
-    }
+    // Selected structurally, not by translated text. A regex over label spellings
+    // passed vacuously: the suite runs in `az`, and the fixture's own rationale
+    // "Orta giriş baryeri." matched `^orta`, so the query returned a <p> and the
+    // loop asserted that <p> had no inline style while checking none of the three
+    // labels. Under any other locale it would have checked nothing at all.
+    const labels = [...container.querySelectorAll('section > div > span > span:last-child')]
+    expect(labels.length).toBe(3)
+    expect(labels.map((l) => l.textContent)).not.toContain('')
+    for (const label of labels) expect(label.getAttribute('style')).toBeNull()
   })
 
   it('renders one section per force with its rationale', () => {

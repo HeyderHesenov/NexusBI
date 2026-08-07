@@ -36,10 +36,17 @@ export function PorterForces({ content }: { content: BAContent }) {
                 </span>
                 {/* Ink, not meta.color: as text in light mode every level fails
                     AA — high/danger 2.72, medium/tan 2.13, low/emerald 3.07 —
-                    and swapping only `high` for the token would leave the other
-                    two failing. The three segments to the left already carry the
-                    color, so this follows the house rule (ecbeb03): the shape
-                    keeps the hue, the label keeps the contrast. */}
+                    and swapping only `high` for a token would leave the other
+                    two failing.
+                    What carries the level is THIS TEXT, which names it outright.
+                    The meter is reinforcement only, and deliberately described
+                    that way rather than as the color's new home: measured in
+                    light mode a filled segment reads just 1.83–2.64:1 against an
+                    unfilled one (2.13–3.07 against the card), i.e. under the 3:1
+                    non-text floor, which is also why it is aria-hidden. Dark mode
+                    is fine at 3.95–5.04. Raising the meter means repainting the
+                    shared palette — the same decision the axis-label ticket
+                    holds — so it is left alone rather than half-fixed here. */}
                 <span className="text-xs font-medium text-ink-soft">
                   {t(`baStudio.level_${f.level}`)}
                 </span>

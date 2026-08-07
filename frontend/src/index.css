@@ -22,6 +22,11 @@
   --accent-press: 7 86 60;
   --accent-soft: 227 243 236;
   --danger: 171 74 55;
+  /* Pressed/hover fill for a solid danger button, mirroring --accent-press.
+     Exists because the alternative — `hover:opacity-90` — fades the label along
+     with the fill and drops the hovered button to 4.39:1, under AA, while the
+     resting state reads 5.29. Measured here: 7.24:1 against --bg. */
+  --danger-press: 140 58 42;
   --shadow: 60 50 40;
 }
 
@@ -39,6 +44,12 @@
   --accent-press: 14 159 110;
   --accent-soft: 20 45 38;
   --danger: 216 124 107;
+  /* Darker, like the light one — but only slightly. The dark --danger is the
+     LIGHT salmon carrying dark text, so darkening it lowers contrast instead of
+     raising it: the same proportional step --accent-press takes (x1.40 in
+     luminance) lands at 4.42:1 and fails. This is x1.28, measured 4.91:1, and
+     is still visibly darker than the resting fill. */
+  --danger-press: 198 108 92;
   --shadow: 0 0 0;
 }
 
@@ -328,6 +339,7 @@
     --accent-press: 7 86 60;
     --accent-soft: 227 243 236;
     --danger: 171 74 55;
+    --danger-press: 140 58 42;
     --shadow: 60 50 40;
   }
 

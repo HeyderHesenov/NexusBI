@@ -29,6 +29,18 @@ describe('ConfirmDialog', () => {
     expect(button.className).toContain('bg-danger')
   })
 
+  it('changes the fill on hover rather than the whole element opacity', () => {
+    // `hover:opacity-90` fades the label with the fill: the hovered pair measures
+    // 4.39:1 in light mode, so the button passed at rest and failed on hover.
+    // `--danger-press` darkens only the fill (7.24 light / 4.91 dark).
+    // `disabled:opacity-60` is intentionally still allowed — WCAG 1.4.3 exempts
+    // inactive controls — so this pins the hover state alone.
+    open()
+    const button = screen.getByRole('button', { name: 'Sil' })
+    expect(button.className).toContain('hover:bg-danger-press')
+    expect(button.className).not.toContain('hover:opacity')
+  })
+
   it('renders the message and a cancel affordance', () => {
     open()
     expect(screen.getByText('Bu əməliyyat geri qaytarıla bilməz.')).toBeTruthy()
