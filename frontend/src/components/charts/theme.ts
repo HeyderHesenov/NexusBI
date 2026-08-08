@@ -17,9 +17,11 @@ type Mode = 'light' | 'dark'
  *
  * WHY THEY ARE PER-MODE. Every colour below used to be shared by both themes,
  * and every one of them was tuned on the dark canvas: measured against the light
- * surfaces, 14 of the 20 fell under the 3:1 non-text floor of WCAG 1.4.11
- * (SERIES 4/6, GRAPH_TYPE_COLORS 7/9, HEALTH_COLOR 2/4, DANGER 1/1) while all 20
- * passed on dark.
+ * surfaces, 16 of the 20 fell under the 3:1 non-text floor of WCAG 1.4.11
+ * (SERIES 4/6, GRAPH_TYPE_COLORS 7/9, HEALTH_COLOR 4/4, DANGER 1/1) while all 20
+ * passed on dark. The health four are counted on the composite the ring actually
+ * paints at, per the note on HEALTH_LIGHT — at raw hex they read 2/4, which is
+ * the wrong floor for a mark that never paints at full opacity.
  *
  * A single shared palette can satisfy both canvases, but only inside
  * `0.162 ≤ relative luminance ≤ 0.268` — a window 0.106 wide. Six hues crammed
@@ -95,6 +97,13 @@ const ACCENT_DARK = '#10B981' // = --accent 16 185 129 · 4.63
  * Scored on the COMPOSITE, not the hex: the ring is drawn at `opacity 0.9`, so
  * the number that matters is what 90% of the colour over `--surface` comes to.
  * The light ratios below are that composite.
+ *
+ * `--surface` alone, and not the worst of the three surfaces the palette above
+ * is quoted against, because this ring is not free to land anywhere: it is only
+ * ever drawn on the graph canvas, which is `bg-surface` (ForceGraph) and exports
+ * on `theme.SURFACE`. The others still clear the floor there anyway — `unknown`,
+ * the tightest, holds 3.24 on `--surface-2` — so the narrower scope is a
+ * statement about where the mark lives, not a softer bar.
  */
 const HEALTH_LIGHT: Record<GraphHealthStatus, string> = {
   ok: ACCENT_LIGHT, // 5.11
