@@ -56,32 +56,59 @@ export const GLYPH = '#1B1A18'
 export const SERIES_COUNT = 6
 
 /**
- * Emerald-led categorical palette.
+ * Emerald-led categorical palette, spread by LIGHTNESS on purpose.
  *
- * The light set is spread across luminance 0.071–0.240 rather than packed at the
- * top of the legal range: the smallest gap between neighbours is 0.027, which is
- * what keeps the six readable as six in greyscale and under colour-blind
- * simulation. Packing them all just under the 3:1 ceiling would have passed the
- * same automated check and produced six colours nobody can tell apart.
+ * WHO THIS IS SPREAD FOR. Dichromacy does not dull hue, it deletes an axis:
+ * deuteranopia and protanopia remove red-green, tritanopia removes blue-yellow.
+ * What survives is lightness plus the one axis still standing — so two series
+ * that differ only along the missing axis merge completely, however far apart
+ * they look to everyone else.
  *
- * `[0]` is the `--accent` token exactly — see the note on ACCENT.
+ * These six hues sit close together on the surviving axis (four of them are
+ * green-through-blue), so in practice lightness was carrying almost all of it.
+ * Measured on the palette this replaced, every failing pair had ΔL* under 5 and
+ * every passing pair had ΔL* over 12, in both modes. Hence: spread by lightness.
+ * That is a fact about THIS palette's hues, not a general law — a set built on
+ * opposite ends of blue-yellow could stay apart with less lightness range.
+ *
+ * That is why an earlier framing of this ticket — "separate the hues of the two
+ * pairs that collide" — was abandoned after measurement. Changing a hue cannot
+ * help a reader who has no hue.
+ *
+ * WHAT IS ASSERTED. `theme.test` scores all 15 pairs against a 10 ΔE floor in
+ * normal vision AND under all three dichromacies, plus every colour against
+ * every surface at 3:1. The dichromacy floor is the binding one: the palette
+ * this replaced measured 2.2 (dark) and 6.5 (light) there while passing
+ * everything else, which is exactly how it shipped unnoticed.
+ *
+ * The room is nearly exhausted, and that is worth knowing before adding a
+ * seventh colour: six colours needing ~10 ΔL* between each pair want ~50 L*
+ * units, and the 3:1 background floor leaves 50 in dark mode and 59 in light.
+ * A seventh series does not fit — it would have to repeat, or the floor would
+ * have to move.
+ *
+ * `[0]` is the `--accent` token exactly, in BOTH modes. It was only ever true
+ * of light: dark shipped #0E9F6E against an --accent of #10B981, so the comment
+ * that claimed it was half wrong. Freezing [0] to the token here is what makes
+ * the sentence true and closes the last chart/app colour divergence.
  */
+// Ratios are worst-of-three background contrast, as everywhere else in this file.
 const SERIES_LIGHT = [
-  '#0A6E4C', // emerald (accent)    5.69
-  '#318F67', // light emerald       3.63
-  '#476E9F', // dusty blue          4.77
-  '#5F4723', // tan                 7.90
-  '#8D68AD', // mauve               4.04
-  '#8B867C', // neutral             3.29
+  '#0A6E4C', // emerald (accent)    5.69  — frozen: this IS the --accent token
+  '#009562', // light emerald       3.48
+  '#50698D', // dusty blue          5.09
+  '#594529', // tan                 8.26
+  '#9776B3', // mauve               3.43
+  '#8F8A80', // neutral             3.12  — the tightest of the six
 ]
 
 const SERIES_DARK = [
-  '#0E9F6E', // emerald (accent)    4.40
-  '#5BC79A', // light emerald       7.14
-  '#7C9CC4', // dusty blue          5.25
-  '#C9A36B', // tan                 6.33
-  '#A88BC0', // mauve               5.04
-  '#8C877E', // neutral             4.17
+  '#10B981', // emerald (accent)    5.87  — frozen: this IS the --accent token
+  '#86D7B2', // light emerald       8.77
+  '#93B1D9', // dusty blue          6.75
+  '#BE985F', // tan                 5.56
+  '#977DAD', // mauve               4.15  — the tightest of the six
+  '#948F86', // neutral             4.65
 ]
 
 /**
