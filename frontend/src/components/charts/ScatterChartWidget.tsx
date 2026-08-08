@@ -11,7 +11,7 @@ import {
 import type { ChartConfig } from '../../types'
 import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
-import { tooltipStyleProps } from './axis'
+import { axisTickProps, tooltipStyleProps } from './axis'
 import { useChartTheme } from './theme'
 
 interface Props {
@@ -52,7 +52,7 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
           fontSize={12}
           tickLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
-          tick={{ fontSize: 12, fill: INK_SOFT }}
+          tick={axisTickProps(INK_SOFT)}
           label={
             xLabel
               ? { value: xLabel, position: 'insideBottom', offset: -12, fontSize: 11, fill: INK_SOFT }
@@ -68,7 +68,7 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => fmtVal(Number(v))}
-          tick={{ fontSize: 12, fill: INK_SOFT }}
+          tick={axisTickProps(INK_SOFT)}
           label={
             yLabel
               ? { value: yLabel, angle: -90, position: 'insideLeft', fontSize: 11, fill: INK_SOFT }

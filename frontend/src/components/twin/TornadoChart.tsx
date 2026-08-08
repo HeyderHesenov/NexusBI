@@ -55,7 +55,9 @@ export function TornadoChart({ rows, pct }: { rows: SensitivityRow[]; pct: numbe
           )
         })}
         {/* zero axis */}
-        <line x1={cx} y1={TOP} x2={cx} y2={TOP + rowsH} stroke={theme.AXIS} strokeWidth={1} opacity={0.6} />
+        {/* No opacity: compositing 0.6 of AXIS onto the canvas lands at 1.90–2.26,
+            under the 3:1 non-text floor this palette split is built around. */}
+        <line x1={cx} y1={TOP} x2={cx} y2={TOP + rowsH} stroke={theme.AXIS} strokeWidth={1} />
 
         {rows.map((r, i) => {
           const y = TOP + i * ROW + (ROW - BAR_H) / 2

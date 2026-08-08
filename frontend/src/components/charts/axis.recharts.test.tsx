@@ -15,6 +15,7 @@ import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { LineChart, XAxis, YAxis } from 'recharts'
 import { timeSeriesXAxisProps, valueYAxisProps } from './axis'
+import { chartTheme } from './theme'
 
 const RULE = '#AA0000'
 const INK = '#00BB00'
@@ -67,5 +68,53 @@ describe('recharts honours the explicit tick fill', () => {
     const line = container.querySelector('.recharts-cartesian-axis-line')
     expect(line).not.toBeNull()
     expect(line).toHaveAttribute('stroke', RULE)
+  })
+
+  it('does not let the injected fill reach a custom tick element', () => {
+    // The SECOND mechanism, and the one the tests above never touch. When
+    // `tick` is an element, recharts goes through
+    // `cloneElement(tick, { …axisProps, fill: stroke, … })` instead of merging
+    // a props object — and cloneElement lets the injected props win. The whole
+    // reason TruncatedTick reads the theme instead of accepting `fill` is that
+    // this injection would otherwise repaint it in the axis stroke.
+    //
+    // This path serves every long-label time axis (`longX`) and every Bar
+    // chart's category axis, so leaving it to reasoning would leave most of the
+    // product's tick labels unproven.
+    const { container } = render(
+      <LineChart width={400} height={300} data={DATA}>
+        <XAxis {...timeSeriesXAxisProps(COLORS, 'month', null, true)} />
+      </LineChart>,
+    )
+    const fills = tickFills(container)
+    expect(fills.length).toBeGreaterThan(0)
+    expect(fills).not.toContain(RULE)
+    // The element owns its color, so it is the THEME's ink here — not the
+    // `inkSoft` argument, which cannot reach this branch. See AxisColors.
+    for (const f of fills) expect(f).toBe(chartTheme('light').INK_SOFT)
+  })
+
+  it('paints the axis title with the fill the builder supplies', () => {
+    // Without an explicit fill recharts renders the title at a hardcoded
+    // #808080, which fails AA on five of six surface/mode combinations while
+    // never mentioning AXIS — invisible to a source scan looking for the token.
+    const { container } = render(
+      <LineChart width={400} height={300} data={DATA}>
+        <XAxis {...timeSeriesXAxisProps(COLORS, 'month', 'Month', false)} />
+      </LineChart>,
+    )
+    const title = container.querySelector('.recharts-label')
+    expect(title).not.toBeNull()
+    expect(title).toHaveAttribute('fill', INK)
+  })
+
+  it('would have painted the title #808080 had the fill been omitted', () => {
+    // The control for the assertion above.
+    const { container } = render(
+      <LineChart width={400} height={300} data={DATA}>
+        <XAxis dataKey="month" stroke={RULE} label={{ value: 'Month', position: 'insideBottom' }} />
+      </LineChart>,
+    )
+    expect(container.querySelector('.recharts-label')).toHaveAttribute('fill', '#808080')
   })
 })

@@ -1,26 +1,49 @@
 import { describe, expect, it } from 'vitest'
 import { chartTheme, DANGER, HEALTH_COLOR } from './theme'
+import { contrastRatio } from '../../lib/color'
 import type { GraphHealthStatus } from '../../types'
+// `?raw` resolves to the file only because vite.config.ts sets `test.css: true`
+// — with vitest's default the import silently yields an empty string, and every
+// ratio below would score against a token table that parsed to nothing. The
+// "reads the surfaces out of index.css" test is what makes that loud.
+import indexCss from '../../index.css?raw'
 
-/** WCAG 2.x relative luminance. */
-function luminance(hex: string): number {
-  const n = hex.replace('#', '')
-  const ch = [0, 2, 4].map((i) => parseInt(n.slice(i, i + 2), 16) / 255)
-  const lin = ch.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
-  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+/**
+ * The surfaces a chart can sit on, READ OUT of `index.css` rather than copied.
+ *
+ * A hand-copied table would defeat the point of the assertions below. They
+ * exist because the chart palette duplicates CSS tokens (charts cannot resolve
+ * custom properties) and duplicates drift; pinning them against a second
+ * hand-copy would only catch drift on the chart side, leaving `--surface-2`
+ * free to move while every ratio here stayed green against a stale value.
+ *
+ * `:root` is the light block and `.dark` the dark one; both declare the same
+ * names, so the later `.dark` value must not overwrite the earlier `:root` one
+ * — hence two scoped slices instead of one flat scan.
+ */
+function tokens(block: 'light' | 'dark'): Record<string, string> {
+  const start = indexCss.indexOf(block === 'light' ? ':root {' : '.dark {')
+  if (start === -1) throw new Error(`index.css has no ${block} token block`)
+  const slice = indexCss.slice(start, indexCss.indexOf('}', start))
+  const out: Record<string, string> = {}
+  for (const [, name, r, g, b] of slice.matchAll(
+    /(--[\w-]+):\s*(\d+)\s+(\d+)\s+(\d+)\s*;/g,
+  )) {
+    out[name] = `#${[r, g, b].map((n) => Number(n).toString(16).padStart(2, '0')).join('')}`
+  }
+  return out
 }
 
-/** WCAG 2.x contrast ratio, `(L1 + 0.05) / (L2 + 0.05)`. */
-function contrast(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
-  return (hi + 0.05) / (lo + 0.05)
-}
+const SURFACE_NAMES = ['--bg', '--surface', '--surface-2'] as const
 
-/** The surfaces a chart can sit on, straight from `index.css`. */
-const BACKGROUNDS = {
-  light: { '--bg': '#FAF9F5', '--surface': '#FFFFFF', '--surface-2': '#F5F4EE' },
-  dark: { '--bg': '#171615', '--surface': '#1F1E1D', '--surface-2': '#292725' },
-} as const
+function backgrounds(mode: 'light' | 'dark'): Array<[string, string]> {
+  const t = tokens(mode)
+  return SURFACE_NAMES.map((n) => {
+    const hex = t[n]
+    if (!hex) throw new Error(`index.css ${mode} block is missing ${n}`)
+    return [n, hex] as [string, string]
+  })
+}
 
 describe('HEALTH_COLOR', () => {
   it('maps every health severity to a hex color', () => {
@@ -48,11 +71,22 @@ describe('HEALTH_COLOR', () => {
 describe('chart ink measures up to the rule it is used under', () => {
   const MODES = ['light', 'dark'] as const
 
+  it.each(MODES)('reads the %s surfaces out of index.css', (mode) => {
+    // Pinned on the parse, because a regex that quietly matches nothing would
+    // leave every ratio below iterating an empty list and passing vacuously.
+    const bgs = backgrounds(mode)
+    expect(bgs).toHaveLength(3)
+    for (const [, hex] of bgs) expect(hex).toMatch(/^#[0-9a-f]{6}$/)
+    // The two blocks must not resolve to the same colors, or the scan collapsed
+    // onto one of them and half these assertions are measuring the wrong mode.
+    expect(bgs.map(([, h]) => h)).not.toEqual(backgrounds(mode === 'light' ? 'dark' : 'light').map(([, h]) => h))
+  })
+
   it.each(MODES)('INK_SOFT clears AA for text in %s mode', (mode) => {
     const { INK_SOFT } = chartTheme(mode)
-    for (const [name, bg] of Object.entries(BACKGROUNDS[mode])) {
+    for (const [name, bg] of backgrounds(mode)) {
       // Measured when written: light 6.52–7.18, dark 5.94–7.21.
-      expect(contrast(INK_SOFT, bg), `INK_SOFT on ${name} (${mode})`).toBeGreaterThanOrEqual(4.5)
+      expect(contrastRatio(INK_SOFT, bg), `INK_SOFT on ${name} (${mode})`).toBeGreaterThanOrEqual(4.5)
     }
   })
 
@@ -61,19 +95,26 @@ describe('chart ink measures up to the rule it is used under', () => {
     // stay above the graphics floor — but it is NOT text-safe, which is the
     // whole reason tick labels were moved off it. Measured when written:
     // light 3.24–3.57, dark 3.31–4.02 — over 3, under 4.5, in both modes.
+    //
+    // ⚠️ This measures the token at full opacity. Two sites used to paint it at
+    // 0.5/0.6, which composites to 1.69–2.26 — under the floor while this test
+    // stayed green. The opacity was removed rather than the claim softened; if
+    // a future site adds it back, this assertion will NOT catch it.
     const { AXIS } = chartTheme(mode)
-    for (const [name, bg] of Object.entries(BACKGROUNDS[mode])) {
-      expect(contrast(AXIS, bg), `AXIS on ${name} (${mode})`).toBeGreaterThanOrEqual(3)
+    for (const [name, bg] of backgrounds(mode)) {
+      expect(contrastRatio(AXIS, bg), `AXIS on ${name} (${mode})`).toBeGreaterThanOrEqual(3)
     }
   })
 
-  it('measures a known pair correctly', () => {
-    // The scoring function is the thing every assertion above trusts, so it is
-    // pinned against hand-computed values rather than assumed.
-    expect(contrast('#FFFFFF', '#000000')).toBeCloseTo(21, 5)
-    expect(contrast('#000000', '#FFFFFF')).toBeCloseTo(21, 5)
-    expect(contrast('#777777', '#777777')).toBeCloseTo(1, 5)
-    expect(contrast('#5B5750', '#FFFFFF')).toBeCloseTo(7.18, 1)
-    expect(contrast('#8C877E', '#FFFFFF')).toBeCloseTo(3.57, 1)
+  it('keeps AXIS below the text threshold it was moved off', () => {
+    // The other half of the split. Without this, someone could darken AXIS to
+    // 5:1, leave every label on INK_SOFT, and the two tokens would silently
+    // become interchangeable — at which point the whole distinction is dead
+    // code and the next person reintroduces `fill={AXIS}` reasonably.
+    for (const mode of MODES) {
+      const { AXIS } = chartTheme(mode)
+      const worst = Math.min(...backgrounds(mode).map(([, bg]) => contrastRatio(AXIS, bg)))
+      expect(worst, `AXIS in ${mode} now clears AA — collapse the two tokens or re-scope`).toBeLessThan(4.5)
+    }
   })
 })

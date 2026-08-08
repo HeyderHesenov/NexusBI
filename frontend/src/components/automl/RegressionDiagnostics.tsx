@@ -14,6 +14,7 @@ import {
   ZAxis,
 } from 'recharts'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
+import { axisTickProps } from '../charts/axis'
 import { useChartTheme } from '../charts/theme'
 import type { MLDiagnostics } from '../../types'
 
@@ -79,7 +80,7 @@ export function RegressionDiagnostics({ avp }: { avp: AVP }) {
               fontSize={11}
               tickLine={false}
               tickFormatter={tick}
-              tick={{ fontSize: 11, fill: INK_SOFT }}
+              tick={axisTickProps(INK_SOFT, 11)}
               label={{ value: t('automl.avpActual'), position: 'insideBottom', offset: -12, fontSize: 11, fill: INK_SOFT }}
             />
             <YAxis
@@ -92,7 +93,7 @@ export function RegressionDiagnostics({ avp }: { avp: AVP }) {
               tickLine={false}
               axisLine={false}
               tickFormatter={tick}
-              tick={{ fontSize: 11, fill: INK_SOFT }}
+              tick={axisTickProps(INK_SOFT, 11)}
               label={{ value: t('automl.avpPredicted'), angle: -90, position: 'insideLeft', fontSize: 11, fill: INK_SOFT }}
             />
             <ZAxis range={[36, 36]} />
@@ -131,7 +132,7 @@ export function RegressionDiagnostics({ avp }: { avp: AVP }) {
               fontSize={11}
               tickLine={false}
               tickFormatter={tick}
-              tick={{ fontSize: 11, fill: INK_SOFT }}
+              tick={axisTickProps(INK_SOFT, 11)}
               label={{ value: t('automl.residualAxis'), position: 'insideBottom', offset: -12, fontSize: 11, fill: INK_SOFT }}
             />
             <YAxis
@@ -140,7 +141,7 @@ export function RegressionDiagnostics({ avp }: { avp: AVP }) {
               tickLine={false}
               axisLine={false}
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: INK_SOFT }}
+              tick={axisTickProps(INK_SOFT, 11)}
             />
             <ReferenceLine x={0} stroke={AXIS} strokeDasharray="4 4" />
             <Tooltip

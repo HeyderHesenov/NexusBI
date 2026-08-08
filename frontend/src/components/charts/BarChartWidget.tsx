@@ -14,7 +14,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChartConfig } from '../../types'
 import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
-import { TruncatedTick, tooltipStyleProps } from './axis'
+import { TruncatedTick, axisTickProps, tooltipStyleProps } from './axis'
 import { ScrollZoom } from './ScrollZoom'
 import { targetLineProps } from './targetLine'
 import { useChartTheme } from './theme'
@@ -109,7 +109,7 @@ export function BarChartWidget({
           fontSize={12}
           tickLine={false}
           tickFormatter={fmt}
-          tick={{ fontSize: 12, fill: INK_SOFT }}
+          tick={axisTickProps(INK_SOFT)}
           label={
             config.y_label
               ? {

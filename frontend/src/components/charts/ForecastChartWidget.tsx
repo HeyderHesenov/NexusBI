@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { ForecastResult } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
-import { tooltipStyleProps } from './axis'
+import { axisTickProps, tooltipStyleProps } from './axis'
 import { useChartTheme } from './theme'
 
 interface Props {
@@ -54,7 +54,7 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
           stroke={AXIS}
           fontSize={12}
           tickLine={false}
-          tick={{ fontSize: 12, fill: INK_SOFT }}
+          tick={axisTickProps(INK_SOFT)}
         />
         <YAxis
           stroke={AXIS}
@@ -62,7 +62,7 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
-          tick={{ fontSize: 12, fill: INK_SOFT }}
+          tick={axisTickProps(INK_SOFT)}
         />
         <Tooltip {...tooltipStyleProps(tooltipStyle, tooltipLabel, tooltipItem)} />
         <Legend wrapperStyle={{ fontSize: 12, color: 'rgb(var(--ink-soft))' }} />

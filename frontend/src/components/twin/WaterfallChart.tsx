@@ -63,7 +63,6 @@ export function WaterfallChart({ steps }: { steps: WaterfallStep[] }) {
             stroke={theme.AXIS}
             strokeWidth={1}
             strokeDasharray="3 3"
-            opacity={0.5}
           />
         ))}
 

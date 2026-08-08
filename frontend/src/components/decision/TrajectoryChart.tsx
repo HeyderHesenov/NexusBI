@@ -15,6 +15,7 @@ import type { DecisionTrajectory } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { useFormatDate } from '../../hooks/useFormatDate'
 import { trajectoryRows, type TrajectoryRow } from '../../lib/trajectory'
+import { axisTickProps } from '../charts/axis'
 import { useChartTheme } from '../charts/theme'
 
 interface Props {
@@ -53,7 +54,7 @@ export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
           stroke={AXIS}
           fontSize={11}
           tickLine={false}
-          tick={{ fontSize: 11, fill: INK_SOFT }}
+          tick={axisTickProps(INK_SOFT, 11)}
         />
         <YAxis
           stroke={AXIS}
@@ -61,7 +62,7 @@ export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
-          tick={{ fontSize: 11, fill: INK_SOFT }}
+          tick={axisTickProps(INK_SOFT, 11)}
         />
         <Tooltip
           contentStyle={tooltipStyle}
