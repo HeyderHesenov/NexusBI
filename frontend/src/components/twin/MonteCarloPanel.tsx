@@ -197,7 +197,7 @@ function Distribution({ result, baseline }: { result: MonteCarloResult; baseline
         </defs>
         {/* x ticks */}
         {ticks.map((tk) => (
-          <text key={tk} x={x(tk)} y={HH - 8} fontSize={10} textAnchor="middle" fill={theme.AXIS} className="font-mono">{fmt(tk)}</text>
+          <text key={tk} x={x(tk)} y={HH - 8} fontSize={10} textAnchor="middle" fill={theme.INK_SOFT} className="font-mono">{fmt(tk)}</text>
         ))}
         <line x1={PAD} y1={yBase} x2={HW - PAD} y2={yBase} stroke={theme.GRID} />
 

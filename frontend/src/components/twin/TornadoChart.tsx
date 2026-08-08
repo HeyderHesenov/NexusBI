@@ -48,14 +48,16 @@ export function TornadoChart({ rows, pct }: { rows: SensitivityRow[]; pct: numbe
           return (
             <g key={tk}>
               <line x1={x} y1={TOP} x2={x} y2={TOP + rowsH} stroke={theme.GRID} strokeDasharray="2 4" opacity={tk === 0 ? 0 : 1} />
-              <text x={x} y={H - 8} fontSize={10} textAnchor="middle" fill={theme.AXIS} className="font-mono">
+              <text x={x} y={H - 8} fontSize={10} textAnchor="middle" fill={theme.INK_SOFT} className="font-mono">
                 {fmt(tk)}
               </text>
             </g>
           )
         })}
         {/* zero axis */}
-        <line x1={cx} y1={TOP} x2={cx} y2={TOP + rowsH} stroke={theme.AXIS} strokeWidth={1} opacity={0.6} />
+        {/* No opacity: compositing 0.6 of AXIS onto the canvas lands at 1.90–2.26,
+            under the 3:1 non-text floor this palette split is built around. */}
+        <line x1={cx} y1={TOP} x2={cx} y2={TOP + rowsH} stroke={theme.AXIS} strokeWidth={1} />
 
         {rows.map((r, i) => {
           const y = TOP + i * ROW + (ROW - BAR_H) / 2
@@ -104,7 +106,7 @@ export function TornadoChart({ rows, pct }: { rows: SensitivityRow[]; pct: numbe
                   transition: `transform .5s cubic-bezier(.22,.61,.36,1) ${i * 45}ms`,
                 }}
               />
-              <text x={W - 2} y={y + BAR_H / 2 + 4} fontSize={11} textAnchor="end" fill={theme.AXIS} className="font-mono">
+              <text x={W - 2} y={y + BAR_H / 2 + 4} fontSize={11} textAnchor="end" fill={theme.INK_SOFT} className="font-mono">
                 ±{peak}
               </text>
             </g>

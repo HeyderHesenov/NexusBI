@@ -15,6 +15,7 @@ import type { DecisionTrajectory } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
 import { useFormatDate } from '../../hooks/useFormatDate'
 import { trajectoryRows, type TrajectoryRow } from '../../lib/trajectory'
+import { axisTickProps } from '../charts/axis'
 import { useChartTheme } from '../charts/theme'
 
 interface Props {
@@ -48,13 +49,20 @@ export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
-        <XAxis dataKey="label" stroke={AXIS} fontSize={11} tickLine={false} />
+        <XAxis
+          dataKey="label"
+          stroke={AXIS}
+          fontSize={11}
+          tickLine={false}
+          tick={axisTickProps(INK_SOFT, 11)}
+        />
         <YAxis
           stroke={AXIS}
           fontSize={11}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+          tick={axisTickProps(INK_SOFT, 11)}
         />
         <Tooltip
           contentStyle={tooltipStyle}

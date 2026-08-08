@@ -51,8 +51,8 @@ export function AreaChartWidget({ data, config, height = 320, targetValue }: Pro
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
-        <XAxis {...timeSeriesXAxisProps(AXIS, x, config.x_label, longX)} />
-        <YAxis {...valueYAxisProps(AXIS, fmtVal, config.y_label)} />
+        <XAxis {...timeSeriesXAxisProps({ axis: AXIS, inkSoft: INK_SOFT }, x, config.x_label, longX)} />
+        <YAxis {...valueYAxisProps({ axis: AXIS, inkSoft: INK_SOFT }, fmtVal, config.y_label)} />
         <Tooltip
           {...tooltipStyleProps(tooltipStyle, tooltipLabel, tooltipItem)}
           formatter={(value: number | string) => fmtVal(Number(value))}

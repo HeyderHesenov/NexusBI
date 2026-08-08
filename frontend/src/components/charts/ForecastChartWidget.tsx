@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { ForecastResult } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
-import { tooltipStyleProps } from './axis'
+import { axisTickProps, tooltipStyleProps } from './axis'
 import { useChartTheme } from './theme'
 
 interface Props {
@@ -24,7 +24,7 @@ interface Props {
 export function ForecastChartWidget({ result, height = 320 }: Props) {
   const { t } = useTranslation()
   const fmtNum = useFormatNumber()
-  const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
+  const { ACCENT, AXIS, GRID, INK_SOFT, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const { history, forecast, label_col, value_col } = result
 
   const hist = history.map((row) => ({
@@ -49,13 +49,20 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={combined} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
-        <XAxis dataKey="label" stroke={AXIS} fontSize={12} tickLine={false} />
+        <XAxis
+          dataKey="label"
+          stroke={AXIS}
+          fontSize={12}
+          tickLine={false}
+          tick={axisTickProps(INK_SOFT)}
+        />
         <YAxis
           stroke={AXIS}
           fontSize={12}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+          tick={axisTickProps(INK_SOFT)}
         />
         <Tooltip {...tooltipStyleProps(tooltipStyle, tooltipLabel, tooltipItem)} />
         <Legend wrapperStyle={{ fontSize: 12, color: 'rgb(var(--ink-soft))' }} />

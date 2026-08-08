@@ -14,7 +14,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChartConfig } from '../../types'
 import { useChartValueFormatter } from '../../hooks/useChartValueFormatter'
-import { TruncatedTick, tooltipStyleProps } from './axis'
+import { TruncatedTick, axisTickProps, tooltipStyleProps } from './axis'
 import { ScrollZoom } from './ScrollZoom'
 import { targetLineProps } from './targetLine'
 import { useChartTheme } from './theme'
@@ -109,9 +109,16 @@ export function BarChartWidget({
           fontSize={12}
           tickLine={false}
           tickFormatter={fmt}
+          tick={axisTickProps(INK_SOFT)}
           label={
             config.y_label
-              ? { value: config.y_label, position: 'insideBottom', offset: -10, fontSize: 11, fill: AXIS }
+              ? {
+                  value: config.y_label,
+                  position: 'insideBottom',
+                  offset: -10,
+                  fontSize: 11,
+                  fill: INK_SOFT,
+                }
               : undefined
           }
         />
@@ -149,7 +156,7 @@ export function BarChartWidget({
                 <Cell key={i} fill={anomalyLabels.has(String(row[x])) ? ANOMALY_FILL : ACCENT} />
               ))
             : null}
-          <LabelList dataKey={y} position="right" fontSize={11} fill={AXIS} formatter={fmt} />
+          <LabelList dataKey={y} position="right" fontSize={11} fill={INK_SOFT} formatter={fmt} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>

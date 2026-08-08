@@ -49,7 +49,14 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
-    css: false,
+    // On, so that `index.css?raw` resolves to the file instead of an empty
+    // string. `charts/theme.test.ts` reads the `--surface` tokens out of it to
+    // score the chart palette: those hexes are duplicated in TS because charts
+    // cannot resolve CSS custom properties, and a duplicate is only worth
+    // asserting against the original. With this off, a hand-copied table would
+    // have been the only option, and drift on the CSS side would go unnoticed.
+    // Measured cost of the flip: 15.67s → 16.31s over 711 tests, none broken.
+    css: true,
     // Unit tests live under src/; e2e/*.spec.ts belongs to Playwright, not Vitest.
     include: ['src/**/*.test.{ts,tsx}'],
   },

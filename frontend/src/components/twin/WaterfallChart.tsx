@@ -46,7 +46,7 @@ export function WaterfallChart({ steps }: { steps: WaterfallStep[] }) {
         {ticks.map((tk) => (
           <g key={tk}>
             <line x1={PAD_L} y1={y(tk)} x2={W - PAD_R} y2={y(tk)} stroke={theme.GRID} strokeDasharray="2 4" />
-            <text x={PAD_L - 8} y={y(tk) + 4} fontSize={11} textAnchor="end" fill={theme.AXIS} className="font-mono">
+            <text x={PAD_L - 8} y={y(tk) + 4} fontSize={11} textAnchor="end" fill={theme.INK_SOFT} className="font-mono">
               {fmt(tk)}
             </text>
           </g>
@@ -63,7 +63,6 @@ export function WaterfallChart({ steps }: { steps: WaterfallStep[] }) {
             stroke={theme.AXIS}
             strokeWidth={1}
             strokeDasharray="3 3"
-            opacity={0.5}
           />
         ))}
 
@@ -103,7 +102,7 @@ export function WaterfallChart({ steps }: { steps: WaterfallStep[] }) {
                   transition: `transform .55s cubic-bezier(.22,.61,.36,1) ${i * 55}ms`,
                 }}
               />
-              <text x={cx(i)} y={top - 6} fontSize={11} textAnchor="middle" fill={theme.AXIS} className="font-mono">
+              <text x={cx(i)} y={top - 6} fontSize={11} textAnchor="middle" fill={theme.INK_SOFT} className="font-mono">
                 {valLabel}
               </text>
               <text x={cx(i)} y={H - PAD_B + 16} fontSize={11} textAnchor="middle" fill="currentColor" className="text-ink-soft">
