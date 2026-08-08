@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { Check } from 'lucide-react'
 import { ModalShell } from '../ui/ModalShell'
-import { GLYPH, TYPE_ICON } from './ForceGraph'
-import { GRAPH_TYPE_COLORS } from '../charts/theme'
+import { TYPE_ICON } from './ForceGraph'
+import { GLYPH, useChartTheme } from '../charts/theme'
 import { useGraphStore } from '../../store/graphStore'
 import type { GraphNode, GraphNodeType } from '../../types'
 
@@ -24,6 +24,7 @@ interface Props {
  *  from 0" and "add assets to the active graph". */
 export function GraphAssetPickerModal({ open, mode, onClose }: Props) {
   const { t } = useTranslation()
+  const theme = useChartTheme()
   const data = useGraphStore((s) => s.data)
   const views = useGraphStore((s) => s.views)
   const activeViewId = useGraphStore((s) => s.activeViewId)
@@ -172,7 +173,7 @@ export function GraphAssetPickerModal({ open, mode, onClose }: Props) {
                       >
                         <span
                           className="grid h-4 w-4 shrink-0 place-items-center rounded-full"
-                          style={{ background: GRAPH_TYPE_COLORS[n.type] }}
+                          style={{ background: theme.GRAPH_TYPE_COLORS[n.type] }}
                         >
                           <Icon size={10} color={GLYPH} strokeWidth={2.4} />
                         </span>

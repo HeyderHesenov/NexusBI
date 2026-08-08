@@ -81,7 +81,14 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
           stackId="band"
           dataKey="bandSpan"
           stroke="none"
-          fill="rgb(var(--accent) / 0.16)"
+          fill={ACCENT}
+          // 0.096, not the 0.16 the old `rgb(var(--accent) / 0.16)` spelled,
+          // because recharts' Area defaults fillOpacity to 0.6 and MULTIPLIES it
+          // into the fill's own alpha (lib/cartesian/Area.js:405). The band
+          // shipped at 0.16 × 0.6; passing 0.16 here would have made it 1.67×
+          // more opaque than it has ever been — a colour-mechanism change that
+          // quietly restyled the chart.
+          fillOpacity={0.096}
           name={t('forecastChartWidget.confidenceInterval')}
           isAnimationActive={false}
         />

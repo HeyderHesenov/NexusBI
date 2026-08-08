@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { formatMetricValue as fmt, truncateLabel } from '../../lib/format'
 import type { SensitivityRow } from '../../lib/metricTreeMath'
-import { DANGER, useChartTheme } from '../charts/theme'
+import { useChartTheme } from '../charts/theme'
 import { ChartTip, niceTicks, useChartHover, useMounted } from './chartkit'
 
 const W = 600
@@ -38,7 +38,7 @@ export function TornadoChart({ rows, pct }: { rows: SensitivityRow[]; pct: numbe
           <span className="h-2.5 w-2.5 rounded-sm" style={{ background: theme.ACCENT }} /> +{pct}%
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: DANGER }} /> −{pct}%
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: theme.DANGER }} /> −{pct}%
         </span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={t('twinPage.tornado', { pct })} data-testid="tornado-chart">
@@ -85,7 +85,7 @@ export function TornadoChart({ rows, pct }: { rows: SensitivityRow[]; pct: numbe
                 width={Math.max(lW, left < 0 ? 1 : 0)}
                 height={BAR_H}
                 rx={3}
-                fill={DANGER}
+                fill={theme.DANGER}
                 style={{
                   transformBox: 'fill-box', transformOrigin: 'right center',
                   transform: mounted ? 'scaleX(1)' : 'scaleX(0)',

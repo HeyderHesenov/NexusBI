@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { formatMetricValue as fmt, truncateLabel } from '../../lib/format'
 import type { WaterfallStep } from '../../lib/metricTreeMath'
-import { DANGER, useChartTheme } from '../charts/theme'
+import { useChartTheme } from '../charts/theme'
 import { ChartTip, niceTicks, useChartHover, useMounted } from './chartkit'
 
 const H = 300
@@ -73,7 +73,7 @@ export function WaterfallChart({ steps }: { steps: WaterfallStep[] }) {
           const top = Math.min(y(from), y(s.to))
           const h = Math.max(Math.abs(y(s.to) - y(from)), 2)
           const delta = s.to - s.from
-          const fill = isEdge ? theme.SERIES[5] : delta >= 0 ? theme.ACCENT : DANGER
+          const fill = isEdge ? theme.SERIES[5] : delta >= 0 ? theme.ACCENT : theme.DANGER
           const x0 = cx(i) - bw / 2
           const valLabel = s.kind === 'delta' ? `${delta >= 0 ? '+' : ''}${fmt(delta)}` : fmt(s.to)
           return (

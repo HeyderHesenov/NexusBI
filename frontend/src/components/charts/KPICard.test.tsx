@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { KPITarget } from '../../api/scenario'
 import type { ChartConfig } from '../../types'
 import { KPICard } from './KPICard'
-import { DANGER } from './theme'
+import { chartTheme } from './theme'
 
 const cfg = (over: Partial<ChartConfig> = {}): ChartConfig => ({
   chart_type: 'kpi_card',
@@ -48,7 +48,7 @@ describe('KPICard', () => {
     ]
     const { container } = render(<KPICard data={downTrend} config={cfg()} />)
     const stroke = container.querySelector('svg.overflow-visible path')?.getAttribute('stroke')
-    expect(stroke).toBe(DANGER)
+    expect(stroke).toBe(chartTheme('light').DANGER)
   })
 
   it('single row shows the value only — no delta, no sparkline', () => {

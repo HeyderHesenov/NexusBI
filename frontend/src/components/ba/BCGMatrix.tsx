@@ -1,18 +1,19 @@
 import { useTranslation } from 'react-i18next'
 import { truncateLabel } from '../../lib/format'
-import { DANGER, SERIES, useChartTheme } from '../charts/theme'
+import { useChartTheme, type ChartTheme } from '../charts/theme'
 import type { BABcgItem, BAContent } from '../../types'
 
 const W = 640
 const H = 400
 const PAD = { top: 24, right: 24, bottom: 40, left: 48 }
 
-const QUAD_COLOR: Record<BABcgItem['quadrant'], string> = {
-  star: SERIES[0], // emerald
-  cash_cow: SERIES[3], // tan
-  question: SERIES[2], // dusty blue
-  dog: DANGER,
-}
+/** Per-mode palette, so this is a function of the theme rather than a constant. */
+const quadColor = (theme: ChartTheme): Record<BABcgItem['quadrant'], string> => ({
+  star: theme.SERIES[0], // emerald
+  cash_cow: theme.SERIES[3], // tan
+  question: theme.SERIES[2], // dusty blue
+  dog: theme.DANGER,
+})
 
 /** Hand-rolled BCG scatter (SVG): x = revenue share, y = H2-vs-H1 growth,
  * quadrant threshold lines, bubble radius ∝ share. No recharts — this page
@@ -20,6 +21,7 @@ const QUAD_COLOR: Record<BABcgItem['quadrant'], string> = {
 export function BCGMatrix({ content }: { content: BAContent }) {
   const { t } = useTranslation()
   const theme = useChartTheme()
+  const QUAD_COLOR = quadColor(theme)
   const items = content.items ?? []
   const thr = content.thresholds ?? { share_pct: 0, growth_pct: 0 }
   if (!items.length) return null

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Layers } from 'lucide-react'
 import { formatMetricValue as fmt, formatSignedPct, truncateLabel } from '../../lib/format'
 import { compareScenarios } from '../../lib/twinAnalysis'
-import { DANGER, useChartTheme } from '../charts/theme'
+import { useChartTheme } from '../charts/theme'
 import { ChartTip, niceTicks, useChartHover, useMounted } from './chartkit'
 import type { TwinScenario } from '../../store/twinStore'
 import type { EvaluatedNode } from '../../types'
@@ -76,7 +76,7 @@ export function ScenarioCompare({ root, baseline, scenarios }: Props) {
               const y = i * ROW + (ROW - BAR_H) / 2
               const x0 = Math.min(x(0), x(r.value))
               const w = Math.max(Math.abs(x(r.value) - x(0)), 2)
-              const fill = r.isBaseline ? theme.SERIES[5] : r.delta >= 0 ? theme.ACCENT : DANGER
+              const fill = r.isBaseline ? theme.SERIES[5] : r.delta >= 0 ? theme.ACCENT : theme.DANGER
               return (
                 <g
                   key={r.id}

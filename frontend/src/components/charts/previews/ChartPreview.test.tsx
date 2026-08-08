@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { ChartConfig, ChartType } from '../../../types'
 import { ChartPreview } from './ChartPreview'
-import { SERIES } from '../theme'
+import { chartTheme } from '../theme'
 
 const cfg = (chart_type: ChartType, over: Partial<ChartConfig> = {}): ChartConfig => ({
   chart_type,
@@ -49,7 +49,33 @@ describe('ChartPreview — pie', () => {
 
   it('colors the first slice from the shared SERIES palette', () => {
     const { container } = render(<ChartPreview data={cities(3)} config={cfg('pie')} />)
-    expect(container.querySelector('svg circle')?.getAttribute('stroke')).toBe(SERIES[0])
+    expect(container.querySelector('svg circle')?.getAttribute('stroke')).toBe(chartTheme('light').SERIES[0])
+  })
+
+  it('separates neighbouring slices without stealing their angle', () => {
+    // Adjacent series colours sit 1.05–1.49:1 apart, so the boundary between two
+    // slices has to be a gap rather than a colour change. The gap comes out of
+    // what each arc PAINTS; the angle it owns is untouched, or every slice after
+    // the first walks backwards and the ring ends short of where it started.
+    const { container } = render(<ChartPreview data={cities(3)} config={cfg('pie')} />)
+    const arcs = [...container.querySelectorAll('svg circle')]
+    const dash = (el: Element) => Number(el.getAttribute('stroke-dasharray')!.split(' ')[0])
+    const offset = (el: Element) => -Number(el.getAttribute('stroke-dashoffset'))
+    // Each arc is shorter than the span it occupies...
+    for (let i = 1; i < arcs.length; i++) {
+      expect(offset(arcs[i]) - offset(arcs[i - 1])).toBeGreaterThan(dash(arcs[i - 1]))
+    }
+    // ...and the spans still tile the whole circle: the last one ends where the
+    // circumference does, give or take the gap taken out of its paint.
+    const circumference = 2 * Math.PI * 42
+    expect(offset(arcs[2]) + dash(arcs[2])).toBeCloseTo(circumference - 2, 5)
+  })
+
+  it('keeps a lone 100% slice unbroken', () => {
+    // A gap on a single slice would notch what is visually one closed ring.
+    const { container } = render(<ChartPreview data={cities(1)} config={cfg('pie')} />)
+    const arc = container.querySelector('svg circle')!
+    expect(Number(arc.getAttribute('stroke-dasharray')!.split(' ')[0])).toBeCloseTo(2 * Math.PI * 42, 5)
   })
 
   it('folds the tail and never gives it a series color', () => {
@@ -57,19 +83,80 @@ describe('ChartPreview — pie', () => {
     // 9 rows, TOP_N=4 → 4 arcs + one folded
     const arcs = container.querySelectorAll('svg circle')
     expect(arcs).toHaveLength(5)
-    // Mirrors PieChartWidget.tsx:95.
-    expect(arcs[4].getAttribute('stroke')).toBe('rgb(var(--ink-faint))')
+    // Mirrors PieChartWidget. A hex, not `rgb(var(--ink-faint))`: a var() here
+    // vanishes from exported images, and the theme carries the same colour.
+    expect(arcs[4].getAttribute('stroke')).toBe(chartTheme('light').INK_FAINT)
     expect(screen.getByText('Digər (5)')).toBeInTheDocument()
   })
 
-  it('dash segments sum to the circumference', () => {
-    const { container } = render(<ChartPreview data={cities(4)} config={cfg('pie')} />)
+  it('keeps a dominant slice unbroken even when an empty row rides along', () => {
+    // The lone-100% case is about SPAN, not about slice count, and the two come
+    // apart: a zero-valued row survives sortSlices and foldOther, so this used to
+    // take the "more than one slice" path and notch the full ring — while the
+    // empty row painted a 0.5-unit tick for data that does not exist.
+    const { container } = render(
+      <ChartPreview
+        data={[
+          { city: 'Hamısı', revenue: 100 },
+          { city: 'Boş', revenue: 0 },
+        ]}
+        config={cfg('pie')}
+      />,
+    )
+    const dash = (el: Element) => Number(el.getAttribute('stroke-dasharray')!.split(' ')[0])
+    const arcs = [...container.querySelectorAll('svg circle')]
+    expect(dash(arcs[0])).toBeCloseTo(2 * Math.PI * 42, 5)
+    expect(dash(arcs[1])).toBe(0)
+  })
+
+  it('never paints a slice wider than the span it owns', () => {
+    // The 0.5 floor let a slice under 0.19% of the total run past its own span
+    // into its neighbour's start, erasing the separator exactly where two
+    // adjacent 1.10:1 colours need it most. Below a gap's width there is no room
+    // for both the mark and its boundary, and the boundary is what carries
+    // meaning — so the arc goes to zero rather than overrun.
+    const { container } = render(
+      <ChartPreview
+        data={[
+          { city: 'Böyük', revenue: 100000 },
+          { city: 'Orta', revenue: 5000 },
+          { city: 'Zərrə', revenue: 1 },
+        ]}
+        config={cfg('pie')}
+      />,
+    )
     const circ = 2 * Math.PI * 42
-    const drawn = Array.from(container.querySelectorAll('svg circle')).reduce(
+    const arcs = [...container.querySelectorAll('svg circle')]
+    const dash = (el: Element) => Number(el.getAttribute('stroke-dasharray')!.split(' ')[0])
+    const offset = (el: Element) => -Number(el.getAttribute('stroke-dashoffset'))
+    for (let i = 0; i < arcs.length; i++) {
+      const span = (i + 1 < arcs.length ? offset(arcs[i + 1]) : circ) - offset(arcs[i])
+      expect(dash(arcs[i]), `slice ${i} paints ${dash(arcs[i])} of a ${span} span`).toBeLessThanOrEqual(span)
+    }
+    // …and the one that could not fit a gap is drawn as nothing, not as a tick.
+    expect(dash(arcs[2])).toBe(0)
+  })
+
+  it('dash segments sum to the circumference, less one gap each', () => {
+    // Before the separator existed this summed to the bare circumference. It now
+    // sums to circumference − n×GAP, and that shortfall is the whole point: it
+    // is the ink each slice gives up so the next one starts somewhere visible.
+    // Written as an exact identity rather than a loosened tolerance, so a gap
+    // that silently changes size still fails.
+    //
+    // The identity holds while every slice is wider than a gap, which is what
+    // `cities(4)` guarantees. It is deliberately NOT the general law: a slice
+    // narrower than GAP gives up its whole paint rather than overrunning its
+    // neighbour, and the test above is the one that pins that case.
+    const { container } = render(<ChartPreview data={cities(4)} config={cfg('pie')} />)
+    const arcs = Array.from(container.querySelectorAll('svg circle'))
+    const circ = 2 * Math.PI * 42
+    const GAP = 2
+    const drawn = arcs.reduce(
       (sum, c) => sum + Number(c.getAttribute('stroke-dasharray')!.split(' ')[0]),
       0,
     )
-    expect(drawn).toBeCloseTo(circ, 5)
+    expect(drawn).toBeCloseTo(circ - arcs.length * GAP, 5)
   })
 
   it('shows percentages that read as data, not decoration', () => {

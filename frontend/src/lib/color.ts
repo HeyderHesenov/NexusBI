@@ -15,8 +15,16 @@ export function hexToTriplet(hex: string): string | null {
   return rgb ? rgb.join(' ') : null
 }
 
-/** Perceived (sRGB) relative luminance in [0,1]. Module-internal. */
-function relativeLuminance([r, g, b]: Rgb): number {
+/**
+ * Perceived (sRGB) relative luminance in [0,1].
+ *
+ * Exported because `charts/theme.test` needs the same curve to assert the light
+ * palette's luminance SPREAD — a property `contrastRatio` cannot express, since
+ * it collapses two luminances into one ratio. A second hand-rolled copy there
+ * meant one repo carrying two implementations of the sRGB transfer function, so
+ * a future WCAG-3 / APCA change would have to be found twice.
+ */
+export function relativeLuminance([r, g, b]: Rgb): number {
   const lin = (c: number) => {
     const s = c / 255
     return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4

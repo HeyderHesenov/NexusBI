@@ -17,10 +17,10 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
-import { ForceGraph, GLYPH, TYPE_ICON, type GraphHandle } from './ForceGraph'
+import { ForceGraph, TYPE_ICON, type GraphHandle } from './ForceGraph'
 import { GRAPH_MENU_TRIGGER } from './GraphViewSwitcher'
 import { ActionMenu, type ActionMenuItem, type ActionMenuSection } from '../ui/ActionMenu'
-import { GRAPH_TYPE_COLORS, HEALTH_COLOR } from '../charts/theme'
+import { GLYPH, GRAPH_TYPES, useChartTheme } from '../charts/theme'
 import { selectedNode, type ImpactDir } from '../../store/graphStore'
 import type { GraphData, GraphNodeType } from '../../types'
 
@@ -36,7 +36,7 @@ const NODE_ROUTE: Record<GraphNodeType, string> = {
   decision: '/decisions',
 }
 
-const LEGEND = Object.keys(GRAPH_TYPE_COLORS) as GraphNodeType[]
+const LEGEND = GRAPH_TYPES
 
 // One wheel tick zooms 9.6% (see ForceGraph); the buttons take a coarser 24%
 // step — deliberately larger than the wheel, but 20% gentler than the old 30%.
@@ -119,6 +119,7 @@ export function GraphCanvas({
   onNavigateAway,
 }: Props) {
   const { t } = useTranslation()
+  const theme = useChartTheme()
   const navigate = useNavigate()
   const graphRef = useRef<GraphHandle>(null)
   const [query, setQuery] = useState('')
@@ -367,7 +368,7 @@ export function GraphCanvas({
                 >
                   <span
                     className="grid h-4 w-4 place-items-center rounded-full"
-                    style={{ background: GRAPH_TYPE_COLORS[type] }}
+                    style={{ background: theme.GRAPH_TYPE_COLORS[type] }}
                   >
                     <Icon size={10} color={GLYPH} strokeWidth={2.4} />
                   </span>
@@ -387,7 +388,7 @@ export function GraphCanvas({
             <div className="flex items-center gap-2">
               <span
                 className="grid h-7 w-7 place-items-center rounded-full"
-                style={{ background: GRAPH_TYPE_COLORS[node.type] }}
+                style={{ background: theme.GRAPH_TYPE_COLORS[node.type] }}
               >
                 {(() => {
                   const Icon = TYPE_ICON[node.type]
@@ -403,7 +404,7 @@ export function GraphCanvas({
               <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-soft">
                 <span
                   className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: HEALTH_COLOR[node.status] }}
+                  style={{ background: theme.HEALTH_COLOR[node.status] }}
                 />
                 {t(`graphPage.health.${node.reason}`)}
               </p>

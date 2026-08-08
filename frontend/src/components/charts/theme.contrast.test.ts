@@ -1,25 +1,28 @@
 /**
  * A ratchet on the one rule that keeps `theme.ts` honest.
  *
- * The palette in `theme.ts` is stored as hex on purpose: SVG `stroke=`/`fill=`
- * and the chart libraries do not resolve CSS custom properties, so the graphics
- * cannot use the app's `--accent` / `--danger` tokens. The app's own tokens were
- * darkened for WCAG AA (PR #29); the chart hexes were not, and must not be —
- * they are graphics, judged against 3:1, not 4.5:1.
+ * The palette in `theme.ts` is stored as hex, and `theme.ts` gives the real
+ * reason: not that SVG cannot resolve custom properties — it can — but that
+ * `lib/chartExport.ts` serializes the live <svg> into a standalone document with
+ * no :root, where `var()` resolves to nothing at all. Hex survives export.
  *
- * The bug that follows from that split is using a chart hex as TEXT. Measured in
- * light mode against `--surface` / `--surface-2`:
+ * The bug that follows is using one of those hexes as TEXT: they are built to
+ * the 3:1 graphics floor, and a reader needs 4.5:1. Every site that had it was
+ * small text (`text-xs` / `text-sm` / SVG `fontSize` 9–12), so the large-text
+ * exemption never applied.
  *
- *   DANGER    #D87C6B   2.72 – 2.99   (also fails the 3:1 graphics floor)
- *   ACCENT    #0E9F6E   3.07 – 3.39
- *   SERIES[n] various   1.89 – 3.24
- *   AXIS      #8C877E   3.24 – 3.57
+ * ⚠️ THE RATIONALE HAS MOVED; THE RULE HAS NOT. This header used to say the app
+ * tokens were darkened for AA "and the chart hexes were not, and must not be".
+ * The per-mode split darkened them, and `theme.test.ts` now REQUIRES chart
+ * ACCENT and DANGER to BE the app tokens in both modes — light DANGER measures
+ * 5.06 where the table here used to quote 2.72. Anyone reconciling this ban
+ * against that sentence would have concluded the ban was obsolete.
  *
- * Every site that had this was small text (`text-xs` / `text-sm` / SVG
- * `fontSize` 9–12), so the large-text 3:1 exemption never applied. In dark mode
- * DANGER and ACCENT ARE the token values (`--danger` = 216 124 107 = #D87C6B,
- * `--accent` = 16 185 129 = #10B981), which is why moving text onto the tokens
- * changed light mode only.
+ * It is not, because the ban was never really about those two. What is left in
+ * the palette is still built to 3:1 and still fails a reader: SERIES[5] 3.29 on
+ * the worst light surface, AXIS 3.24, INK_FAINT the same bytes as AXIS, GLYPH
+ * near-black on a dark canvas. A colour is text-safe or not by the floor it was
+ * DESIGNED to, not by which constant it is stored in.
  *
  * The rule: hex for `stroke` / `fill` / `background`, tokens (or `INK_SOFT`) for
  * anything a person reads.
@@ -67,6 +70,7 @@
  *     values directly instead — a stronger check than any regex here.
  */
 import { describe, expect, it } from 'vitest'
+import { Area } from 'recharts'
 
 // Vite's own raw-import glob rather than node:fs. The frontend has no
 // @types/node — `tsc -b` rejects `import { readFileSync } from 'node:fs'` with
@@ -77,8 +81,20 @@ const SOURCES: Record<string, string> = import.meta.glob('../../**/*.{ts,tsx}', 
   eager: true,
 })
 
-/** Palette exports that must never end up as text. */
-const PALETTE = String.raw`DANGER|ACCENT|SERIES|HEALTH_COLOR|GRAPH_TYPE_COLORS|AXIS`
+/**
+ * Palette exports that must never end up as text.
+ *
+ * INK_FAINT is here because it is the SAME BYTES as AXIS in both modes
+ * (#8C877E light, #7C766E dark). Without it the ban is a ban on a name rather
+ * than on a colour: `<text fill={AXIS}>` fails the build while the pixel-for-
+ * pixel identical `<text fill={INK_FAINT}>` — 3.24–3.31 at worst, under AA for
+ * the 9–12px text these charts use — walks straight through. Its own docstring
+ * ("anything else deliberately quiet") is an open invitation to that call site.
+ *
+ * GLYPH for the mirror-image reason: it is near-black by design, so as text it
+ * is excellent on the light canvas and invisible on the dark one.
+ */
+const PALETTE = String.raw`DANGER|ACCENT|SERIES|HEALTH_COLOR|GRAPH_TYPE_COLORS|AXIS|INK_FAINT|GLYPH`
 
 /**
  * `style=` … `color:` … palette constant, with anything in between.
@@ -254,6 +270,29 @@ const axisTags = (src: string) => [...jsxTags(src, 'XAxis'), ...jsxTags(src, 'YA
 const STROKE_IS_AXIS = /\bstroke=\{[^}]*\b(?:theme\.)?AXIS\b/
 const HAS_TICK_PROP = /\btick=/
 
+/**
+ * A CSS variable reaching an SVG PAINT attribute, in the spellings this repo
+ * writes.
+ *
+ * 🔴 The first version was `=["{][^"}]*\bvar\(--`, whose `[^"}]*` could cross
+ * neither a quote nor a brace. Probed, it caught the one form PieChartWidget
+ * happened to use and missed five others that render identically:
+ * `fill={"rgb(var(--x))"}`, the ternary `fill={c ? "rgb(var(--a))" : b}`,
+ * `<stop stopColor="…">`, `style={{ fill: "…" }}` and the recharts prop-object
+ * `activeDot={{ fill: "…" }}`. A rule that knows one spelling of a defect
+ * reports the debt it can see, not the debt there is — the third time this file
+ * has learned that.
+ *
+ * `stopColor` is included because a gradient stop is a paint too, and it is the
+ * one spelling with no `fill`/`stroke` in it at all.
+ *
+ * `color` is deliberately EXCLUDED: `style={{ color: 'rgb(var(--danger))' }}` is
+ * the CORRECT way to write text here, and banning it would invert this file.
+ * Bounded on `[^,;}\n]` so a later property on the same line cannot be dragged
+ * in.
+ */
+const VAR_IN_PAINT = /\b(?:fill|stroke|stopColor)\s*[=:]\s*[{"']*[^,;}\n]*\bvar\(--/
+
 const scannable = () =>
   Object.entries(SOURCES).filter(([f, src]) => !/\.test\.tsx?$/.test(f) && importsTheme(f, src))
 
@@ -343,6 +382,31 @@ describe('chart palette constants are never used as text color', () => {
     ).toEqual([])
   })
 
+  it('never colours an SVG mark with a CSS variable', () => {
+    // These survive on screen and die on export. `lib/chartExport.ts` serializes
+    // the live <svg> into a standalone document; that document has no :root, so
+    // `var(--x)` is invalid at computed-value time and the attribute falls back
+    // to its initial value — `fill` to black, `stroke` to none. PieChartWidget
+    // shipped two of them, which is why an exported pie lost its slice
+    // separators and rendered the folded "other" wedge in black.
+    //
+    // The theme exposes the same colours as hex for exactly this reason; alpha
+    // goes on `fillOpacity` / `strokeOpacity`, which serialize fine.
+    const offenders: string[] = []
+    for (const [file, src] of scannable()) {
+      src.split('\n').forEach((line, i) => {
+        if (VAR_IN_PAINT.test(code(line))) {
+          offenders.push(`${file}:${i + 1} — ${line.trim().slice(0, 70)}`)
+        }
+      })
+    }
+    expect(
+      offenders,
+      'SVG marks take theme hexes. `rgb(var(--x))` disappears from exported ' +
+        'images — use theme.ACCENT + fillOpacity instead.',
+    ).toEqual([])
+  })
+
   it('gives every recharts axis title an explicit fill', () => {
     // The tick rule below covers the labels; the axis TITLE is a separate text
     // node with a separate default. recharts falls back to a hardcoded #808080
@@ -426,6 +490,18 @@ describe('chart palette constants are never used as text color', () => {
     expect(SVG_TEXT_FILL.test('<text fill="currentColor">')).toBe(false)
     // AXIS is no longer exempt from the SVG ban.
     expect(SVG_TEXT_FILL.test('<text fill={theme.AXIS}>')).toBe(true)
+    // ...nor is its byte-identical twin, which is the loophole the first version
+    // of PALETTE left open: same pixels, different name, and the name was what
+    // the rule actually checked.
+    expect(SVG_TEXT_FILL.test('<text fill={theme.INK_FAINT}>')).toBe(true)
+    expect(SVG_TEXT_FILL.test('<text fill={INK_FAINT}>')).toBe(true)
+    expect(CSS_USE.test('style={{ color: theme.INK_FAINT }}')).toBe(true)
+    // GLYPH is near-black by design — fine on the light canvas, gone on the dark.
+    expect(SVG_TEXT_FILL.test('<text fill={GLYPH}>')).toBe(true)
+    // The legitimate text colour must still pass, or the ban has eaten its own
+    // replacement: INK_SOFT is what every fixed site was moved onto.
+    expect(SVG_TEXT_FILL.test('<text fill={theme.INK_SOFT}>')).toBe(false)
+    expect(CSS_USE.test('style={{ color: theme.INK_SOFT }}')).toBe(false)
   })
 
   it('still finds an axis-colored fill in every spelling it can be written', () => {
@@ -453,6 +529,66 @@ describe('chart palette constants are never used as text color', () => {
     expect(FILL_IS_AXIS.test('<text fill={theme.AXIS_LIKE}>')).toBe(false)
     // `;` bounds the search so a later statement cannot be dragged in.
     expect(FILL_IS_AXIS.test('const fill = INK_SOFT; const other = AXIS')).toBe(false)
+  })
+
+  it('finds a CSS variable in a paint attribute in every spelling', () => {
+    // Each of these renders the same on screen and dies the same on export, so
+    // the rule has to see all of them. The first five were invisible to the
+    // original `[^"}]*` version — measured, not assumed.
+    for (const spelling of [
+      'fill="rgb(var(--surface))"', // the one PieChartWidget shipped
+      'fill={"rgb(var(--surface))"}',
+      'fill={c ? "rgb(var(--a))" : b}',
+      '<stop stopColor="rgb(var(--accent))" />',
+      'style={{ fill: "rgb(var(--x))" }}',
+      'activeDot={{ r: 4, fill: "rgb(var(--accent))" }}',
+      "stroke='rgb(var(--line))'",
+    ]) {
+      expect(VAR_IN_PAINT.test(spelling), spelling).toBe(true)
+    }
+
+    // ...and these must NOT match. The `color` one is load-bearing: it is the
+    // correct way to write text in this codebase, and a rule that banned it
+    // would contradict every other rule in this file.
+    for (const clean of [
+      'fill={ACCENT}',
+      'stroke="none"',
+      'strokeWidth={2}',
+      'fillOpacity={0.16}',
+      "style={{ color: 'rgb(var(--danger))' }}",
+      'className="bg-[rgb(var(--surface))]"',
+      "<div style={{ background: 'rgb(var(--accent))' }} />",
+    ]) {
+      expect(VAR_IN_PAINT.test(clean), clean).toBe(false)
+    }
+  })
+
+  it('still multiplies fillOpacity by the Area default the bands are tuned to', () => {
+    // The trap on the far side of the rule above. Moving a mark off
+    // `rgb(var(--x) / a)` means putting the alpha on `fillOpacity` — and for
+    // recharts' Area that is NOT the same number, because Area defaults
+    // fillOpacity to 0.6 and multiplies it into the fill's own alpha.
+    //
+    // Both confidence bands shipped as `rgb(var(--accent) / 0.16)` and `/ 0.14`,
+    // i.e. 0.096 and 0.084 on screen. Passing 0.16 and 0.14 to `fillOpacity`
+    // made them 1.67× more opaque — a restyle inside a commit that described
+    // itself as changing only the colour mechanism, and nothing failed.
+    //
+    // So the two literals encode a recharts default. Pinned here: an upgrade
+    // that drops or changes it makes both bands wrong, silently, in the one
+    // direction nobody re-measures.
+    const defaults = (Area as unknown as { defaultProps?: { fillOpacity?: number } }).defaultProps
+    expect(defaults?.fillOpacity, 'recharts Area no longer defaults fillOpacity to 0.6').toBe(0.6)
+
+    // ...and the call sites still carry the multiplied values, not the raw ones.
+    for (const [file, want] of [
+      ['ForecastChartWidget.tsx', 'fillOpacity={0.096}'],
+      ['TrajectoryChart.tsx', 'fillOpacity={0.084}'],
+    ] as const) {
+      const src = Object.entries(SOURCES).find(([f]) => f.endsWith(`/${file}`))?.[1]
+      expect(src, `${file} did not resolve in the source glob`).toBeTruthy()
+      expect(src, `${file} lost its multiplied band opacity`).toContain(want)
+    }
   })
 
   it('lets the rule be written down without failing on itself', () => {

@@ -1,4 +1,4 @@
-import { DANGER, useChartTheme } from './theme'
+import { useChartTheme } from './theme'
 
 interface Props {
   points: number[]
@@ -18,7 +18,7 @@ interface Props {
  *  Direction follows `trend` when given, else the series' net move (end vs start).
  *  Shared by KPI cards and the decision ROI cards. */
 export function Sparkline({ points, width = 120, height = 28, trend, responsive }: Props) {
-  const { ACCENT } = useChartTheme()
+  const { ACCENT, DANGER } = useChartTheme()
   if (points.length < 2) return null
   const min = Math.min(...points)
   const max = Math.max(...points)

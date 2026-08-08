@@ -103,8 +103,11 @@ export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
               stackId="cf" dataKey="bandBase" stroke="none" fill="transparent"
               legendType="none" name="cf-base" isAnimationActive={false}
             />
+            {/* 0.084 = the 0.14 this band shipped at, times recharts' default
+                Area fillOpacity of 0.6, which multiplies into the fill's own
+                alpha. See ForecastChartWidget — same trap, same band. */}
             <Area
-              stackId="cf" dataKey="bandSpan" stroke="none" fill="rgb(var(--accent) / 0.14)"
+              stackId="cf" dataKey="bandSpan" stroke="none" fill={ACCENT} fillOpacity={0.084}
               name={t('decisionsPage.counterfactualBand')} isAnimationActive={false}
             />
             <Line
