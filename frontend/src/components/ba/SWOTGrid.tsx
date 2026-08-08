@@ -1,26 +1,29 @@
 import { useTranslation } from 'react-i18next'
-import { SERIES, DANGER } from '../charts/theme'
+import { useChartTheme } from '../charts/theme'
 import { factMap, resolveEvidence, toItems } from '../../lib/baItems'
 import { ItemEvidence } from './EvidenceChips'
 import type { BAContent } from '../../types'
 
-const ACCENT = SERIES[0]
-
 /** Quadrant order is the canonical SWOT reading order: S | W / O | T. */
-const QUADS = [
-  { key: 'strengths', color: ACCENT },
-  { key: 'weaknesses', color: DANGER },
-  { key: 'opportunities', color: SERIES[2] }, // dusty blue
-  { key: 'threats', color: SERIES[3] }, // tan
-] as const
+const QUAD_KEYS = ['strengths', 'weaknesses', 'opportunities', 'threats'] as const
 
 export function SWOTGrid({ content }: { content: BAContent }) {
   const { t } = useTranslation()
+  const theme = useChartTheme()
+  // Read off the theme, not a module constant: the palette is per-mode now, and
+  // a constant would freeze whichever mode happened to load the module.
+  const quadColor: Record<(typeof QUAD_KEYS)[number], string> = {
+    strengths: theme.SERIES[0], // emerald (accent)
+    weaknesses: theme.DANGER,
+    opportunities: theme.SERIES[2], // dusty blue
+    threats: theme.SERIES[3], // tan
+  }
   // Legacy artifacts hold bare strings in these buckets — normalise, never index.
   const facts = factMap(content.facts)
   return (
     <div className="grid gap-3 sm:grid-cols-2" data-testid="swot-grid">
-      {QUADS.map(({ key, color }) => {
+      {QUAD_KEYS.map((key) => {
+        const color = quadColor[key]
         const items = toItems(content[key])
         return (
           <section key={key} className="rounded-2xl border border-line bg-surface-2 p-4">

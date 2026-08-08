@@ -65,8 +65,11 @@ describe('MonteCarloPanel', () => {
 
     // ...while the marker rules keep their palette colors — the point of the
     // split. Asserted together so "ink everything" cannot pass as the fix.
+    // Read off the theme for the same reason INK_SOFT is: the palette is
+    // per-mode now, and a literal here would pin one mode's pigment rather than
+    // the rule that the marker keeps its accent.
     const strokes = [...container.querySelectorAll('svg line')].map((l) => l.getAttribute('stroke'))
-    expect(strokes).toContain('#0E9F6E')
+    expect(strokes).toContain(chartTheme('light').ACCENT)
   })
 
   it('leaves no inline text color anywhere in the panel', () => {

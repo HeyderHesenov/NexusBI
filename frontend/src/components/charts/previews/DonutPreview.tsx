@@ -10,6 +10,16 @@ const LABELS = 3
 const R = 42
 const STROKE = 16
 const CIRC = 2 * Math.PI * R
+/**
+ * Gap between segments, in path units.
+ *
+ * The real donut separates its slices with `paddingAngle` plus a surface-colored
+ * stroke; this one drew them edge to edge, so two neighbours met with nothing
+ * between them. Adjacent series colours sit 1.05–1.49:1 apart — nowhere near the
+ * 3:1 that would let the boundary read as a boundary — so the gap is what makes
+ * one slice end and the next begin.
+ */
+const GAP = 2
 
 /** Mini donut + top-3 labels. Arc <path> math degenerates at 360° (a lone 100%
  *  slice becomes a zero-length arc), so slices are stroke-dash segments on one
@@ -17,14 +27,14 @@ const CIRC = 2 * Math.PI * R
  *  Assumes a positive value total — ChartPreview guards that. */
 export function DonutPreview({ data, config }: { data: Row[]; config: ChartConfig }) {
   const { t } = useTranslation()
-  const { SERIES } = useChartTheme()
+  const { SERIES, INK_FAINT } = useChartTheme()
   const slices = foldOther(data, config, TOP_N, (count) =>
     t('pieChartWidget.othersWithCount', { count }),
   )
   const total = slices.reduce((sum, s) => sum + Math.abs(s.value), 0)
 
   const color = (s: (typeof slices)[number], i: number) =>
-    s.isOther ? 'rgb(var(--ink-faint))' : SERIES[i % SERIES.length]
+    s.isOther ? INK_FAINT : SERIES[i % SERIES.length]
 
   // Always name the folded wedge when there is one — a grey arc nobody accounts
   // for reads as a rendering bug. It takes the last label slot: top-2 + "Digər (k)".
@@ -38,7 +48,10 @@ export function DonutPreview({ data, config }: { data: Row[]; config: ChartConfi
         {/* -90° so the first slice starts at 12 o'clock, like the real donut. */}
         <g transform="rotate(-90 50 50)">
           {slices.map((s, i) => {
-            const len = (Math.abs(s.value) / total) * CIRC
+            // A single 100% slice keeps the full circumference: subtracting a gap
+            // there would open a notch in what is visually one unbroken ring.
+            const raw = (Math.abs(s.value) / total) * CIRC
+            const len = slices.length > 1 ? Math.max(raw - GAP, 0.5) : raw
             const el = (
               <circle
                 key={i}
@@ -52,7 +65,11 @@ export function DonutPreview({ data, config }: { data: Row[]; config: ChartConfi
                 strokeDashoffset={-offset}
               />
             )
-            offset += len
+            // Advance by the TRUE arc, not the shortened one: the gap is taken
+            // out of what each segment paints, not out of the angle it owns.
+            // Accumulating `len` here would walk every slice after the first
+            // backwards by one gap and leave a wedge of blank ring at the end.
+            offset += raw
             return el
           })}
         </g>

@@ -2,10 +2,10 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChartConfig } from '../../types'
 import { pivotSeries, type SeriesPivot } from '../../lib/series'
-import { SERIES } from './theme'
+import { SERIES_COUNT } from './theme'
 
 /** Multi-series pivot for line/area widgets: active when config.color_by
- *  names a third column. Series cap = the fixed SERIES palette length so hues
+ *  names a third column. Series cap = the palette length so hues
  *  are never cycled; overflow folds into a localized "others" bucket. */
 export function useMultiSeries(
   data: Record<string, unknown>[],
@@ -18,7 +18,7 @@ export function useMultiSeries(
   return useMemo(
     () =>
       colorBy && colorBy !== x && colorBy !== y
-        ? pivotSeries(data, x, y, colorBy, SERIES.length, t('chart.others'))
+        ? pivotSeries(data, x, y, colorBy, SERIES_COUNT, t('chart.others'))
         : null,
     [data, x, y, colorBy, t],
   )

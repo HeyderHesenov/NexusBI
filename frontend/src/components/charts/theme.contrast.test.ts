@@ -343,6 +343,31 @@ describe('chart palette constants are never used as text color', () => {
     ).toEqual([])
   })
 
+  it('never colours an SVG mark with a CSS variable', () => {
+    // These survive on screen and die on export. `lib/chartExport.ts` serializes
+    // the live <svg> into a standalone document; that document has no :root, so
+    // `var(--x)` is invalid at computed-value time and the attribute falls back
+    // to its initial value — `fill` to black, `stroke` to none. PieChartWidget
+    // shipped two of them, which is why an exported pie lost its slice
+    // separators and rendered the folded "other" wedge in black.
+    //
+    // The theme exposes the same colours as hex for exactly this reason; alpha
+    // goes on `fillOpacity` / `strokeOpacity`, which serialize fine.
+    const offenders: string[] = []
+    for (const [file, src] of scannable()) {
+      src.split('\n').forEach((line, i) => {
+        if (/\b(?:fill|stroke)=["{][^"}]*\bvar\(--/.test(code(line))) {
+          offenders.push(`${file}:${i + 1} — ${line.trim().slice(0, 70)}`)
+        }
+      })
+    }
+    expect(
+      offenders,
+      'SVG marks take theme hexes. `rgb(var(--x))` disappears from exported ' +
+        'images — use theme.ACCENT + fillOpacity instead.',
+    ).toEqual([])
+  })
+
   it('gives every recharts axis title an explicit fill', () => {
     // The tick rule below covers the labels; the axis TITLE is a separate text
     // node with a separate default. recharts falls back to a hardcoded #808080

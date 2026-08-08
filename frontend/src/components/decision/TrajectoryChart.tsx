@@ -104,7 +104,7 @@ export function TrajectoryChart({ trajectory, baseline, height = 220 }: Props) {
               legendType="none" name="cf-base" isAnimationActive={false}
             />
             <Area
-              stackId="cf" dataKey="bandSpan" stroke="none" fill="rgb(var(--accent) / 0.14)"
+              stackId="cf" dataKey="bandSpan" stroke="none" fill={ACCENT} fillOpacity={0.14}
               name={t('decisionsPage.counterfactualBand')} isAnimationActive={false}
             />
             <Line

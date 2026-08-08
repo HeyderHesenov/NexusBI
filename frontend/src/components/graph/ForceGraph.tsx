@@ -25,7 +25,7 @@ import { downloadChartPng, downloadChartSvg } from '../../lib/chartExport'
 import { truncateLabel } from '../../lib/format'
 import { neighborSet, pathEdgeKey } from '../../store/graphStore'
 import type { GraphData, GraphNode, GraphNodeType } from '../../types'
-import { GRAPH_TYPE_COLORS, HEALTH_COLOR, useChartTheme } from '../charts/theme'
+import { GLYPH, useChartTheme } from '../charts/theme'
 import { LAYOUT_H, LAYOUT_W, useForceLayout, type LayoutPoint } from './useForceLayout'
 import { loadPins, mergePositions, miniToWorld, savePins } from './graphView'
 
@@ -92,8 +92,10 @@ const TYPE_RADIUS: Record<GraphNodeType, number> = {
 }
 const DEFAULT_RADIUS = 12
 
-// Dark glyph sits on every node color at ≥3:1 contrast on both themes.
-export const GLYPH = '#1B1A18'
+// Re-exported so the graph files that render it keep one import. It lives in
+// charts/theme because it constrains the node palette: every GRAPH_TYPE_COLORS
+// value must clear 3:1 against it, which is a palette rule, not a graph one.
+export { GLYPH }
 
 // Approx px per character at the tooltip's 11.5px label — used to size the
 // backing rect without a DOM text measurement (constant, deterministic).
@@ -477,7 +479,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
         const r = TYPE_RADIUS[n.type] ?? DEFAULT_RADIUS
         const isz = Math.round(r * 1.05)
         const Icon = TYPE_ICON[n.type] ?? Gauge
-        const color = GRAPH_TYPE_COLORS[n.type] ?? theme.ACCENT
+        const color = theme.GRAPH_TYPE_COLORS[n.type] ?? theme.ACCENT
         const isSelected = n.id === selectedId
         const isHovered = n.id === hoverId
         const emphasized = isSelected || (!!hoverSet && hoverSet.has(n.id))
@@ -530,7 +532,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               <circle
                 r={r + 3.5}
                 fill="none"
-                stroke={HEALTH_COLOR[n.status]}
+                stroke={theme.HEALTH_COLOR[n.status]}
                 strokeWidth={2.5}
                 opacity={dimmed ? 0.4 : 0.9}
                 style={{ pointerEvents: 'none' }}
@@ -644,7 +646,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
                 cx={p.x}
                 cy={p.y}
                 r={8}
-                fill={GRAPH_TYPE_COLORS[n.type] ?? theme.ACCENT}
+                fill={theme.GRAPH_TYPE_COLORS[n.type] ?? theme.ACCENT}
               />
             )
           })}

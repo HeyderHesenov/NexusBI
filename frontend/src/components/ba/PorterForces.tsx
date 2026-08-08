@@ -1,21 +1,27 @@
 import { useTranslation } from 'react-i18next'
-import { SERIES, DANGER } from '../charts/theme'
+import { useChartTheme, type ChartTheme } from '../charts/theme'
 import type { BAContent, BAPorterForce } from '../../types'
 
+/** How many of the three segments a level fills. Mode-independent. */
+const LEVEL_SEGMENTS: Record<BAPorterForce['level'], number> = { low: 1, medium: 2, high: 3 }
+
 // Force intensity is pressure AGAINST you: high = danger, medium = tan, low = emerald.
-const LEVEL_META: Record<BAPorterForce['level'], { color: string; segments: number }> = {
-  low: { color: SERIES[0], segments: 1 },
-  medium: { color: SERIES[3], segments: 2 },
-  high: { color: DANGER, segments: 3 },
+// Built from the theme rather than at module scope, because the palette is now
+// per-mode — a module constant would freeze whichever mode loaded first.
+function levelMeta(theme: ChartTheme, level: BAPorterForce['level']) {
+  const color = { low: theme.SERIES[0], medium: theme.SERIES[3], high: theme.DANGER }[level]
+  return { color, segments: LEVEL_SEGMENTS[level] }
 }
 
 export function PorterForces({ content }: { content: BAContent }) {
   const { t } = useTranslation()
+  const theme = useChartTheme()
   const forces = content.forces ?? []
   return (
     <div className="flex flex-col gap-3" data-testid="porter-forces">
       {forces.map((f) => {
-        const meta = LEVEL_META[f.level] ?? LEVEL_META.medium
+        // `?? 'medium'` keeps the old fallback for a level the backend invents.
+        const meta = levelMeta(theme, LEVEL_SEGMENTS[f.level] ? f.level : 'medium')
         return (
           <section key={f.key} className="rounded-2xl border border-line bg-surface-2 p-4">
             <div className="flex items-center justify-between gap-3">

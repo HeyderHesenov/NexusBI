@@ -81,7 +81,8 @@ export function ForecastChartWidget({ result, height = 320 }: Props) {
           stackId="band"
           dataKey="bandSpan"
           stroke="none"
-          fill="rgb(var(--accent) / 0.16)"
+          fill={ACCENT}
+          fillOpacity={0.16}
           name={t('forecastChartWidget.confidenceInterval')}
           isAnimationActive={false}
         />

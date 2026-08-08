@@ -26,7 +26,7 @@ export function PieChartWidget({
 }: Props) {
   const { t } = useTranslation()
   const fmtNum = useFormatNumber()
-  const { SERIES, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
+  const { SERIES, SURFACE, INK_FAINT, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const name = config.x_axis ?? Object.keys(data[0] ?? {})[0]
   const value = config.y_axis ?? Object.keys(data[0] ?? {})[1]
   const othersLabel = t('pieChartWidget.others')
@@ -81,7 +81,11 @@ export function PieChartWidget({
           innerRadius="42%"
           outerRadius="80%"
           paddingAngle={2}
-          stroke="rgb(var(--surface))"
+          // Hex, not `rgb(var(--surface))`: image export serializes this <svg>
+          // into a standalone document with no :root, so a var() separator is
+          // invalid at computed-value time and falls back to `stroke: none` —
+          // the exported pie loses the gaps between its slices.
+          stroke={SURFACE}
           strokeWidth={2}
           className={onPointClick ? 'cursor-pointer' : undefined}
           onClick={
@@ -97,7 +101,7 @@ export function PieChartWidget({
           {pieData.map((row, i) => (
             <Cell
               key={i}
-              fill={isOthers(row[name]) ? 'rgb(var(--ink-faint))' : SERIES[i % SERIES.length]}
+              fill={isOthers(row[name]) ? INK_FAINT : SERIES[i % SERIES.length]}
             />
           ))}
         </Pie>

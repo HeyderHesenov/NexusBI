@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { DANGER, useChartTheme } from '../charts/theme'
+import { useChartTheme } from '../charts/theme'
 import type { MLDiagnostics } from '../../types'
 
 /** Alpha-as-hex suffix (00–ff) so a cell's tint encodes its share of the row's
@@ -18,7 +18,7 @@ function tint(hex: string, intensity: number): string | undefined {
  *  are where it confused two classes. */
 export function ConfusionMatrix({ cm }: { cm: NonNullable<MLDiagnostics['confusion']> }) {
   const { t } = useTranslation()
-  const { ACCENT } = useChartTheme()
+  const { ACCENT, DANGER } = useChartTheme()
   const { labels, matrix } = cm
   // Scale each cell against its own row's max so a rare class still reads.
   const rowMax = matrix.map((row) => Math.max(1, ...row))
