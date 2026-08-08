@@ -171,8 +171,8 @@ export function ScenarioPanel({ data, valueCol, queryLogId }: Props) {
                 <ResponsiveContainer width="100%" height={200}>
                   <ComposedChart data={fan} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid stroke={theme.GRID} vertical={false} />
-                    <XAxis dataKey="period" tick={{ fill: theme.AXIS, fontSize: 11 }} />
-                    <YAxis tick={{ fill: theme.AXIS, fontSize: 11 }} width={48} />
+                    <XAxis dataKey="period" tick={{ fill: theme.INK_SOFT, fontSize: 11 }} />
+                    <YAxis tick={{ fill: theme.INK_SOFT, fontSize: 11 }} width={48} />
                     <Tooltip contentStyle={theme.tooltipStyle} formatter={fanTooltip} />
                     <Area type="monotone" dataKey="p10" stackId="band" stroke="none" fill="transparent" />
                     <Area

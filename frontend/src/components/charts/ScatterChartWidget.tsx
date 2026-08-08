@@ -25,7 +25,7 @@ interface Props {
  *  configured X column isn't numeric. */
 export function ScatterChartWidget({ data, config, height = 320, onPointClick }: Props) {
   const fmtNum = useFormatNumber()
-  const { ACCENT, AXIS, GRID, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
+  const { ACCENT, AXIS, GRID, INK_SOFT, tooltipItem, tooltipLabel, tooltipStyle } = useChartTheme()
   const keys = Object.keys(data[0] ?? {})
   const numeric = keys.filter((k) => typeof data[0]?.[k] === 'number')
   const x = (config.x_axis && numeric.includes(config.x_axis) && config.x_axis) || numeric[0] || keys[0]
@@ -52,9 +52,10 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
           fontSize={12}
           tickLine={false}
           tickFormatter={(v) => fmtNum(Number(v), { compact: true })}
+          tick={{ fontSize: 12, fill: INK_SOFT }}
           label={
             xLabel
-              ? { value: xLabel, position: 'insideBottom', offset: -12, fontSize: 11, fill: AXIS }
+              ? { value: xLabel, position: 'insideBottom', offset: -12, fontSize: 11, fill: INK_SOFT }
               : undefined
           }
         />
@@ -67,9 +68,10 @@ export function ScatterChartWidget({ data, config, height = 320, onPointClick }:
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => fmtVal(Number(v))}
+          tick={{ fontSize: 12, fill: INK_SOFT }}
           label={
             yLabel
-              ? { value: yLabel, angle: -90, position: 'insideLeft', fontSize: 11, fill: AXIS }
+              ? { value: yLabel, angle: -90, position: 'insideLeft', fontSize: 11, fill: INK_SOFT }
               : undefined
           }
         />

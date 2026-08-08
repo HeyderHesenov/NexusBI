@@ -40,13 +40,13 @@ export function BCGMatrix({ content }: { content: BAContent }) {
         <line x1={x(thr.share_pct)} y1={PAD.top} x2={x(thr.share_pct)} y2={PAD.top + plotH} stroke={theme.GRID} strokeDasharray="4 4" />
         <line x1={PAD.left} y1={y(thr.growth_pct)} x2={PAD.left + plotW} y2={y(thr.growth_pct)} stroke={theme.GRID} strokeDasharray="4 4" />
         {/* quadrant captions */}
-        <text x={PAD.left + plotW - 4} y={PAD.top + 12} textAnchor="end" fontSize={10} fill={theme.AXIS}>{t('baStudio.q_star')}</text>
-        <text x={PAD.left + 4} y={PAD.top + 12} fontSize={10} fill={theme.AXIS}>{t('baStudio.q_question')}</text>
-        <text x={PAD.left + plotW - 4} y={PAD.top + plotH - 6} textAnchor="end" fontSize={10} fill={theme.AXIS}>{t('baStudio.q_cash_cow')}</text>
-        <text x={PAD.left + 4} y={PAD.top + plotH - 6} fontSize={10} fill={theme.AXIS}>{t('baStudio.q_dog')}</text>
+        <text x={PAD.left + plotW - 4} y={PAD.top + 12} textAnchor="end" fontSize={10} fill={theme.INK_SOFT}>{t('baStudio.q_star')}</text>
+        <text x={PAD.left + 4} y={PAD.top + 12} fontSize={10} fill={theme.INK_SOFT}>{t('baStudio.q_question')}</text>
+        <text x={PAD.left + plotW - 4} y={PAD.top + plotH - 6} textAnchor="end" fontSize={10} fill={theme.INK_SOFT}>{t('baStudio.q_cash_cow')}</text>
+        <text x={PAD.left + 4} y={PAD.top + plotH - 6} fontSize={10} fill={theme.INK_SOFT}>{t('baStudio.q_dog')}</text>
         {/* axes labels */}
-        <text x={PAD.left + plotW / 2} y={H - 8} textAnchor="middle" fontSize={11} fill={theme.AXIS}>{t('baStudio.axisShare')}</text>
-        <text x={14} y={PAD.top + plotH / 2} textAnchor="middle" fontSize={11} fill={theme.AXIS} transform={`rotate(-90 14 ${PAD.top + plotH / 2})`}>{t('baStudio.axisGrowth')}</text>
+        <text x={PAD.left + plotW / 2} y={H - 8} textAnchor="middle" fontSize={11} fill={theme.INK_SOFT}>{t('baStudio.axisShare')}</text>
+        <text x={14} y={PAD.top + plotH / 2} textAnchor="middle" fontSize={11} fill={theme.INK_SOFT} transform={`rotate(-90 14 ${PAD.top + plotH / 2})`}>{t('baStudio.axisGrowth')}</text>
         {items.map((it) => {
           const cx = x(it.share_pct)
           const cy = y(it.growth_pct)

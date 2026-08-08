@@ -69,7 +69,7 @@ export function ScenarioCompare({ root, baseline, scenarios }: Props) {
             {ticks.map((tk) => (
               <g key={tk}>
                 <line x1={x(tk)} y1={0} x2={x(tk)} y2={rowsH} stroke={theme.GRID} strokeDasharray="2 4" />
-                <text x={x(tk)} y={H - 6} fontSize={10} textAnchor="middle" fill={theme.AXIS} className="font-mono">{fmt(tk)}</text>
+                <text x={x(tk)} y={H - 6} fontSize={10} textAnchor="middle" fill={theme.INK_SOFT} className="font-mono">{fmt(tk)}</text>
               </g>
             ))}
             {rows.map((r, i) => {
@@ -95,7 +95,7 @@ export function ScenarioCompare({ root, baseline, scenarios }: Props) {
                       transition: `transform .5s cubic-bezier(.22,.61,.36,1) ${i * 45}ms`,
                     }}
                   />
-                  <text x={x0 + w + 6} y={y + BAR_H / 2 + 4} fontSize={11} fill={theme.AXIS} className="font-mono">{fmt(r.value)}</text>
+                  <text x={x0 + w + 6} y={y + BAR_H / 2 + 4} fontSize={11} fill={theme.INK_SOFT} className="font-mono">{fmt(r.value)}</text>
                 </g>
               )
             })}

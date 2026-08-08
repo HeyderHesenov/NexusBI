@@ -48,7 +48,7 @@ export function TornadoChart({ rows, pct }: { rows: SensitivityRow[]; pct: numbe
           return (
             <g key={tk}>
               <line x1={x} y1={TOP} x2={x} y2={TOP + rowsH} stroke={theme.GRID} strokeDasharray="2 4" opacity={tk === 0 ? 0 : 1} />
-              <text x={x} y={H - 8} fontSize={10} textAnchor="middle" fill={theme.AXIS} className="font-mono">
+              <text x={x} y={H - 8} fontSize={10} textAnchor="middle" fill={theme.INK_SOFT} className="font-mono">
                 {fmt(tk)}
               </text>
             </g>
@@ -104,7 +104,7 @@ export function TornadoChart({ rows, pct }: { rows: SensitivityRow[]; pct: numbe
                   transition: `transform .5s cubic-bezier(.22,.61,.36,1) ${i * 45}ms`,
                 }}
               />
-              <text x={W - 2} y={y + BAR_H / 2 + 4} fontSize={11} textAnchor="end" fill={theme.AXIS} className="font-mono">
+              <text x={W - 2} y={y + BAR_H / 2 + 4} fontSize={11} textAnchor="end" fill={theme.INK_SOFT} className="font-mono">
                 ±{peak}
               </text>
             </g>
