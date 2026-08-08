@@ -245,6 +245,67 @@ step "Diffing the migrated schema against the models"
 pass "no schema drift outside the documented baseline"
 
 # ─────────────────────────────────────────────────────────────────────────────
+step "Rolling the whole schema back and forward again"
+# Can this deployment be rolled back? Until this step, nothing answered that.
+# The unit suite builds its schema with create_all and never runs a migration,
+# and everything above only ever runs `upgrade head`, so across 52 revisions no
+# downgrade() had ever executed automatically. A broken one would first surface
+# during a production rollback.
+#
+# tests/test_migrations_roundtrip.py runs the same cycle on SQLite for free on
+# every push. It is not a substitute for this one: written first, it passed
+# cleanly while the initial migration's downgrade left the `dbtype` enum type
+# behind, because SQLite renders sa.Enum as VARCHAR and there was no type to
+# leak. On a real Postgres the second upgrade died with `type "dbtype" already
+# exists` — a rollback that made the database un-redeployable. This is the only
+# place in CI with a real Postgres, so it is the only place that can see it.
+#
+# Deliberately last: `downgrade base` drops every table, so everything above
+# that needs data has already run.
+
+# The backend comes DOWN first, and that is not tidiness. DROP TABLE needs
+# ACCESS EXCLUSIVE on Postgres, while any in-flight SELECT holds ACCESS SHARE;
+# this stack runs four uvicorn workers plus a scheduler polling every 5s
+# (SCHEDULER_INTERVAL_SECONDS above), so a poll landing in the wrong millisecond
+# blocks the DDL until migration_lock.py's 5-minute lock_timeout expires and then
+# fails the job — intermittently, inside a 25-minute budget. Routing the DDL
+# through `run --rm migrate` changes which container issues it, not who is
+# holding locks, so it does not help on its own.
+"${COMPOSE[@]}" stop backend >/dev/null
+# One container start, not two: `run` on this image pays for pandas/scipy/sklearn
+# imports, and `downgrade && upgrade` is a single shell away.
+"${COMPOSE[@]}" run --rm --no-deps -T migrate \
+  sh -c 'alembic downgrade base && alembic upgrade head' \
+  || die "the schema does not survive a rollback — this is what a production rollback would hit"
+"${COMPOSE[@]}" start backend >/dev/null
+pass "downgrade base → upgrade head completes on a real Postgres"
+
+# The application has to come back, not just the schema. Without this the next
+# assertion is /ready == 503 with the database deliberately stopped, which passes
+# whether the backend is healthy or permanently wedged — and asyncpg caches
+# prepared statements per connection against tables this step just dropped and
+# recreated, so InvalidCachedStatementError on every query is the realistic
+# failure. 503-because-the-db-is-down and 503-because-the-app-is-broken are
+# indistinguishable, so the check has to happen while the database is still up.
+for _ in $(seq 1 120); do
+  curl -sf "$BASE_URL/ready" 2>/dev/null | grep -q '"status":"ready"' && break
+  sleep 1
+done
+curl -sf "$BASE_URL/ready" | grep -q '"status":"ready"' \
+  || die "the backend does not serve again after a rollback and rebuild"
+pass "the application still serves against the rebuilt schema"
+
+# check_enum_labels reads pg_enum, i.e. exactly the state the rollback could get
+# wrong — it is the one that would have caught the dbtype leak. check_schema_drift
+# compares against the MODELS (not against the pre-rollback schema, which nothing
+# records), so its job here is narrower: catching a non-deterministic migration.
+"${COMPOSE[@]}" exec -T backend python scripts/check_enum_labels.py \
+  || die "the rebuilt database is missing enum labels the models write"
+"${COMPOSE[@]}" exec -T backend python scripts/check_schema_drift.py \
+  || die "the rebuilt schema disagrees with the models outside the accepted baseline"
+pass "the rebuilt schema still matches the models"
+
+# ─────────────────────────────────────────────────────────────────────────────
 step "Stopping the database"
 "${COMPOSE[@]}" stop db >/dev/null
 sleep 3
