@@ -17,10 +17,10 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
-import { ForceGraph, GLYPH, TYPE_ICON, type GraphHandle } from './ForceGraph'
+import { ForceGraph, TYPE_ICON, type GraphHandle } from './ForceGraph'
 import { GRAPH_MENU_TRIGGER } from './GraphViewSwitcher'
 import { ActionMenu, type ActionMenuItem, type ActionMenuSection } from '../ui/ActionMenu'
-import { GRAPH_TYPES, useChartTheme } from '../charts/theme'
+import { GLYPH, GRAPH_TYPES, useChartTheme } from '../charts/theme'
 import { selectedNode, type ImpactDir } from '../../store/graphStore'
 import type { GraphData, GraphNodeType } from '../../types'
 

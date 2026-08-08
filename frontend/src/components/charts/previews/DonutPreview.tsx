@@ -48,10 +48,24 @@ export function DonutPreview({ data, config }: { data: Row[]; config: ChartConfi
         {/* -90° so the first slice starts at 12 o'clock, like the real donut. */}
         <g transform="rotate(-90 50 50)">
           {slices.map((s, i) => {
-            // A single 100% slice keeps the full circumference: subtracting a gap
-            // there would open a notch in what is visually one unbroken ring.
+            // A slice that owns the whole circle keeps the full circumference:
+            // subtracting a gap there would open a notch in what is visually one
+            // unbroken ring.
+            //
+            // Branched on the SPAN, not on `slices.length`: rows with a zero
+            // value survive sortSlices and foldOther, so two rows holding 100%
+            // and 0 took the "more than one slice" path and opened exactly that
+            // notch — while the empty row painted a coloured tick for data that
+            // does not exist.
+            //
+            // Floored at 0 rather than 0.5 for the same reason. A slice under
+            // 0.19% of the total has `raw < GAP`, and a 0.5 floor made it paint
+            // PAST its own span into its neighbour's start — erasing the
+            // separator precisely where two adjacent 1.10:1 colours need it most.
+            // Below a gap's width there is no room for both the mark and its
+            // boundary, and the boundary is what carries meaning.
             const raw = (Math.abs(s.value) / total) * CIRC
-            const len = slices.length > 1 ? Math.max(raw - GAP, 0.5) : raw
+            const len = raw >= CIRC - 0.01 ? raw : Math.max(raw - GAP, 0)
             const el = (
               <circle
                 key={i}

@@ -25,7 +25,7 @@ import { downloadChartPng, downloadChartSvg } from '../../lib/chartExport'
 import { truncateLabel } from '../../lib/format'
 import { neighborSet, pathEdgeKey } from '../../store/graphStore'
 import type { GraphData, GraphNode, GraphNodeType } from '../../types'
-import { GLYPH, useChartTheme } from '../charts/theme'
+import { GLYPH, RING_OPACITY, useChartTheme } from '../charts/theme'
 import { LAYOUT_H, LAYOUT_W, useForceLayout, type LayoutPoint } from './useForceLayout'
 import { loadPins, mergePositions, miniToWorld, savePins } from './graphView'
 
@@ -91,11 +91,6 @@ const TYPE_RADIUS: Record<GraphNodeType, number> = {
   column: 10,
 }
 const DEFAULT_RADIUS = 12
-
-// Re-exported so the graph files that render it keep one import. It lives in
-// charts/theme because it constrains the node palette: every GRAPH_TYPE_COLORS
-// value must clear 3:1 against it, which is a palette rule, not a graph one.
-export { GLYPH }
 
 // Approx px per character at the tooltip's 11.5px label — used to size the
 // backing rect without a DOM text measurement (constant, deterministic).
@@ -534,7 +529,10 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
                 fill="none"
                 stroke={theme.HEALTH_COLOR[n.status]}
                 strokeWidth={2.5}
-                opacity={dimmed ? 0.4 : 0.9}
+                // Shared with the palette, which scores these colours composited
+                // at exactly this value — a local literal here would let the two
+                // drift apart without a word.
+                opacity={dimmed ? 0.4 : RING_OPACITY}
                 style={{ pointerEvents: 'none' }}
               />
             )}

@@ -17,18 +17,32 @@ type Mode = 'light' | 'dark'
  *
  * WHY THEY ARE PER-MODE. Every colour below used to be shared by both themes,
  * and every one of them was tuned on the dark canvas: measured against the light
- * surfaces, 16 of the 20 fell under the 3:1 non-text floor of WCAG 1.4.11
- * (SERIES 4/6, GRAPH_TYPE_COLORS 7/9, HEALTH_COLOR 4/4, DANGER 1/1) while all 20
- * passed on dark. The health four are counted on the composite the ring actually
- * paints at, per the note on HEALTH_LIGHT — at raw hex they read 2/4, which is
- * the wrong floor for a mark that never paints at full opacity.
+ * surfaces, 15 of the 20 fell under the 3:1 non-text floor of WCAG 1.4.11
+ * (SERIES 4/6, GRAPH_TYPE_COLORS 7/9, HEALTH_COLOR 3/4, DANGER 1/1) while all 20
+ * passed on dark.
+ *
+ * The health three are counted the way the ring paints them: composited at
+ * opacity 0.9 over `--surface`, the one canvas it lands on. That is ok 2.99,
+ * warn 1.92, danger 2.66 — while `unknown` clears at 3.06. Both other ways of
+ * counting are wrong and both have stood in this comment: at raw hex it reads
+ * 2/4 (a floor no ring is ever painted at), and over `--surface-2` it reads 4/4
+ * (a surface this ring never touches). Quote the backdrop, or the number means
+ * nothing.
  *
  * A single shared palette can satisfy both canvases, but only inside
- * `0.162 ≤ relative luminance ≤ 0.268` — a window 0.106 wide. Six hues crammed
- * into it are separated by at most 1.50:1 from each other, i.e. they differ in
- * hue alone and collapse into one grey for anyone who cannot use hue. Splitting
- * the palette by mode gives each canvas the full range instead, so the light set
- * below keeps the dark set's hues and simply goes deeper.
+ * `0.162 ≤ relative luminance ≤ 0.268` — a window 0.106 wide, across which the
+ * lightest and darkest of six hues can differ by at most 1.50:1. Everything is
+ * then within half a stop of everything else, and the set collapses into one
+ * tone for anyone who cannot use hue. Splitting by mode gives each canvas the
+ * full range instead: the light set below spans 2.40:1 end to end, keeping the
+ * dark set's hues and simply going deeper.
+ *
+ * ⚠️ The gain is in RANGE, not in neighbour separation — adjacent pairs in the
+ * light set sit 1.10–1.39:1 apart, which is no better than the packed
+ * alternative and would be dishonest to claim as the win. What the spread buys
+ * is that the set as a whole stops reading as one tone, so where a slice lands
+ * between the extremes carries information in greyscale even when its immediate
+ * neighbour is close.
  *
  * The dark values are byte-identical to what shipped before the split. The light
  * ones are new, and each was measured against `--bg` / `--surface` /
@@ -112,6 +126,18 @@ const HEALTH_LIGHT: Record<GraphHealthStatus, string> = {
   unknown: '#807B72', // 3.52
 }
 
+/**
+ * Opacity the trust ring is painted at, and therefore the opacity its contrast
+ * is scored at.
+ *
+ * Exported and imported by ForceGraph rather than written down in both places:
+ * the ratios above are only true at this number, so a component free to pick its
+ * own would invalidate them silently. The guard that used to grep ForceGraph for
+ * the literal is still there, but it is now a second line of defence rather than
+ * the only thing joining the two.
+ */
+export const RING_OPACITY = 0.9
+
 const HEALTH_DARK: Record<GraphHealthStatus, string> = {
   ok: '#0E9F6E', // 4.22
   warn: '#CBB25E', // 6.71
@@ -130,18 +156,25 @@ const HEALTH_DARK: Record<GraphHealthStatus, string> = {
  * enough that a near-black glyph on it measures 2.77, so `ds` is a slightly
  * lighter emerald here. Two constraints pulling opposite ways is exactly the
  * kind of thing a single "make it darker" pass gets wrong silently.
+ *
+ * Quoted worst-of-three like the rest of the palette, NOT canvas-only: unlike
+ * the health ring, these are not confined to the graph. The same colour is a
+ * legend chip and a panel header on `--surface-2` (GraphCanvas) and a row marker
+ * in the asset picker. An earlier revision quoted the `--surface` figures here
+ * while the header two screens up promised worst-of-three; `column` was the tell,
+ * reading 3.44 there and 3.12 in fact.
  */
 const GRAPH_LIGHT: Record<GraphNodeType, string> = {
   //                    canvas · glyph
-  ds: '#0B8159', //       4.89 · 3.56  emerald — data source (root)
-  table: '#547EB2', //    4.20 · 4.14  dusty blue
-  metric: '#9D8433', //   3.63 · 4.79  gold
-  mnode: '#8D68AD', //    4.45 · 3.91  mauve
-  dash: '#C06E20', //     3.82 · 4.55  amber
-  widget: '#3E8A83', //   4.06 · 4.28  teal
-  squery: '#B95B83', //   4.30 · 4.05  rose
-  decision: '#5F6DB1', // 4.87 · 3.57  indigo
-  column: '#6E8DB0', //   3.44 · 5.05  muted slate
+  ds: '#0B8159', //       4.43 · 3.56  emerald — data source (root)
+  table: '#547EB2', //    3.81 · 4.14  dusty blue
+  metric: '#9D8433', //   3.30 · 4.79  gold
+  mnode: '#8D68AD', //    4.04 · 3.91  mauve
+  dash: '#C06E20', //     3.47 · 4.55  amber
+  widget: '#3E8A83', //   3.69 · 4.28  teal
+  squery: '#B95B83', //   3.90 · 4.05  rose
+  decision: '#5F6DB1', // 4.42 · 3.57  indigo
+  column: '#6E8DB0', //   3.12 · 5.05  muted slate — the tightest of the nine
 }
 
 const GRAPH_DARK: Record<GraphNodeType, string> = {
