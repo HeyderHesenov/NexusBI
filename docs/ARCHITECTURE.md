@@ -476,6 +476,36 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   and history rows are marked with a `[SQL]` label (no migration). Frontend: CodeMirror 6 lazy chunk
   (`SQLEditor`→`SQLEditorInner`, schema-aware autocomplete) — kept out of the initial route bundle
   like recharts; `lib/sqlLabel.ts` centralizes the marker.
+- **Chart colour accessibility (`charts/theme.ts`, `lib/color.ts`, four rounds).** Chart colours are
+  hex, not CSS tokens, and the reason is `lib/chartExport.ts`: image export serialises the live
+  `<svg>` into a standalone document, which has no `:root` to resolve `var()` against, so a
+  token-coloured mark loses its colour in the exported PNG. Hex travels. That constraint is why the
+  palette needs its own guard instead of inheriting the app's.
+  **What each round found, since the order is the useful part:** (1) chart text sat on `AXIS`, a
+  colour that meets the 3:1 graphics floor but not the 4.5:1 text floor — labels moved to
+  `INK_SOFT`, the axis *line* stayed, so nothing changed visually. (2) The whole palette was tuned
+  on the dark canvas: measured against the light surfaces **15 of 20 colours** fell under WCAG
+  1.4.11, so the palette split per mode. (3) The real defect was neither — under simulated
+  dichromacy the closest pair measured **ΔE 2.2 dark / 5.2 light**, invisible to every check the
+  repo had. ⚠️ Separating the colliding hues does nothing: dichromacy deletes an opponent axis
+  rather than dulling it, so the palette was respread by lightness with hues kept.
+  **The guard** (`theme.test.ts`) scores every pair a chart can place side by side — six series plus
+  the folded-"other" `INK_FAINT` pie wedge, which is why `PieChartWidget.TOP_N` is derived from
+  `SERIES_COUNT` rather than chosen — in normal vision and under all three dichromacies, plus 3:1
+  against every surface. `simulateDichromacy` is Viénot/Brettel/Mollon; each condition is anchored
+  by a pair built on **its own confusion line** (scale only the missing cone in LMS), so replacing
+  any one matrix with the identity fails a named test. That anchoring exists because it did not at
+  first: with only a deuteranopia anchor, the protan and tritan matrices could both be identity and
+  the suite stayed green.
+  **Known limits, deliberately not papered over.** Greyscale is *not* covered and cannot be by these
+  tests — every dichromacy model preserves lightness (worst pair ΔL\* 0.4). The metric is CIE76,
+  which does not identify its own weakest pairs (CIEDE2000 puts them at 5.37/5.34 where CIE76 reads
+  17.8/12.0); the palette is still a 3-5× gain on its predecessor's 2.85/1.02. Tritan output is
+  gamut-clipped for four of six dark series, so that column partly measures the clamp —
+  `dichromacyGamutError` exposes it and the test pins which colours clip. Sequence for the fix:
+  tritan model (Brettel two-half-plane) → metric → palette. `GRAPH_TYPE_COLORS` and `HEALTH_COLOR`
+  are excluded on purpose: node type is carried by a per-type icon plus its name in words, so
+  extending the loop there would report failures that are not defects.
 - **Advanced-analytics subsystem (5 features, deterministic stats — scipy added).**
   `services/stats.py` is the shared statistical core (Welch t-test + Cohen's d, two-proportion
   z-test, Pearson, Benjamini-Hochberg FDR, MAD outliers, summary-stats t-test); `services/tabular.py`
@@ -509,7 +539,8 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
 - **CSP** is emitted at build time (Vite plugin: `script-src 'self'` + per-chunk hash + Google).
 - **Frontend hardening:** `ErrorBoundary` (route + per-widget), `ModalShell` (focus-trap/
   scroll-lock/aria-modal), and `React.lazy` for chart panels (smaller initial bundle). Vitest set up.
-- **Lazy chart bundle:** `ChartRenderer` (which transitively imports recharts, ~440kB) is loaded
+- **Lazy chart bundle:** `ChartRenderer` (which transitively imports recharts, ~410kB uncompressed
+  as of the current build: `axis-*` 341K + `ChartRenderer-*` 46K + `Area-*` 21K) is loaded
   through `charts/LazyChartRenderer` — a `lazy(() => import('./ChartRenderer'))` wrapped in its own
   Suspense/`ChartSkeleton`. All six render sites import the wrapper, so recharts is no longer in the
   initial `/` chunk; it arrives on first chart paint. `manualChunks.charts` keeps it isolated;

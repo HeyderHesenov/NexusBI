@@ -323,7 +323,7 @@ avtomatik SQLite-a düşür və başlanğıcda **limitsiz demo hesab** seed olun
 | POST/GET/DELETE | `/api/v1/contracts/...` (+ `/{id}/run` · `/runs`) | Data müqavilələri — keyfiyyət/sxem/təzəlik yoxlaması |
 | POST/GET/DELETE | `/api/v1/dashboard/{id}/snapshots` (+ `/{sid}`) | Zaman Maşını — snapshot çək · siyahı · bax · sil |
 | PATCH | `/api/v1/dashboard/{id}/filter` | Qlobal dashboard filtri — tarix aralığı + dimension slicer, hər widget-in SQL-inə server-side WHERE kimi qatılır (RLS içində, data-only) |
-| GET | `/api/v1/graph` | Biznes biliklər qrafı — aktivlərin əlaqə xəritəsi (lineage reuse); `?columns=` sütun node-ları |
+| GET | `/api/v1/graph/` | Biznes biliklər qrafı — aktivlərin əlaqə xəritəsi (lineage reuse); `?columns=` sütun node-ları |
 | GET/POST/PATCH/DELETE | `/api/v1/graph/views` (+ `/{id}`) | İstifadəçinin saxladığı xüsusi qraf görünüşləri (included/hidden id-lər) |
 | POST/GET/DELETE | `/api/v1/ba/generate` · `/ba` · `/ba/{id}` | BA Framework Studio — SWOT/Porter/BCG/BPMN artefaktları (AI kvota) |
 | GET/POST/DELETE | `/api/v1/automl/tables` · `/train` · `/models` (+ `/{id}/predict`) | AutoML — cədvəllər · model öyrət · siyahı · proqnoz · sil (per-IP limit) |
@@ -441,6 +441,43 @@ CI (`.github/workflows/ci.yml`) — 4 job: **backend** (ruff + pytest), **fronte
 yeri). Əlavə iki workflow: `codeql.yml` (python + js/ts) və `secret-scan.yml` (gitleaks, tam tarixçə).
 `main` ruleset-i beşini tələb edir: Backend · Frontend · E2E smoke · gitleaks · Deploy smoke.
 Bundle analizi: `cd frontend && npm run analyze` → `stats.html`.
+
+---
+
+## Əlçatanlıq (qrafiklərin rəngi)
+
+Dörd PR-lıq zəncir; hamısı **ölçülüb**, testlə kilidlənib (`charts/theme.test.ts`,
+`charts/theme.contrast.test.ts`).
+
+- **Mətn kontrastı** — chart etiketləri, ox başlıqları və `LabelList` `INK_SOFT`-dadır (WCAG AA:
+  açıq 6.52–7.18, qaranlıq 5.94–7.21). Ox **xətti** ayrıca `AXIS` rəngindədir — o, 3:1 qrafika
+  həddinə cavab verir, mətn həddinə yox, ona görə ikisi qəsdən fərqlidir.
+- **Rejim üzrə palitra** — bütün chart rəngləri əvvəllər hər iki mövzuda paylaşılırdı və hamısı
+  qaranlıq kətana köklənmişdi: açıq səthlərdə **20 rəngin 15-i** WCAG 1.4.11-in 3:1 həddindən
+  aşağı düşürdü. İndi hər rejimin öz dəsti var.
+- **Rəng korluğu** — əsl qüsur luminans boşluğu deyil, **dixromatiya altında birləşmə** idi
+  (ən yaxın cüt: qaranlıqda ΔE 2.2, açıqda 5.2 — heç bir mövcud yoxlama bunu görmürdü).
+  ⚠️ «Toqquşan iki hue-nu ayır» **işləmir**: dixromatiya hue-nu küyləmir, **oxu silir**.
+  Palitra luminans boyunca yayıldı, hue-lar saxlanıldı.
+- **Nə zəmanət verilir** — `theme.test.ts` bir qrafikin yan-yana qoya biləcəyi **hər cütü**
+  (altı seriya + katlanmış pie-ın «Digər» dilimi) normal görmədə **və** hər üç dixromatiyada
+  10 ΔE həddinə qarşı ölçür, üstəlik hər rəngi hər səthə 3:1-ə qarşı. Simulyator
+  Viénot–Brettel–Mollon-dur; hər şərait öz **qarışıqlıq xətti** üzərində qurulmuş cütlə
+  anchor-lanıb, yəni matrisin biri identity-yə çevrilsə test düşür.
+
+⚠️ **Örtülməyən üç şey — bilərəkdən, ölçülmüş halda:**
+1. **Boz-ton / monoxrom çap.** Hər dixromatiya modeli işıqlılığı **saxlayır**, ona görə o testlər
+   boz-tonda birləşməni prinsipcə görə bilmir. Ən pis cüt **ΔL\* 0.4**.
+2. **Trust-ring şiddəti** (`warn`/`danger`) kətanda yalnız hue ilə ayrılır — tritanopiyada **ΔE 6.6**.
+   Halqanın *mövcudluğu* «ok deyil»i rəngsiz daşıyır; ayrıd edilməyən yalnız şiddətdir.
+3. **Metrik CIE76-dır, CIEDE2000 deyil** — və CIE76 öz ən zəif cütünü tapmır (CIEDE2000-də
+   5.37/5.34, CIE76 onlara 17.8/12.0 verir). Qazanc yenə real: köhnə palitra CIEDE2000-də 2.85/1.02.
+   ⚠️ Tritan sütunu həm də **gamut kəsilməsindən** keçir (qaranlıq altı rəngdən dördü) — ona görə
+   sıra belədir: **əvvəlcə tritan modeli (Brettel), sonra metrik, sonra palitra.**
+
+`GRAPH_TYPE_COLORS` və `HEALTH_COLOR` bu hədə **qarşı ölçülmür** və bu qəsdəndir: doqquz düyün
+tipinin hər birində per-tip ikon + sözlə yazılmış ad var, yəni rəng tək kanal deyil. Səbəb
+`theme.ts`-də yazılıb ki, növbəti oxucu qoruyucunu genişləndirib **olmayan** bug-lar bildirməsin.
 
 ---
 
