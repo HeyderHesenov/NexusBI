@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { chartTheme, GLYPH, GRAPH_TYPES, RING_OPACITY, SERIES_COUNT } from './theme'
+import { chartTheme, GLYPH, GRAPH_TYPES, RING_DASH, RING_OPACITY, SERIES_COUNT } from './theme'
 import {
+  composite,
   contrastRatio,
   deltaE,
   dichromacyGamutError,
@@ -50,32 +51,22 @@ const TEXT = 4.5
  * reads as data. See the note above GRAPH_LIGHT in theme.ts for the measurement,
  * the reasoning, and why `aria-hidden` is NOT part of it.
  *
- * The one genuine gap this does not cover is trust-ring SEVERITY, where warn vs
- * danger is hue alone on the canvas — its own ticket, deliberately not widened
- * into here.
+ * HEALTH_COLOR was the same shape of gap and is NO LONGER one, but it is scored
+ * separately rather than folded in here, because what it has to satisfy is a
+ * different sentence: not "these colours stay apart" but "severity is separable
+ * by something", which the dash pattern can satisfy instead of the hue. See the
+ * ring-severity test below.
  */
 const SEPARATION = 10
 const DICHROMACIES = ['protan', 'deutan', 'tritan'] as const
 
 /**
- * `fg` at `alpha` over `bg`, as the browser composites it.
- *
- * Scoring the raw hex would be scoring a colour the product never paints — the
- * lesson the axis rules taught, where `stroke={AXIS} opacity={0.6}` composited
- * to 1.90 while a test on the token itself read 3.24 and stayed green.
- *
- * `RING_OPACITY` is imported from the theme rather than mirrored here. It used
- * to be a local literal kept honest by grepping ForceGraph for it, which is a
- * weaker joint than it looks: the grep asserts that SOMETHING in that file has
- * the shape, not that the ring does.
+ * Ring severities that actually paint a ring. `ok` is excluded because
+ * ForceGraph never draws one for it — a premise `ForceGraph.test` pins by
+ * rendering an `ok` node and asserting no ring appears, rather than trusting
+ * this list to stay true.
  */
-function composite(fg: string, bg: string, alpha: number): string {
-  const f = hexToRgb(fg)
-  const b = hexToRgb(bg)
-  if (!f || !b) throw new Error(`composite() got a malformed hex: ${fg} over ${bg}`)
-  const mix = f.map((c, i) => Math.round(alpha * c + (1 - alpha) * b[i]))
-  return `#${mix.map((c) => c.toString(16).padStart(2, '0')).join('')}`
-}
+const RINGED: GraphHealthStatus[] = ['warn', 'danger', 'unknown']
 
 /**
  * The surfaces a chart can sit on, READ OUT of `index.css` rather than copied.
@@ -271,11 +262,58 @@ describe('chart ink measures up to the rule it is used under', () => {
     // anywhere in the file counted, so any other element wearing that shape
     // would satisfy it while the ring itself moved to 0.6. A literal is not a
     // cleverer regex; it is one that cannot drift.
+    //
+    // ⚠️ AND THE LITERAL IT PINNED WAS `opacity={dimmed ? 0.4 : RING_OPACITY}` —
+    // i.e. this guard read the defect every run and reported green, because it
+    // only ever asked whether the UNDIMMED branch matched what the composites
+    // above score. The dimmed branch composited to 1.63–2.40. Grepping the source
+    // cannot see that; `ForceGraph.test` now renders the dimmed state and reads
+    // the opacity off the DOM, which is the assertion that actually binds. What
+    // is left here is the weaker half, kept only because it is free.
     expect(forceGraphSrc.length, 'ForceGraph source did not resolve').toBeGreaterThan(1000)
-    expect(forceGraphSrc).toContain('opacity={dimmed ? 0.4 : RING_OPACITY}')
+    expect(forceGraphSrc).toContain('opacity={RING_OPACITY}')
     expect(forceGraphSrc, 'RING_OPACITY must come from the theme, not a local').toMatch(
       /import \{[^}]*\bRING_OPACITY\b[^}]*\} from '\.\.\/charts\/theme'/,
     )
+  })
+
+  it.each(MODES)('keeps every ring SEVERITY separable in %s mode', (mode) => {
+    // The invariant, stated as the disjunction it actually is: two severities may
+    // share a dash pattern only if colour alone already separates them for every
+    // reader, and may collide in colour only if the dash tells them apart. Either
+    // channel satisfies it; needing neither is what a colour-only ring was.
+    //
+    // Written this way on purpose. Asserting "warn and danger have different
+    // dashes" would pin today's ANSWER and force the dash to survive a future
+    // repalette that made it unnecessary; asserting "all pairs clear SEPARATION"
+    // would fail on a defect that is already closed by other means. This asks the
+    // question instead, so it stays true under both futures and goes red only
+    // when severity genuinely becomes unreadable.
+    //
+    // As it stands, warn/danger takes the second branch — composited over the
+    // canvas it measures ΔE 4.81 under deuteranopia (light) and 5.74 under
+    // tritanopia (dark) — and danger/unknown very nearly does too, passing by
+    // 0.88 at 10.88 under protanopia in dark. Both are carried by the dash.
+    const { HEALTH_COLOR, SURFACE } = chartTheme(mode)
+    for (let i = 0; i < RINGED.length; i++) {
+      for (let j = i + 1; j < RINGED.length; j++) {
+        const [a, b] = [RINGED[i], RINGED[j]]
+        const [pa, pb] = [
+          composite(HEALTH_COLOR[a], SURFACE, RING_OPACITY),
+          composite(HEALTH_COLOR[b], SURFACE, RING_OPACITY),
+        ]
+        const worst = Math.min(
+          deltaE(pa, pb),
+          ...DICHROMACIES.map((d) => deltaE(simulateDichromacy(pa, d)!, simulateDichromacy(pb, d)!)),
+        )
+        const dashDiffers = RING_DASH[a] !== RING_DASH[b]
+        expect(
+          dashDiffers || worst >= SEPARATION,
+          `${a} vs ${b} (${mode}): worst ΔE ${worst.toFixed(2)} and both dashed "${RING_DASH[a]}" — ` +
+            'severity has no channel left',
+        ).toBe(true)
+      }
+    }
   })
 
   it.each(MODES)('keeps every SERIES pair apart without hue in %s mode', (mode) => {

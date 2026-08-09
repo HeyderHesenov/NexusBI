@@ -25,7 +25,7 @@ import { downloadChartPng, downloadChartSvg } from '../../lib/chartExport'
 import { truncateLabel } from '../../lib/format'
 import { neighborSet, pathEdgeKey } from '../../store/graphStore'
 import type { GraphData, GraphNode, GraphNodeType } from '../../types'
-import { GLYPH, RING_OPACITY, useChartTheme } from '../charts/theme'
+import { GLYPH, RING_DASH, RING_OPACITY, RING_WIDTH, RING_WIDTH_DIM, useChartTheme } from '../charts/theme'
 import { LAYOUT_H, LAYOUT_W, useForceLayout, type LayoutPoint } from './useForceLayout'
 import { loadPins, mergePositions, miniToWorld, savePins } from './graphView'
 
@@ -522,17 +522,26 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
           >
             {emphasized && <circle r={r + 9} fill={color} opacity={0.18} style={{ pointerEvents: 'none' }} />}
             {/* Trust ring: a thin colored halo for non-ok health (verified metrics
-                and fresh sources read as clean, unringed nodes). */}
+                and fresh sources read as clean, unringed nodes). Severity rides on
+                the dash pattern as well as the colour — see RING_DASH. */}
             {n.status && n.status !== 'ok' && (
               <circle
+                data-ring={n.status}
                 r={r + 3.5}
                 fill="none"
                 stroke={theme.HEALTH_COLOR[n.status]}
-                strokeWidth={2.5}
+                // Dimming is a WIDTH change, not an opacity one: every opacity
+                // below RING_OPACITY puts this mark under 3:1. See RING_WIDTH_DIM.
+                strokeWidth={dimmed ? RING_WIDTH_DIM : RING_WIDTH}
+                strokeDasharray={RING_DASH[n.status]}
+                // Turns the zero-length `unknown` dash into a round dot, and
+                // softens the `warn` dash ends. A solid ring has no ends, so
+                // `danger` is unaffected.
+                strokeLinecap="round"
                 // Shared with the palette, which scores these colours composited
                 // at exactly this value — a local literal here would let the two
                 // drift apart without a word.
-                opacity={dimmed ? 0.4 : RING_OPACITY}
+                opacity={RING_OPACITY}
                 style={{ pointerEvents: 'none' }}
               />
             )}
@@ -574,9 +583,18 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
       {hovered && hoveredNode && (() => {
         const label = hoveredNode.label
         const typeLabel = t(`graphPage.type.${hoveredNode.type}`)
-        const chars = Math.max(label.length, typeLabel.length + 2)
+        // Severity in words, for exactly the nodes that draw a ring — the same
+        // condition, so the tooltip can never name a severity the canvas is not
+        // showing. This is the key to the ring's dash code: the dash separates
+        // warn from danger while scanning, this says which one is worse. Neither
+        // half is sufficient alone; see RING_DASH.
+        const severity =
+          hoveredNode.status && hoveredNode.status !== 'ok'
+            ? t(`graphPage.healthLevel.${hoveredNode.status}`)
+            : null
+        const chars = Math.max(label.length, typeLabel.length + 2, severity?.length ?? 0)
         const w = (chars * TIP_CHAR_PX + 24) * tipScale
-        const h = 42 * tipScale
+        const h = (severity ? 56 : 42) * tipScale
         const r = TYPE_RADIUS[hoveredNode.type] ?? DEFAULT_RADIUS
         return (
           <g transform={`translate(${hovered.x},${hovered.y - (r + 6)})`} style={{ pointerEvents: 'none' }}>
@@ -616,6 +634,20 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
             >
               {truncateLabel(label, 30)}
             </text>
+            {severity && (
+              <text
+                x={0}
+                y={-h + 45 * tipScale}
+                textAnchor="middle"
+                fontSize={9 * tipScale}
+                fill={theme.INK_SOFT}
+                fontWeight={600}
+                letterSpacing={0.4 * tipScale}
+                data-ring-severity
+              >
+                {severity.toUpperCase()}
+              </text>
+            )}
           </g>
         )
       })()}

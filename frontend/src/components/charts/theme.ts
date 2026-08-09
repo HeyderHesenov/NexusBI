@@ -214,6 +214,62 @@ const HEALTH_LIGHT: Record<GraphHealthStatus, string> = {
  */
 export const RING_OPACITY = 0.9
 
+/**
+ * Stroke width the trust ring is painted at, and the narrower width it uses when
+ * the node is dimmed (hover-neighbour or impact-mode de-emphasis).
+ *
+ * ⚠️ THE DIMMED STATE USED TO BE AN OPACITY, AND NO OPACITY WORKS. The ring
+ * dropped to `opacity 0.4` there, which composites to 1.63–2.40 over `--surface`
+ * — under the 3:1 of WCAG 1.4.11, on a mark whose whole job is to say "this node
+ * has a problem". Nor is there a gentler number to retreat to: measured across
+ * both modes and all three ring colours, 0.5 reaches 1.87, 0.7 reaches 2.53 and
+ * 0.8 still only reaches 2.97, with light `unknown` binding every time. 0.9 is
+ * the first value that clears, i.e. the only one available is the undimmed one.
+ *
+ * So opacity is simply the wrong lever for a mark that has to stay legible, and
+ * WIDTH is the right one: 1.4.11 scores the colour relationship, not the size, so
+ * a thinner ring recedes without moving the ratio at all. The de-emphasis is
+ * still plainly there — the node under it drops to 0.2 and its edges to 0.28,
+ * so a thin ring reads as belonging to a backgrounded node rather than
+ * competing with the selection.
+ */
+export const RING_WIDTH = 2.5
+export const RING_WIDTH_DIM = 1.5
+
+/**
+ * `stroke-dasharray` per health severity — the ring's SECOND, colour-free
+ * channel. Solid means worse.
+ *
+ * WHY IT EXISTS. The ring's PRESENCE already carries "not ok" without colour
+ * (`ok` is never ringed). Which severity was hue and nothing else, and hue is
+ * exactly what the affected reader does not have: composited at RING_OPACITY over
+ * `--surface`, `warn` vs `danger` measures ΔE 4.81 under deuteranopia in light
+ * mode and 5.74 under tritanopia in dark, against a 10 floor. Deuteranopia is
+ * ~6% of men — an earlier note filed this ticket as "tritanopia only, ~0.01%",
+ * which understated who it hits by roughly three orders of magnitude.
+ *
+ * ⚠️ A DASH ALONE WOULD NOT HAVE CLOSED IT, and neither would a tooltip alone.
+ * A tooltip needs one hover per node, so it does nothing for the case the defect
+ * actually lives in — sweeping the canvas — and help routed through assistive
+ * tech is aimed at the wrong person anyway: the reader losing this signal is
+ * sighted. But a dash on its own is an unlabelled code; solid-versus-dashed shows
+ * two marks are different without saying which is worse. The tooltip severity
+ * word (ForceGraph) is what teaches the code, so the two ship together.
+ *
+ * `unknown` gets its own pattern even though colour already separates it from
+ * both others, because the margin it does that by is thin: `danger`/`unknown`
+ * measures 10.88 under protanopia in dark mode, a pass by 0.88.
+ *
+ * `ok` is present so the record stays exhaustive; it never renders a ring, which
+ * `ForceGraph.test` pins rather than assumes.
+ */
+export const RING_DASH: Record<GraphHealthStatus, string | undefined> = {
+  ok: undefined,
+  danger: undefined, // solid — uninterrupted reads as the most urgent
+  warn: '6 5', // dashed
+  unknown: '0 5', // dotted (round linecap turns a zero-length dash into a dot)
+}
+
 const HEALTH_DARK: Record<GraphHealthStatus, string> = {
   ok: ACCENT_DARK, // 5.58 composited — the light side has said `ok: ACCENT_LIGHT`
   //                  all along, and this was the hardcoded twin that made

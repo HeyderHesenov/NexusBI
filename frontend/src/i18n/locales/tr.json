@@ -1025,6 +1025,11 @@
       "stale": "Bayat (SLA aşıldı)",
       "unknown": "Tazelik SLA yok"
     },
+    "healthLevel": {
+      "warn": "Uyarı",
+      "danger": "Kritik",
+      "unknown": "Bilinmiyor"
+    },
     "impactDir": {
       "down": "Aşağı akış",
       "up": "Yukarı akış",

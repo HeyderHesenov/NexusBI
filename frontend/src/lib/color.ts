@@ -68,6 +68,33 @@ export function contrastRatio(hexA: string, hexB: string): number {
 }
 
 /**
+ * `fg` painted at `alpha` over `bg`, as the browser composites it. Throws on a
+ * malformed hex rather than returning a colour nobody asked for.
+ *
+ * Scoring a raw hex when the product paints it at an opacity scores a colour
+ * that never reaches the screen — the lesson the axis rules taught, where
+ * `stroke={AXIS} opacity={0.6}` composited to 1.90 while a test on the token
+ * itself read 3.24 and stayed green.
+ *
+ * ⚠️ EXPORTED FROM HERE, not redefined per test file, for the reason
+ * `srgbToLinear` spells out above: this file has already been the scene of one
+ * curve growing three copies. `charts/theme.test` scores the ring colours and
+ * `graph/ForceGraph.test` scores the ring as actually rendered — two callers, one
+ * formula. Like `simulateDichromacy` it has no production caller and is
+ * tree-shaken out of `dist/`.
+ */
+export function composite(fg: string, bg: string, alpha: number): string {
+  const f = hexToRgb(fg)
+  const b = hexToRgb(bg)
+  if (!f || !b) throw new Error(`composite() got a malformed hex: ${fg} over ${bg}`)
+  // A convex combination of two 0-255 channels cannot leave 0-255, so rounding is
+  // the only work left. `clamp` is declared further down and reading it here
+  // would cross its TDZ, which `simulateDichromacy` already sidesteps by hand.
+  const out = f.map((c, i) => Math.round(alpha * c + (1 - alpha) * b[i]))
+  return `#${out.map((c) => c.toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
  * CIELAB (D65) for `rgb`. Perceptual space — equal steps look equally different,
  * which sRGB distance does not.
  */

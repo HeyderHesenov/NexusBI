@@ -1025,6 +1025,11 @@
       "stale": "Köhnəlib (SLA aşıb)",
       "unknown": "Təzəlik SLA yoxdur"
     },
+    "healthLevel": {
+      "warn": "Xəbərdarlıq",
+      "danger": "Kritik",
+      "unknown": "Naməlum"
+    },
     "impactDir": {
       "down": "Aşağı axın",
       "up": "Yuxarı axın",
