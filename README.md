@@ -446,38 +446,64 @@ Bundle analizi: `cd frontend && npm run analyze` → `stats.html`.
 
 ## Əlçatanlıq (qrafiklərin rəngi)
 
-Dörd PR-lıq zəncir; hamısı **ölçülüb**, testlə kilidlənib (`charts/theme.test.ts`,
-`charts/theme.contrast.test.ts`).
+Dörd PR-lıq zəncir: **#30 → #32 → #33 → #35**.
 
-- **Mətn kontrastı** — chart etiketləri, ox başlıqları və `LabelList` `INK_SOFT`-dadır (WCAG AA:
-  açıq 6.52–7.18, qaranlıq 5.94–7.21). Ox **xətti** ayrıca `AXIS` rəngindədir — o, 3:1 qrafika
-  həddinə cavab verir, mətn həddinə yox, ona görə ikisi qəsdən fərqlidir.
-- **Rejim üzrə palitra** — bütün chart rəngləri əvvəllər hər iki mövzuda paylaşılırdı və hamısı
-  qaranlıq kətana köklənmişdi: açıq səthlərdə **20 rəngin 15-i** WCAG 1.4.11-in 3:1 həddindən
-  aşağı düşürdü. İndi hər rejimin öz dəsti var.
-- **Rəng korluğu** — əsl qüsur luminans boşluğu deyil, **dixromatiya altında birləşmə** idi
-  (ən yaxın cüt: qaranlıqda ΔE 2.2, açıqda 5.2 — heç bir mövcud yoxlama bunu görmürdü).
+Testlə kilidli olan **hədlərdir** (`charts/theme.test.ts`, `charts/theme.contrast.test.ts`):
+mətn ≥4.5:1, qrafika ≥3:1, cüt ayrılığı ≥10 ΔE, üstəlik gamut cədvəli birbaşa pinlənib.
+⚠️ Aşağıdakı **konkret rəqəmlər ölçülüb, amma kilidlənməyib** — hər rəngi öz həddinin üstündə
+saxlayan bir palitra düzəlişi onları səssizcə köhnəldə bilər və suite yaşıl qalar.
+
+- **(1) Dəyər etiketləri palitradan çıxdı** (#30) — palitra 3:1 *qrafika* həddinə görə seçilib,
+  mətnə görə yox; etiketlər ona görə ink-ə keçdi.
+- **(2) Ox tick mətni və başlıqlar `AXIS`-dən çıxdı** (#32) — eyni səhv, başqa yerdə: `AXIS` 3:1-i
+  keçir, 4.5:1-i yox. İndi `INK_SOFT`-dadır (açıq 6.52–7.18, qaranlıq 5.94–7.21). Ox **xətti**
+  `AXIS`-də qaldı — o, qrafika həddinə tabedir — ona görə qrafiklərin görünüşü dəyişmədi.
+- **(3) Rejim üzrə palitra** (#33) — bütün chart rəngləri əvvəllər hər iki mövzuda paylaşılırdı və
+  hamısı qaranlıq kətana köklənmişdi: açıq səthlərdə **20 rəngin 15-i** WCAG 1.4.11-in 3:1
+  həddindən aşağı düşürdü. İndi hər rejimin öz dəsti var.
+- **(4) Rəng korluğu** (#35) — əsl qüsur luminans boşluğu deyil, **dixromatiya altında birləşmə**
+  idi (ən yaxın cüt: qaranlıqda ΔE 2.2, açıqda 5.2 — heç bir mövcud yoxlama bunu görmürdü).
   ⚠️ «Toqquşan iki hue-nu ayır» **işləmir**: dixromatiya hue-nu küyləmir, **oxu silir**.
   Palitra luminans boyunca yayıldı, hue-lar saxlanıldı.
-- **Nə zəmanət verilir** — `theme.test.ts` bir qrafikin yan-yana qoya biləcəyi **hər cütü**
-  (altı seriya + katlanmış pie-ın «Digər» dilimi) normal görmədə **və** hər üç dixromatiyada
-  10 ΔE həddinə qarşı ölçür, üstəlik hər rəngi hər səthə 3:1-ə qarşı. Simulyator
-  Viénot–Brettel–Mollon-dur; hər şərait öz **qarışıqlıq xətti** üzərində qurulmuş cütlə
-  anchor-lanıb, yəni matrisin biri identity-yə çevrilsə test düşür.
 
-⚠️ **Örtülməyən üç şey — bilərəkdən, ölçülmüş halda:**
+**Qoruyucu nə zəmanət verir** — `theme.test.ts` bir qrafikin yan-yana qoya biləcəyi **hər cütü**
+(altı seriya + katlanmış pie-ın «Digər» dilimi) normal görmədə **və** hər üç dixromatiyada
+10 ΔE həddinə qarşı ölçür, üstəlik hər rəngi hər səthə 3:1-ə qarşı. Simulyator
+Viénot–Brettel–Mollon-dur; hər şərait öz **qarışıqlıq xətti** üzərində qurulmuş cütlə
+anchor-lanıb, yəni matrisin biri identity-yə çevrilsə test düşür.
+
+⚠️ **Örtülməyən dörd şey — bilərəkdən, ölçülmüş halda:**
 1. **Boz-ton / monoxrom çap.** Hər dixromatiya modeli işıqlılığı **saxlayır**, ona görə o testlər
    boz-tonda birləşməni prinsipcə görə bilmir. Ən pis cüt **ΔL\* 0.4**.
-2. **Trust-ring şiddəti** (`warn`/`danger`) kətanda yalnız hue ilə ayrılır — tritanopiyada **ΔE 6.6**.
-   Halqanın *mövcudluğu* «ok deyil»i rəngsiz daşıyır; ayrıd edilməyən yalnız şiddətdir.
+2. **Trust-ring şiddəti** (`warn`/`danger`) kətanda yalnız hue ilə ayrılır. Ən pis hal —
+   **açıq rejim, deuteranopiya: ΔE 4.81**, halqanın həqiqətən boyandığı kompozitdə
+   (`RING_OPACITY` 0.9, `--surface` üzərində); xam hexdə 6.04. Qaranlıqda ən pisi tritanopiyadır:
+   kompozit 5.74, xam 6.59. ⚠️ Burada əvvəl «tritanopiyada 6.6» yazılırdı — o, qaranlığın **xam**
+   rəqəmidir, yəni həm yanlış şərait, həm də `theme.ts`-in öz qaydasını («fonu göstər, yoxsa rəqəm
+   heç nə demir») pozan ölçü. Halqanın *mövcudluğu* «ok deyil»i rəngsiz daşıyır; ayrıd edilməyən
+   yalnız şiddətdir.
 3. **Metrik CIE76-dır, CIEDE2000 deyil** — və CIE76 öz ən zəif cütünü tapmır (CIEDE2000-də
-   5.37/5.34, CIE76 onlara 17.8/12.0 verir). Qazanc yenə real: köhnə palitra CIEDE2000-də 2.85/1.02.
-   ⚠️ Tritan sütunu həm də **gamut kəsilməsindən** keçir (qaranlıq altı rəngdən dördü) — ona görə
+   5.37/5.34, CIE76 onlara 17.8/12.0 verir). Qazanc yenə real, amma rejimlər üzrə eyni deyil:
+   köhnə palitra CIEDE2000-də 2.85 (açıq) və 1.02 (qaranlıq), yəni **açıqda ~1.9×, qaranlıqda
+   ~5.2×**. ⚠️ Tritan sütunu həm də **gamut kəsilməsindən** keçir — 12 seriya rəngindən **6-sı**:
+   qaranlıqda dördü (0.139–0.773), açıqda ikisi (`light[1]` 0.027, `light[3]` 0.099). Ona görə
    sıra belədir: **əvvəlcə tritan modeli (Brettel), sonra metrik, sonra palitra.**
+4. **Sönükləşdirilmiş halqa.** Düyün seçiləndə qonşu olmayanların hamısı `opacity 0.4`-ə düşür
+   (`ForceGraph.tsx:535`), test isə halqanı yalnız `RING_OPACITY`-də (0.9) ölçür. 0.4-də kompozit
+   nisbətlər: açıq 1.64–1.89, qaranlıq 1.83–2.40 — hamısı 3:1-dən aşağı. Yəni yuxarıdakı «hər rəng
+   hər səthə 3:1» zəmanəti **boyanmış bir vəziyyət** üçün doğrudur, bütün vəziyyətlər üçün yox.
+   Kod qəsdən dəyişdirilmədi: sönükləşdirmə seçimin vurğu effektidir, onu qaldırmaq qrafın diqqət
+   dizaynını dəyişir — ayrıca bilet.
 
-`GRAPH_TYPE_COLORS` və `HEALTH_COLOR` bu hədə **qarşı ölçülmür** və bu qəsdəndir: doqquz düyün
-tipinin hər birində per-tip ikon + sözlə yazılmış ad var, yəni rəng tək kanal deyil. Səbəb
-`theme.ts`-də yazılıb ki, növbəti oxucu qoruyucunu genişləndirib **olmayan** bug-lar bildirməsin.
+`GRAPH_TYPE_COLORS` bu hədə **qarşı ölçülmür** və bu qəsdəndir: doqquz düyün tipinin hər birində
+per-tip ikon + sözlə yazılmış ad var, yəni rəng tək kanal deyil (açıq rejimin 36 düyün cütündən
+11-i hansısa dixromatiyada birləşir, ən pisi ΔE 1.0 — bunlar qüsur deyil).
+
+`HEALTH_COLOR` da ölçülmür, amma **başqa səbəbdən, «qüsur deyil» kimi yox**: halqada nə ikon var,
+nə ad — `ForceGraph.tsx:526-537` sadəcə rəngli `<circle>` çəkir. Ona görə o, yuxarıdakı 2-ci bənddə
+açıq bilet kimi durur. (Halqanın rəngləri **3:1 səth həddinə** qarşı ayrıca ölçülür — ölçülməyən
+yalnız şiddətlərin bir-birindən ΔE ayrılığıdır.) Səbəblər `theme.ts`-də yazılıb ki, növbəti oxucu
+qoruyucunu genişləndirib **olmayan** bug-lar bildirməsin.
 
 ---
 

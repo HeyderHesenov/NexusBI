@@ -110,9 +110,12 @@ export const SERIES_COUNT = 6
  * tritanopia — pairs CIE76 rates 17.8 and 12.0, i.e. it does not identify its own
  * weakest link, because its largest errors sit in exactly the blue/violet region
  * these live in. The change is still a real improvement (the old palette measures
- * 2.85 and 1.02 the same way) but the honest claim is "3-5× better", not "clears
- * four JNDs". Moving to CIEDE2000 is a ticket, and it has to follow the tritan
- * model fix — see `dichromacyGamutError`.
+ * 2.85 light and 1.02 dark the same way) but the honest claim is per mode:
+ * ~1.9× light (5.37/2.85) and ~5.2× dark (5.34/1.02), not the "3-5×" this said —
+ * that range only exists if you divide one mode's figure by the other's, and it
+ * flatters light by nearly double. Not "clears four JNDs" either. Moving to
+ * CIEDE2000 is a ticket, and it has to follow the tritan model fix — see
+ * `dichromacyGamutError`.
  *
  * WHAT IS NOT: greyscale. Every dichromacy model PRESERVES lightness, so no
  * simulation in that test can see a pair that differs only in hue, and the check

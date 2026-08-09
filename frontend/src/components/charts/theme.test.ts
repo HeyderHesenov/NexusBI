@@ -30,8 +30,10 @@ const TEXT = 4.5
  * CIE76 is not: scored with CIEDE2000 the weakest pairs here are 5.37 (light) and
  * 5.34 (dark), and they are not even the pairs CIE76 flags — it rates those two
  * 17.8 and 12.0 and points at different ones. So 10 is a working floor calibrated
- * to this metric, not four of anything. The palette it replaced measures 2.85 and
- * 1.02 under CIEDE2000, so the gain is real and roughly 3-5×; adopting CIEDE2000
+ * to this metric, not four of anything. The palette it replaced measures 2.85
+ * (light) and 1.02 (dark) under CIEDE2000, so the gain is real but uneven —
+ * ~1.9× light and ~5.2× dark, NOT the flat "3-5×" this used to say, which came
+ * from pairing one mode's number against the other's; adopting CIEDE2000
  * outright is a ticket, and it has to follow the tritan gamut fix, since half the
  * weak pairs are tritan pairs measured through a clamp.
  *

@@ -371,8 +371,11 @@ of typed; `server_default='manual'` is spelled identically in the model and the 
 `check_schema_drift.py` stays at its baseline). Migrations are Alembic, chained under `db/migrations/versions`;
 head at the time of writing = **`f9a0b1c2d3e4`** (`decision_measurements.data_as_of`), reached via
 `a4b5c6d7e8f9` (`ba_artifacts.datasource_id`) → … → `d7e8f9a0b1c2` → `e8f9a0b1c2d3`.
-⚠️ **Do not trust that id — ask the tree.** This line said `a4b5c6d7e8f9` for three revisions after
-it stopped being the head, which is the exact drift `core/health.py:37` refuses to allow: it reads
+⚠️ **Do not trust that id — ask the tree.** This line said `a4b5c6d7e8f9` for **eight** revisions
+after it stopped being the head (`f1a2b3c4d5e6` → `f3a4b5c6d7e8` → `a0b1c2d3e4f5` → `b5c6d7e8f9a0`
+→ `c6d7e8f9a0b1` → `d7e8f9a0b1c2` → `e8f9a0b1c2d3` → `f9a0b1c2d3e4`, 2026-07-30 … 08-05), which is
+how fast this particular line rots — the audit note that opened this branch said "three" and was
+itself stale. It is the exact drift `core/health.py:37` refuses to allow: it reads
 the head from `ScriptDirectory.get_heads()` "rather than a constant, so the expectation" tracks the
 migrations. `alembic heads` (or that call) is the answer; this paragraph is orientation, not truth.
 `/ready` compares the database's applied revision against the head and answers 503 when they
@@ -481,14 +484,16 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   `<svg>` into a standalone document, which has no `:root` to resolve `var()` against, so a
   token-coloured mark loses its colour in the exported PNG. Hex travels. That constraint is why the
   palette needs its own guard instead of inheriting the app's.
-  **What each round found, since the order is the useful part:** (1) chart text sat on `AXIS`, a
-  colour that meets the 3:1 graphics floor but not the 4.5:1 text floor — labels moved to
-  `INK_SOFT`, the axis *line* stayed, so nothing changed visually. (2) The whole palette was tuned
+  **What each round found, since the order is the useful part** — four PRs, four rounds: (1) value
+  labels were painted in palette colours, which are picked against the 3:1 *graphics* floor and not
+  the 4.5:1 text one, so they moved to ink (#30). (2) The same mistake one element over: axis tick
+  text and titles sat on `AXIS` — labels moved to `INK_SOFT`, the axis *line* stayed on `AXIS`
+  because a line is graphics, so nothing changed visually (#32). (3) The whole palette was tuned
   on the dark canvas: measured against the light surfaces **15 of 20 colours** fell under WCAG
-  1.4.11, so the palette split per mode. (3) The real defect was neither — under simulated
-  dichromacy the closest pair measured **ΔE 2.2 dark / 5.2 light**, invisible to every check the
-  repo had. ⚠️ Separating the colliding hues does nothing: dichromacy deletes an opponent axis
-  rather than dulling it, so the palette was respread by lightness with hues kept.
+  1.4.11, so the palette split per mode (#33). (4) The real defect was none of those — under
+  simulated dichromacy the closest pair measured **ΔE 2.2 dark / 5.2 light**, invisible to every
+  check the repo had (#35). ⚠️ Separating the colliding hues does nothing: dichromacy deletes an
+  opponent axis rather than dulling it, so the palette was respread by lightness with hues kept.
   **The guard** (`theme.test.ts`) scores every pair a chart can place side by side — six series plus
   the folded-"other" `INK_FAINT` pie wedge, which is why `PieChartWidget.TOP_N` is derived from
   `SERIES_COUNT` rather than chosen — in normal vision and under all three dichromacies, plus 3:1
@@ -500,12 +505,20 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   **Known limits, deliberately not papered over.** Greyscale is *not* covered and cannot be by these
   tests — every dichromacy model preserves lightness (worst pair ΔL\* 0.4). The metric is CIE76,
   which does not identify its own weakest pairs (CIEDE2000 puts them at 5.37/5.34 where CIE76 reads
-  17.8/12.0); the palette is still a 3-5× gain on its predecessor's 2.85/1.02. Tritan output is
-  gamut-clipped for four of six dark series, so that column partly measures the clamp —
-  `dichromacyGamutError` exposes it and the test pins which colours clip. Sequence for the fix:
-  tritan model (Brettel two-half-plane) → metric → palette. `GRAPH_TYPE_COLORS` and `HEALTH_COLOR`
-  are excluded on purpose: node type is carried by a per-type icon plus its name in words, so
-  extending the loop there would report failures that are not defects.
+  17.8/12.0); against its predecessor's 2.85/1.02 that is **~1.9× light and ~5.2× dark**, not the
+  flat "3-5×" this line and two comments in `charts/` used to claim — the range only appears if you
+  cross-pair a light figure against a dark one. Tritan output is gamut-clipped for **6 of the 12
+  series colours** — four dark (0.139–0.773) and two light (`light[1]` 0.027, `light[3]` 0.099) — so
+  that column partly measures the clamp; `dichromacyGamutError` exposes it and the test pins exactly
+  which colours clip. Sequence for the fix: tritan model (Brettel two-half-plane) → metric →
+  palette. Third limit: the trust ring is also painted at `opacity 0.4` when a selection dims it
+  (`ForceGraph.tsx:535`), where it composites to 1.64–2.40:1 — under the 3:1 floor, and outside
+  everything `theme.test.ts` scores, which only measures the ring at `RING_OPACITY`.
+  `GRAPH_TYPE_COLORS` is excluded on purpose: node type is carried by a per-type icon plus its name
+  in words, so extending the loop there would report failures that are not defects. `HEALTH_COLOR`
+  is excluded too but **not for that reason** — the ring has neither icon nor label, it is a bare
+  `<circle stroke={HEALTH_COLOR[status]}>`, so `warn` vs `danger` is hue alone (worst ΔE 4.81, light
+  under deuteranopia, composited as painted). That one is an open ticket, not a non-defect.
 - **Advanced-analytics subsystem (5 features, deterministic stats — scipy added).**
   `services/stats.py` is the shared statistical core (Welch t-test + Cohen's d, two-proportion
   z-test, Pearson, Benjamini-Hochberg FDR, MAD outliers, summary-stats t-test); `services/tabular.py`
@@ -539,13 +552,22 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
 - **CSP** is emitted at build time (Vite plugin: `script-src 'self'` + per-chunk hash + Google).
 - **Frontend hardening:** `ErrorBoundary` (route + per-widget), `ModalShell` (focus-trap/
   scroll-lock/aria-modal), and `React.lazy` for chart panels (smaller initial bundle). Vitest set up.
-- **Lazy chart bundle:** `ChartRenderer` (which transitively imports recharts, ~410kB uncompressed
-  as of the current build: `axis-*` 341K + `ChartRenderer-*` 46K + `Area-*` 21K) is loaded
+- **Lazy chart bundle:** `ChartRenderer` (which transitively imports recharts, **~419 kB**
+  uncompressed as of the current build, in the decimal kB `vite build` prints: `axis-*` 349.7 +
+  `ChartRenderer-*` 47.2 + `Area-*` 21.5 + `ScatterChart-*` 0.6 + `ComposedChart-*` 0.3 — quote one
+  unit or the other, the earlier "~410kB" was that same byte count in KiB with a kB label) is loaded
   through `charts/LazyChartRenderer` — a `lazy(() => import('./ChartRenderer'))` wrapped in its own
-  Suspense/`ChartSkeleton`. All six render sites import the wrapper, so recharts is no longer in the
-  initial `/` chunk; it arrives on first chart paint. `manualChunks.charts` keeps it isolated;
-  `rollup-plugin-visualizer` (env-gated, `npm run analyze`) emits a treemap.
-- **Test depth + blocking E2E:** Vitest grew to 65 (lib / hooks / store reducers, incl. the
+  Suspense/`ChartSkeleton`. **All eight** render sites import the wrapper (`ChartView`,
+  `ScenarioPanel`, `ShareChartModal`, `DashboardGrid`, `DashboardPrintView`, `PublicWidgetGrid`,
+  `SnapshotView`, `StoryMode`), so recharts is no longer in the initial `/` chunk; it arrives on
+  first chart paint. ⚠️ **There is no `manualChunks.charts`, and adding one is the wrong move** —
+  this line claimed it for a long time. `vite.config.ts` pins only `react` and says why in a
+  comment: naming a vendor there links it into the entry's static graph, Vite emits a boot-time
+  `modulepreload` for it, and that defeats the `lazy()` wrapper (it pulled ~261 kB gzip onto every
+  page load, login included). Left alone, Rollup names the chunk itself — that is where `axis-*`
+  comes from. `rollup-plugin-visualizer` (env-gated, `npm run analyze`) emits a treemap.
+- **Test depth + blocking E2E:** Vitest grew to 65 *at the time of this round* (749 today — see the
+  Testing bullet above; this line is a snapshot of that round, not a current count) (lib / hooks / store reducers, incl. the
   collab epoch-guard via a fake `WebSocket`); a blocking Playwright `e2e` CI job runs the
   login→query→dashboards smoke against a demo backend. Two CI-specific fixes underpin it: AI mocks
   patch the `Text2SQLEngine` **class** (not the `_engine` singleton, whose instance patch leaked),

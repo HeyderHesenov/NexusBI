@@ -162,11 +162,21 @@ Please do not file a public issue for an undisclosed vulnerability — this
 repository is public, so an issue discloses the finding to everyone the moment it
 is filed, including before there is a fix.
 
-⚠️ This paragraph asked for a private advisory before private vulnerability
-reporting was actually switched on for the repository, which meant an outside
-reporter had no such button and the only remaining route was email. The setting
-is enabled now (verified via
+**If the button is not there,** the setting has been turned off and you have no
+private channel. Open a public issue that contains *no technical detail* — one
+line, "I have a security report, please re-enable private vulnerability
+reporting" — and wait for the channel to come back. That discloses that something
+exists, which is unavoidable, but not what it is.
+
+⚠️ Known gap: both routes need a GitHub account, and this file lists no email.
+That is deliberate rather than an oversight — a plaintext address in a public
+repository is scraped — but it does mean a reporter without an account has no
+route at all. If that ever costs a real report, the fix is a dedicated alias, not
+a personal inbox.
+
+*Setting history, for maintainers:* the pre-2026-08-09 version of this section
+asked for a private advisory while private vulnerability reporting was switched
+**off**, so no such button existed and the only working route was the email the
+same sentence offered as an afterthought. It is on now — verified with
 `gh api repos/HeyderHesenov/NexusBI/private-vulnerability-reporting` →
-`{"enabled": true}`), so the instruction and the repository agree. If the button
-is missing, the setting was turned off again — say so in the report rather than
-opening a public issue.
+`{"enabled": true}` — so the instruction and the repository finally agree.
