@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { deriveAccentVariants, hexToRgb, hexToTriplet, readableTextColor, relativeLuminance } from './color'
+import {
+  composite,
+  deriveAccentVariants,
+  hexToRgb,
+  hexToTriplet,
+  readableTextColor,
+  relativeLuminance,
+} from './color'
 
 describe('color', () => {
   it('loses nothing by folding three sRGB transfer curves into one', () => {
@@ -60,5 +67,31 @@ describe('color', () => {
 
   it('returns null variants for bad hex', () => {
     expect(deriveAccentVariants('xyz', false)).toBeNull()
+  })
+
+  it('composites toward the backdrop, and is pinned by its own endpoints', () => {
+    // ⚠️ WRITTEN BECAUSE A MUTATION SURVIVED. Replacing the body with
+    // `f.map((c) => Math.round(c))` — i.e. ignoring alpha entirely and returning
+    // the foreground — left all 49 trust-ring and palette assertions green.
+    //
+    // The reason is worth keeping: every caller asserts a FLOOR, and dropping the
+    // blend moves each ratio AWAY from its backdrop, so a broken composite makes
+    // the numbers look better and every `toBeGreaterThanOrEqual` still passes.
+    // That is the same shape as the deltaE mutation that survived the dichromacy
+    // work — the converter was anchored and the thing measuring with it was not.
+    // A helper only used through inequalities has to be pinned by identities.
+    //
+    // alpha 0 is the one the mutation cannot fake: it demands the BACKDROP back.
+    expect(composite('#AB4A37', '#FFFFFF', 0)).toBe('#ffffff')
+    expect(composite('#AB4A37', '#FFFFFF', 1)).toBe('#ab4a37')
+    // Half of black over white is mid grey — fixes the direction AND the scale,
+    // so a blend that ran backwards or at half strength cannot pass either.
+    expect(composite('#000000', '#FFFFFF', 0.5)).toBe('#808080')
+    expect(composite('#FFFFFF', '#000000', 0.25)).toBe('#404040')
+  })
+
+  it('throws on a malformed hex rather than compositing nonsense', () => {
+    expect(() => composite('nope', '#FFFFFF', 0.5)).toThrow(/malformed/)
+    expect(() => composite('#FFFFFF', 'nope', 0.5)).toThrow(/malformed/)
   })
 })
