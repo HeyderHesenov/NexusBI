@@ -34,18 +34,20 @@ type Mode = 'light' | 'dark'
  * lightest and darkest of six hues can differ by at most 1.50:1. Everything is
  * then within half a stop of everything else, and the set collapses into one
  * tone for anyone who cannot use hue. Splitting by mode gives each canvas the
- * full range instead: the light set below spans 2.40:1 end to end, keeping the
- * dark set's hues and simply going deeper.
+ * full range instead: the light set below spans 2.65:1 end to end and the dark
+ * set 2.11:1, against the 1.50:1 a shared palette is capped at.
  *
  * ⚠️ The gain is in RANGE, not in neighbour separation — adjacent pairs in the
- * light set sit 1.10–1.39:1 apart, which is no better than the packed
- * alternative and would be dishonest to claim as the win. What the spread buys
- * is that the set as a whole stops reading as one tone, so where a slice lands
- * between the extremes carries information in greyscale even when its immediate
- * neighbour is close.
+ * light set sit 1.02–1.46:1 apart, which is no better than the packed
+ * alternative and would be dishonest to claim as the win. Nor does the span buy
+ * greyscale legibility, which an earlier version of this paragraph claimed: two
+ * of the light six sit 0.4 L* apart and photocopy to the same grey. What the
+ * palette is actually chosen against is the pairwise dichromacy floor described
+ * below — greyscale is a separate and still-open property, measured there rather
+ * than implied here.
  *
- * The dark values are byte-identical to what shipped before the split. The light
- * ones are new, and each was measured against `--bg` / `--surface` /
+ * Both sets were re-picked against that floor, so neither is what shipped before
+ * the split. Each colour was measured against `--bg` / `--surface` /
  * `--surface-2`; the worst case of the three is quoted.
  */
 
@@ -71,6 +73,15 @@ export const SERIES_COUNT = 6
  * That is a fact about THIS palette's hues, not a general law — a set built on
  * opposite ends of blue-yellow could stay apart with less lightness range.
  *
+ * ⚠️ That describes the SEARCH, not the RESULT, and the difference matters
+ * because two pairs clear the floor on surviving hue alone: light `[1]`/`[4]` at
+ * ΔL* 0.4 and dark `[3]`/`[0]` at ΔL* 1.7. The first scores ΔE 43.1 under
+ * deuteranopia at essentially equal lightness — deuteranopia removes red-green
+ * and leaves blue-yellow standing, and green-vs-violet is exactly that axis.
+ * Lightness does most of the work in this set. It does not do all of it, and a
+ * future edit that trusts "spread by lightness" as an invariant will be wrong
+ * about those two pairs.
+ *
  * That is why an earlier framing of this ticket — "separate the hues of the two
  * pairs that collide" — was abandoned after measurement. Changing a hue cannot
  * help a reader who has no hue.
@@ -80,6 +91,15 @@ export const SERIES_COUNT = 6
  * every surface at 3:1. The dichromacy floor is the binding one: the palette
  * this replaced measured 2.2 (dark) and 6.5 (light) there while passing
  * everything else, which is exactly how it shipped unnoticed.
+ *
+ * WHAT IS NOT: greyscale. Every dichromacy model PRESERVES lightness, so no
+ * simulation in that test can see a pair that differs only in hue, and the check
+ * this replaced could not either — a luminance gap between sorted NEIGHBOURS
+ * says nothing about the pair two steps apart. Scored properly, 4 light pairs
+ * and 8 dark fall under the same 10 ΔE floor in greyscale, worst 0.4. That is
+ * not something this palette broke (the one it replaced measured 8 and 9, worst
+ * 1.1) and not something any version here has ever covered. Monochrome print is
+ * its own ticket; do not read a dichromacy pass as standing in for it.
  *
  * The room is nearly exhausted, and that is worth knowing before adding a
  * seventh colour: six colours needing ~10 ΔL* between each pair want ~50 L*
@@ -176,6 +196,21 @@ const HEALTH_DARK: Record<GraphHealthStatus, string> = {
  * Knowledge-graph node colours — one distinct, mid-tone hue per asset type so no
  * two types collide (the 6-colour SERIES forced widget/squery and dash/decision
  * to share).
+ *
+ * ⚠️ "No two collide" holds in normal vision only, and unlike SERIES that is
+ * ACCEPTED here rather than fixed. Scored against the same 10 ΔE floor, 14 of
+ * the 36 light pairs and 9 of the dark fall under it beneath some dichromacy —
+ * worst `metric`/`squery` at ΔE 1.0 under tritanopia, which is one colour, not
+ * two. Nine types also cannot be spread the way six were: ~10 ΔL* per pair wants
+ * ~90 L* units and the 3:1 floor leaves 50–59.
+ *
+ * It is accepted because hue is not the channel carrying type here. Every node
+ * draws a per-type icon on top (`TYPE_ICON` in ForceGraph — nine types, nine
+ * symbols), and the legend, the detail sidebar and the asset picker each pair
+ * the swatch with that icon AND the type's name in words. The one colour-only
+ * site is the mini-map, which is `aria-hidden` and a navigation aid rather than
+ * a data read. SERIES has no such second channel — nothing but the colour tells
+ * one line from another — which is why it was re-picked and this was not.
  *
  * These answer to TWO floors, not one: 3:1 against the canvas AND 3:1 against
  * the GLYPH sitting on top of them. The glyph is what stops the light set from

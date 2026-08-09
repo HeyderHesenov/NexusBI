@@ -18,6 +18,22 @@ const TEXT = 4.5
  * dichromacy. CIE76 ΔE: ~2.3 is the just-noticeable difference under ideal
  * conditions, so 10 is roughly four of those — the margin a thin line or a small
  * slice needs to stay legible against a busy chart rather than in a lab.
+ *
+ * ⚠️ WHICH PALETTES THIS IS POINTED AT, AND WHY NOT THE OTHERS. Only SERIES is
+ * scored. That is deliberate: SERIES is the one palette where colour is the ONLY
+ * thing telling two marks apart — the line widgets give every series the same
+ * width and no dash, and pie slices carry no on-arc label.
+ *
+ * GRAPH_TYPE_COLORS and HEALTH_COLOR are not scored, and extending this loop to
+ * them would report failures that are not defects. Both would fail (14 of 36
+ * light node pairs collide under some dichromacy, worst ΔE 1.0), but node type
+ * is carried by a per-type icon plus the type's name in words at every site that
+ * is not `aria-hidden`. See the note above GRAPH_LIGHT in theme.ts for the
+ * measurement and the reasoning.
+ *
+ * The one genuine gap this does not cover is trust-ring SEVERITY, where warn vs
+ * danger is hue alone on the canvas — its own ticket, deliberately not widened
+ * into here.
  */
 const SEPARATION = 10
 const DICHROMACIES = ['protan', 'deutan', 'tritan'] as const
@@ -247,10 +263,21 @@ describe('chart ink measures up to the rule it is used under', () => {
     // relative luminance is not perceptual, so a "legal" gap at one end of the
     // scale is a much smaller difference than the same gap at the other.
     //
-    // The dichromacy floor subsumes the old one. Two colours cannot clear 10 ΔE
-    // for a deuteranope without a real lightness difference, because that reader
-    // has nothing else to go on — so this passes only if the set is spread, and
-    // it says why rather than encoding the spread as a magic number.
+    // ⚠️ WHAT THIS FLOOR DOES NOT DO IS SUBSUME THE OLD ONE, which an earlier
+    // draft of this comment claimed on the reasoning that "two colours cannot
+    // clear 10 ΔE for a deuteranope without a real lightness difference, because
+    // that reader has nothing else to go on". Measured, that is false, and the
+    // palette in this very file disproves it: SERIES[1] #009562 vs SERIES[4]
+    // #9776B3 sit 0.4 L* apart and still score ΔE 43.1 under deuteranopia. A
+    // deuteranope has plenty to go on — deuteranopia deletes red-green and
+    // leaves blue-yellow standing, and green-vs-violet rides that surviving axis.
+    //
+    // So the two properties are INDEPENDENT, not nested. Every dichromacy model
+    // preserves lightness, which means no assertion in this test can ever see a
+    // greyscale collision; scored separately, this palette has 4 light pairs and
+    // 8 dark under the same floor in greyscale, worst 0.4. Neither did the check
+    // this replaced actually cover that — its light set measured 8 such pairs
+    // while passing. Greyscale is an open ticket, not a thing proven below.
     const { SERIES } = chartTheme(mode)
     expect(SERIES).toHaveLength(SERIES_COUNT)
     for (let i = 0; i < SERIES.length; i++) {
@@ -296,6 +323,33 @@ describe('chart ink measures up to the rule it is used under', () => {
     // …and it must not be an identity function.
     expect(simulateDichromacy('#D22B2B', 'deutan')).not.toBe('#D22B2B')
     expect(simulateDichromacy('nonsense', 'deutan')).toBeNull()
+  })
+
+  it('measures distance perceptually rather than in raw sRGB', () => {
+    // The companion to the anchor above, and it exists because MUTATION FOUND THE
+    // HOLE: replacing deltaE's CIELAB conversion with a plain sRGB Euclidean
+    // distance broke NOTHING — 38 tests stayed green. The simulator was pinned;
+    // the metric it feeds was not.
+    //
+    // That gap is not academic. Scored with the naive metric against the same
+    // SEPARATION constant, the light palette this branch REPLACED measures 14.6
+    // and sails through, when its true worst pair is 5.2 — the exact defect this
+    // work exists to fix, waved past by a one-line change no reviewer would
+    // linger on. (Dark still fails at 4.0, so the swap hides half of it, which is
+    // worse than hiding all of it: the suite stays red for the wrong reason and
+    // gets "fixed" by touching only the dark set.)
+    //
+    // Two anchors, both from CIELAB's definition rather than from our palette:
+    // black to white is exactly ΔL* 100 and therefore ΔE 100, where sRGB distance
+    // reads 441.7…
+    expect(deltaE('#000000', '#FFFFFF')).toBeCloseTo(100, 3)
+    // …and equal steps must NOT read as equal differences at both ends of the
+    // scale. These two pairs are the same sRGB distance apart (69.3 exactly), and
+    // a perceptual metric has to rank the dark one further apart, because the eye
+    // does. Any metric linear in sRGB scores them identically and fails here.
+    const dark = deltaE('#101010', '#383838')
+    const light = deltaE('#C8C8C8', '#F0F0F0')
+    expect(dark / light, `dark ${dark.toFixed(1)} vs light ${light.toFixed(1)}`).toBeGreaterThan(1.2)
   })
 
   it.each(MODES)('SERIES[0] is the accent token in %s mode', (mode) => {
