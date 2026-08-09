@@ -2,7 +2,8 @@ import { lazy, Suspense } from 'react'
 import { ChartSkeleton } from './ChartSkeleton'
 import type { ChartRendererProps } from './ChartRenderer'
 
-// recharts (~440kB) is the heaviest dependency; pulling ChartRenderer in lazily
+// recharts (~419 kB uncompressed across its async chunks — `axis-*` carries most
+// of it) is the heaviest dependency; pulling ChartRenderer in lazily
 // keeps it out of the initial route chunk so pages render (and the empty query
 // state shows) before the chart bundle downloads. It arrives on first chart paint.
 const Inner = lazy(() => import('./ChartRenderer').then((m) => ({ default: m.ChartRenderer })))

@@ -152,5 +152,31 @@ Dependabot alerts + security updates, and CodeQL code scanning.
     that cannot be parsed is rejected rather than run unconstrained.
 
 ## Reporting a vulnerability
-Open a private security advisory on GitHub or email the maintainer. Please do not
-file public issues for undisclosed vulnerabilities.
+
+**Use GitHub's private vulnerability reporting:** the *Report a vulnerability*
+button under the repository's **Security** tab, or
+<https://github.com/HeyderHesenov/NexusBI/security/advisories/new>. It opens a
+draft advisory only the maintainer can see.
+
+Please do not file a public issue for an undisclosed vulnerability — this
+repository is public, so an issue discloses the finding to everyone the moment it
+is filed, including before there is a fix.
+
+**If the button is not there,** the setting has been turned off and you have no
+private channel. Open a public issue that contains *no technical detail* — one
+line, "I have a security report, please re-enable private vulnerability
+reporting" — and wait for the channel to come back. That discloses that something
+exists, which is unavoidable, but not what it is.
+
+⚠️ Known gap: both routes need a GitHub account, and this file lists no email.
+That is deliberate rather than an oversight — a plaintext address in a public
+repository is scraped — but it does mean a reporter without an account has no
+route at all. If that ever costs a real report, the fix is a dedicated alias, not
+a personal inbox.
+
+*Setting history, for maintainers:* the pre-2026-08-09 version of this section
+asked for a private advisory while private vulnerability reporting was switched
+**off**, so no such button existed and the only working route was the email the
+same sentence offered as an afterthought. It is on now — verified with
+`gh api repos/HeyderHesenov/NexusBI/private-vulnerability-reporting` →
+`{"enabled": true}` — so the instruction and the repository finally agree.
