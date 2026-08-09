@@ -1,7 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { deriveAccentVariants, hexToRgb, hexToTriplet, readableTextColor } from './color'
+import { deriveAccentVariants, hexToRgb, hexToTriplet, readableTextColor, relativeLuminance } from './color'
 
 describe('color', () => {
+  it('loses nothing by folding three sRGB transfer curves into one', () => {
+    // This file grew three copies of the curve — relativeLuminance used WCAG's
+    // 0.03928 breakpoint, the two dichromacy helpers used the sRGB spec's
+    // 0.04045 — inside the same 152 lines, under a docstring explaining that the
+    // function was exported precisely so there would not be two.
+    //
+    // Consolidating on 0.04045 is only safe if no 8-bit channel falls between the
+    // two breakpoints. It does not: WCAG's breaks at 255 × 0.03928 = 10.016 and
+    // the spec's at 10.31, so both put 0-10 on the linear branch and 11-255 on
+    // the power branch. Asserted over the whole domain rather than argued,
+    // because every caller feeds integers (hexToRgb parses them, `mix` rounds)
+    // and that is the premise the consolidation rests on.
+    const wcag = (c: number) => {
+      const s = c / 255
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+    }
+    for (let c = 0; c <= 255; c++) {
+      expect(relativeLuminance([c, c, c]), `channel ${c} diverges between the two breakpoints`)
+        .toBeCloseTo(wcag(c), 12)
+    }
+  })
+
   it('parses hex to rgb and triplet (with/without #, case-insensitive)', () => {
     expect(hexToRgb('#0E9F6E')).toEqual([14, 159, 110])
     expect(hexToRgb('0e9f6e')).toEqual([14, 159, 110])

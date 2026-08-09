@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { chartTheme, GLYPH, GRAPH_TYPES, RING_OPACITY, SERIES_COUNT } from './theme'
-import { contrastRatio, hexToRgb, relativeLuminance } from '../../lib/color'
+import {
+  contrastRatio,
+  deltaE,
+  dichromacyGamutError,
+  hexToRgb,
+  relativeLuminance,
+  simulateDichromacy,
+} from '../../lib/color'
 import type { GraphHealthStatus } from '../../types'
 // `?raw` resolves to the file only because vite.config.ts sets `test.css: true`
 // — with vitest's default the import silently yields an empty string, and every
@@ -8,11 +15,45 @@ import type { GraphHealthStatus } from '../../types'
 // "reads the surfaces out of index.css" test is what makes that loud.
 import indexCss from '../../index.css?raw'
 import forceGraphSrc from '../graph/ForceGraph.tsx?raw'
+import { TOP_N } from './PieChartWidget'
 
 /** WCAG's non-text floor. Bars, slices, rules, rings, node fills. */
 const GRAPHIC = 3
 /** WCAG AA for text. */
 const TEXT = 4.5
+/**
+ * Perceptual distance two series must keep, in normal vision and under each
+ * dichromacy, in CIE76 ΔE.
+ *
+ * ⚠️ "10 ≈ four JNDs" IS THE WRONG WAY TO READ IT, though it is how this comment
+ * used to. That arithmetic (~2.3 per JND) holds in a metric that is uniform, and
+ * CIE76 is not: scored with CIEDE2000 the weakest pairs here are 5.37 (light) and
+ * 5.34 (dark), and they are not even the pairs CIE76 flags — it rates those two
+ * 17.8 and 12.0 and points at different ones. So 10 is a working floor calibrated
+ * to this metric, not four of anything. The palette it replaced measures 2.85 and
+ * 1.02 under CIEDE2000, so the gain is real and roughly 3-5×; adopting CIEDE2000
+ * outright is a ticket, and it has to follow the tritan gamut fix, since half the
+ * weak pairs are tritan pairs measured through a clamp.
+ *
+ * ⚠️ WHICH PALETTES THIS IS POINTED AT, AND WHY NOT THE OTHERS. It scores the
+ * marks a single chart can place side by side: the six SERIES, plus the INK_FAINT
+ * "other" wedge a folded pie adds. That set is where colour is the ONLY thing
+ * telling two marks apart — the line widgets give every series the same width and
+ * no dash, and pie slices carry no on-arc label.
+ *
+ * GRAPH_TYPE_COLORS and HEALTH_COLOR are not scored, and extending this loop to
+ * them would report failures that are not defects. Both would fail (11 of the 36
+ * light node pairs collide under some dichromacy, worst ΔE 1.0), but node type is
+ * carried by a per-type icon plus the type's name in words at every site that
+ * reads as data. See the note above GRAPH_LIGHT in theme.ts for the measurement,
+ * the reasoning, and why `aria-hidden` is NOT part of it.
+ *
+ * The one genuine gap this does not cover is trust-ring SEVERITY, where warn vs
+ * danger is hue alone on the canvas — its own ticket, deliberately not widened
+ * into here.
+ */
+const SEPARATION = 10
+const DICHROMACIES = ['protan', 'deutan', 'tritan'] as const
 
 /**
  * `fg` at `alpha` over `bg`, as the browser composites it.
@@ -85,6 +126,16 @@ describe.each(['light', 'dark'] as const)('HEALTH_COLOR (%s)', (mode) => {
     // Per-mode now, so the pairing has to hold within a mode — comparing the
     // light ring to the dark danger would pass for the wrong reason.
     expect(HEALTH_COLOR.danger).toBe(chartTheme(mode).DANGER)
+  })
+
+  it('reuses the app-wide ACCENT color for the ok severity', () => {
+    // The twin of the assertion above, and it was missing — which is how the
+    // light side came to read `ok: ACCENT_LIGHT` while the dark side kept a
+    // hardcoded #0E9F6E. Pinning SERIES[0] to the accent token widened that into
+    // a healthy node ringed in one green while the accent beside it was another.
+    // "danger is the token" was asserted; "ok is the token" was only true by
+    // habit, in one mode.
+    expect(HEALTH_COLOR.ok).toBe(chartTheme(mode).ACCENT)
   })
 
   it('gives each severity a distinct color', () => {
@@ -225,39 +276,213 @@ describe('chart ink measures up to the rule it is used under', () => {
     )
   })
 
-  it('keeps the light SERIES separable without colour', () => {
-    // The property a "just darken everything until it passes" fix destroys: six
-    // colours can all clear 3:1 against the canvas and still be one tone to each
-    // other.
+  it.each(MODES)('keeps every SERIES pair apart without hue in %s mode', (mode) => {
+    // The assertion this palette exists for, and the one its predecessor failed
+    // silently: a chart may put ANY two series side by side, so all 15 pairs are
+    // scored — not only lightness neighbours — and scored again as each of the
+    // three dichromacies sees them.
     //
-    // TWO assertions, because the neighbour gap on its own does not say what the
-    // palette claims. Adjacent light pairs sit 1.10–1.39:1 apart — no better
-    // than the packed alternative theme.ts rejects at 1.50:1. What the split
-    // actually buys is RANGE: 2.40:1 from the darkest of the six to the
-    // lightest, where a shared palette is capped at 1.50:1 by the window it has
-    // to live in. So the span is pinned too, and it is the assertion that fails
-    // if someone flattens the set while keeping the gaps legal.
+    // WHY THIS REPLACED A LUMINANCE-GAP CHECK. The old test asserted a 0.02 gap
+    // between sorted luminance neighbours, in light mode only. It was the right
+    // instinct measured on the wrong quantity, and it was green while the dark
+    // palette had a pair at ΔE 2.2 under deuteranopia — indistinguishable.
+    // A gap between NEIGHBOURS says nothing about the pair two steps apart, and
+    // relative luminance is not perceptual, so a "legal" gap at one end of the
+    // scale is a much smaller difference than the same gap at the other.
     //
-    // ⚠️ LIGHT ONLY, and this is the one place in this file where a single-mode
-    // check is the honest one. The dark palette is byte-identical to what
-    // shipped — the whole point of the change — and measured it would FAIL this
-    // bar: sorted luminances 0.244–0.454, smallest neighbour gap 0.0145.
-    // Widening to both modes would either fail the suite for a defect this
-    // change did not introduce, or force the threshold down to where it
-    // certifies nothing. Left as its own ticket, said out loud rather than
-    // quietly scoped away.
-    const lum = (hex: string) => {
+    // ⚠️ WHAT THIS FLOOR DOES NOT DO IS SUBSUME THE OLD ONE, which an earlier
+    // draft of this comment claimed on the reasoning that "two colours cannot
+    // clear 10 ΔE for a deuteranope without a real lightness difference, because
+    // that reader has nothing else to go on". Measured, that is false, and the
+    // palette in this very file disproves it: SERIES[1] #009562 vs SERIES[4]
+    // #9776B3 sit 0.4 L* apart and still score ΔE 43.1 under deuteranopia. A
+    // deuteranope has plenty to go on — deuteranopia deletes red-green and
+    // leaves blue-yellow standing, and green-vs-violet rides that surviving axis.
+    //
+    // So the two properties are INDEPENDENT, not nested. Every dichromacy model
+    // preserves lightness, which means no assertion in this test can ever see a
+    // greyscale collision; scored separately, this palette has 4 light pairs and
+    // 8 dark under the same floor in greyscale, worst 0.4. Neither did the check
+    // this replaced actually cover that — its light set measured 8 such pairs
+    // while passing. Greyscale is an open ticket, not a thing proven below.
+    const { SERIES, INK_FAINT } = chartTheme(mode)
+    expect(SERIES).toHaveLength(SERIES_COUNT)
+
+    // ⚠️ THE SET SCORED IS "MARKS A CHART CAN PUT SIDE BY SIDE", NOT "SERIES".
+    // Scoring SERIES×SERIES alone let a real collision ship: a folded pie paints
+    // its "other" wedge in INK_FAINT, a neutral grey that measured ΔE 1.26 from
+    // the neutral-grey SERIES[5] in light mode — in the one widget with no on-arc
+    // labels, which is the widget this floor's docstring names as its reason.
+    // TOP_N is imported rather than reasoned about so the two cannot drift.
+    expect(TOP_N, 'a folded pie must leave one series unused for the other wedge')
+      .toBeLessThanOrEqual(SERIES_COUNT - 1)
+    const MARKS = [
+      ...SERIES.map((hex, i) => ({ hex, label: `SERIES[${i}]` })),
+      { hex: INK_FAINT, label: 'INK_FAINT (folded "other" wedge)' },
+    ]
+    // INK_FAINT only ever shares a pie with the first TOP_N series, so it is
+    // scored against those and not against the one held in reserve.
+    const coexists = (x: number, y: number) =>
+      MARKS[x].hex !== INK_FAINT && MARKS[y].hex !== INK_FAINT ? true : Math.max(x, y) === MARKS.length - 1 && Math.min(x, y) < TOP_N
+
+    for (let i = 0; i < MARKS.length; i++) {
+      for (let j = i + 1; j < MARKS.length; j++) {
+        if (!coexists(i, j)) continue
+        const [A, B] = [MARKS[i], MARKS[j]]
+        expect(
+          deltaE(A.hex, B.hex),
+          `${A.label} ${A.hex} vs ${B.label} ${B.hex} in normal vision (${mode})`,
+        ).toBeGreaterThanOrEqual(SEPARATION)
+        for (const kind of DICHROMACIES) {
+          const a = simulateDichromacy(A.hex, kind)
+          const b = simulateDichromacy(B.hex, kind)
+          expect(a && b, `${A.hex}/${B.hex} failed to simulate`).toBeTruthy()
+          expect(
+            deltaE(a as string, b as string),
+            `${A.label} ${A.hex} vs ${B.label} ${B.hex} under ${kind} (${mode})`,
+          ).toBeGreaterThanOrEqual(SEPARATION)
+        }
+      }
+    }
+  })
+
+  it.each(MODES)('keeps the SERIES span the mode-split was justified by in %s mode', (mode) => {
+    // The deleted luminance-neighbour check took a second assertion down with it:
+    // theme.ts still argues the split is worth it because each set spans further
+    // than the 1.50:1 a shared palette is capped at, and quotes 2.65:1 and 2.11:1.
+    // Those are load-bearing numbers with nothing holding them. The pairwise floor
+    // does NOT imply them — pairs can separate on hue.
+    //
+    // ⚠️ Deliberately not a neighbour-gap check. The new light set's smallest
+    // neighbour gap is 0.0041, against the 0.02 the deleted test demanded, and
+    // that is the greyscale ticket rather than something to re-assert here.
+    const lum = chartTheme(mode).SERIES.map((hex) => {
       const rgb = hexToRgb(hex)
       if (!rgb) throw new Error(`malformed palette hex: ${hex}`)
       return relativeLuminance(rgb)
+    }).sort((a, b) => a - b)
+    const span = (lum[lum.length - 1] + 0.05) / (lum[0] + 0.05)
+    expect(span, `${mode} SERIES spans only ${span.toFixed(2)}:1 end to end`).toBeGreaterThan(1.5)
+  })
+
+  it('simulates each dichromacy rather than trusting the helper', () => {
+    // A simulator that returned its input would make every assertion above
+    // vacuous, and it would look green forever.
+    //
+    // ⚠️ ONE ANCHOR PER CONDITION, because one was not enough and that was
+    // measured, not guessed. The previous version exercised 'deutan' only, and
+    // with it in place BOTH other matrices could be replaced by the identity
+    // matrix with the whole suite still passing — the protan and tritan columns
+    // simply reported normal-vision distances, which are comfortably over the
+    // floor. Two thirds of the guard this branch exists for was decorative.
+    //
+    // Each pair below is built ON that condition's confusion line: take a colour
+    // into LMS, scale ONLY the cone the condition is missing, come back. So the
+    // pair is invisible to exactly one dichromat and obvious to everyone else —
+    // which is why each row asserts a collapse AND two survivals. A matrix
+    // swapped for identity fails its own collapse (the pair scores 98-113 in
+    // normal vision); two matrices swapped for each other fail it too.
+    //
+    // ⚠️ A lightness-matched red/green pair does NOT work for protan, which is
+    // what the old comment's reasoning would have predicted: #C1554B/#4E8C4A
+    // collapses for a deuteranope (4.85) and stays wide open for a protanope
+    // (20.29), because protanopia also darkens reds. Same axis, different
+    // luminous efficiency — the confusion line has to be built per condition.
+    const ANCHORS = [
+      { kind: 'protan', a: '#2D6C51', b: '#FE2D4E', collapse: 0.59, normal: 107.3 },
+      { kind: 'deutan', a: '#CA5259', b: '#209A50', collapse: 1.12, normal: 98.0 },
+      { kind: 'tritan', a: '#6C7853', b: '#8E4AE8', collapse: 0.59, normal: 113.0 },
+    ] as const
+    for (const { kind, a, b } of ANCHORS) {
+      expect(
+        deltaE(simulateDichromacy(a, kind) as string, simulateDichromacy(b, kind) as string),
+        `${a}/${b} sits on the ${kind} confusion line and must collapse`,
+      ).toBeLessThan(SEPARATION)
+      for (const other of DICHROMACIES.filter((k) => k !== kind)) {
+        expect(
+          deltaE(simulateDichromacy(a, other) as string, simulateDichromacy(b, other) as string),
+          `${a}/${b} is only invisible to ${kind}; ${other} must still see it`,
+        ).toBeGreaterThan(25)
+      }
     }
-    const sorted = chartTheme('light').SERIES.map(lum).sort((a, b) => a - b)
-    const gaps = sorted.slice(1).map((v, i) => v - sorted[i])
-    // 0.02 at this end of the scale is roughly 1.08:1 — a floor against total
-    // collapse, not a claim that neighbours are comfortably distinct.
-    expect(Math.min(...gaps), `luminances collapsed: ${sorted.map((v) => v.toFixed(3))}`).toBeGreaterThanOrEqual(0.02)
-    const span = (sorted[sorted.length - 1] + 0.05) / (sorted[0] + 0.05)
-    expect(span, `light SERIES spans only ${span.toFixed(2)}:1 end to end`).toBeGreaterThanOrEqual(2)
+    // …and none of them may be an identity function.
+    for (const kind of DICHROMACIES) {
+      expect(simulateDichromacy('#D22B2B', kind), `${kind} returned its input`).not.toBe('#D22B2B')
+    }
+    expect(simulateDichromacy('nonsense', 'deutan')).toBeNull()
+    // A malformed hex must fail a ceiling as loudly as a floor. deltaE returned 0
+    // here — which passes `toBeLessThan(SEPARATION)` silently, i.e. it would have
+    // made every collapse assertion above vacuous.
+    expect(deltaE('nonsense', '#000000')).toBeNaN()
+  })
+
+  it('reports when a simulated colour left the gamut instead of clipping it away', () => {
+    // simulateDichromacy clamps out-of-range output, so for a colour that clips,
+    // the hex it returns is not what the model says — it is the nearest thing a
+    // screen can show, and a ΔE measured from it is partly measuring the clamp.
+    //
+    // This is pinned rather than asserted-away because the dark palette DOES clip
+    // under tritan and fixing that means a different tritan model (Brettel's two
+    // half-planes; Viénot/Brettel/Mollon validated the single-plane form for
+    // protan and deutan only). Recording it keeps the tritan column honest and
+    // makes any change to it deliberate.
+    const clipped: Record<string, number> = {}
+    for (const mode of MODES) {
+      for (const [i, hex] of chartTheme(mode).SERIES.entries()) {
+        for (const kind of DICHROMACIES) {
+          const err = dichromacyGamutError(hex, kind)
+          if (err > 0) clipped[`${mode}[${i}] ${kind}`] = Math.round(err * 1000) / 1000
+        }
+      }
+    }
+    // protan and deutan stay in gamut for every series in both modes; tritan does
+    // not, and only for the light-on-dark end where the collapse pushes blue past 1.
+    expect(Object.keys(clipped).every((k) => k.endsWith('tritan')), JSON.stringify(clipped)).toBe(true)
+    expect(clipped).toEqual({
+      'light[1] tritan': 0.027,
+      'light[3] tritan': 0.099,
+      'dark[0] tritan': 0.665,
+      'dark[1] tritan': 0.773,
+      'dark[2] tritan': 0.139,
+      'dark[3] tritan': 0.491,
+    })
+  })
+
+  it('measures distance perceptually rather than in raw sRGB', () => {
+    // The companion to the anchor above, and it exists because MUTATION FOUND THE
+    // HOLE: replacing deltaE's CIELAB conversion with a plain sRGB Euclidean
+    // distance broke NOTHING — 38 tests stayed green. The simulator was pinned;
+    // the metric it feeds was not.
+    //
+    // That gap is not academic. Scored with the naive metric against the same
+    // SEPARATION constant, the light palette this branch REPLACED measures 14.6
+    // and sails through, when its true worst pair is 5.2 — the exact defect this
+    // work exists to fix, waved past by a one-line change no reviewer would
+    // linger on. (Dark still fails at 4.0, so the swap hides half of it, which is
+    // worse than hiding all of it: the suite stays red for the wrong reason and
+    // gets "fixed" by touching only the dark set.)
+    //
+    // Two anchors, both from CIELAB's definition rather than from our palette:
+    // black to white is exactly ΔL* 100 and therefore ΔE 100, where sRGB distance
+    // reads 441.7…
+    expect(deltaE('#000000', '#FFFFFF')).toBeCloseTo(100, 3)
+    // …and equal steps must NOT read as equal differences at both ends of the
+    // scale. These two pairs are the same sRGB distance apart (69.3 exactly), and
+    // a perceptual metric has to rank the dark one further apart, because the eye
+    // does. Any metric linear in sRGB scores them identically and fails here.
+    const dark = deltaE('#101010', '#383838')
+    const light = deltaE('#C8C8C8', '#F0F0F0')
+    expect(dark / light, `dark ${dark.toFixed(1)} vs light ${light.toFixed(1)}`).toBeGreaterThan(1.2)
+  })
+
+  it.each(MODES)('SERIES[0] is the accent token in %s mode', (mode) => {
+    // theme.ts has always claimed "[0] is the --accent token exactly". It was
+    // true of light and false of dark, which shipped #0E9F6E against an --accent
+    // of #10B981 — the last of the chart/app colour divergences, and the only
+    // one no test spoke for. Now the sentence is enforced rather than asserted
+    // in prose.
+    const t = chartTheme(mode)
+    expect(t.SERIES[0]).toBe(t.ACCENT)
   })
 
   it.each(MODES)('ACCENT and DANGER are the app tokens in %s mode', (mode) => {

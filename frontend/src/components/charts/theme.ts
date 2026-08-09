@@ -34,18 +34,20 @@ type Mode = 'light' | 'dark'
  * lightest and darkest of six hues can differ by at most 1.50:1. Everything is
  * then within half a stop of everything else, and the set collapses into one
  * tone for anyone who cannot use hue. Splitting by mode gives each canvas the
- * full range instead: the light set below spans 2.40:1 end to end, keeping the
- * dark set's hues and simply going deeper.
+ * full range instead: the light set below spans 2.65:1 end to end and the dark
+ * set 2.11:1, against the 1.50:1 a shared palette is capped at.
  *
  * ⚠️ The gain is in RANGE, not in neighbour separation — adjacent pairs in the
- * light set sit 1.10–1.39:1 apart, which is no better than the packed
- * alternative and would be dishonest to claim as the win. What the spread buys
- * is that the set as a whole stops reading as one tone, so where a slice lands
- * between the extremes carries information in greyscale even when its immediate
- * neighbour is close.
+ * light set sit 1.02–1.46:1 apart, which is no better than the packed
+ * alternative and would be dishonest to claim as the win. Nor does the span buy
+ * greyscale legibility, which an earlier version of this paragraph claimed: two
+ * of the light six sit 0.4 L* apart and photocopy to the same grey. What the
+ * palette is actually chosen against is the pairwise dichromacy floor described
+ * below — greyscale is a separate and still-open property, measured there rather
+ * than implied here.
  *
- * The dark values are byte-identical to what shipped before the split. The light
- * ones are new, and each was measured against `--bg` / `--surface` /
+ * Both sets were re-picked against that floor, so neither is what shipped before
+ * the split. Each colour was measured against `--bg` / `--surface` /
  * `--surface-2`; the worst case of the three is quoted.
  */
 
@@ -56,32 +58,103 @@ export const GLYPH = '#1B1A18'
 export const SERIES_COUNT = 6
 
 /**
- * Emerald-led categorical palette.
+ * Emerald-led categorical palette, spread by LIGHTNESS on purpose.
  *
- * The light set is spread across luminance 0.071–0.240 rather than packed at the
- * top of the legal range: the smallest gap between neighbours is 0.027, which is
- * what keeps the six readable as six in greyscale and under colour-blind
- * simulation. Packing them all just under the 3:1 ceiling would have passed the
- * same automated check and produced six colours nobody can tell apart.
+ * WHO THIS IS SPREAD FOR. Dichromacy does not dull hue, it deletes an axis:
+ * deuteranopia and protanopia remove red-green, tritanopia removes blue-yellow.
+ * What survives is lightness plus the one axis still standing — so two series
+ * that differ only along the missing axis merge completely, however far apart
+ * they look to everyone else.
  *
- * `[0]` is the `--accent` token exactly — see the note on ACCENT.
+ * These six hues sit close together on the surviving axis (four of them are
+ * green-through-blue), so in practice lightness was carrying much of it. That is
+ * a fact about THIS palette's hues, not a general law — a set built on opposite
+ * ends of blue-yellow could stay apart with less lightness range.
+ *
+ * ⚠️ AN EARLIER VERSION PUT A CLEAN RULE HERE — "every failing pair had ΔL* under
+ * 5 and every passing pair had ΔL* over 12, in both modes" — and the old palette
+ * it cites does not show one. Passing light pairs run 3.1, 5.9, 7.6, 8.9, 9.4,
+ * 10.5 …; the dark set has a FAILING pair at ΔL* 9.8 and passing pairs at 3.9 and
+ * 4.1. There is no 5/12 separation in either mode, so "hence, spread by
+ * lightness" never followed from the numbers quoted for it. Lightness genuinely
+ * helps here; it was not the clean lever that sentence described.
+ *
+ * ⚠️ And lightness describes the SEARCH, not the RESULT — the difference matters
+ * because two pairs clear the floor on surviving hue alone: light `[1]`/`[4]` at
+ * ΔL* 0.4 and dark `[3]`/`[0]` at ΔL* 1.7. The first scores ΔE 43.1 under
+ * deuteranopia at essentially equal lightness — deuteranopia removes red-green
+ * and leaves blue-yellow standing, and green-vs-violet is exactly that axis.
+ * Lightness does most of the work in this set. It does not do all of it, and a
+ * future edit that trusts "spread by lightness" as an invariant will be wrong
+ * about those two pairs.
+ *
+ * That is why an earlier framing of this ticket — "separate the hues of the two
+ * pairs that collide" — was abandoned after measurement. Changing a hue cannot
+ * help a reader who has no hue.
+ *
+ * WHAT IS ASSERTED. `theme.test` scores every pair a chart can actually paint
+ * side by side — the six against each other AND against the folded-"other"
+ * INK_FAINT wedge — at a 10 ΔE floor in normal vision and under all three
+ * dichromacies, plus every colour against every surface at 3:1. The dichromacy
+ * floor is the binding one: the palette this replaced measured 2.2 (dark) and
+ * 5.2 (light) there while passing everything else, which is exactly how it
+ * shipped unnoticed.
+ *
+ * ⚠️ The light figure was written as 6.5 one paragraph from a test asserting 5.2.
+ * 5.2 is right; 6.5 was the protan/deutan minimum with tritanopia dropped, and
+ * the same omission is what miscounted the node-colour pairs further down.
+ *
+ * ⚠️ AND THE FLOOR IS SOFTER THAN "10 ΔE ≈ four JNDs" SOUNDS, because CIE76 is
+ * not CIEDE2000. Scored with CIEDE2000 (validated against Sharma's vectors) the
+ * weakest pairs are light [0]/[2] at 5.37 and dark [1]/[2] at 5.34, both under
+ * tritanopia — pairs CIE76 rates 17.8 and 12.0, i.e. it does not identify its own
+ * weakest link, because its largest errors sit in exactly the blue/violet region
+ * these live in. The change is still a real improvement (the old palette measures
+ * 2.85 and 1.02 the same way) but the honest claim is "3-5× better", not "clears
+ * four JNDs". Moving to CIEDE2000 is a ticket, and it has to follow the tritan
+ * model fix — see `dichromacyGamutError`.
+ *
+ * WHAT IS NOT: greyscale. Every dichromacy model PRESERVES lightness, so no
+ * simulation in that test can see a pair that differs only in hue, and the check
+ * this replaced could not either — a luminance gap between sorted NEIGHBOURS
+ * says nothing about the pair two steps apart. Scored properly, 4 light pairs
+ * and 8 dark fall under the same 10 ΔE floor in greyscale, worst 0.4. That is
+ * not something this palette broke (the one it replaced measured 8 and 9, worst
+ * 1.1) and not something any version here has ever covered. Monochrome print is
+ * its own ticket; do not read a dichromacy pass as standing in for it.
+ *
+ * ⚠️ BEFORE ADDING A SEVENTH COLOUR, note that the arithmetic this docblock used
+ * to offer for "a seventh does not fit" was wrong twice over. It said six colours
+ * want ~50 L* units of room — but the shipped six span only 26.9 L* (light) and
+ * 23.8 (dark) and clear the floor anyway, precisely because pairs can also
+ * separate on surviving hue, which this same docblock says two paragraphs up. It
+ * also counted intervals wrongly elsewhere (nine colours is eight gaps, not
+ * nine). The room is genuinely tight — dark leaves 52.8 L* above the 3:1 floor —
+ * but "does not fit" was asserted, not shown. A seventh needs measuring, not a
+ * rule of thumb.
+ *
+ * `[0]` is the `--accent` token exactly, in BOTH modes. It was only ever true
+ * of light: dark shipped #0E9F6E against an --accent of #10B981, so the comment
+ * that claimed it was half wrong. Freezing [0] to the token here is what makes
+ * the sentence true and closes the last chart/app colour divergence.
  */
+// Ratios are worst-of-three background contrast, as everywhere else in this file.
 const SERIES_LIGHT = [
-  '#0A6E4C', // emerald (accent)    5.69
-  '#318F67', // light emerald       3.63
-  '#476E9F', // dusty blue          4.77
-  '#5F4723', // tan                 7.90
-  '#8D68AD', // mauve               4.04
-  '#8B867C', // neutral             3.29
+  '#0A6E4C', // emerald (accent)    5.69  — frozen: this IS the --accent token
+  '#009562', // light emerald       3.48
+  '#50698D', // dusty blue          5.09
+  '#594529', // tan                 8.26
+  '#9776B3', // mauve               3.43
+  '#8F8A80', // neutral             3.12  — the tightest of the six
 ]
 
 const SERIES_DARK = [
-  '#0E9F6E', // emerald (accent)    4.40
-  '#5BC79A', // light emerald       7.14
-  '#7C9CC4', // dusty blue          5.25
-  '#C9A36B', // tan                 6.33
-  '#A88BC0', // mauve               5.04
-  '#8C877E', // neutral             4.17
+  '#10B981', // emerald (accent)    5.87  — frozen: this IS the --accent token
+  '#86D7B2', // light emerald       8.77
+  '#93B1D9', // dusty blue          6.75
+  '#BE985F', // tan                 5.56
+  '#977CAC', // mauve               4.11  — the tightest of the six
+  '#948F86', // neutral             4.65
 ]
 
 /**
@@ -101,7 +174,7 @@ const DANGER_DARK = '#D87C6B' // = --danger 216 124 107 · 4.97
 
 /** Accent, matching `--accent` in both modes for the same reason as DANGER. */
 const ACCENT_LIGHT = '#0A6E4C' // = --accent 10 110 76 · 5.69
-const ACCENT_DARK = '#10B981' // = --accent 16 185 129 · 4.63
+const ACCENT_DARK = '#10B981' // = --accent 16 185 129 · 5.87
 
 /**
  * Trust-overlay ring colour per health severity. Extracted (not inline) so the
@@ -139,7 +212,9 @@ const HEALTH_LIGHT: Record<GraphHealthStatus, string> = {
 export const RING_OPACITY = 0.9
 
 const HEALTH_DARK: Record<GraphHealthStatus, string> = {
-  ok: '#0E9F6E', // 4.22
+  ok: ACCENT_DARK, // 5.58 composited — the light side has said `ok: ACCENT_LIGHT`
+  //                  all along, and this was the hardcoded twin that made
+  //                  "closes the LAST chart/app colour divergence" untrue.
   warn: '#CBB25E', // 6.71
   danger: DANGER_DARK, // 4.78
   unknown: '#8C877E', // 4.02
@@ -149,6 +224,35 @@ const HEALTH_DARK: Record<GraphHealthStatus, string> = {
  * Knowledge-graph node colours — one distinct, mid-tone hue per asset type so no
  * two types collide (the 6-colour SERIES forced widget/squery and dash/decision
  * to share).
+ *
+ * ⚠️ "No two collide" holds in normal vision only, and unlike SERIES that is
+ * ACCEPTED here rather than fixed. Scored against the same 10 ΔE floor, **11 of
+ * the 36 light pairs and 6 of the 36 dark** fall under it beneath some
+ * dichromacy — worst `metric`/`squery` at ΔE 1.0 under tritanopia, which is one
+ * colour, not two.
+ *
+ * (Those counts read 14 and 9 for one commit. That was pairs-times-conditions out
+ * of 108 reported as pairs out of 36 — the measuring script pushed one row per
+ * failing (pair, condition) and the number was quoted without re-reading what it
+ * had counted. Same class as the 6.5 above: a figure carried out of the tool that
+ * produced it and into a sentence that means something else.)
+ *
+ * It is accepted because hue is not the channel carrying type here. Every node
+ * draws a per-type icon on top (`TYPE_ICON` in ForceGraph — nine types, nine
+ * symbols), and the legend, the detail sidebar and the asset picker each pair
+ * the swatch with that icon AND the type's name in words. SERIES has no such
+ * second channel — nothing but the colour tells one line from another — which is
+ * why it was re-picked and this was not.
+ *
+ * ⚠️ The mini-map is the one colour-only site, and `aria-hidden` is NOT the
+ * reason it is tolerable — that was a bad argument, written here for one commit.
+ * Removing a node from the accessibility tree helps a screen-reader user; it does
+ * nothing for the sighted dichromat this whole floor exists for, who sees the
+ * mini-map perfectly well and cannot separate its dots. What actually carries the
+ * argument is the other half: the mini-map is a viewport-navigation aid, every
+ * node in it is reachable and identifiable in the canvas it mirrors, and nothing
+ * is read from it. (It is also an interactive surface — onPointerDown /
+ * onPointerMove — hidden from assistive tech, which is its own small ticket.)
  *
  * These answer to TWO floors, not one: 3:1 against the canvas AND 3:1 against
  * the GLYPH sitting on top of them. The glyph is what stops the light set from
