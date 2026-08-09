@@ -101,6 +101,29 @@ const ringOf = (container: HTMLElement, status: GraphHealthStatus) => {
   return el
 }
 
+/**
+ * Opacity as the screen actually composites it: SVG group opacity multiplies
+ * through to every descendant, so an element's own attribute is only the last
+ * term of the product.
+ *
+ * ⚠️ THE FIRST VERSION OF THIS SUITE READ `ring.getAttribute('opacity')` AND WAS
+ * WRONG. The node's wrapper <g> carried `opacity={dimmed ? 0.2 : 1}`, so a ring
+ * declaring 0.9 painted at 0.18 — worse than the 0.4 this ticket set out to fix
+ * — while the test read 0.9, composited from it, and reported a comfortable
+ * 4.60:1. Rendering instead of grepping the source was not enough on its own;
+ * the quantity has to be the one the eye receives, and a screenshot of the real
+ * app is what exposed the gap. Walking the ancestors is what makes the guard
+ * structural rather than a second way of trusting one attribute.
+ */
+const effectiveOpacity = (el: Element): number => {
+  let o = 1
+  for (let n: Element | null = el; n; n = n.parentElement) {
+    const own = n.getAttribute('opacity')
+    if (own !== null) o *= Number(own)
+  }
+  return o
+}
+
 describe('ForceGraph trust ring', () => {
   // Unmount before restoring the mode: the theme store is global, so a reset
   // while a graph is still mounted re-renders it outside act() and the resulting
@@ -137,10 +160,11 @@ describe('ForceGraph trust ring', () => {
       expect(ring.getAttribute('stroke-width'), `${status} is not in the dimmed branch`).toBe(
         String(RING_WIDTH_DIM),
       )
-      const painted = composite(ring.getAttribute('stroke')!, SURFACE, Number(ring.getAttribute('opacity')))
+      const alpha = effectiveOpacity(ring)
+      const painted = composite(ring.getAttribute('stroke')!, SURFACE, alpha)
       expect(
         contrastRatio(painted, SURFACE),
-        `dimmed ${status} ring (${mode}) painted ${painted} on ${SURFACE}`,
+        `dimmed ${status} ring (${mode}) painted ${painted} on ${SURFACE} at effective alpha ${alpha}`,
       ).toBeGreaterThanOrEqual(GRAPHIC)
     }
   })
@@ -159,11 +183,13 @@ describe('ForceGraph trust ring', () => {
     for (const status of RINGED) {
       expect(ringOf(lit, status).getAttribute('stroke-width')).toBe(String(RING_WIDTH))
       expect(ringOf(dim, status).getAttribute('stroke-width')).toBe(String(RING_WIDTH_DIM))
-      expect(ringOf(lit, status).getAttribute('opacity')).toBe(String(RING_OPACITY))
+      // Effective, not declared: an ancestor <g> carrying the dim is exactly how
+      // this went wrong once, and it leaves the attribute reading a healthy 0.9.
+      expect(effectiveOpacity(ringOf(lit, status))).toBeCloseTo(RING_OPACITY, 5)
       expect(
-        ringOf(dim, status).getAttribute('opacity'),
+        effectiveOpacity(ringOf(dim, status)),
         `${status} fades when dimmed — the defect this ticket closed`,
-      ).toBe(String(RING_OPACITY))
+      ).toBeCloseTo(RING_OPACITY, 5)
     }
   })
 

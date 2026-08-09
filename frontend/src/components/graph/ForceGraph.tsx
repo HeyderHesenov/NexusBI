@@ -479,11 +479,13 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
         const isHovered = n.id === hoverId
         const emphasized = isSelected || (!!hoverSet && hoverSet.has(n.id))
         const showLabel = emphasized || zoom >= 0.8 || r >= 20
+        // Applied to the node's own marks, NOT to the group wrapping them — see
+        // the trust ring below, which has to sit outside it.
+        const dimOpacity = dimmed ? 0.2 : 1
         return (
           <g
             key={n.id}
             transform={`translate(${p.x},${p.y})`}
-            opacity={dimmed ? 0.2 : 1}
             className="cursor-pointer"
             data-node-id={n.id}
             onContextMenu={(e) => {
@@ -520,10 +522,21 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               }
             }}
           >
-            {emphasized && <circle r={r + 9} fill={color} opacity={0.18} style={{ pointerEvents: 'none' }} />}
+            {emphasized && (
+              <circle r={r + 9} fill={color} opacity={0.18 * dimOpacity} style={{ pointerEvents: 'none' }} />
+            )}
             {/* Trust ring: a thin colored halo for non-ok health (verified metrics
                 and fresh sources read as clean, unringed nodes). Severity rides on
-                the dash pattern as well as the colour — see RING_DASH. */}
+                the dash pattern as well as the colour — see RING_DASH.
+
+                ⚠️ DELIBERATELY OUTSIDE THE DIMMED GROUP BELOW. Group opacity in SVG
+                multiplies through to every descendant, so while the dim lived on
+                this node's wrapper <g> the ring painted at 0.9 × 0.2 = 0.18 — worse
+                than the 0.4 that made this a ticket, and invisible to a guard that
+                reads the circle's own opacity attribute and finds 0.9. There is no
+                value that compensates either: 1.0 × 0.2 is still 0.2. The mark has
+                to leave the group, which is why the dim is applied to the node's
+                own marks instead of to everything at once. */}
             {n.status && n.status !== 'ok' && (
               <circle
                 data-ring={n.status}
@@ -545,35 +558,39 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
                 style={{ pointerEvents: 'none' }}
               />
             )}
-            <circle
-              r={r}
-              fill={color}
-              stroke={isSelected || isHovered ? theme.ACCENT : theme.SURFACE}
-              strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
-            />
-            <Icon
-              x={-isz / 2}
-              y={-isz / 2}
-              width={isz}
-              height={isz}
-              color={GLYPH}
-              strokeWidth={2.2}
-              style={{ pointerEvents: 'none' }}
-            />
-            {showLabel && (
-              <text
-                y={r + 14}
-                textAnchor="middle"
-                fontSize={11}
-                fill={theme.INK_SOFT}
-                stroke={theme.SURFACE}
-                strokeWidth={3}
-                paintOrder="stroke"
+            {/* The node's identity — fill, glyph, label. This is what the dim is
+                for, and the only thing it may touch. */}
+            <g opacity={dimOpacity}>
+              <circle
+                r={r}
+                fill={color}
+                stroke={isSelected || isHovered ? theme.ACCENT : theme.SURFACE}
+                strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
+              />
+              <Icon
+                x={-isz / 2}
+                y={-isz / 2}
+                width={isz}
+                height={isz}
+                color={GLYPH}
+                strokeWidth={2.2}
                 style={{ pointerEvents: 'none' }}
-              >
-                {truncateLabel(n.label, 22)}
-              </text>
-            )}
+              />
+              {showLabel && (
+                <text
+                  y={r + 14}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fill={theme.INK_SOFT}
+                  stroke={theme.SURFACE}
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {truncateLabel(n.label, 22)}
+                </text>
+              )}
+            </g>
           </g>
         )
       })}
