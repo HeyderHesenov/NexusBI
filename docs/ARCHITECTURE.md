@@ -263,12 +263,12 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   The e2e job boots a demo backend and runs the Playwright smoke. Because a GitHub Actions step
   kills its background processes on exit, the backend boot, `alembic upgrade head`, health-wait,
   and `npm run test:e2e` all live in ONE step.
-- **Testing:** backend pytest (868, +1 skip) mocks the AI engine at the boundary — patch the **class**
+- **Testing:** backend pytest (887, +1 skip) mocks the AI engine at the boundary — patch the **class**
   `query_service.Text2SQLEngine`, never the shared `_engine` singleton instance (an instance patch
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
   deterministic, no cost — identical to CI; new suites: test_snapshots, test_graph,
-  test_ba, test_automl, test_ai_cost, test_usage_quota, test_rls_mode). Frontend Vitest (610) covers `lib/*`, hooks, and Zustand
+  test_ba, test_automl, test_ai_cost, test_usage_quota, test_rls_mode). Frontend Vitest (749) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, the advanced-analytics
   stores/panels — metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
@@ -369,8 +369,13 @@ permutation importance / per-prediction explain stats). De-bloat + trust round: 
 `source_kind`/`saved_query_id`/`value_column`/`agg` binding that lets a KPI leaf be measured instead
 of typed; `server_default='manual'` is spelled identically in the model and the migration so
 `check_schema_drift.py` stays at its baseline). Migrations are Alembic, chained under `db/migrations/versions`;
-current head = **`a4b5c6d7e8f9`** (`ba_artifacts.datasource_id`, for evidence + action promotion).
-`/ready` compares the database's applied revision against this head and answers 503 when they
+head at the time of writing = **`f9a0b1c2d3e4`** (`decision_measurements.data_as_of`), reached via
+`a4b5c6d7e8f9` (`ba_artifacts.datasource_id`) → … → `d7e8f9a0b1c2` → `e8f9a0b1c2d3`.
+⚠️ **Do not trust that id — ask the tree.** This line said `a4b5c6d7e8f9` for three revisions after
+it stopped being the head, which is the exact drift `core/health.py:37` refuses to allow: it reads
+the head from `ScriptDirectory.get_heads()` "rather than a constant, so the expectation" tracks the
+migrations. `alembic heads` (or that call) is the answer; this paragraph is orientation, not truth.
+`/ready` compares the database's applied revision against the head and answers 503 when they
 disagree, so "booted but unmigrated" is reported rather than surfacing as 500s. NOTE: the **demo**
 schema is seeded in-memory
 (`db/demo_data._seed`, no migration) — `sales.customer_id` was added there to enable realistic

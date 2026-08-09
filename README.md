@@ -373,7 +373,7 @@ Frontend (`frontend/.env`): `VITE_API_URL`.
 ## Tests
 
 ```bash
-cd backend && pytest        # 868 test (+1 skip)
+cd backend && pytest        # 887 test (+1 skip: eval_llm, opt-in)
 ```
 Əhatə: text2sql/SQL-guard & **SQL-hardening** (metadata denylist · schema allowlist · timeout) ·
 query pipeline & user-scoped cache · dashboard (+refresh/share/embed) · auth & **refresh-token
@@ -422,7 +422,7 @@ Rəqəmin sərhədi: harness suala **RAG kontekstsiz** cavab verir (istehsalda
 oluna bilməsi üçün qəsdən belədir. Dizayn və yeni hal əlavə etmə qaydası:
 `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
-**Frontend Vitest (651 test):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (749 test / 97 fayl):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
