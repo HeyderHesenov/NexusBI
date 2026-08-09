@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import type { ChartConfig } from '../../types'
 import { useFormatNumber } from '../../hooks/useFormatNumber'
-import { useChartTheme } from './theme'
+import { SERIES_COUNT, useChartTheme } from './theme'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -13,9 +13,24 @@ interface Props {
   onPointClick?: (field: string, value: unknown) => void
 }
 
-// Past this many slices a pie is unreadable; keep the biggest TOP_N and fold the
-// rest into a single "Digər" slice (only when it would merge 2+ slices).
-const TOP_N = 8
+/**
+ * Past this many slices a pie is unreadable; keep the biggest TOP_N and fold the
+ * rest into a single "Digər" slice (only when it would merge 2+ slices).
+ *
+ * ⚠️ DERIVED, NOT CHOSEN. It was 8 while SERIES_COUNT was 6 and `fill` indexes
+ * `SERIES[i % SERIES.length]`, so a folded pie painted slice 6 in SERIES[0] and
+ * slice 7 in SERIES[1] — two pairs of wedges at ΔE 0, the same colour, carrying
+ * different categories. The folded wedge is INK_FAINT, which is a neutral grey
+ * and measured 1.26 ΔE from the neutral-grey SERIES[5] in light mode: a third
+ * indistinguishable pair, in the one widget with no on-arc labels to fall back
+ * on. Leaving one series in reserve fixes all three at once — SERIES[5] is never
+ * painted next to the "other" wedge, and no index wraps.
+ *
+ * So this must stay ≤ SERIES_COUNT - 1. `charts/theme.test` scores the wedge set
+ * it implies (SERIES[0…TOP_N-1] plus INK_FAINT) against the same floor as the
+ * series themselves, and will fail if this grows back.
+ */
+export const TOP_N = SERIES_COUNT - 1
 
 export function PieChartWidget({
   data,
