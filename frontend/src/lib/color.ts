@@ -146,33 +146,169 @@ export function deltaE(hexA: string, hexB: string): number {
   return Math.hypot(la[0] - lb[0], la[1] - lb[1], la[2] - lb[2])
 }
 
+const DEG = Math.PI / 180
+/** atan2 in degrees, folded to [0,360). */
+const hueDeg = (b: number, a: number) => {
+  if (a === 0 && b === 0) return 0 // undefined hue; the formula's own convention
+  const h = Math.atan2(b, a) / DEG
+  return h < 0 ? h + 360 : h
+}
+
+/**
+ * CIEDE2000 (ΔE00) between two hex colours. **NaN** if either is malformed, for
+ * the reason `deltaE` gives.
+ *
+ * WHY A SECOND METRIC EXISTS. CIE76 is plain Euclidean distance in a space that
+ * is not actually uniform, and on this repo's own palette it does not even agree
+ * with CIEDE2000 about WHICH pair is weakest: measured, CIE76 rates the true
+ * worst pairs 17.8 and 12.0 while calling others closer. A floor tuned in CIE76
+ * is therefore tuned against a ranking that does not match perception.
+ *
+ * ⚠️ IMPLEMENTATION NOTES THAT ARE EASY TO GET WRONG, all of them Sharma's:
+ * - `R_T` belongs INSIDE the square root, as a cross term. An earlier throwaway
+ *   implementation in this repo put it outside and produced NEGATIVE distances.
+ * - The mean hue `hbar` has three branches, and the `C'1·C'2 == 0` branch is not
+ *   an average at all — it is the sum, because one hue is undefined.
+ * - Hue difference folds to (-180,180], and `ΔH'` uses `sin(Δh/2)`, not `Δh`.
+ * - `a` is rescaled by `1+G` BEFORE chroma and hue are computed, so `C'` and `h'`
+ *   are not the plain CIELAB chroma and hue.
+ * None of that is asserted by eye: `color.test` runs Sharma, Wu & Dalal's 34
+ * published pairs, which exist precisely because each one breaks a different
+ * plausible mistake.
+ */
+export function deltaE2000(hexA: string, hexB: string): number {
+  const ra = hexToRgb(hexA)
+  const rb = hexToRgb(hexB)
+  if (!ra || !rb) return NaN
+  return labDeltaE2000(toLab(ra), toLab(rb))
+}
+
+/** The formula itself, on CIELAB triples — separated so the published test data can drive it. */
+export function labDeltaE2000(
+  [L1, a1, b1]: [number, number, number],
+  [L2, a2, b2]: [number, number, number],
+): number {
+  const C1 = Math.hypot(a1, b1)
+  const C2 = Math.hypot(a2, b2)
+  const Cbar = (C1 + C2) / 2
+  const c7 = Cbar ** 7
+  const G = 0.5 * (1 - Math.sqrt(c7 / (c7 + 25 ** 7)))
+
+  const A1 = (1 + G) * a1
+  const A2 = (1 + G) * a2
+  const Cp1 = Math.hypot(A1, b1)
+  const Cp2 = Math.hypot(A2, b2)
+  const h1 = hueDeg(b1, A1)
+  const h2 = hueDeg(b2, A2)
+
+  const dL = L2 - L1
+  const dC = Cp2 - Cp1
+  // Both branches matter: with either chroma at zero the hue difference is not
+  // just small, it is undefined, and treating it as 0 is the defined behaviour.
+  let dh = 0
+  if (Cp1 * Cp2 !== 0) {
+    dh = h2 - h1
+    if (dh > 180) dh -= 360
+    else if (dh < -180) dh += 360
+  }
+  const dH = 2 * Math.sqrt(Cp1 * Cp2) * Math.sin((dh / 2) * DEG)
+
+  const Lbar = (L1 + L2) / 2
+  const Cbarp = (Cp1 + Cp2) / 2
+  let hbar: number
+  if (Cp1 * Cp2 === 0) hbar = h1 + h2 // NOT a mean — one of them is undefined
+  else if (Math.abs(h1 - h2) <= 180) hbar = (h1 + h2) / 2
+  else if (h1 + h2 < 360) hbar = (h1 + h2 + 360) / 2
+  else hbar = (h1 + h2 - 360) / 2
+
+  const T =
+    1 -
+    0.17 * Math.cos((hbar - 30) * DEG) +
+    0.24 * Math.cos(2 * hbar * DEG) +
+    0.32 * Math.cos((3 * hbar + 6) * DEG) -
+    0.2 * Math.cos((4 * hbar - 63) * DEG)
+
+  const dTheta = 30 * Math.exp(-(((hbar - 275) / 25) ** 2))
+  const cb7 = Cbarp ** 7
+  const Rc = 2 * Math.sqrt(cb7 / (cb7 + 25 ** 7))
+  const Sl = 1 + (0.015 * (Lbar - 50) ** 2) / Math.sqrt(20 + (Lbar - 50) ** 2)
+  const Sc = 1 + 0.045 * Cbarp
+  const Sh = 1 + 0.015 * Cbarp * T
+  const Rt = -Math.sin(2 * dTheta * DEG) * Rc
+
+  const l = dL / Sl
+  const c = dC / Sc
+  const h = dH / Sh
+  // Rt is a CROSS TERM under the root. Outside it, distances go negative.
+  return Math.sqrt(l * l + c * c + h * h + Rt * c * h)
+}
+
 export type Dichromacy = 'protan' | 'deutan' | 'tritan'
 
-// Viénot, Brettel & Mollon (1999): convert to LMS, collapse the missing cone's
-// axis onto the plane the other two span, convert back. The standard model, and
-// the one every colour-blindness simulator is a variation of.
-const RGB_TO_LMS = [
-  [17.8824, 43.5161, 4.11935],
-  [3.45565, 27.1554, 3.86714],
-  [0.0299566, 0.184309, 1.46709],
-]
-const LMS_TO_RGB = [
-  [0.080944, -0.130504, 0.116721],
-  [-0.0102485, 0.0540194, -0.113615],
-  [-0.000365294, -0.00412163, 0.693513],
-]
-const COLLAPSE: Record<Dichromacy, number[][]> = {
-  protan: [[0, 2.02344, -2.5258], [0, 1, 0], [0, 0, 1]],
-  deutan: [[1, 0, 0], [0.494207, 0, 1.24827], [0, 0, 1]],
-  tritan: [[1, 0, 0], [0, 1, 0], [-0.395913, 0.801109, 0]],
+/**
+ * Brettel, Viénot & Mollon (1997): the dichromat's gamut is TWO half-planes
+ * hinged along the neutral axis, not one plane, and a colour is projected onto
+ * whichever half it falls on.
+ *
+ * ⚠️ THIS REPLACED VIÉNOT 1999, WHICH WAS THE WRONG MODEL FOR ONE OF THE THREE.
+ * The 1999 paper collapses both halves into a single plane; its own text limits
+ * that simplification to protanopia and deuteranopia, where the two halves are
+ * nearly coplanar. For tritanopia they are not, and the cost was measurable in
+ * this repo: the single plane threw colours far outside the displayable cube,
+ * `simulateDichromacy` clamped them silently, and every tritan ΔE was partly a
+ * measurement of the clamp. Measured over all three palettes with the old model,
+ * protan and deutan clipped NOTHING in either mode, while tritan clipped 2/6,
+ * 4/6, 2/4, 3/4, 3/9 and 5/9 of them — worst error 1.314, i.e. more than the
+ * entire linear range outside the cube.
+ *
+ * Both halves are applied here as a single matrix on LINEAR RGB, which is
+ * algebraically the same journey the 1999 code took the long way (linear RGB →
+ * LMS → collapse → linear RGB) with the three matrices pre-multiplied. The LMS
+ * basis behind them is Smith & Pokorny (1975) — the SAME fundamentals the old
+ * `RGB_TO_LMS` used, so this is a change of model, not a change of colour space.
+ *
+ * Constants from libDaltonLens (public domain), which precomputes the products
+ * for sRGB primaries. ⚠️ They are USED ONLY BECAUSE THEY ARE CHECKED: three
+ * structural properties in `color.test` — every row sums to 1 (a grey has no hue
+ * to lose, so it must come back unchanged), P·P = P (a dichromat's view of a
+ * dichromat's view is the same view), and the two matrices AGREE on the boundary
+ * plane (the hinge must not be a cliff). A single mistyped digit breaks all
+ * three, which is what makes transcribed constants safe to rely on.
+ */
+const BRETTEL: Record<Dichromacy, { m1: number[]; m2: number[]; normal: number[] }> = {
+  protan: {
+    m1: [0.1498, 1.19548, -0.34528, 0.10764, 0.84864, 0.04372, 0.00384, -0.0054, 1.00156],
+    m2: [0.1457, 1.16172, -0.30742, 0.10816, 0.85291, 0.03892, 0.00386, -0.00524, 1.00139],
+    normal: [0.00048, 0.00393, -0.00441],
+  },
+  deutan: {
+    m1: [0.36477, 0.86381, -0.22858, 0.26294, 0.64245, 0.09462, -0.02006, 0.02728, 0.99278],
+    m2: [0.37298, 0.88166, -0.25464, 0.25954, 0.63506, 0.1054, -0.0198, 0.02784, 0.99196],
+    normal: [-0.00281, -0.00611, 0.00892],
+  },
+  tritan: {
+    m1: [1.01277, 0.13548, -0.14826, -0.01243, 0.86812, 0.14431, 0.07589, 0.805, 0.11911],
+    m2: [0.93678, 0.18979, -0.12657, 0.06154, 0.81526, 0.1232, -0.37562, 1.12767, 0.24796],
+    normal: [0.03901, -0.02788, -0.01113],
+  },
 }
-const apply = (m: number[][], v: number[]) => m.map((row) => row.reduce((s, k, i) => s + k * v[i], 0))
 
-/** Linear-light RGB after the collapse, BEFORE gamut clipping. Null if malformed. */
-function collapseLinear(hex: string, kind: Dichromacy): number[] | null {
+/**
+ * Linear-light RGB after the projection, BEFORE gamut clipping. Null if malformed.
+ *
+ * Exported for the tests that have to reach the unclipped value: `simulateDichromacy`
+ * clips, so anything asserted about the MODEL has to be asserted here.
+ */
+export function collapseLinear(hex: string, kind: Dichromacy): number[] | null {
   const rgb = hexToRgb(hex)
   if (!rgb) return null
-  return apply(LMS_TO_RGB, apply(COLLAPSE[kind], apply(RGB_TO_LMS, rgb.map(srgbToLinear))))
+  const lin = rgb.map(srgbToLinear)
+  const { m1, m2, normal } = BRETTEL[kind]
+  // Which half-plane the colour falls on. The boundary is the plane through the
+  // neutral axis, so this sign is the whole difference from the 1999 model —
+  // which always took `m1`, wherever the colour was.
+  const m = normal[0] * lin[0] + normal[1] * lin[1] + normal[2] * lin[2] >= 0 ? m1 : m2
+  return [0, 1, 2].map((r) => m[r * 3] * lin[0] + m[r * 3 + 1] * lin[1] + m[r * 3 + 2] * lin[2])
 }
 
 /**
