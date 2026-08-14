@@ -1025,6 +1025,11 @@
       "stale": "Stale (past SLA)",
       "unknown": "No freshness SLA"
     },
+    "healthLevel": {
+      "warn": "Warning",
+      "danger": "Critical",
+      "unknown": "Unknown"
+    },
     "impactDir": {
       "down": "Downstream",
       "up": "Upstream",

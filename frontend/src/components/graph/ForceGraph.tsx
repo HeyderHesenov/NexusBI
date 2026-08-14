@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -25,7 +26,7 @@ import { downloadChartPng, downloadChartSvg } from '../../lib/chartExport'
 import { truncateLabel } from '../../lib/format'
 import { neighborSet, pathEdgeKey } from '../../store/graphStore'
 import type { GraphData, GraphNode, GraphNodeType } from '../../types'
-import { GLYPH, RING_OPACITY, useChartTheme } from '../charts/theme'
+import { GLYPH, RING_DASH, RING_OPACITY, RING_WIDTH, RING_WIDTH_DIM, useChartTheme } from '../charts/theme'
 import { LAYOUT_H, LAYOUT_W, useForceLayout, type LayoutPoint } from './useForceLayout'
 import { loadPins, mergePositions, miniToWorld, savePins } from './graphView'
 
@@ -95,11 +96,41 @@ const DEFAULT_RADIUS = 12
 // Approx px per character at the tooltip's 11.5px label — used to size the
 // backing rect without a DOM text measurement (constant, deterministic).
 const TIP_CHAR_PX = 6.6
+/**
+ * Longest label the tooltip draws. Named because the rect is SIZED from it and
+ * the text is TRUNCATED to it, and those two reading the same number is the whole
+ * point — as two literal 30s they had already drifted into a rect sized for the
+ * untruncated string.
+ */
+const TIP_LABEL_MAX = 30
 
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 4
 
 const clampW = (w: number) => Math.min(Math.max(w, LAYOUT_W / MAX_ZOOM), LAYOUT_W / MIN_ZOOM)
+
+/**
+ * A `stroke-dasharray` in user units, counter-scaled so the pattern keeps a
+ * constant on-screen size the way `tipScale` keeps the tooltip's.
+ *
+ * Scaling the stroke WIDTH alone would not be enough: the dash is the ring's
+ * colour-free severity channel, and at MIN_ZOOM an unscaled `'6 5'` shrinks to
+ * roughly a 1.09 px gap, at which point `warn` and `danger` converge into the
+ * same solid-looking ring and the channel this branch exists to add is gone
+ * exactly when the reader is sweeping the whole canvas.
+ *
+ * `undefined` — a solid ring — passes straight through: there is no pattern to
+ * scale, and emitting `stroke-dasharray="none"` instead would be a needless
+ * attribute on the most common ring of the three.
+ */
+const scaleDash = (dash: string | undefined, scale: number): string | undefined =>
+  dash === undefined
+    ? undefined
+    : dash
+        .trim()
+        .split(/[\s,]+/)
+        .map((n) => Number(n) * scale)
+        .join(' ')
 
 /**
  * Interactive SVG knowledge graph: wheel/button zoom, drag-pan, click-select,
@@ -123,7 +154,17 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
   },
   ref,
 ) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  /**
+   * Uppercasing is LOCALE-DEPENDENT and this app's default locale is one of the
+   * two where it differs. `'Kritik'.toUpperCase()` is `'KRITIK'`; Azerbaijani and
+   * Turkish want `'KRİTİK'`, because their dotted i uppercases to a dotted İ.
+   * Both tooltip lines are uppercased, both were plain `toUpperCase`, and az is
+   * `lng` AND `fallbackLng` — so the severity word that teaches the ring's dash
+   * code was rendering with the wrong letter for the default reader. Turkish
+   * `'Bilinmiyor'` → `'BILINMIYOR'` was wrong the same way.
+   */
+  const upper = useCallback((s: string) => s.toLocaleUpperCase(i18n.language), [i18n.language])
   const theme = useChartTheme()
   // Lay out every node once so positions stay stable while types are filtered.
   const nodeIds = useMemo(() => data.nodes.map((n) => n.id), [data])
@@ -479,11 +520,13 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
         const isHovered = n.id === hoverId
         const emphasized = isSelected || (!!hoverSet && hoverSet.has(n.id))
         const showLabel = emphasized || zoom >= 0.8 || r >= 20
+        // Applied to the node's own marks, NOT to the group wrapping them — see
+        // the trust ring below, which has to sit outside it.
+        const dimOpacity = dimmed ? 0.2 : 1
         return (
           <g
             key={n.id}
             transform={`translate(${p.x},${p.y})`}
-            opacity={dimmed ? 0.2 : 1}
             className="cursor-pointer"
             data-node-id={n.id}
             onContextMenu={(e) => {
@@ -520,51 +563,94 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               }
             }}
           >
-            {emphasized && <circle r={r + 9} fill={color} opacity={0.18} style={{ pointerEvents: 'none' }} />}
+            {emphasized && (
+              <circle r={r + 9} fill={color} opacity={0.18 * dimOpacity} style={{ pointerEvents: 'none' }} />
+            )}
             {/* Trust ring: a thin colored halo for non-ok health (verified metrics
-                and fresh sources read as clean, unringed nodes). */}
+                and fresh sources read as clean, unringed nodes). Severity rides on
+                the dash pattern as well as the colour — see RING_DASH.
+
+                ⚠️ DELIBERATELY OUTSIDE THE DIMMED GROUP BELOW. Group opacity in SVG
+                multiplies through to every descendant, so while the dim lived on
+                this node's wrapper <g> the ring painted at 0.9 × 0.2 = 0.18 — worse
+                than the 0.4 that made this a ticket, and invisible to a guard that
+                reads the circle's own opacity attribute and finds 0.9. There is no
+                value that compensates either: 1.0 × 0.2 is still 0.2. The mark has
+                to leave the group, which is why the dim is applied to the node's
+                own marks instead of to everything at once. */}
             {n.status && n.status !== 'ok' && (
               <circle
+                data-ring={n.status}
                 r={r + 3.5}
                 fill="none"
                 stroke={theme.HEALTH_COLOR[n.status]}
-                strokeWidth={2.5}
+                // Dimming is a WIDTH change, not an opacity one: every opacity
+                // below RING_OPACITY puts this mark under 3:1. See RING_WIDTH_DIM.
+                //
+                // ⚠️ COUNTER-SCALED, because "width does not move the ratio" is
+                // only true while the stroke stays wider than a pixel. These are
+                // user units, so they shrink with the viewBox: at MIN_ZOOM the
+                // dimmed 1.5 fell to ~0.66 CSS px, and a sub-pixel stroke IS an
+                // opacity — the rasteriser composites it at its pixel coverage,
+                // landing back under 3:1 by the exact route this mark left. So
+                // both size channels ride `tipScale`, the idiom already holding
+                // the tooltip at a constant on-screen size, and the widths below
+                // now mean CSS pixels at fit rather than user units.
+                //
+                // What survives is a floor in the CONTAINER, not the zoom: after
+                // this the on-screen width is RING_WIDTH_DIM × containerW / 1000
+                // whatever the zoom, so it goes sub-pixel below ~670px of canvas
+                // width. Narrower than the app's own layout allows; noted so the
+                // next reader measures rather than rediscovers.
+                strokeWidth={(dimmed ? RING_WIDTH_DIM : RING_WIDTH) * tipScale}
+                strokeDasharray={scaleDash(RING_DASH[n.status], tipScale)}
+                // Round caps are what turn the zero-length `unknown` dash into a
+                // dot, so it gets one — and nothing else does. A cap extends its
+                // dash by half the stroke width at EACH end, which on `warn` ate
+                // the gap it is read by: '6 5' painted 8.5 on / 2.5 off, a nicked
+                // solid ring sitting next to a genuinely solid `danger`. Butt
+                // caps leave the pattern the length it says it is.
+                strokeLinecap={n.status === 'unknown' ? 'round' : undefined}
                 // Shared with the palette, which scores these colours composited
                 // at exactly this value — a local literal here would let the two
                 // drift apart without a word.
-                opacity={dimmed ? 0.4 : RING_OPACITY}
+                opacity={RING_OPACITY}
                 style={{ pointerEvents: 'none' }}
               />
             )}
-            <circle
-              r={r}
-              fill={color}
-              stroke={isSelected || isHovered ? theme.ACCENT : theme.SURFACE}
-              strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
-            />
-            <Icon
-              x={-isz / 2}
-              y={-isz / 2}
-              width={isz}
-              height={isz}
-              color={GLYPH}
-              strokeWidth={2.2}
-              style={{ pointerEvents: 'none' }}
-            />
-            {showLabel && (
-              <text
-                y={r + 14}
-                textAnchor="middle"
-                fontSize={11}
-                fill={theme.INK_SOFT}
-                stroke={theme.SURFACE}
-                strokeWidth={3}
-                paintOrder="stroke"
+            {/* The node's identity — fill, glyph, label. This is what the dim is
+                for, and the only thing it may touch. */}
+            <g opacity={dimOpacity}>
+              <circle
+                r={r}
+                fill={color}
+                stroke={isSelected || isHovered ? theme.ACCENT : theme.SURFACE}
+                strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
+              />
+              <Icon
+                x={-isz / 2}
+                y={-isz / 2}
+                width={isz}
+                height={isz}
+                color={GLYPH}
+                strokeWidth={2.2}
                 style={{ pointerEvents: 'none' }}
-              >
-                {truncateLabel(n.label, 22)}
-              </text>
-            )}
+              />
+              {showLabel && (
+                <text
+                  y={r + 14}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fill={theme.INK_SOFT}
+                  stroke={theme.SURFACE}
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {truncateLabel(n.label, 22)}
+                </text>
+              )}
+            </g>
           </g>
         )
       })}
@@ -574,12 +660,35 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
       {hovered && hoveredNode && (() => {
         const label = hoveredNode.label
         const typeLabel = t(`graphPage.type.${hoveredNode.type}`)
-        const chars = Math.max(label.length, typeLabel.length + 2)
+        // Severity in words, for exactly the nodes that draw a ring — the same
+        // condition, so the tooltip can never name a severity the canvas is not
+        // showing. This is the key to the ring's dash code: the dash separates
+        // warn from danger while scanning, this says which one is worse. Neither
+        // half is sufficient alone; see RING_DASH.
+        const severity =
+          hoveredNode.status && hoveredNode.status !== 'ok'
+            ? t(`graphPage.healthLevel.${hoveredNode.status}`)
+            : null
+        // TRUNCATED length, because the truncated string is what gets drawn: the
+        // label renders as `truncateLabel(label, TIP_LABEL_MAX)` below, so sizing
+        // off the raw length gave a 60-char asset a rect twice as wide as its text,
+        // centred on the node and covering its neighbours. The `+ 2` allowance is
+        // shared with the severity line — the two render identically (9px, upper,
+        // letterSpacing 0.4) and were budgeted differently for no reason.
+        const chars = Math.max(
+          Math.min(label.length, TIP_LABEL_MAX),
+          typeLabel.length + 2,
+          severity ? severity.length + 2 : 0,
+        )
         const w = (chars * TIP_CHAR_PX + 24) * tipScale
-        const h = 42 * tipScale
+        const h = (severity ? 56 : 42) * tipScale
         const r = TYPE_RADIUS[hoveredNode.type] ?? DEFAULT_RADIUS
         return (
-          <g transform={`translate(${hovered.x},${hovered.y - (r + 6)})`} style={{ pointerEvents: 'none' }}>
+          <g
+            data-tooltip
+            transform={`translate(${hovered.x},${hovered.y - (r + 6)})`}
+            style={{ pointerEvents: 'none' }}
+          >
             <rect
               x={-w / 2}
               y={-h}
@@ -604,7 +713,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               fontWeight={600}
               letterSpacing={0.4 * tipScale}
             >
-              {typeLabel.toUpperCase()}
+              {upper(typeLabel)}
             </text>
             <text
               x={0}
@@ -614,8 +723,22 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               fill={theme.INK_SOFT}
               fontWeight={500}
             >
-              {truncateLabel(label, 30)}
+              {truncateLabel(label, TIP_LABEL_MAX)}
             </text>
+            {severity && (
+              <text
+                x={0}
+                y={-h + 45 * tipScale}
+                textAnchor="middle"
+                fontSize={9 * tipScale}
+                fill={theme.INK_SOFT}
+                fontWeight={600}
+                letterSpacing={0.4 * tipScale}
+                data-ring-severity
+              >
+                {upper(severity)}
+              </text>
+            )}
           </g>
         )
       })()}

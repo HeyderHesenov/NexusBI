@@ -68,6 +68,45 @@ export function contrastRatio(hexA: string, hexB: string): number {
 }
 
 /**
+ * `fg` painted at `alpha` over `bg`, as the browser composites it. Throws on a
+ * malformed hex rather than returning a colour nobody asked for.
+ *
+ * Scoring a raw hex when the product paints it at an opacity scores a colour
+ * that never reaches the screen — the lesson the axis rules taught, where
+ * `stroke={AXIS} opacity={0.6}` composited to 1.90 while a test on the token
+ * itself read 3.24 and stayed green.
+ *
+ * ⚠️ EXPORTED FROM HERE, not redefined per test file, for the reason
+ * `srgbToLinear` spells out above: this file has already been the scene of one
+ * curve growing three copies. `charts/theme.test` scores the ring colours and
+ * `graph/ForceGraph.test` scores the ring as actually rendered — two callers, one
+ * formula. Like `simulateDichromacy` it has no production caller and is
+ * tree-shaken out of `dist/`.
+ */
+export function composite(fg: string, bg: string, alpha: number): string {
+  const f = hexToRgb(fg)
+  const b = hexToRgb(bg)
+  if (!f || !b) throw new Error(`composite() got a malformed hex: ${fg} over ${bg}`)
+  // ⚠️ ALPHA IS CHECKED, and the reason is that the promise in the docstring was
+  // not being kept. The combination is convex only while alpha is in [0,1]:
+  // outside it the result leaves 0-255 and the hex formatting produces garbage
+  // silently — 1.2 over white gives '#-33-33-33', and a NaN alpha gives
+  // '#NaNNaNNaN'. Neither is hypothetical; the ForceGraph guard feeds this an
+  // alpha read out of the DOM, where an ancestor `opacity: inherit` or a
+  // percentage is one `Number()` away from NaN.
+  if (!Number.isFinite(alpha) || alpha < 0 || alpha > 1) {
+    throw new Error(`composite() got an out-of-range alpha: ${alpha}`)
+  }
+  // `clamp` is used rather than a bare `Math.round`. An earlier note here claimed
+  // reaching it would cross its TDZ — that was simply wrong: this is a function
+  // DECLARATION, its body runs when called, long after module evaluation has
+  // passed the `const`. Nothing was preventing the reuse, and the missed reuse is
+  // what left the range unguarded above.
+  const out = f.map((c, i) => clamp(alpha * c + (1 - alpha) * b[i]))
+  return `#${out.map((c) => c.toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
  * CIELAB (D65) for `rgb`. Perceptual space — equal steps look equally different,
  * which sRGB distance does not.
  */
@@ -174,8 +213,10 @@ export function simulateDichromacy(hex: string, kind: Dichromacy): string | null
   const enc = (c: number) => {
     const v = Math.max(0, Math.min(1, c))
     // v is already in [0,1], so 255 * gamma(v) is already in [0,255]: rounding is
-    // the only work left, and calling `clamp` here would also read it before its
-    // own declaration.
+    // the only work left. (An earlier note added "and `clamp` would be read
+    // before its declaration" — untrue for the same reason it was untrue in
+    // `composite`: this body runs at call time. The rounding argument stands on
+    // its own; the TDZ one never did.)
     return Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055))
   }
   return `#${out.map((c) => enc(c).toString(16).padStart(2, '0')).join('')}`

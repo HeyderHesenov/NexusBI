@@ -214,6 +214,112 @@ const HEALTH_LIGHT: Record<GraphHealthStatus, string> = {
  */
 export const RING_OPACITY = 0.9
 
+/**
+ * Stroke width the trust ring is painted at, and the narrower width it uses when
+ * the node is dimmed (hover-neighbour or impact-mode de-emphasis).
+ *
+ * ⚠️ THE DIMMED STATE USED TO BE AN OPACITY, AND NO OPACITY WORKS. The ring
+ * dropped to `opacity 0.4` there, which composites to 1.63–2.40 over `--surface`
+ * — under the 3:1 of WCAG 1.4.11, on a mark whose whole job is to say "this node
+ * has a problem". Nor is there a gentler number to retreat to: measured across
+ * both modes and all three ring colours, 0.5 reaches 1.87, 0.7 reaches 2.53 and
+ * 0.8 still only reaches 2.97, with light `unknown` binding every time. 0.9 is
+ * the first value that clears, i.e. the only one available is the undimmed one.
+ *
+ * So opacity is simply the wrong lever for a mark that has to stay legible, and
+ * WIDTH is the right one: 1.4.11 scores the colour relationship, not the size, so
+ * a thinner ring recedes without moving the ratio. The de-emphasis is still
+ * plainly there — the node under it drops to 0.2 and its edges to 0.28, so a thin
+ * ring reads as belonging to a backgrounded node rather than competing with the
+ * selection.
+ *
+ * ⚠️ "WITHOUT MOVING THE RATIO" HAS ONE LIMIT, and this used to say "at all",
+ * which was wrong. It holds while the stroke is at least a pixel wide; below that
+ * the rasteriser composites it at its pixel coverage, and partial coverage IS an
+ * opacity — the ring would arrive back under 3:1 by the very route it left. These
+ * are USER units, so an unscaled 1.5 fell to ~0.66 CSS px at MIN_ZOOM. ForceGraph
+ * therefore counter-scales both this and the dash by `tipScale`, which makes these
+ * numbers CSS pixels at fit rather than user units, and the on-screen width
+ * independent of zoom.
+ */
+export const RING_WIDTH = 2.5
+export const RING_WIDTH_DIM = 1.5
+
+/**
+ * `stroke-dasharray` per health severity — the ring's SECOND, colour-free
+ * channel. Solid means worse.
+ *
+ * WHY IT EXISTS. The ring's PRESENCE already carries "not ok" without colour
+ * (`ok` is never ringed). Which severity was hue and nothing else, and hue is
+ * exactly what the affected reader does not have: composited at RING_OPACITY over
+ * `--surface`, `warn` vs `danger` measures ΔE 4.81 under deuteranopia in light
+ * mode and 5.74 under tritanopia in dark, against a 10 floor. Deuteranopia is
+ * ~6% of men — an earlier note filed this ticket as "tritanopia only, ~0.01%",
+ * which understated who it hits by roughly three orders of magnitude.
+ *
+ * ⚠️ A DASH ALONE WOULD NOT HAVE CLOSED IT, and neither would a tooltip alone.
+ * A tooltip needs one hover per node, so it does nothing for the case the defect
+ * actually lives in — sweeping the canvas — and help routed through assistive
+ * tech is aimed at the wrong person anyway: the reader losing this signal is
+ * sighted. But a dash on its own is an unlabelled code; solid-versus-dashed shows
+ * two marks are different without saying which is worse. The tooltip severity
+ * word (ForceGraph) is what teaches the code, so the two ship together.
+ *
+ * `unknown` gets its own pattern even though colour already separates it from
+ * both others, because the margin it does that by is thin: `danger`/`unknown`
+ * measures 10.88 under protanopia in dark mode, a pass by 0.88.
+ *
+ * ⚠️ THE CODE IS AN ORDER, NOT THREE LABELS, and the order is the part worth
+ * guarding. `solid > dashed > dotted` is a ranking of how much the stroke is
+ * interrupted, and it has to run the same way as severity or the mark lies:
+ * swapping `warn` and `danger` leaves three still-distinct patterns, so a guard
+ * that only asks for distinctness stays green while the canvas calls the calmer
+ * node the more urgent one. `inkFraction` below turns each pattern into the
+ * number that ordering is stated in, so the test can assert the ranking instead
+ * of the spelling — measured, that is danger 1, warn 6/11, unknown 0.
+ *
+ * `ok` is deliberately NOT a key. It used to be one, holding `undefined` — the
+ * same value `danger` holds for "solid" — so the record could not distinguish
+ * "draws no ring" from "draws an unbroken one", and swapping those two was a
+ * no-op no test could ever catch. Excluding it makes the ringed set derivable
+ * from this record (`RINGED_STATUSES`) instead of hand-copied into two suites.
+ */
+export const RING_DASH: Record<RingedStatus, string | undefined> = {
+  danger: undefined, // solid — uninterrupted reads as the most urgent
+  warn: '6 5', // dashed
+  unknown: '0 5', // dotted (round linecap turns a zero-length dash into a dot)
+}
+
+/** The severities that paint a ring. `ok` never does — hence its absence above. */
+export type RingedStatus = Exclude<GraphHealthStatus, 'ok'>
+export const RINGED_STATUSES = Object.keys(RING_DASH) as RingedStatus[]
+
+/**
+ * Share of the ring's circumference that is inked, for one `stroke-dasharray`.
+ * Solid is 1, `'0 5'` is 0, and `'6 5'` is 6/11 — i.e. exactly the axis the dash
+ * code ranks severities along, which is why the guard can state the invariant as
+ * an ordering rather than as today's three literals.
+ *
+ * ⚠️ Ignores `stroke-linecap`, which is correct HERE and wrong as a general
+ * measure of painted ink: a round cap extends every dash by half the stroke
+ * width at each end, which is what turns `'0 5'` into dots at all. This function
+ * scores the PATTERN, the thing severity is encoded in; ForceGraph is where the
+ * cap is chosen, and it only puts one on `unknown` for that reason.
+ */
+export function inkFraction(dash: string | undefined): number {
+  if (dash === undefined) return 1
+  const parts = dash.trim().split(/[\s,]+/).map(Number)
+  if (parts.some((n) => !Number.isFinite(n) || n < 0)) {
+    throw new Error(`inkFraction() got a malformed dasharray: ${dash}`)
+  }
+  // An odd-length list repeats to become even (SVG 1.1 §11.4), so `'4'` is 4-on
+  // 4-off, not 4-on 0-off.
+  const cycle = parts.length % 2 ? [...parts, ...parts] : parts
+  const total = cycle.reduce((a, b) => a + b, 0)
+  if (total === 0) throw new Error(`inkFraction() got an all-zero dasharray: ${dash}`)
+  return cycle.filter((_, i) => i % 2 === 0).reduce((a, b) => a + b, 0) / total
+}
+
 const HEALTH_DARK: Record<GraphHealthStatus, string> = {
   ok: ACCENT_DARK, // 5.58 composited — the light side has said `ok: ACCENT_LIGHT`
   //                  all along, and this was the hardcoded twin that made

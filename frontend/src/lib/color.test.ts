@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { deriveAccentVariants, hexToRgb, hexToTriplet, readableTextColor, relativeLuminance } from './color'
+import {
+  composite,
+  deriveAccentVariants,
+  hexToRgb,
+  hexToTriplet,
+  readableTextColor,
+  relativeLuminance,
+} from './color'
 
 describe('color', () => {
   it('loses nothing by folding three sRGB transfer curves into one', () => {
@@ -60,5 +67,52 @@ describe('color', () => {
 
   it('returns null variants for bad hex', () => {
     expect(deriveAccentVariants('xyz', false)).toBeNull()
+  })
+
+  it('composites toward the backdrop, and is pinned by its own endpoints', () => {
+    // ⚠️ WRITTEN BECAUSE A MUTATION SURVIVED. Replacing the body with
+    // `f.map((c) => Math.round(c))` — i.e. ignoring alpha entirely and returning
+    // the foreground — left all 49 trust-ring and palette assertions green.
+    //
+    // The reason is worth keeping: every caller asserts a FLOOR, and dropping the
+    // blend moves each ratio AWAY from its backdrop, so a broken composite makes
+    // the numbers look better and every `toBeGreaterThanOrEqual` still passes.
+    // That is the same shape as the deltaE mutation that survived the dichromacy
+    // work — the converter was anchored and the thing measuring with it was not.
+    // A helper only used through inequalities has to be pinned by identities.
+    //
+    // alpha 0 is the one the mutation cannot fake: it demands the BACKDROP back.
+    expect(composite('#AB4A37', '#FFFFFF', 0)).toBe('#ffffff')
+    expect(composite('#AB4A37', '#FFFFFF', 1)).toBe('#ab4a37')
+    // Half of black over white is mid grey — fixes the direction AND the scale,
+    // so a blend that ran backwards or at half strength cannot pass either.
+    expect(composite('#000000', '#FFFFFF', 0.5)).toBe('#808080')
+    expect(composite('#FFFFFF', '#000000', 0.25)).toBe('#404040')
+  })
+
+  it('throws on a malformed hex rather than compositing nonsense', () => {
+    expect(() => composite('nope', '#FFFFFF', 0.5)).toThrow(/malformed/)
+    expect(() => composite('#FFFFFF', 'nope', 0.5)).toThrow(/malformed/)
+  })
+
+  it('throws on an alpha outside 0..1 instead of formatting a negative channel', () => {
+    // The blend is convex only inside [0,1]; outside it the channels leave 0-255
+    // and the hex formatting produced garbage SILENTLY, from a function whose
+    // docstring promises the opposite. Measured before the guard: 1.2 over white
+    // gave '#-33-33-33' and a NaN alpha gave '#NaNNaNNaN' — strings that would
+    // then flow into contrastRatio and come back as NaN, and NaN passes no
+    // comparison, so a suite built on `toBeGreaterThanOrEqual` would report the
+    // ring as failing for a reason that has nothing to do with the ring.
+    //
+    // NaN is not hypothetical: `ForceGraph.test` feeds this an alpha multiplied
+    // out of DOM opacity values, where one `opacity: inherit` on an ancestor is
+    // all it takes.
+    for (const bad of [1.2, -0.5, NaN, Infinity]) {
+      expect(() => composite('#000000', '#FFFFFF', bad), `alpha ${bad}`).toThrow(/out-of-range/)
+    }
+    // The endpoints are legal and must stay so — an over-eager guard here would
+    // break every caller that composites at full or zero opacity.
+    expect(() => composite('#000000', '#FFFFFF', 0)).not.toThrow()
+    expect(() => composite('#000000', '#FFFFFF', 1)).not.toThrow()
   })
 })
