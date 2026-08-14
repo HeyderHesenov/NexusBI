@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { chartTheme, GLYPH, GRAPH_TYPES, RING_DASH, RING_OPACITY, SERIES_COUNT } from './theme'
+import {
+  chartTheme,
+  GLYPH,
+  GRAPH_TYPES,
+  RING_DASH,
+  RING_OPACITY,
+  RINGED_STATUSES,
+  SERIES_COUNT,
+} from './theme'
 import {
   composite,
   contrastRatio,
@@ -9,6 +17,7 @@ import {
   relativeLuminance,
   simulateDichromacy,
 } from '../../lib/color'
+import type { Dichromacy } from '../../lib/color'
 import type { GraphHealthStatus } from '../../types'
 // `?raw` resolves to the file only because vite.config.ts sets `test.css: true`
 // — with vitest's default the import silently yields an empty string, and every
@@ -61,12 +70,34 @@ const SEPARATION = 10
 const DICHROMACIES = ['protan', 'deutan', 'tritan'] as const
 
 /**
- * Ring severities that actually paint a ring. `ok` is excluded because
- * ForceGraph never draws one for it — a premise `ForceGraph.test` pins by
- * rendering an `ok` node and asserting no ring appears, rather than trusting
- * this list to stay true.
+ * Ring severities that actually paint a ring — DERIVED from `RING_DASH`, which
+ * has to name every one of them anyway. `ok` is absent from that record because
+ * ForceGraph never draws a ring for it, a premise `ForceGraph.test` pins by
+ * rendering an `ok` node and asserting no ring appears.
+ *
+ * ⚠️ It used to be this literal in BOTH files, each docstring pointing at the
+ * other as the thing keeping it honest, and nothing asserting the two agreed.
  */
-const RINGED: GraphHealthStatus[] = ['warn', 'danger', 'unknown']
+const RINGED = RINGED_STATUSES
+/** Unordered severity pairs, in a fixed order so failures name a stable pair. */
+const PAIRS = RINGED.flatMap((a, i) => RINGED.slice(i + 1).map((b) => [a, b] as const))
+
+/**
+ * The four ways two ring colours can be seen — normal vision plus the three
+ * dichromacies — as `[condition, ΔE]`. The worst of these is the number the
+ * severity design is argued from, so both the value and WHICH condition produced
+ * it are read off one function rather than recomputed per assertion.
+ */
+const separations = (pa: string, pb: string) =>
+  [
+    ['none', deltaE(pa, pb)] as const,
+    ...DICHROMACIES.map(
+      (d) => [d, deltaE(simulateDichromacy(pa, d)!, simulateDichromacy(pb, d)!)] as const,
+    ),
+  ].sort((x, y) => x[1] - y[1])
+
+const worstSeparation = (pa: string, pb: string) => separations(pa, pb)[0][1]
+const worstCondition = (pa: string, pb: string) => separations(pa, pb)[0][0]
 
 /**
  * The surfaces a chart can sit on, READ OUT of `index.css` rather than copied.
@@ -290,29 +321,70 @@ describe('chart ink measures up to the rule it is used under', () => {
     // question instead, so it stays true under both futures and goes red only
     // when severity genuinely becomes unreadable.
     //
-    // As it stands, warn/danger takes the second branch — composited over the
-    // canvas it measures ΔE 4.81 under deuteranopia (light) and 5.74 under
-    // tritanopia (dark) — and danger/unknown very nearly does too, passing by
-    // 0.88 at 10.88 under protanopia in dark. Both are carried by the dash.
+    // ⚠️ AND ON ITS OWN IT WAS DECORATIVE. `RING_DASH` is injective, so
+    // `dashDiffers` is unconditionally true and the ΔE operand never ran:
+    // measured, replacing SEPARATION with 1e9 right here left the file green,
+    // and `composite`, `deltaE` and `simulateDichromacy` were all imported,
+    // computed, and discarded. The disjunction is still the honest statement of
+    // the invariant, so it stays — but the colour half is now pinned by the test
+    // BELOW, which asserts the measured separations instead of narrating them.
     const { HEALTH_COLOR, SURFACE } = chartTheme(mode)
-    for (let i = 0; i < RINGED.length; i++) {
-      for (let j = i + 1; j < RINGED.length; j++) {
-        const [a, b] = [RINGED[i], RINGED[j]]
-        const [pa, pb] = [
-          composite(HEALTH_COLOR[a], SURFACE, RING_OPACITY),
-          composite(HEALTH_COLOR[b], SURFACE, RING_OPACITY),
-        ]
-        const worst = Math.min(
-          deltaE(pa, pb),
-          ...DICHROMACIES.map((d) => deltaE(simulateDichromacy(pa, d)!, simulateDichromacy(pb, d)!)),
-        )
-        const dashDiffers = RING_DASH[a] !== RING_DASH[b]
-        expect(
-          dashDiffers || worst >= SEPARATION,
-          `${a} vs ${b} (${mode}): worst ΔE ${worst.toFixed(2)} and both dashed "${RING_DASH[a]}" — ` +
-            'severity has no channel left',
-        ).toBe(true)
-      }
+    for (const [a, b] of PAIRS) {
+      const [pa, pb] = [
+        composite(HEALTH_COLOR[a], SURFACE, RING_OPACITY),
+        composite(HEALTH_COLOR[b], SURFACE, RING_OPACITY),
+      ]
+      const worst = worstSeparation(pa, pb)
+      const dashDiffers = RING_DASH[a] !== RING_DASH[b]
+      expect(
+        dashDiffers || worst >= SEPARATION,
+        `${a} vs ${b} (${mode}): worst ΔE ${worst.toFixed(2)} and both dashed "${RING_DASH[a]}" — ` +
+          'severity has no channel left',
+      ).toBe(true)
+    }
+  })
+
+  /**
+   * What the disjunction above leans on, as numbers rather than as prose.
+   *
+   * Every one of these was quoted in a docstring and asserted nowhere, which is
+   * the exact shape the dichromacy work already got caught by: the simulator was
+   * anchored and the metric consuming it was not, so swapping CIELAB for plain
+   * sRGB distance broke every figure and not one test noticed. Pinning the
+   * measurements makes `composite`, `deltaE` and `simulateDichromacy` load-bearing
+   * on this path — and makes a repalette announce itself here, where the comments
+   * explaining WHY the dash exists live, instead of silently invalidating them.
+   *
+   * Read it as: `danger`/`warn` is the pair the dash carries (4.81 and 5.74
+   * against a floor of 10), `danger`/`unknown` clears on colour by 0.88 in dark,
+   * and `warn`/`unknown` is never close.
+   */
+  const WORST: Record<'light' | 'dark', Record<string, [number, Dichromacy | 'none']>> = {
+    light: {
+      'danger/warn': [4.81, 'deutan'],
+      'danger/unknown': [18.08, 'protan'],
+      'warn/unknown': [27.94, 'none'],
+    },
+    dark: {
+      'danger/warn': [5.74, 'tritan'],
+      'danger/unknown': [10.88, 'protan'],
+      'warn/unknown': [39.25, 'none'],
+    },
+  }
+
+  it.each(MODES)('measures the ring separations its comments quote in %s mode', (mode) => {
+    const { HEALTH_COLOR, SURFACE } = chartTheme(mode)
+    for (const [a, b] of PAIRS) {
+      const [pa, pb] = [
+        composite(HEALTH_COLOR[a], SURFACE, RING_OPACITY),
+        composite(HEALTH_COLOR[b], SURFACE, RING_OPACITY),
+      ]
+      const [expected, condition] = WORST[mode][`${a}/${b}`]
+      expect(worstSeparation(pa, pb), `${a}/${b} (${mode})`).toBeCloseTo(expected, 1)
+      // Not just the number but WHICH reader is worst off — a metric that drifted
+      // while happening to land on the same figure would still be caught, and the
+      // condition is the half the prose is actually about.
+      expect(worstCondition(pa, pb), `${a}/${b} (${mode}) worst condition`).toBe(condition)
     }
   })
 
@@ -533,6 +605,13 @@ describe('chart ink measures up to the rule it is used under', () => {
     const t = tokens(mode)
     expect(chartTheme(mode).ACCENT.toLowerCase()).toBe(t['--accent'])
     expect(chartTheme(mode).DANGER.toLowerCase()).toBe(t['--danger'])
+    // ⚠️ SURFACE belongs in this pin more than either of them. It is the BACKDROP
+    // every trust-ring ratio in this file and in `ForceGraph.test` is composited
+    // and scored against, and it was the one unpinned copy: warm `--surface` up
+    // to an off-white in index.css and every one of those ratios would keep
+    // scoring against a stale #FFFFFF and stay green while the real composite
+    // fell. Quoting the backdrop is this file's own rule, applied to itself.
+    expect(chartTheme(mode).SURFACE.toLowerCase()).toBe(t['--surface'])
   })
 
   it('keeps AXIS below the text threshold it was moved off', () => {

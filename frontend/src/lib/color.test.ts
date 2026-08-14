@@ -94,4 +94,25 @@ describe('color', () => {
     expect(() => composite('nope', '#FFFFFF', 0.5)).toThrow(/malformed/)
     expect(() => composite('#FFFFFF', 'nope', 0.5)).toThrow(/malformed/)
   })
+
+  it('throws on an alpha outside 0..1 instead of formatting a negative channel', () => {
+    // The blend is convex only inside [0,1]; outside it the channels leave 0-255
+    // and the hex formatting produced garbage SILENTLY, from a function whose
+    // docstring promises the opposite. Measured before the guard: 1.2 over white
+    // gave '#-33-33-33' and a NaN alpha gave '#NaNNaNNaN' — strings that would
+    // then flow into contrastRatio and come back as NaN, and NaN passes no
+    // comparison, so a suite built on `toBeGreaterThanOrEqual` would report the
+    // ring as failing for a reason that has nothing to do with the ring.
+    //
+    // NaN is not hypothetical: `ForceGraph.test` feeds this an alpha multiplied
+    // out of DOM opacity values, where one `opacity: inherit` on an ancestor is
+    // all it takes.
+    for (const bad of [1.2, -0.5, NaN, Infinity]) {
+      expect(() => composite('#000000', '#FFFFFF', bad), `alpha ${bad}`).toThrow(/out-of-range/)
+    }
+    // The endpoints are legal and must stay so — an over-eager guard here would
+    // break every caller that composites at full or zero opacity.
+    expect(() => composite('#000000', '#FFFFFF', 0)).not.toThrow()
+    expect(() => composite('#000000', '#FFFFFF', 1)).not.toThrow()
+  })
 })

@@ -1,7 +1,17 @@
+import { createRef } from 'react'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ForceGraph } from './ForceGraph'
-import { chartTheme, RING_OPACITY, RING_WIDTH, RING_WIDTH_DIM } from '../charts/theme'
+import { ForceGraph, type GraphHandle } from './ForceGraph'
+import { LAYOUT_W } from './useForceLayout'
+import {
+  chartTheme,
+  inkFraction,
+  RING_DASH,
+  RING_OPACITY,
+  RING_WIDTH,
+  RING_WIDTH_DIM,
+  RINGED_STATUSES,
+} from '../charts/theme'
 import { composite, contrastRatio } from '../../lib/color'
 import { useThemeStore } from '../../store/themeStore'
 import az from '../../i18n/locales/az.json'
@@ -81,7 +91,15 @@ describe('ForceGraph context menus', () => {
  * value that actually reaches the screen.
  */
 const MODES = ['light', 'dark'] as const
-const RINGED: GraphHealthStatus[] = ['warn', 'danger', 'unknown']
+/**
+ * DERIVED, not spelled out. This list and `charts/theme.test`'s used to be two
+ * hand-written copies of the same three strings, each citing the other as the
+ * thing keeping it honest — so adding a severity and updating one file would
+ * have left the other silently narrower while staying green, and this file's
+ * `toHaveLength(RINGED.length)` would then have asserted the wrong ring count.
+ * `RING_DASH` has to name every ringed severity anyway; it is the single source.
+ */
+const RINGED = RINGED_STATUSES
 /** WCAG 1.4.11, the floor a ring is a graphic under. */
 const GRAPHIC = 3
 
@@ -112,15 +130,33 @@ const ringOf = (container: HTMLElement, status: GraphHealthStatus) => {
  * — while the test read 0.9, composited from it, and reported a comfortable
  * 4.60:1. Rendering instead of grepping the source was not enough on its own;
  * the quantity has to be the one the eye receives, and a screenshot of the real
- * app is what exposed the gap. Walking the ancestors is what makes the guard
- * structural rather than a second way of trusting one attribute.
+ * app is what exposed the gap.
+ *
+ * ⚠️ AND WALKING THE ANCESTORS WAS STILL NOT ENOUGH. The second version read only
+ * the `opacity` presentation ATTRIBUTE, so the identical defect came back verbatim
+ * when spelled `style={{ opacity: dimmed ? 0.2 : 1 }}` — measured, all 759 tests
+ * stayed green while the ring painted at 0.18 again. Inline style is not an exotic
+ * spelling; it WINS over the presentation attribute in the cascade, and it is how
+ * half this file already sets `pointerEvents`. So each level takes style first and
+ * falls back to the attribute, and the three opacity properties that can fade a
+ * stroke are all read — `opacity` on any ancestor, plus `stroke-opacity` on the
+ * mark itself, either of which would otherwise fade this ring invisibly.
  */
+const levelOpacity = (n: Element, prop: 'opacity' | 'strokeOpacity'): number => {
+  const attr = prop === 'opacity' ? 'opacity' : 'stroke-opacity'
+  const inline = (n as SVGElement).style?.[prop]
+  const raw = inline !== undefined && inline !== '' ? inline : n.getAttribute(attr)
+  if (raw === null || raw === undefined) return 1
+  // A percentage is legal SVG and `Number()` returns NaN for it — surface that as
+  // a failure rather than letting NaN silently poison the product.
+  const v = raw.trim().endsWith('%') ? Number(raw.trim().slice(0, -1)) / 100 : Number(raw)
+  if (!Number.isFinite(v)) throw new Error(`unreadable ${attr} on <${n.tagName}>: "${raw}"`)
+  return v
+}
+
 const effectiveOpacity = (el: Element): number => {
-  let o = 1
-  for (let n: Element | null = el; n; n = n.parentElement) {
-    const own = n.getAttribute('opacity')
-    if (own !== null) o *= Number(own)
-  }
+  let o = levelOpacity(el, 'strokeOpacity')
+  for (let n: Element | null = el; n; n = n.parentElement) o *= levelOpacity(n, 'opacity')
   return o
 }
 
@@ -204,6 +240,137 @@ describe('ForceGraph trust ring', () => {
     )
   })
 
+  it('reads an opacity however it is spelled, at every level', () => {
+    // The guard's own guard, pinned by identities rather than through the
+    // inequalities every other test here uses. Two versions of `effectiveOpacity`
+    // shipped a defect: the first read one element, the second read one SPELLING,
+    // and both times the suite went green while the ring painted at 0.18. A
+    // helper that only ever appears inside `toBeGreaterThanOrEqual` cannot fail
+    // in the direction that matters — reading TOO HIGH always looks like a pass.
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    const outer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    const inner = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    const mark = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    svg.append(outer)
+    outer.append(inner)
+    inner.append(mark)
+
+    expect(effectiveOpacity(mark)).toBe(1)
+    // The attribute spelling, on an ancestor.
+    outer.setAttribute('opacity', '0.5')
+    expect(effectiveOpacity(mark)).toBeCloseTo(0.5, 10)
+    // The style spelling — the one that came back as a live defect. It must count
+    // for the same as the attribute, and it must MULTIPLY with the level above.
+    inner.style.opacity = '0.4'
+    expect(effectiveOpacity(mark)).toBeCloseTo(0.2, 10)
+    // Style wins over the attribute on the SAME element, as the cascade says.
+    inner.setAttribute('opacity', '1')
+    expect(effectiveOpacity(mark)).toBeCloseTo(0.2, 10)
+    // stroke-opacity fades a stroke on its own and used to be invisible here.
+    mark.setAttribute('stroke-opacity', '0.5')
+    expect(effectiveOpacity(mark)).toBeCloseTo(0.1, 10)
+    // Percentages are legal SVG; `Number('50%')` is NaN, and a NaN would sail
+    // through every comparison rather than failing.
+    mark.setAttribute('stroke-opacity', '50%')
+    expect(effectiveOpacity(mark)).toBeCloseTo(0.1, 10)
+    mark.setAttribute('stroke-opacity', 'inherit')
+    expect(() => effectiveOpacity(mark)).toThrow(/unreadable/)
+  })
+
+  it('ranks the dash code the same way it ranks severity', () => {
+    // NOT "the three patterns differ" — that is what the previous pair of guards
+    // asserted, and swapping `warn` with `danger` satisfied it while inverting the
+    // meaning: measured, that swap left all 759 tests green with the canvas
+    // showing the calmer node as the more urgent one. What the design actually
+    // claims is an ORDER — solid reads as most urgent, dotted as least — so the
+    // assertion is on the quantity that order is stated in.
+    const { container } = render(<ForceGraph {...base} data={HEALTH_DATA} />)
+    const inkOf = (s: (typeof RINGED)[number]) =>
+      inkFraction(ringOf(container, s).getAttribute('stroke-dasharray') ?? undefined)
+
+    expect(inkOf('danger'), 'danger must be the least interrupted ring').toBeGreaterThan(
+      inkOf('warn'),
+    )
+    expect(inkOf('warn'), 'warn must be less interrupted than unknown').toBeGreaterThan(
+      inkOf('unknown'),
+    )
+    // Read off the DOM above, so this also pins that the circle is WIRED to
+    // RING_DASH rather than merely that the record is ordered.
+    expect(inkOf('danger')).toBe(inkFraction(RING_DASH.danger))
+  })
+
+  it('caps only the ring whose dash needs a cap', () => {
+    // `'0 5'` is dots ONLY with a round cap, so `unknown` needs one. Every other
+    // ring is harmed by it: a cap extends each dash by half the stroke width at
+    // both ends, which turned warn's '6 5' into 8.5 on / 2.5 off — a nicked solid
+    // ring standing next to a genuinely solid danger, i.e. the two severities the
+    // dash exists to separate.
+    const { container } = render(<ForceGraph {...base} data={HEALTH_DATA} />)
+    expect(ringOf(container, 'unknown').getAttribute('stroke-linecap')).toBe('round')
+    for (const s of ['warn', 'danger'] as const) {
+      expect(ringOf(container, s).getAttribute('stroke-linecap')).toBeNull()
+    }
+  })
+
+  it('holds the ring at a constant on-screen size across zoom', () => {
+    // The claim RING_WIDTH_DIM rests on is "width does not move the contrast
+    // ratio". That is only true while the stroke is wider than a pixel: these are
+    // user units, so an unscaled 1.5 fell to ~0.66 CSS px at MIN_ZOOM, and a
+    // sub-pixel stroke IS an opacity — the rasteriser composites it at its pixel
+    // coverage, landing back under 3:1 by the route this mark left.
+    //
+    // On-screen size is `userUnits × containerWidth / viewBox.width`, and the
+    // container is fixed, so holding `userUnits / viewBox.width` constant is the
+    // assertion — no layout needed, which jsdom could not give anyway.
+    const ref = createRef<GraphHandle>()
+    const { container } = render(<ForceGraph {...base} ref={ref} data={HEALTH_DATA} />)
+    const viewW = () => Number(container.querySelector('svg')!.getAttribute('viewBox')!.split(' ')[2])
+    const perUnit = () => {
+      const ring = ringOf(container, 'warn')
+      const dash = ring.getAttribute('stroke-dasharray')!.split(/\s+/).map(Number)
+      return [Number(ring.getAttribute('stroke-width')), ...dash].map((n) => n / viewW())
+    }
+
+    const atFit = perUnit()
+    expect(viewW()).toBe(LAYOUT_W)
+    act(() => ref.current!.zoomBy(2)) // out to MIN_ZOOM
+    expect(viewW(), 'zoomBy did not change the viewBox — the test proves nothing').toBe(
+      LAYOUT_W / 0.5,
+    )
+
+    const atMinZoom = perUnit()
+    expect(atMinZoom).toHaveLength(atFit.length)
+    atMinZoom.forEach((v, i) => expect(v).toBeCloseTo(atFit[i], 10))
+    // And it is the SCALED value that reaches the attribute, not the raw constant
+    // — otherwise the ratio above would be constant for the trivial reason.
+    expect(Number(ringOf(container, 'warn').getAttribute('stroke-width'))).toBeCloseTo(
+      RING_WIDTH * 2,
+      10,
+    )
+  })
+
+  it('sizes the tooltip from the label it actually draws', () => {
+    // The rect was sized from the untruncated name while the text renders
+    // truncated, so a long asset produced a box about twice as wide as its own
+    // contents, centred on the node and covering its neighbours.
+    const long = 'A'.repeat(80)
+    const { container } = render(
+      <ForceGraph
+        {...base}
+        data={{ ...HEALTH_DATA, nodes: [{ ...HEALTH_DATA.nodes[1], label: long }] }}
+      />,
+    )
+    fireEvent.pointerEnter(container.querySelector('[data-node-id="metric:warn"]')!)
+
+    const tip = container.querySelector('[data-tooltip]')!
+    const drawn = tip.querySelector('text:nth-of-type(2)')!.textContent!
+    const width = Number(tip.querySelector('rect')!.getAttribute('width'))
+    expect(drawn.length).toBeLessThanOrEqual(30)
+    // Sized for what is drawn, not for the 80 characters that are not.
+    expect(width).toBeLessThan(Number(80 * 6.6 + 24))
+    expect(width).toBeCloseTo(30 * 6.6 + 24, 6)
+  })
+
   it('names the severity in the tooltip, and only for ringed nodes', () => {
     // The dash separates warn from danger while scanning; this is what says which
     // is worse. Compared against the catalogue rather than a literal, so a missing
@@ -211,9 +378,14 @@ describe('ForceGraph trust ring', () => {
     const { container } = render(<ForceGraph {...base} data={HEALTH_DATA} />)
 
     fireEvent.pointerEnter(container.querySelector('[data-node-id="metric:danger"]')!)
-    expect(container.querySelector('[data-ring-severity]')?.textContent).toBe(
-      az.graphPage.healthLevel.danger.toUpperCase(),
-    )
+    // ⚠️ `toLocaleUpperCase('az')`, and the difference is the point. This line used
+    // to read `.toUpperCase()` — the SAME wrong operation the component was doing,
+    // so the two agreed on 'KRITIK' and the guard could not see that the default
+    // locale wants a dotted İ. Comparing a transform against itself proves only
+    // that it is deterministic.
+    const expected = az.graphPage.healthLevel.danger.toLocaleUpperCase('az')
+    expect(expected, 'the az dotted-i case is what this test exists for').toContain('İ')
+    expect(container.querySelector('[data-ring-severity]')?.textContent).toBe(expected)
 
     fireEvent.pointerEnter(container.querySelector('[data-node-id="ds:demo"]')!)
     expect(container.querySelector('[data-ring-severity]')).toBeNull()

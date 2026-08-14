@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -95,11 +96,41 @@ const DEFAULT_RADIUS = 12
 // Approx px per character at the tooltip's 11.5px label — used to size the
 // backing rect without a DOM text measurement (constant, deterministic).
 const TIP_CHAR_PX = 6.6
+/**
+ * Longest label the tooltip draws. Named because the rect is SIZED from it and
+ * the text is TRUNCATED to it, and those two reading the same number is the whole
+ * point — as two literal 30s they had already drifted into a rect sized for the
+ * untruncated string.
+ */
+const TIP_LABEL_MAX = 30
 
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 4
 
 const clampW = (w: number) => Math.min(Math.max(w, LAYOUT_W / MAX_ZOOM), LAYOUT_W / MIN_ZOOM)
+
+/**
+ * A `stroke-dasharray` in user units, counter-scaled so the pattern keeps a
+ * constant on-screen size the way `tipScale` keeps the tooltip's.
+ *
+ * Scaling the stroke WIDTH alone would not be enough: the dash is the ring's
+ * colour-free severity channel, and at MIN_ZOOM an unscaled `'6 5'` shrinks to
+ * roughly a 1.09 px gap, at which point `warn` and `danger` converge into the
+ * same solid-looking ring and the channel this branch exists to add is gone
+ * exactly when the reader is sweeping the whole canvas.
+ *
+ * `undefined` — a solid ring — passes straight through: there is no pattern to
+ * scale, and emitting `stroke-dasharray="none"` instead would be a needless
+ * attribute on the most common ring of the three.
+ */
+const scaleDash = (dash: string | undefined, scale: number): string | undefined =>
+  dash === undefined
+    ? undefined
+    : dash
+        .trim()
+        .split(/[\s,]+/)
+        .map((n) => Number(n) * scale)
+        .join(' ')
 
 /**
  * Interactive SVG knowledge graph: wheel/button zoom, drag-pan, click-select,
@@ -123,7 +154,17 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
   },
   ref,
 ) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  /**
+   * Uppercasing is LOCALE-DEPENDENT and this app's default locale is one of the
+   * two where it differs. `'Kritik'.toUpperCase()` is `'KRITIK'`; Azerbaijani and
+   * Turkish want `'KRİTİK'`, because their dotted i uppercases to a dotted İ.
+   * Both tooltip lines are uppercased, both were plain `toUpperCase`, and az is
+   * `lng` AND `fallbackLng` — so the severity word that teaches the ring's dash
+   * code was rendering with the wrong letter for the default reader. Turkish
+   * `'Bilinmiyor'` → `'BILINMIYOR'` was wrong the same way.
+   */
+  const upper = useCallback((s: string) => s.toLocaleUpperCase(i18n.language), [i18n.language])
   const theme = useChartTheme()
   // Lay out every node once so positions stay stable while types are filtered.
   const nodeIds = useMemo(() => data.nodes.map((n) => n.id), [data])
@@ -545,12 +586,31 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
                 stroke={theme.HEALTH_COLOR[n.status]}
                 // Dimming is a WIDTH change, not an opacity one: every opacity
                 // below RING_OPACITY puts this mark under 3:1. See RING_WIDTH_DIM.
-                strokeWidth={dimmed ? RING_WIDTH_DIM : RING_WIDTH}
-                strokeDasharray={RING_DASH[n.status]}
-                // Turns the zero-length `unknown` dash into a round dot, and
-                // softens the `warn` dash ends. A solid ring has no ends, so
-                // `danger` is unaffected.
-                strokeLinecap="round"
+                //
+                // ⚠️ COUNTER-SCALED, because "width does not move the ratio" is
+                // only true while the stroke stays wider than a pixel. These are
+                // user units, so they shrink with the viewBox: at MIN_ZOOM the
+                // dimmed 1.5 fell to ~0.66 CSS px, and a sub-pixel stroke IS an
+                // opacity — the rasteriser composites it at its pixel coverage,
+                // landing back under 3:1 by the exact route this mark left. So
+                // both size channels ride `tipScale`, the idiom already holding
+                // the tooltip at a constant on-screen size, and the widths below
+                // now mean CSS pixels at fit rather than user units.
+                //
+                // What survives is a floor in the CONTAINER, not the zoom: after
+                // this the on-screen width is RING_WIDTH_DIM × containerW / 1000
+                // whatever the zoom, so it goes sub-pixel below ~670px of canvas
+                // width. Narrower than the app's own layout allows; noted so the
+                // next reader measures rather than rediscovers.
+                strokeWidth={(dimmed ? RING_WIDTH_DIM : RING_WIDTH) * tipScale}
+                strokeDasharray={scaleDash(RING_DASH[n.status], tipScale)}
+                // Round caps are what turn the zero-length `unknown` dash into a
+                // dot, so it gets one — and nothing else does. A cap extends its
+                // dash by half the stroke width at EACH end, which on `warn` ate
+                // the gap it is read by: '6 5' painted 8.5 on / 2.5 off, a nicked
+                // solid ring sitting next to a genuinely solid `danger`. Butt
+                // caps leave the pattern the length it says it is.
+                strokeLinecap={n.status === 'unknown' ? 'round' : undefined}
                 // Shared with the palette, which scores these colours composited
                 // at exactly this value — a local literal here would let the two
                 // drift apart without a word.
@@ -609,12 +669,26 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
           hoveredNode.status && hoveredNode.status !== 'ok'
             ? t(`graphPage.healthLevel.${hoveredNode.status}`)
             : null
-        const chars = Math.max(label.length, typeLabel.length + 2, severity?.length ?? 0)
+        // TRUNCATED length, because the truncated string is what gets drawn: the
+        // label renders as `truncateLabel(label, TIP_LABEL_MAX)` below, so sizing
+        // off the raw length gave a 60-char asset a rect twice as wide as its text,
+        // centred on the node and covering its neighbours. The `+ 2` allowance is
+        // shared with the severity line — the two render identically (9px, upper,
+        // letterSpacing 0.4) and were budgeted differently for no reason.
+        const chars = Math.max(
+          Math.min(label.length, TIP_LABEL_MAX),
+          typeLabel.length + 2,
+          severity ? severity.length + 2 : 0,
+        )
         const w = (chars * TIP_CHAR_PX + 24) * tipScale
         const h = (severity ? 56 : 42) * tipScale
         const r = TYPE_RADIUS[hoveredNode.type] ?? DEFAULT_RADIUS
         return (
-          <g transform={`translate(${hovered.x},${hovered.y - (r + 6)})`} style={{ pointerEvents: 'none' }}>
+          <g
+            data-tooltip
+            transform={`translate(${hovered.x},${hovered.y - (r + 6)})`}
+            style={{ pointerEvents: 'none' }}
+          >
             <rect
               x={-w / 2}
               y={-h}
@@ -639,7 +713,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               fontWeight={600}
               letterSpacing={0.4 * tipScale}
             >
-              {typeLabel.toUpperCase()}
+              {upper(typeLabel)}
             </text>
             <text
               x={0}
@@ -649,7 +723,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
               fill={theme.INK_SOFT}
               fontWeight={500}
             >
-              {truncateLabel(label, 30)}
+              {truncateLabel(label, TIP_LABEL_MAX)}
             </text>
             {severity && (
               <text
@@ -662,7 +736,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(
                 letterSpacing={0.4 * tipScale}
                 data-ring-severity
               >
-                {severity.toUpperCase()}
+                {upper(severity)}
               </text>
             )}
           </g>
