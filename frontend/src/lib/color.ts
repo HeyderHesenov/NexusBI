@@ -120,32 +120,6 @@ export function toLab([r, g, b]: Rgb): [number, number, number] {
   return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)]
 }
 
-/**
- * Perceptual distance between two hex colours (CIE76 ΔE). **NaN** if either is
- * malformed.
- *
- * ⚠️ It returned 0 with the rationale "callers assert a FLOOR, so a malformed hex
- * fails loudly rather than passing" — and the commit that wrote that sentence
- * also wrote an assertion in the other direction (`toBeLessThan(SEPARATION)`, the
- * red/green collapse anchor), where 0 passes silently and makes the anchor
- * vacuous. NaN is the only value that fails BOTH a floor and a ceiling, so the
- * guarantee no longer depends on every future caller choosing one direction.
- *
- * ⚠️ CIE76, not CIEDE2000, and that is a real limitation rather than a detail:
- * measured on this palette, CIE76 does not even pick the same worst pair —
- * see the SEPARATION note in `charts/theme.test`.
- *
- * Rough reading: under ~2.3 is invisible to most people, ~10 is the smallest
- * difference that survives a small mark on a busy chart.
- */
-export function deltaE(hexA: string, hexB: string): number {
-  const a = hexToRgb(hexA)
-  const b = hexToRgb(hexB)
-  if (!a || !b) return NaN
-  const [la, lb] = [toLab(a), toLab(b)]
-  return Math.hypot(la[0] - lb[0], la[1] - lb[1], la[2] - lb[2])
-}
-
 const DEG = Math.PI / 180
 /** atan2 in degrees, folded to [0,360). */
 const hueDeg = (b: number, a: number) => {
@@ -155,14 +129,30 @@ const hueDeg = (b: number, a: number) => {
 }
 
 /**
- * CIEDE2000 (ΔE00) between two hex colours. **NaN** if either is malformed, for
- * the reason `deltaE` gives.
+ * CIEDE2000 (ΔE00) between two hex colours — the repo's ONE perceptual distance.
+ * **NaN** if either hex is malformed.
  *
- * WHY A SECOND METRIC EXISTS. CIE76 is plain Euclidean distance in a space that
- * is not actually uniform, and on this repo's own palette it does not even agree
- * with CIEDE2000 about WHICH pair is weakest: measured, CIE76 rates the true
- * worst pairs 17.8 and 12.0 while calling others closer. A floor tuned in CIE76
- * is therefore tuned against a ranking that does not match perception.
+ * ⚠️ NaN, NOT 0, and the reason outlived the CIE76 function that first learned
+ * it. That one returned 0 on the rationale "callers assert a FLOOR, so a
+ * malformed hex fails loudly rather than passing" — and the same commit wrote an
+ * assertion in the other direction (`toBeLessThan(SEPARATION)`, the confusion-line
+ * collapse anchor), where 0 passes silently and makes the anchor vacuous. NaN is
+ * the only value that fails BOTH a floor and a ceiling, so the guarantee does not
+ * depend on every future caller choosing one direction.
+ *
+ * WHY CIE76 IS GONE RATHER THAN KEPT ALONGSIDE. It was plain Euclidean distance
+ * in a space that is not actually uniform, and on this repo's own palette it did
+ * not agree with CIEDE2000 about WHICH pair is weakest — measured after the
+ * tritan model was fixed, CIE76 ranks light S0/S2 at 7.50 and puts S4/INK_FAINT
+ * at 2.87, while ΔE00 reverses them (5.19 and 3.24). Keeping both would leave a
+ * weaker metric one import away for the next caller, and would leave CIE76 itself
+ * anchored only by its own two assertions — the shape of guard this repo has been
+ * caught by before. Both of those anchors moved here intact: black-to-white is
+ * still exactly 100 (Sl = 1 at L̄ = 50), and equal sRGB steps still rank
+ * unequally, 1.35× rather than CIE76's 1.33×.
+ *
+ * Rough reading: ~1 is a just-noticeable difference on a large flat patch, ~10 is
+ * the floor `charts/theme.test` asks two chart marks to clear.
  *
  * ⚠️ IMPLEMENTATION NOTES THAT ARE EASY TO GET WRONG, all of them Sharma's:
  * - `R_T` belongs INSIDE the square root, as a cross term. An earlier throwaway
@@ -268,14 +258,29 @@ export type Dichromacy = 'protan' | 'deutan' | 'tritan'
  * `RGB_TO_LMS` used, so this is a change of model, not a change of colour space.
  *
  * Constants from libDaltonLens (public domain), which precomputes the products
- * for sRGB primaries. ⚠️ They are USED ONLY BECAUSE THEY ARE CHECKED: three
- * structural properties in `color.test` — every row sums to 1 (a grey has no hue
- * to lose, so it must come back unchanged), P·P = P (a dichromat's view of a
- * dichromat's view is the same view), and the two matrices AGREE on the boundary
- * plane (the hinge must not be a cliff). A single mistyped digit breaks all
- * three, which is what makes transcribed constants safe to rely on.
+ * for sRGB primaries. ⚠️ THEY ARE USED ONLY BECAUSE THEY ARE CHECKED, which is
+ * why this table is exported at all: `color.test` asserts FOUR structural
+ * properties, none of which retypes a constant —
+ *
+ * 1. every row of both matrices sums to 1, and the plane normal is perpendicular
+ *    to [1,1,1] — together, a grey has no hue to lose and must come back
+ *    unchanged from either half;
+ * 2. P·P = P — a dichromat's view of a dichromat's view is the same view, i.e.
+ *    these really are projections and not merely plausible 3×3s;
+ * 3. the two matrices AGREE on the boundary plane — the hinge must not be a cliff;
+ * 4. and `collapseLinear` actually PICKS between them by the documented sign,
+ *    with both branches materially different where it does.
+ *
+ * A single mistyped digit breaks 1-3 (they hold to ~1e-5, the precision the
+ * constants are published at). Property 4 is separate because 1-3 are all
+ * satisfied by a model that silently always takes `m1` — which is precisely the
+ * Viénot 1999 collapse this replaced, so the property that names the change has
+ * to be asserted on its own. It is not hypothetical for this palette either:
+ * measured over the 14 chart colours, protan splits them 10/4 across the hinge,
+ * deutan 4/10 and tritan 8/6, so the second half-plane is load-bearing in every
+ * condition rather than a boundary curiosity.
  */
-const BRETTEL: Record<Dichromacy, { m1: number[]; m2: number[]; normal: number[] }> = {
+export const BRETTEL: Record<Dichromacy, { m1: number[]; m2: number[]; normal: number[] }> = {
   protan: {
     m1: [0.1498, 1.19548, -0.34528, 0.10764, 0.84864, 0.04372, 0.00384, -0.0054, 1.00156],
     m2: [0.1457, 1.16172, -0.30742, 0.10816, 0.85291, 0.03892, 0.00386, -0.00524, 1.00139],
@@ -318,11 +323,19 @@ export function collapseLinear(hex: string, kind: Dichromacy): number[] | null {
  * ⚠️ THIS IS NOT A CURIOSITY. `simulateDichromacy` clamps out-of-gamut output
  * silently, so for a colour that clips, the returned hex is not what the model
  * says — it is the nearest colour a screen can show, and any ΔE measured from it
- * is measuring the clamp as much as the condition. Four of the six dark SERIES
- * clip under tritan (worst 0.773), so the tritan column is the soft one. Pinned
- * in `charts/theme.test` rather than left invisible, and the reason the tritan
- * model is a ticket: Viénot/Brettel/Mollon validated the single-plane
- * construction for protan and deutan; tritanopia needs Brettel's two half-planes.
+ * is measuring the clamp as much as the condition.
+ *
+ * Under the 1999 single plane that was the tritan column's normal state: four of
+ * the six dark SERIES clipped, worst error 0.773. Under Brettel it is ZERO, for
+ * all 33 colours × 3 conditions × 2 modes — which is why every tritan figure this
+ * repo quoted before the model changed was partly a measurement of the clamp, and
+ * why they were all re-measured rather than carried forward.
+ *
+ * ⚠️ "Zero" is a fact about THIS PALETTE, not about the function, and
+ * `charts/theme.test` pins it with a positive control for exactly that reason: a
+ * quarter of the sRGB cube still clips somewhere (measured on a 16³ grid,
+ * 3060/12288), `#FFFF00` and `#00FFFF` among them. Without it, `expect(clipped)
+ * .toEqual({})` would stay green if this function were stubbed to return 0.
  */
 export function dichromacyGamutError(hex: string, kind: Dichromacy): number {
   const out = collapseLinear(hex, kind)
@@ -337,7 +350,7 @@ export function dichromacyGamutError(hex: string, kind: Dichromacy): number {
  * hue. ⚠️ Dichromacy deletes ONE opponent axis, it does not leave lightness
  * alone: a deuteranope loses red-green and keeps blue-yellow, so two colours at
  * identical lightness can still be far apart — SERIES[1]/SERIES[4] are 0.4 L*
- * apart and score ΔE 43 here. An earlier version of this comment claimed
+ * apart and score ΔE00 28.9 here. An earlier version of this comment claimed
  * lightness was "the only signal left", which is what made the palette's own
  * justification wrong.
  *
