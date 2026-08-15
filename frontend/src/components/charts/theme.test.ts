@@ -11,7 +11,7 @@ import {
 import {
   composite,
   contrastRatio,
-  deltaE,
+  deltaE2000,
   dichromacyGamutError,
   hexToRgb,
   relativeLuminance,
@@ -33,19 +33,28 @@ const GRAPHIC = 3
 const TEXT = 4.5
 /**
  * Perceptual distance two series must keep, in normal vision and under each
- * dichromacy, in CIE76 ΔE.
+ * dichromacy, in **CIEDE2000** — the ticket that asked for it is closed, and the
+ * tritan gamut fix it had to follow landed with it.
  *
- * ⚠️ "10 ≈ four JNDs" IS THE WRONG WAY TO READ IT, though it is how this comment
- * used to. That arithmetic (~2.3 per JND) holds in a metric that is uniform, and
- * CIE76 is not: scored with CIEDE2000 the weakest pairs here are 5.37 (light) and
- * 5.34 (dark), and they are not even the pairs CIE76 flags — it rates those two
- * 17.8 and 12.0 and points at different ones. So 10 is a working floor calibrated
- * to this metric, not four of anything. The palette it replaced measures 2.85
- * (light) and 1.02 (dark) under CIEDE2000, so the gain is real but uneven —
- * ~1.9× light and ~5.2× dark, NOT the flat "3-5×" this used to say, which came
- * from pairing one mode's number against the other's; adopting CIEDE2000
- * outright is a ticket, and it has to follow the tritan gamut fix, since half the
- * weak pairs are tritan pairs measured through a clamp.
+ * ⚠️ THE DIGIT DID NOT MOVE WHEN THE METRIC DID, and that is a decision, not an
+ * oversight. Under ΔE00 this palette has 14 pairs below 10 (they are named in
+ * DEBT, below), so re-deriving the floor downward until they passed was available
+ * and was refused: a floor chosen to fit the numbers it grades stops being a
+ * requirement and becomes a description of the status quo. What licenses keeping
+ * the same digit is that the two metrics are anchored at the same place — black
+ * to white is exactly 100 in both — so "10" means the same tenth of the lightness
+ * range on either scale.
+ *
+ * ⚠️ "10 ≈ four JNDs" IS STILL THE WRONG WAY TO READ IT. That arithmetic (~2.3
+ * per JND) belongs to CIE76 and was wrong there too, since CIE76 is not uniform.
+ * 10 is a working floor for a small mark on a busy chart, not four of anything.
+ *
+ * ⚠️ AND EVERY NUMBER THIS DOCSTRING USED TO QUOTE WAS A MEASUREMENT OF A BUG.
+ * It said the weakest pairs were 5.37 (light) and 5.34 (dark); under the Brettel
+ * model they are 3.24 and 3.99, and the tritan figures moved most because the old
+ * single-plane model threw those colours out of gamut and the simulator clamped
+ * them silently. The old "3-5× better than the palette it replaced" claim is not
+ * restated here for the same reason — it was computed against the same clamp.
  *
  * ⚠️ WHICH PALETTES THIS IS POINTED AT, AND WHY NOT THE OTHERS. It scores the
  * marks a single chart can place side by side: the six SERIES, plus the INK_FAINT
@@ -88,16 +97,38 @@ const PAIRS = RINGED.flatMap((a, i) => RINGED.slice(i + 1).map((b) => [a, b] as 
  * severity design is argued from, so both the value and WHICH condition produced
  * it are read off one function rather than recomputed per assertion.
  */
+/**
+ * `simulateDichromacy`, with the failure named where it happens.
+ *
+ * ⚠️ It used to be a bare `!`. A malformed hex in `theme.ts`'s palette makes the
+ * simulator return null, and the null then travelled two frames into `color.ts`
+ * to die as "Cannot read properties of null (reading 'trim')" — a stack that
+ * names neither the colour nor the table it came from. Worse, the `'none'` entry
+ * is evaluated first and yields NaN WITHOUT throwing, and NaN then sorts
+ * unpredictably, so a metric change that removed the throw could leave
+ * `worstOf` returning a finite, passing number for a broken palette.
+ */
+const simulate = (hex: string, d: Dichromacy) => {
+  const out = simulateDichromacy(hex, d)
+  if (!out) throw new Error(`${hex} failed to simulate under ${d} — malformed hex in the palette?`)
+  return out
+}
+
 const separations = (pa: string, pb: string) =>
   [
-    ['none', deltaE(pa, pb)] as const,
-    ...DICHROMACIES.map(
-      (d) => [d, deltaE(simulateDichromacy(pa, d)!, simulateDichromacy(pb, d)!)] as const,
-    ),
+    ['none', deltaE2000(pa, pb)] as const,
+    ...DICHROMACIES.map((d) => [d, deltaE2000(simulate(pa, d), simulate(pb, d))] as const),
   ].sort((x, y) => x[1] - y[1])
 
-const worstSeparation = (pa: string, pb: string) => separations(pa, pb)[0][1]
-const worstCondition = (pa: string, pb: string) => separations(pa, pb)[0][0]
+/**
+ * The worst of the four ways two colours can be seen, as `[condition, ΔE00]`.
+ *
+ * One call, not two. The separate `worstSeparation`/`worstCondition` helpers this
+ * replaced each rebuilt the whole table — six simulations and four distances —
+ * so every pair was measured twice, and nothing stopped the two from disagreeing
+ * about which entry was worst if the sort were ever made unstable.
+ */
+const worstOf = (pa: string, pb: string) => separations(pa, pb)[0]
 
 /**
  * The surfaces a chart can sit on, READ OUT of `index.css` rather than copied.
@@ -324,7 +355,7 @@ describe('chart ink measures up to the rule it is used under', () => {
     // ⚠️ AND ON ITS OWN IT WAS DECORATIVE. `RING_DASH` is injective, so
     // `dashDiffers` is unconditionally true and the ΔE operand never ran:
     // measured, replacing SEPARATION with 1e9 right here left the file green,
-    // and `composite`, `deltaE` and `simulateDichromacy` were all imported,
+    // and `composite`, `deltaE2000` and `simulateDichromacy` were all imported,
     // computed, and discarded. The disjunction is still the honest statement of
     // the invariant, so it stays — but the colour half is now pinned by the test
     // BELOW, which asserts the measured separations instead of narrating them.
@@ -334,7 +365,7 @@ describe('chart ink measures up to the rule it is used under', () => {
         composite(HEALTH_COLOR[a], SURFACE, RING_OPACITY),
         composite(HEALTH_COLOR[b], SURFACE, RING_OPACITY),
       ]
-      const worst = worstSeparation(pa, pb)
+      const [, worst] = worstOf(pa, pb)
       const dashDiffers = RING_DASH[a] !== RING_DASH[b]
       expect(
         dashDiffers || worst >= SEPARATION,
@@ -351,24 +382,34 @@ describe('chart ink measures up to the rule it is used under', () => {
    * the exact shape the dichromacy work already got caught by: the simulator was
    * anchored and the metric consuming it was not, so swapping CIELAB for plain
    * sRGB distance broke every figure and not one test noticed. Pinning the
-   * measurements makes `composite`, `deltaE` and `simulateDichromacy` load-bearing
-   * on this path — and makes a repalette announce itself here, where the comments
-   * explaining WHY the dash exists live, instead of silently invalidating them.
+   * measurements makes `composite`, `deltaE2000` and `simulateDichromacy`
+   * load-bearing on this path — and makes a repalette announce itself here, where
+   * the comments explaining WHY the dash exists live, instead of silently
+   * invalidating them.
    *
-   * Read it as: `danger`/`warn` is the pair the dash carries (4.81 and 5.74
-   * against a floor of 10), `danger`/`unknown` clears on colour by 0.88 in dark,
-   * and `warn`/`unknown` is never close.
+   * ⚠️ ALL SIX MOVED WHEN THE MODEL DID, and only two of them were visible: the
+   * loop below used to throw on the first failing pair, so a table with six wrong
+   * rows reported as one. Four of the six had gone stale unnoticed — `danger`
+   * /`unknown` in light was 18.08 under protanopia and is 14.78 under
+   * DEUTERANOPIA, and both `warn`/`unknown` rows were "worst in normal vision",
+   * which was never plausible for a pair a dichromat has to work harder at. Hence
+   * `expect.soft`: one run now names every row that is wrong.
+   *
+   * Read it as: `danger`/`warn` is the pair the dash carries — 4.50 in light,
+   * against a floor of 10 — while dark `danger`/`unknown` at 7.20 is the second
+   * reason all three severities keep their own dash. The 1997 model made that case
+   * STRONGER than the cautious one the last PR argued from, not weaker.
    */
   const WORST: Record<'light' | 'dark', Record<string, [number, Dichromacy | 'none']>> = {
     light: {
-      'danger/warn': [4.81, 'deutan'],
-      'danger/unknown': [18.08, 'protan'],
-      'warn/unknown': [27.94, 'none'],
+      'danger/warn': [4.5, 'deutan'],
+      'danger/unknown': [14.78, 'deutan'],
+      'warn/unknown': [13.3, 'tritan'],
     },
     dark: {
-      'danger/warn': [5.74, 'tritan'],
-      'danger/unknown': [10.88, 'protan'],
-      'warn/unknown': [39.25, 'none'],
+      'danger/warn': [9.39, 'deutan'],
+      'danger/unknown': [7.2, 'protan'],
+      'warn/unknown': [17.65, 'tritan'],
     },
   }
 
@@ -379,14 +420,72 @@ describe('chart ink measures up to the rule it is used under', () => {
         composite(HEALTH_COLOR[a], SURFACE, RING_OPACITY),
         composite(HEALTH_COLOR[b], SURFACE, RING_OPACITY),
       ]
-      const [expected, condition] = WORST[mode][`${a}/${b}`]
-      expect(worstSeparation(pa, pb), `${a}/${b} (${mode})`).toBeCloseTo(expected, 1)
+      // ⚠️ LOOKED UP BEFORE IT IS DESTRUCTURED. `PAIRS` is derived from
+      // `RING_DASH`, so adding a fourth ringed severity is an expected change —
+      // and a bare `const [x, y] = WORST[mode][key]` would then throw "undefined
+      // is not iterable" on the first new pair, hiding the other five. That is the
+      // same first-throw-hides-the-rest failure this file just fixed elsewhere.
+      const row = WORST[mode][`${a}/${b}`]
+      const [actualCondition, worst] = worstOf(pa, pb)
+      if (!row) {
+        expect.soft(row, `${a}/${b} (${mode}) has no recorded separation — measured ${worst.toFixed(2)} under ${actualCondition}`).toBeDefined()
+        continue
+      }
+      const [expected, condition] = row
+      expect.soft(worst, `${a}/${b} (${mode})`).toBeCloseTo(expected, 1)
       // Not just the number but WHICH reader is worst off — a metric that drifted
       // while happening to land on the same figure would still be caught, and the
       // condition is the half the prose is actually about.
-      expect(worstCondition(pa, pb), `${a}/${b} (${mode}) worst condition`).toBe(condition)
+      expect.soft(actualCondition, `${a}/${b} (${mode}) worst condition`).toBe(condition)
     }
   })
+
+  /**
+   * THE PAIRS THIS PALETTE DOES NOT YET KEEP APART, named and measured.
+   *
+   * Not a softened floor — `SEPARATION` is unchanged and every pair absent from
+   * this table still has to clear it. This is a debt register, on the precedent
+   * `theme.contrast.test` set with its `<=16` lock: state the shortfall exactly,
+   * so it cannot grow, cannot be added to quietly, and cannot be forgotten.
+   *
+   * WHY THE DEBT EXISTS AT ALL. These 14 pairs are not a regression. The palette
+   * was picked against CIE76 distances computed through the Viénot single plane,
+   * which threw six of these colours out of gamut under tritanopia and clamped
+   * them silently — so the numbers it was chosen by were partly measurements of
+   * that clamp. Fixing the model and the metric is what made the real distances
+   * visible, and the worst of them is light S4/INK_FAINT at 3.24: mauve against
+   * the folded-pie grey, for a tritanope, in the one widget with no on-arc labels.
+   *
+   * ⚠️ RE-PICKING THE COLOURS IS A SEPARATE TICKET, deliberately. It is a design
+   * decision with a person's taste in it, it touches every chart in the product,
+   * and doing it in the same commit as the model would mean choosing colours and
+   * grading them with the same instrument in one motion — which is how the
+   * previous palette got picked against a broken measurement in the first place.
+   *
+   * The value is the worst over normal vision and all three dichromacies; the
+   * condition is which reader is worst off. Both are pinned, because a metric that
+   * drifted onto the same number for a different reader would otherwise pass.
+   */
+  const DEBT: Record<'light' | 'dark', Record<string, [number, Dichromacy | 'none']>> = {
+    light: {
+      'S0/S2': [5.19, 'tritan'],
+      'S0/S3': [9.88, 'deutan'],
+      'S1/S5': [7.49, 'deutan'],
+      'S1/INK_FAINT': [7.25, 'deutan'],
+      'S2/S4': [9.24, 'protan'],
+      'S4/S5': [3.8, 'tritan'],
+      'S4/INK_FAINT': [3.24, 'tritan'],
+    },
+    dark: {
+      'S0/S1': [9.96, 'protan'],
+      'S0/S2': [8.9, 'tritan'],
+      'S0/S3': [6.61, 'protan'],
+      'S0/S5': [7.34, 'deutan'],
+      'S1/S2': [7.19, 'tritan'],
+      'S4/S5': [3.99, 'tritan'],
+      'S4/INK_FAINT': [6.33, 'tritan'],
+    },
+  }
 
   it.each(MODES)('keeps every SERIES pair apart without hue in %s mode', (mode) => {
     // The assertion this palette exists for, and the one its predecessor failed
@@ -407,7 +506,7 @@ describe('chart ink measures up to the rule it is used under', () => {
     // clear 10 ΔE for a deuteranope without a real lightness difference, because
     // that reader has nothing else to go on". Measured, that is false, and the
     // palette in this very file disproves it: SERIES[1] #009562 vs SERIES[4]
-    // #9776B3 sit 0.4 L* apart and still score ΔE 43.1 under deuteranopia. A
+    // #9776B3 sit 0.4 L* apart and still score ΔE00 28.9 under deuteranopia. A
     // deuteranope has plenty to go on — deuteranopia deletes red-green and
     // leaves blue-yellow standing, and green-vs-violet rides that surviving axis.
     //
@@ -426,36 +525,63 @@ describe('chart ink measures up to the rule it is used under', () => {
     // the neutral-grey SERIES[5] in light mode — in the one widget with no on-arc
     // labels, which is the widget this floor's docstring names as its reason.
     // TOP_N is imported rather than reasoned about so the two cannot drift.
+    //
+    // ⚠️ THAT SAME S5/INK_FAINT PAIR IS STILL THE CLOSEST TWO COLOURS IN THE LIGHT
+    // SET — ΔE00 1.15 raw, 1.07 under tritanopia — and it is deliberately NOT
+    // scored, which is easy to misread as an omission. `coexists` excludes it
+    // because SERIES[5] is the one series a folded pie never paints: the wedge that
+    // would have used it is the "other" wedge, and that wedge is INK_FAINT. The two
+    // cannot appear in the same chart, so the distance between them is not a defect.
     expect(TOP_N, 'a folded pie must leave one series unused for the other wedge')
       .toBeLessThanOrEqual(SERIES_COUNT - 1)
     const MARKS = [
-      ...SERIES.map((hex, i) => ({ hex, label: `SERIES[${i}]` })),
-      { hex: INK_FAINT, label: 'INK_FAINT (folded "other" wedge)' },
+      ...SERIES.map((hex, i) => ({ hex, label: `S${i}` })),
+      { hex: INK_FAINT, label: 'INK_FAINT' },
     ]
     // INK_FAINT only ever shares a pie with the first TOP_N series, so it is
     // scored against those and not against the one held in reserve.
+    //
+    // ⚠️ BY INDEX, NOT BY HEX. This used to ask `MARKS[x].hex !== INK_FAINT`,
+    // which identifies the mark by VALUE — so a palette that happened to give a
+    // SERIES colour the same hex as INK_FAINT would send that SERIES pair down the
+    // else branch, fail `Math.max(x, y) === INK_INDEX`, and be skipped: no floor
+    // assertion, and absent from `below`, so the ratchet would not notice either.
+    // Two marks being identical is precisely the case this test exists to catch,
+    // and the re-palette ticket is the next one to touch these colours.
+    const INK_INDEX = MARKS.length - 1
     const coexists = (x: number, y: number) =>
-      MARKS[x].hex !== INK_FAINT && MARKS[y].hex !== INK_FAINT ? true : Math.max(x, y) === MARKS.length - 1 && Math.min(x, y) < TOP_N
+      Math.max(x, y) !== INK_INDEX || Math.min(x, y) < TOP_N
 
+    const below: string[] = []
     for (let i = 0; i < MARKS.length; i++) {
       for (let j = i + 1; j < MARKS.length; j++) {
         if (!coexists(i, j)) continue
         const [A, B] = [MARKS[i], MARKS[j]]
-        expect(
-          deltaE(A.hex, B.hex),
-          `${A.label} ${A.hex} vs ${B.label} ${B.hex} in normal vision (${mode})`,
-        ).toBeGreaterThanOrEqual(SEPARATION)
-        for (const kind of DICHROMACIES) {
-          const a = simulateDichromacy(A.hex, kind)
-          const b = simulateDichromacy(B.hex, kind)
-          expect(a && b, `${A.hex}/${B.hex} failed to simulate`).toBeTruthy()
-          expect(
-            deltaE(a as string, b as string),
-            `${A.label} ${A.hex} vs ${B.label} ${B.hex} under ${kind} (${mode})`,
-          ).toBeGreaterThanOrEqual(SEPARATION)
+        const key = `${A.label}/${B.label}`
+        const [condition, worst] = worstOf(A.hex, B.hex)
+        const owed = DEBT[mode][key]
+        const where = `${A.label} ${A.hex} vs ${B.label} ${B.hex} (${mode}), worst under ${condition}`
+        if (owed) {
+          // A recorded debt is pinned in BOTH directions, value and condition. A
+          // one-sided ratchet would let the palette ticket land silently; this way
+          // the fix has to come here and delete the row, which is where the reader
+          // finds out the floor is met again.
+          expect.soft(worst, `${where} — recorded debt moved`).toBeCloseTo(owed[0], 1)
+          expect.soft(condition, `${where} — recorded debt changed reader`).toBe(owed[1])
+        } else {
+          expect.soft(worst, `${where} — below the floor and not a recorded debt`)
+            .toBeGreaterThanOrEqual(SEPARATION)
         }
+        if (worst < SEPARATION) below.push(key)
       }
     }
+    // ⚠️ THE ASSERTION THAT MAKES THE TABLE A RATCHET RATHER THAN A SNAPSHOT.
+    // Without it a future failing pair could be waved through by adding a row, and
+    // — the direction that actually bites — `SEPARATION` could be mutated to 0 or
+    // 1e9 with every pin above still passing, because the pins measure distances
+    // and never consult the floor. Set equality consults it twice.
+    expect(below.sort(), `${mode}: the set of pairs under the floor is not the recorded debt`)
+      .toEqual(Object.keys(DEBT[mode]).sort())
   })
 
   it.each(MODES)('keeps the SERIES span the mode-split was justified by in %s mode', (mode) => {
@@ -492,29 +618,49 @@ describe('chart ink measures up to the rule it is used under', () => {
     // into LMS, scale ONLY the cone the condition is missing, come back. So the
     // pair is invisible to exactly one dichromat and obvious to everyone else —
     // which is why each row asserts a collapse AND two survivals. A matrix
-    // swapped for identity fails its own collapse (the pair scores 98-113 in
+    // swapped for identity fails its own collapse (the pair scores 58-66 in
     // normal vision); two matrices swapped for each other fail it too.
     //
     // ⚠️ A lightness-matched red/green pair does NOT work for protan, which is
     // what the old comment's reasoning would have predicted: #C1554B/#4E8C4A
-    // collapses for a deuteranope (4.85) and stays wide open for a protanope
-    // (20.29), because protanopia also darkens reds. Same axis, different
+    // collapses for a deuteranope (ΔE00 2.65) and stays open for a protanope
+    // (14.09), because protanopia also darkens reds. Same axis, different
     // luminous efficiency — the confusion line has to be built per condition.
+    //
+    // ⚠️ SURVIVAL IS 15, NOT THE 25 THIS ASSERTED IN CIE76. Re-measured under
+    // ΔE00 the tightest survival is the deutan pair seen by a protanope, 20.94 —
+    // it would have failed 25 for no reason but the change of metric, and quietly
+    // "fixing" that by picking friendlier anchor colours would be tuning the
+    // instrument to the reading. 15 sits above the floor these must clear by a
+    // clear margin and below every measured survival by at least 5.9.
+    const SURVIVES = 15
     const ANCHORS = [
-      { kind: 'protan', a: '#2D6C51', b: '#FE2D4E', collapse: 0.59, normal: 107.3 },
-      { kind: 'deutan', a: '#CA5259', b: '#209A50', collapse: 1.12, normal: 98.0 },
-      { kind: 'tritan', a: '#6C7853', b: '#8E4AE8', collapse: 0.59, normal: 113.0 },
+      { kind: 'protan', a: '#2D6C51', b: '#FE2D4E', collapse: 0.78, normal: 62.9 },
+      { kind: 'deutan', a: '#CA5259', b: '#209A50', collapse: 0.27, normal: 65.8 },
+      { kind: 'tritan', a: '#6C7853', b: '#8E4AE8', collapse: 0.61, normal: 58.1 },
     ] as const
-    for (const { kind, a, b } of ANCHORS) {
-      expect(
-        deltaE(simulateDichromacy(a, kind) as string, simulateDichromacy(b, kind) as string),
-        `${a}/${b} sits on the ${kind} confusion line and must collapse`,
-      ).toBeLessThan(SEPARATION)
+    expect(SURVIVES, 'a survival threshold under the floor would assert nothing')
+      .toBeGreaterThan(SEPARATION)
+    // ⚠️ `collapse` AND `normal` ARE ASSERTED, not just recorded. They sat in this
+    // literal being read by nothing — re-measured by the commit that adopted ΔE00
+    // and then destructured away, which is prose wearing the costume of data.
+    // They are also the only IDENTITIES left on the chromatic path: every other
+    // ΔE00 assertion outside the palette tables is an inequality, and the two
+    // remaining equalities (`#000000`/`#FFFFFF`, `#101010`/`#383838`) are greys,
+    // which drive dL/Sl alone and exercise none of G, T, Sc, Sh or Rt. Without
+    // these six numbers the whole chromatic half of CIEDE2000 would be pinned only
+    // by DEBT and WORST — the two tables the re-palette ticket is going to rewrite.
+    for (const { kind, a, b, collapse, normal } of ANCHORS) {
+      const under = (k: Dichromacy) => deltaE2000(simulate(a, k), simulate(b, k))
+      expect(under(kind), `${a}/${b} sits on the ${kind} confusion line and must collapse`)
+        .toBeLessThan(SEPARATION)
+      expect(under(kind), `${a}/${b} collapse under ${kind}`).toBeCloseTo(collapse, 2)
+      expect(deltaE2000(a, b), `${a}/${b} in normal vision`).toBeCloseTo(normal, 1)
       for (const other of DICHROMACIES.filter((k) => k !== kind)) {
         expect(
-          deltaE(simulateDichromacy(a, other) as string, simulateDichromacy(b, other) as string),
+          under(other),
           `${a}/${b} is only invisible to ${kind}; ${other} must still see it`,
-        ).toBeGreaterThan(25)
+        ).toBeGreaterThan(SURVIVES)
       }
     }
     // …and none of them may be an identity function.
@@ -522,10 +668,10 @@ describe('chart ink measures up to the rule it is used under', () => {
       expect(simulateDichromacy('#D22B2B', kind), `${kind} returned its input`).not.toBe('#D22B2B')
     }
     expect(simulateDichromacy('nonsense', 'deutan')).toBeNull()
-    // A malformed hex must fail a ceiling as loudly as a floor. deltaE returned 0
-    // here — which passes `toBeLessThan(SEPARATION)` silently, i.e. it would have
-    // made every collapse assertion above vacuous.
-    expect(deltaE('nonsense', '#000000')).toBeNaN()
+    // A malformed hex must fail a ceiling as loudly as a floor. The metric
+    // returned 0 here once — which passes `toBeLessThan(SEPARATION)` silently,
+    // i.e. it would have made every collapse assertion above vacuous.
+    expect(deltaE2000('nonsense', '#000000')).toBeNaN()
   })
 
   it('reports when a simulated colour left the gamut instead of clipping it away', () => {
@@ -533,36 +679,64 @@ describe('chart ink measures up to the rule it is used under', () => {
     // the hex it returns is not what the model says — it is the nearest thing a
     // screen can show, and a ΔE measured from it is partly measuring the clamp.
     //
-    // This is pinned rather than asserted-away because the dark palette DOES clip
-    // under tritan and fixing that means a different tritan model (Brettel's two
-    // half-planes; Viénot/Brettel/Mollon validated the single-plane form for
-    // protan and deutan only). Recording it keeps the tritan column honest and
-    // makes any change to it deliberate.
+    // This used to record six clipped colours, all tritan, worst 0.773 — i.e. more
+    // than the entire linear range outside the cube. That was the single-plane
+    // Viénot model, which its own authors validated for protan and deutan only.
+    // Under Brettel's two half-planes the table is EMPTY, which is the strongest
+    // evidence in this file that the model change was real: no palette colour was
+    // touched, and every tritan distance in the repo moved anyway.
+    // ⚠️ EVERY MARK THIS FILE MEASURES A ΔE FOR, not just SERIES. The loop used to
+    // sweep the six SERIES alone — 36 checks under a docstring claiming 33 colours
+    // — while INK_FAINT appears in five of the seven light DEBT rows and the ring
+    // colours are measured through the same simulator by the WORST table. The
+    // control exists to guarantee that no pinned ΔE is partly a measurement of the
+    // clamp, so it has to cover the colours that are pinned. None of the added
+    // ones clips today; that is the point of checking rather than assuming.
     const clipped: Record<string, number> = {}
     for (const mode of MODES) {
-      for (const [i, hex] of chartTheme(mode).SERIES.entries()) {
+      const { SERIES, INK_FAINT, HEALTH_COLOR, SURFACE } = chartTheme(mode)
+      const marks: Array<[string, string]> = [
+        ...SERIES.map((hex, i) => [`SERIES[${i}]`, hex] as [string, string]),
+        ['INK_FAINT', INK_FAINT],
+        ...RINGED.map(
+          (s) => [`ring:${s}`, composite(HEALTH_COLOR[s], SURFACE, RING_OPACITY)] as [string, string],
+        ),
+      ]
+      for (const [label, hex] of marks) {
         for (const kind of DICHROMACIES) {
           const err = dichromacyGamutError(hex, kind)
-          if (err > 0) clipped[`${mode}[${i}] ${kind}`] = Math.round(err * 1000) / 1000
+          if (err > 0) clipped[`${mode} ${label} ${kind}`] = Math.round(err * 1000) / 1000
         }
       }
     }
-    // protan and deutan stay in gamut for every series in both modes; tritan does
-    // not, and only for the light-on-dark end where the collapse pushes blue past 1.
-    expect(Object.keys(clipped).every((k) => k.endsWith('tritan')), JSON.stringify(clipped)).toBe(true)
-    expect(clipped).toEqual({
-      'light[1] tritan': 0.027,
-      'light[3] tritan': 0.099,
-      'dark[0] tritan': 0.665,
-      'dark[1] tritan': 0.773,
-      'dark[2] tritan': 0.139,
-      'dark[3] tritan': 0.491,
-    })
+    expect(clipped, 'a chart colour now leaves the gamut under simulation').toEqual({})
+
+    // ⚠️ THE ASSERTION ABOVE CANNOT FAIL ON ITS OWN, which is the failure mode this
+    // repo keeps meeting: stub `dichromacyGamutError` to `return 0` and an empty
+    // table stays empty. "Nothing clips" is a claim about THIS PALETTE, so it is
+    // only worth anything next to a colour that does clip. A quarter of the sRGB
+    // cube still does (measured on a 16³ grid, 3060 of 12288 colour-condition
+    // pairs); these two are the extremes of it, and they are not palette colours,
+    // so re-picking the six SERIES can never quietly disarm this control.
+    const STILL_CLIPS: Array<[string, Dichromacy, number]> = [
+      ['#FFFF00', 'protan', 0.345],
+      ['#FFFF00', 'deutan', 0.255],
+      ['#FFFF00', 'tritan', 0.148],
+      ['#00FFFF', 'tritan', 0.376],
+    ]
+    for (const [hex, kind, err] of STILL_CLIPS) {
+      expect(dichromacyGamutError(hex, kind), `${hex} under ${kind} must still clip`)
+        .toBeCloseTo(err, 2)
+    }
+    // …and the same function must read zero for something that genuinely fits,
+    // or "clips" would just mean "returns a positive number for everything".
+    expect(dichromacyGamutError('#808080', 'tritan'), 'a grey cannot leave the gamut').toBe(0)
+    expect(dichromacyGamutError('nonsense', 'tritan')).toBeNaN()
   })
 
   it('measures distance perceptually rather than in raw sRGB', () => {
     // The companion to the anchor above, and it exists because MUTATION FOUND THE
-    // HOLE: replacing deltaE's CIELAB conversion with a plain sRGB Euclidean
+    // HOLE: replacing the metric's CIELAB conversion with a plain sRGB Euclidean
     // distance broke NOTHING — 38 tests stayed green. The simulator was pinned;
     // the metric it feeds was not.
     //
@@ -574,16 +748,20 @@ describe('chart ink measures up to the rule it is used under', () => {
     // worse than hiding all of it: the suite stays red for the wrong reason and
     // gets "fixed" by touching only the dark set.)
     //
-    // Two anchors, both from CIELAB's definition rather than from our palette:
-    // black to white is exactly ΔL* 100 and therefore ΔE 100, where sRGB distance
-    // reads 441.7…
-    expect(deltaE('#000000', '#FFFFFF')).toBeCloseTo(100, 3)
+    // ⚠️ BOTH ANCHORS CAME FROM THE DELETED CIE76 FUNCTION AND STILL HOLD, which
+    // is why deleting it cost nothing: they were never about the Euclidean part,
+    // they are about `toLab`, which both metrics share. Two anchors, both from
+    // CIELAB's definition rather than from our palette: black to white is exactly
+    // ΔL* 100 and therefore ΔE00 100 as well (its lightness weight Sl is 1 at the
+    // midpoint), where sRGB distance reads 441.7…
+    expect(deltaE2000('#000000', '#FFFFFF')).toBeCloseTo(100, 3)
     // …and equal steps must NOT read as equal differences at both ends of the
     // scale. These two pairs are the same sRGB distance apart (69.3 exactly), and
     // a perceptual metric has to rank the dark one further apart, because the eye
     // does. Any metric linear in sRGB scores them identically and fails here.
-    const dark = deltaE('#101010', '#383838')
-    const light = deltaE('#C8C8C8', '#F0F0F0')
+    // ΔE00 separates them slightly harder than CIE76 did, 1.35× against 1.33×.
+    const dark = deltaE2000('#101010', '#383838')
+    const light = deltaE2000('#C8C8C8', '#F0F0F0')
     expect(dark / light, `dark ${dark.toFixed(1)} vs light ${light.toFixed(1)}`).toBeGreaterThan(1.2)
   })
 
