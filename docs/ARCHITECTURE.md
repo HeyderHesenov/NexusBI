@@ -497,28 +497,37 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   **The guard** (`theme.test.ts`) scores every pair a chart can place side by side — six series plus
   the folded-"other" `INK_FAINT` pie wedge, which is why `PieChartWidget.TOP_N` is derived from
   `SERIES_COUNT` rather than chosen — in normal vision and under all three dichromacies, plus 3:1
-  against every surface. `simulateDichromacy` is Viénot/Brettel/Mollon; each condition is anchored
-  by a pair built on **its own confusion line** (scale only the missing cone in LMS), so replacing
-  any one matrix with the identity fails a named test. That anchoring exists because it did not at
-  first: with only a deuteranopia anchor, the protan and tritan matrices could both be identity and
-  the suite stayed green.
+  against every surface. `simulateDichromacy` is **Brettel, Viénot & Mollon (1997)** — two
+  half-planes hinged on the neutral axis, not the 1999 single plane, whose own text limits that
+  simplification to protan and deutan. Each condition is anchored by a pair built on **its own
+  confusion line** (scale only the missing cone in LMS), so replacing any one matrix with the
+  identity fails a named test. That anchoring exists because it did not at first: with only a
+  deuteranopia anchor, the protan and tritan matrices could both be identity and the suite stayed
+  green. The 27 transcribed constants are held by four structural properties in `lib/color.test.ts`
+  (row sums, `P·P = P`, hinge agreement, and that both halves are actually selected between), plus
+  one pinned output per half — the rule-based check alone is blind to swapping `m1`/`m2` in the
+  table. The metric is **CIEDE2000**, validated against all 34 published Sharma/Wu/Dalal pairs in
+  `lib/ciede2000.sharma.test.ts`; CIE76 was deleted rather than kept, since after the switch its
+  only remaining callers were its own two assertions.
   **Known limits, deliberately not papered over.** Greyscale is *not* covered and cannot be by these
-  tests — every dichromacy model preserves lightness (worst pair ΔL\* 0.4). The metric is CIE76,
-  which does not identify its own weakest pairs (CIEDE2000 puts them at 5.37/5.34 where CIE76 reads
-  17.8/12.0); against its predecessor's 2.85/1.02 that is **~1.9× light and ~5.2× dark**, not the
-  flat "3-5×" this line and two comments in `charts/` used to claim — the range only appears if you
-  cross-pair a light figure against a dark one. Tritan output is gamut-clipped for **6 of the 12
-  series colours** — four dark (0.139–0.773) and two light (`light[1]` 0.027, `light[3]` 0.099) — so
-  that column partly measures the clamp; `dichromacyGamutError` exposes it and the test pins exactly
-  which colours clip. Sequence for the fix: tritan model (Brettel two-half-plane) → metric →
-  palette. Third limit: the trust ring is also painted at `opacity 0.4` when a selection dims it
-  (`ForceGraph.tsx:535`), where it composites to 1.64–2.40:1 — under the 3:1 floor, and outside
-  everything `theme.test.ts` scores, which only measures the ring at `RING_OPACITY`.
-  `GRAPH_TYPE_COLORS` is excluded on purpose: node type is carried by a per-type icon plus its name
-  in words, so extending the loop there would report failures that are not defects. `HEALTH_COLOR`
-  is excluded too but **not for that reason** — the ring has neither icon nor label, it is a bare
-  `<circle stroke={HEALTH_COLOR[status]}>`, so `warn` vs `danger` is hue alone (worst ΔE 4.81, light
-  under deuteranopia, composited as painted). That one is an open ticket, not a non-defect.
+  tests — every dichromacy model preserves lightness (worst pair ΔL\* 0.4); monochrome print is its
+  own ticket. **The palette does not meet its own floor**: measured correctly, 14 of the 40 scored
+  pairs fall under ΔE00 10 — worst light `SERIES[4]`/`INK_FAINT` at **3.24** under tritanopia, worst
+  dark `SERIES[4]`/`SERIES[5]` at **3.99**. They are named with their worst reader in the `DEBT`
+  table in `theme.test.ts`, pinned in both directions, with a set-equality assertion so a new
+  failure cannot be added quietly and a fixed one cannot be left behind. The floor was **not**
+  lowered to fit them. Re-picking those colours is the open ticket, and `DEBT` is its worklist.
+  ⚠️ The pre-Brettel figures this section used to quote (5.37/5.34, and "6 of the 12 series colours
+  gamut-clipped under tritan") were partly measurements of a silent clamp: under the two-half-plane
+  model **nothing in the palette clips**, so the test asserts an empty table alongside a positive
+  control (`#FFFF00`, `#00FFFF`, which still do clip) — an empty-set assertion cannot fail on its
+  own. `GRAPH_TYPE_COLORS` is excluded on purpose: node type is carried by a per-type icon plus its
+  name in words, so extending the loop there would report failures that are not defects.
+  `HEALTH_COLOR` is scored separately, because what it must satisfy is a different sentence —
+  severity has to be separable by *something*, and the `stroke-dasharray` per severity satisfies it
+  where hue does not: `warn` vs `danger` is **ΔE00 4.50** in light under deuteranopia, composited as
+  painted, still under the floor. Dimming a ring is a **width** change (2.5 → 1.5), not the
+  `opacity 0.4` that once put it at 1.64–2.40:1; no opacity below `RING_OPACITY` clears 3:1.
 - **Advanced-analytics subsystem (5 features, deterministic stats — scipy added).**
   `services/stats.py` is the shared statistical core (Welch t-test + Cohen's d, two-proportion
   z-test, Pearson, Benjamini-Hochberg FDR, MAD outliers, summary-stats t-test); `services/tabular.py`

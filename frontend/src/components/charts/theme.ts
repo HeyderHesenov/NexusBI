@@ -104,18 +104,21 @@ export const SERIES_COUNT = 6
  * 5.2 is right; 6.5 was the protan/deutan minimum with tritanopia dropped, and
  * the same omission is what miscounted the node-colour pairs further down.
  *
- * ⚠️ AND THE FLOOR IS SOFTER THAN "10 ΔE ≈ four JNDs" SOUNDS, because CIE76 is
- * not CIEDE2000. Scored with CIEDE2000 (validated against Sharma's vectors) the
- * weakest pairs are light [0]/[2] at 5.37 and dark [1]/[2] at 5.34, both under
- * tritanopia — pairs CIE76 rates 17.8 and 12.0, i.e. it does not identify its own
- * weakest link, because its largest errors sit in exactly the blue/violet region
- * these live in. The change is still a real improvement (the old palette measures
- * 2.85 light and 1.02 dark the same way) but the honest claim is per mode:
- * ~1.9× light (5.37/2.85) and ~5.2× dark (5.34/1.02), not the "3-5×" this said —
- * that range only exists if you divide one mode's figure by the other's, and it
- * flatters light by nearly double. Not "clears four JNDs" either. Moving to
- * CIEDE2000 is a ticket, and it has to follow the tritan model fix — see
- * `dichromacyGamutError`.
+ * ⚠️ AND THE FLOOR IS NOT MET. That ticket — adopt CIEDE2000, after fixing the
+ * tritan model — is done, and both halves of it moved the numbers this paragraph
+ * used to quote. It said the weakest pairs were light [0]/[2] at 5.37 and dark
+ * [1]/[2] at 5.34; measured through Brettel's two half-planes instead of Viénot's
+ * single one, they are light [4]/INK_FAINT at 3.24 and dark [4]/[5] at 3.99. The
+ * old figures were partly measurements of a silent gamut clamp: the single plane
+ * threw six of these colours outside the displayable cube under tritanopia, and
+ * the simulator clipped them without saying so.
+ *
+ * FOURTEEN pairs now sit under the floor, seven per mode, and they are named with
+ * their worst reader in the DEBT table in `charts/theme.test`. They are not a
+ * regression — they are what this palette always was, seen with an instrument
+ * that works. RE-PICKING THESE COLOURS IS AN OPEN TICKET; the floor was
+ * deliberately NOT lowered to fit them, because a floor chosen to fit the numbers
+ * it grades has stopped being a requirement.
  *
  * WHAT IS NOT: greyscale. Every dichromacy model PRESERVES lightness, so no
  * simulation in that test can see a pair that differs only in hue, and the check
@@ -252,8 +255,10 @@ export const RING_WIDTH_DIM = 1.5
  * WHY IT EXISTS. The ring's PRESENCE already carries "not ok" without colour
  * (`ok` is never ringed). Which severity was hue and nothing else, and hue is
  * exactly what the affected reader does not have: composited at RING_OPACITY over
- * `--surface`, `warn` vs `danger` measures ΔE 4.81 under deuteranopia in light
- * mode and 5.74 under tritanopia in dark, against a 10 floor. Deuteranopia is
+ * `--surface`, `warn` vs `danger` measures ΔE00 4.50 under deuteranopia in light
+ * mode and 9.39 under deuteranopia in dark, against a 10 floor. (The pre-Brettel
+ * figures were 4.81 and "5.74 under tritanopia"; the condition changed with the
+ * model, the conclusion did not.) Deuteranopia is
  * ~6% of men — an earlier note filed this ticket as "tritanopia only, ~0.01%",
  * which understated who it hits by roughly three orders of magnitude.
  *

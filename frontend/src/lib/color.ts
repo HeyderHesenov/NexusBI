@@ -162,9 +162,11 @@ const hueDeg = (b: number, a: number) => {
  * - Hue difference folds to (-180,180], and `ΔH'` uses `sin(Δh/2)`, not `Δh`.
  * - `a` is rescaled by `1+G` BEFORE chroma and hue are computed, so `C'` and `h'`
  *   are not the plain CIELAB chroma and hue.
- * None of that is asserted by eye: `color.test` runs Sharma, Wu & Dalal's 34
- * published pairs, which exist precisely because each one breaks a different
- * plausible mistake.
+ * None of that is asserted by eye: `ciede2000.sharma.test` runs Sharma, Wu &
+ * Dalal's 34 published pairs, which exist precisely because each one breaks a
+ * different plausible mistake. (This pointer used to say `color.test`, which
+ * imports no metric at all — a reader checking the claim would have found
+ * nothing and concluded the four notes above were unasserted.)
  */
 export function deltaE2000(hexA: string, hexB: string): number {
   const ra = hexToRgb(hexA)
@@ -271,8 +273,18 @@ export type Dichromacy = 'protan' | 'deutan' | 'tritan'
  * 4. and `collapseLinear` actually PICKS between them by the documented sign,
  *    with both branches materially different where it does.
  *
- * A single mistyped digit breaks 1-3 (they hold to ~1e-5, the precision the
- * constants are published at). Property 4 is separate because 1-3 are all
+ * ⚠️ HOW STRONG THAT ACTUALLY IS, measured rather than asserted: properties 1-3
+ * hold with residuals of ~1e-5 because the constants are PUBLISHED to five
+ * decimals, so the check cannot be tighter than that noise floor — and a typo in
+ * the fifth decimal is therefore invisible to them. Perturbing each of the 54
+ * matrix entries by ±1e-5 in turn, 108 of 108 mutants pass. At ±1e-4 — a typo in
+ * the fourth decimal or anywhere earlier, which is every transcription slip that
+ * changes a visible digit — none survive. "A single mistyped digit breaks all
+ * three" was the earlier claim here and it was wrong at the last decimal; the
+ * honest statement is that the guard's floor is 1e-4, and the last published
+ * digit is inside the rounding of the paper it came from.
+ *
+ * Property 4 is separate because 1-3 are all
  * satisfied by a model that silently always takes `m1` — which is precisely the
  * Viénot 1999 collapse this replaced, so the property that names the change has
  * to be asserted on its own. It is not hypothetical for this palette either:
@@ -280,7 +292,16 @@ export type Dichromacy = 'protan' | 'deutan' | 'tritan'
  * deutan 4/10 and tritan 8/6, so the second half-plane is load-bearing in every
  * condition rather than a boundary curiosity.
  */
-export const BRETTEL: Record<Dichromacy, { m1: number[]; m2: number[]; normal: number[] }> = {
+type Halves = {
+  readonly m1: readonly number[]
+  readonly m2: readonly number[]
+  readonly normal: readonly number[]
+}
+// `readonly` because this is exported now: tests in one file share module state,
+// so a single `BRETTEL.tritan.m1[0] = 1` anywhere would silently re-define the
+// model for every later assertion in that file and for every `collapseLinear`
+// downstream. Nothing writes to it; the type makes that permanent.
+export const BRETTEL: Record<Dichromacy, Halves> = {
   protan: {
     m1: [0.1498, 1.19548, -0.34528, 0.10764, 0.84864, 0.04372, 0.00384, -0.0054, 1.00156],
     m2: [0.1457, 1.16172, -0.30742, 0.10816, 0.85291, 0.03892, 0.00386, -0.00524, 1.00139],
@@ -336,11 +357,24 @@ export function collapseLinear(hex: string, kind: Dichromacy): number[] | null {
  * quarter of the sRGB cube still clips somewhere (measured on a 16³ grid,
  * 3060/12288), `#FFFF00` and `#00FFFF` among them. Without it, `expect(clipped)
  * .toEqual({})` would stay green if this function were stubbed to return 0.
+ *
+ * ⚠️ AND IT NEEDS A TOLERANCE, which it did not have. The matrices are published
+ * to five decimals, so their rows sum to 1 only to ~1e-5 — deutan's middle row
+ * sums to 1.00001. White therefore mapped to [1, 1.00001, 1] and was reported as
+ * out of gamut by 1e-5, while `simulateDichromacy` returned `#ffffff` with
+ * nothing clipped at all. Nothing in the SERIES palette happened to land on a
+ * cube face, so the empty table stayed green by luck; the re-palette ticket
+ * picking any near-white would have produced a false red whose printed error
+ * rounded to `0`. The floor is set an order of magnitude above that residual and
+ * four below the smallest clip ever recorded here (0.027).
  */
+const GAMUT_EPSILON = 1e-4
+
 export function dichromacyGamutError(hex: string, kind: Dichromacy): number {
   const out = collapseLinear(hex, kind)
   if (!out) return NaN
-  return Math.max(0, ...out.map((c) => Math.max(-c, c - 1)))
+  const err = Math.max(0, ...out.map((c) => Math.max(-c, c - 1)))
+  return err <= GAMUT_EPSILON ? 0 : err
 }
 
 /**

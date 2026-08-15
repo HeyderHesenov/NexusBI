@@ -97,16 +97,38 @@ const PAIRS = RINGED.flatMap((a, i) => RINGED.slice(i + 1).map((b) => [a, b] as 
  * severity design is argued from, so both the value and WHICH condition produced
  * it are read off one function rather than recomputed per assertion.
  */
+/**
+ * `simulateDichromacy`, with the failure named where it happens.
+ *
+ * ⚠️ It used to be a bare `!`. A malformed hex in `theme.ts`'s palette makes the
+ * simulator return null, and the null then travelled two frames into `color.ts`
+ * to die as "Cannot read properties of null (reading 'trim')" — a stack that
+ * names neither the colour nor the table it came from. Worse, the `'none'` entry
+ * is evaluated first and yields NaN WITHOUT throwing, and NaN then sorts
+ * unpredictably, so a metric change that removed the throw could leave
+ * `worstOf` returning a finite, passing number for a broken palette.
+ */
+const simulate = (hex: string, d: Dichromacy) => {
+  const out = simulateDichromacy(hex, d)
+  if (!out) throw new Error(`${hex} failed to simulate under ${d} — malformed hex in the palette?`)
+  return out
+}
+
 const separations = (pa: string, pb: string) =>
   [
     ['none', deltaE2000(pa, pb)] as const,
-    ...DICHROMACIES.map(
-      (d) => [d, deltaE2000(simulateDichromacy(pa, d)!, simulateDichromacy(pb, d)!)] as const,
-    ),
+    ...DICHROMACIES.map((d) => [d, deltaE2000(simulate(pa, d), simulate(pb, d))] as const),
   ].sort((x, y) => x[1] - y[1])
 
-const worstSeparation = (pa: string, pb: string) => separations(pa, pb)[0][1]
-const worstCondition = (pa: string, pb: string) => separations(pa, pb)[0][0]
+/**
+ * The worst of the four ways two colours can be seen, as `[condition, ΔE00]`.
+ *
+ * One call, not two. The separate `worstSeparation`/`worstCondition` helpers this
+ * replaced each rebuilt the whole table — six simulations and four distances —
+ * so every pair was measured twice, and nothing stopped the two from disagreeing
+ * about which entry was worst if the sort were ever made unstable.
+ */
+const worstOf = (pa: string, pb: string) => separations(pa, pb)[0]
 
 /**
  * The surfaces a chart can sit on, READ OUT of `index.css` rather than copied.
@@ -343,7 +365,7 @@ describe('chart ink measures up to the rule it is used under', () => {
         composite(HEALTH_COLOR[a], SURFACE, RING_OPACITY),
         composite(HEALTH_COLOR[b], SURFACE, RING_OPACITY),
       ]
-      const worst = worstSeparation(pa, pb)
+      const [, worst] = worstOf(pa, pb)
       const dashDiffers = RING_DASH[a] !== RING_DASH[b]
       expect(
         dashDiffers || worst >= SEPARATION,
@@ -398,12 +420,23 @@ describe('chart ink measures up to the rule it is used under', () => {
         composite(HEALTH_COLOR[a], SURFACE, RING_OPACITY),
         composite(HEALTH_COLOR[b], SURFACE, RING_OPACITY),
       ]
-      const [expected, condition] = WORST[mode][`${a}/${b}`]
-      expect.soft(worstSeparation(pa, pb), `${a}/${b} (${mode})`).toBeCloseTo(expected, 1)
+      // ⚠️ LOOKED UP BEFORE IT IS DESTRUCTURED. `PAIRS` is derived from
+      // `RING_DASH`, so adding a fourth ringed severity is an expected change —
+      // and a bare `const [x, y] = WORST[mode][key]` would then throw "undefined
+      // is not iterable" on the first new pair, hiding the other five. That is the
+      // same first-throw-hides-the-rest failure this file just fixed elsewhere.
+      const row = WORST[mode][`${a}/${b}`]
+      const [actualCondition, worst] = worstOf(pa, pb)
+      if (!row) {
+        expect.soft(row, `${a}/${b} (${mode}) has no recorded separation — measured ${worst.toFixed(2)} under ${actualCondition}`).toBeDefined()
+        continue
+      }
+      const [expected, condition] = row
+      expect.soft(worst, `${a}/${b} (${mode})`).toBeCloseTo(expected, 1)
       // Not just the number but WHICH reader is worst off — a metric that drifted
       // while happening to land on the same figure would still be caught, and the
       // condition is the half the prose is actually about.
-      expect.soft(worstCondition(pa, pb), `${a}/${b} (${mode}) worst condition`).toBe(condition)
+      expect.soft(actualCondition, `${a}/${b} (${mode}) worst condition`).toBe(condition)
     }
   })
 
@@ -507,8 +540,17 @@ describe('chart ink measures up to the rule it is used under', () => {
     ]
     // INK_FAINT only ever shares a pie with the first TOP_N series, so it is
     // scored against those and not against the one held in reserve.
+    //
+    // ⚠️ BY INDEX, NOT BY HEX. This used to ask `MARKS[x].hex !== INK_FAINT`,
+    // which identifies the mark by VALUE — so a palette that happened to give a
+    // SERIES colour the same hex as INK_FAINT would send that SERIES pair down the
+    // else branch, fail `Math.max(x, y) === INK_INDEX`, and be skipped: no floor
+    // assertion, and absent from `below`, so the ratchet would not notice either.
+    // Two marks being identical is precisely the case this test exists to catch,
+    // and the re-palette ticket is the next one to touch these colours.
+    const INK_INDEX = MARKS.length - 1
     const coexists = (x: number, y: number) =>
-      MARKS[x].hex !== INK_FAINT && MARKS[y].hex !== INK_FAINT ? true : Math.max(x, y) === MARKS.length - 1 && Math.min(x, y) < TOP_N
+      Math.max(x, y) !== INK_INDEX || Math.min(x, y) < TOP_N
 
     const below: string[] = []
     for (let i = 0; i < MARKS.length; i++) {
@@ -516,8 +558,7 @@ describe('chart ink measures up to the rule it is used under', () => {
         if (!coexists(i, j)) continue
         const [A, B] = [MARKS[i], MARKS[j]]
         const key = `${A.label}/${B.label}`
-        const worst = worstSeparation(A.hex, B.hex)
-        const condition = worstCondition(A.hex, B.hex)
+        const [condition, worst] = worstOf(A.hex, B.hex)
         const owed = DEBT[mode][key]
         const where = `${A.label} ${A.hex} vs ${B.label} ${B.hex} (${mode}), worst under ${condition}`
         if (owed) {
@@ -600,14 +641,24 @@ describe('chart ink measures up to the rule it is used under', () => {
     ] as const
     expect(SURVIVES, 'a survival threshold under the floor would assert nothing')
       .toBeGreaterThan(SEPARATION)
-    for (const { kind, a, b } of ANCHORS) {
-      expect(
-        deltaE2000(simulateDichromacy(a, kind) as string, simulateDichromacy(b, kind) as string),
-        `${a}/${b} sits on the ${kind} confusion line and must collapse`,
-      ).toBeLessThan(SEPARATION)
+    // ⚠️ `collapse` AND `normal` ARE ASSERTED, not just recorded. They sat in this
+    // literal being read by nothing — re-measured by the commit that adopted ΔE00
+    // and then destructured away, which is prose wearing the costume of data.
+    // They are also the only IDENTITIES left on the chromatic path: every other
+    // ΔE00 assertion outside the palette tables is an inequality, and the two
+    // remaining equalities (`#000000`/`#FFFFFF`, `#101010`/`#383838`) are greys,
+    // which drive dL/Sl alone and exercise none of G, T, Sc, Sh or Rt. Without
+    // these six numbers the whole chromatic half of CIEDE2000 would be pinned only
+    // by DEBT and WORST — the two tables the re-palette ticket is going to rewrite.
+    for (const { kind, a, b, collapse, normal } of ANCHORS) {
+      const under = (k: Dichromacy) => deltaE2000(simulate(a, k), simulate(b, k))
+      expect(under(kind), `${a}/${b} sits on the ${kind} confusion line and must collapse`)
+        .toBeLessThan(SEPARATION)
+      expect(under(kind), `${a}/${b} collapse under ${kind}`).toBeCloseTo(collapse, 2)
+      expect(deltaE2000(a, b), `${a}/${b} in normal vision`).toBeCloseTo(normal, 1)
       for (const other of DICHROMACIES.filter((k) => k !== kind)) {
         expect(
-          deltaE2000(simulateDichromacy(a, other) as string, simulateDichromacy(b, other) as string),
+          under(other),
           `${a}/${b} is only invisible to ${kind}; ${other} must still see it`,
         ).toBeGreaterThan(SURVIVES)
       }
@@ -634,12 +685,27 @@ describe('chart ink measures up to the rule it is used under', () => {
     // Under Brettel's two half-planes the table is EMPTY, which is the strongest
     // evidence in this file that the model change was real: no palette colour was
     // touched, and every tritan distance in the repo moved anyway.
+    // ⚠️ EVERY MARK THIS FILE MEASURES A ΔE FOR, not just SERIES. The loop used to
+    // sweep the six SERIES alone — 36 checks under a docstring claiming 33 colours
+    // — while INK_FAINT appears in five of the seven light DEBT rows and the ring
+    // colours are measured through the same simulator by the WORST table. The
+    // control exists to guarantee that no pinned ΔE is partly a measurement of the
+    // clamp, so it has to cover the colours that are pinned. None of the added
+    // ones clips today; that is the point of checking rather than assuming.
     const clipped: Record<string, number> = {}
     for (const mode of MODES) {
-      for (const [i, hex] of chartTheme(mode).SERIES.entries()) {
+      const { SERIES, INK_FAINT, HEALTH_COLOR, SURFACE } = chartTheme(mode)
+      const marks: Array<[string, string]> = [
+        ...SERIES.map((hex, i) => [`SERIES[${i}]`, hex] as [string, string]),
+        ['INK_FAINT', INK_FAINT],
+        ...RINGED.map(
+          (s) => [`ring:${s}`, composite(HEALTH_COLOR[s], SURFACE, RING_OPACITY)] as [string, string],
+        ),
+      ]
+      for (const [label, hex] of marks) {
         for (const kind of DICHROMACIES) {
           const err = dichromacyGamutError(hex, kind)
-          if (err > 0) clipped[`${mode}[${i}] ${kind}`] = Math.round(err * 1000) / 1000
+          if (err > 0) clipped[`${mode} ${label} ${kind}`] = Math.round(err * 1000) / 1000
         }
       }
     }

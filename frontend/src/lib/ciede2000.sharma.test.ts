@@ -55,6 +55,14 @@ const SHARMA: Array<[number, number, number, number, number, number, number]> = 
 
 describe('CIEDE2000 against the published test data', () => {
   it('reproduces all 34 Sharma pairs to the printed precision', () => {
+    // ⚠️ PRECISION 4 IS THE CEILING THE DATA SUPPORTS, not a round number picked
+    // for comfort — do not tighten it to 5 to make the guard "stronger". The
+    // published ΔE00 values are printed to four decimals, so the residual is
+    // publication rounding rather than our error: measured across all 34 rows the
+    // worst gap is 4.950e-5 against a 5e-5 tolerance, on [50, 2.5, 0] vs
+    // [50, 1.8634, 0.5757] (computed 1.0000494990, printed 1.0000). Headroom is
+    // 5.0e-7. It is stable to ~1e-15 across engines so it will not flake, but a
+    // correct implementation goes red the moment the tolerance moves.
     expect(SHARMA).toHaveLength(34)
     for (const [L1, a1, b1, L2, a2, b2, expected] of SHARMA) {
       const got = labDeltaE2000([L1, a1, b1], [L2, a2, b2])

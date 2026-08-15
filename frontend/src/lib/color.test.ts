@@ -4,10 +4,12 @@ import {
   collapseLinear,
   composite,
   deriveAccentVariants,
+  dichromacyGamutError,
   hexToRgb,
   hexToTriplet,
   readableTextColor,
   relativeLuminance,
+  simulateDichromacy,
 } from './color'
 
 describe('color', () => {
@@ -145,17 +147,25 @@ describe('the Brettel 1997 two-half-plane model', () => {
    */
   const lin = (c: number) => relativeLuminance([c, c, c])
   const linOf = (hex: string) => hexToRgb(hex)!.map(lin)
-  const apply = (m: number[], v: number[]) =>
+  const apply = (m: readonly number[], v: readonly number[]) =>
     [0, 1, 2].map((r) => m[r * 3] * v[0] + m[r * 3 + 1] * v[1] + m[r * 3 + 2] * v[2])
-  const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-  const widest = (a: number[], b: number[]) => Math.max(...a.map((x, i) => Math.abs(x - b[i])))
+  const dot = (a: readonly number[], b: readonly number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  const widest = (a: readonly number[], b: readonly number[]) =>
+    Math.max(...a.map((x, i) => Math.abs(x - b[i])))
 
   /**
    * The constants are published to five decimals, and every structural identity
    * below therefore holds to ~1e-5 rather than exactly. Measured worst residual
    * across all three conditions: row sums 1.0e-5, P·P−P 7.7e-6, hinge 9.3e-6.
-   * Precision 4 (|diff| < 5e-5) clears all of them with room, and is still far
-   * tighter than any single mistyped digit could survive.
+   * Precision 4 (|diff| < 5e-5) clears all of them with room.
+   *
+   * ⚠️ IT CANNOT BE TIGHTER, AND SO IT CANNOT SEE THE LAST DIGIT. An earlier
+   * comment here claimed this was "far tighter than any single mistyped digit
+   * could survive". Measured: perturb each of the 54 matrix entries by ±1e-5 in
+   * turn and 108 of 108 mutants pass all three properties, because a 1e-5 error
+   * is the same size as the publication rounding these identities already have to
+   * tolerate. At ±1e-4 none survive. The real floor is 1e-4 — every transcription
+   * slip except one in the fifth decimal.
    */
   const PLACES = 4
 
@@ -163,9 +173,15 @@ describe('the Brettel 1997 two-half-plane model', () => {
     // If the coefficients ever stop summing to 1, `lin` silently becomes a scaled
     // version of the transfer curve and every matrix identity below would be
     // asserted against the wrong vector — while still looking self-consistent.
-    for (const c of [0, 1, 10, 11, 128, 254, 255]) {
-      expect(relativeLuminance([c, c, c]), `grey ${c}`).toBeCloseTo(lin(c), 15)
-    }
+    //
+    // ⚠️ THE ASSERTION THAT USED TO STAND HERE COULD NOT FAIL: it compared
+    // `relativeLuminance([c,c,c])` against `lin(c)`, which IS that expression —
+    // X toBeCloseTo X, green for any weighting whatsoever. The property is about
+    // the coefficients, so it has to be asserted on the coefficients, and each
+    // one is recoverable by feeding a single saturated channel.
+    const sum =
+      relativeLuminance([255, 0, 0]) + relativeLuminance([0, 255, 0]) + relativeLuminance([0, 0, 255])
+    expect(sum, 'the luminance coefficients no longer sum to 1, so `lin` is scaled').toBe(1)
     // …and the curve is not the identity, which is what makes it worth having.
     expect(lin(128)).toBeLessThan(128 / 255)
     expect(lin(0)).toBe(0)
@@ -228,11 +244,18 @@ describe('the Brettel 1997 two-half-plane model', () => {
     // as noise in every ΔE measured near it.
     for (const kind of KINDS) {
       const { m1, m2, normal } = BRETTEL[kind]
-      // Two independent directions that lie IN the plane: the neutral axis, and an
-      // arbitrary vector with its normal component projected out.
-      const w = [0.7, 0.2, 0.5]
-      const t = dot(normal, w) / dot(normal, normal)
-      const inPlane = [[1, 1, 1], w.map((x, i) => x - t * normal[i])]
+      // Two directions that lie IN the plane, each an arbitrary vector with its
+      // normal component projected out.
+      //
+      // ⚠️ NOT [1,1,1], WHICH THIS USED TO USE AS THE FIRST PROBE. `apply(m, [1,1,1])`
+      // is by definition the vector of m's row sums, so property 1 above already
+      // bounds the two halves' disagreement on it at 1e-5 — the probe could not
+      // fail unless a test that runs earlier had failed first. It read as "two
+      // independent directions" and was one.
+      const inPlane = [[0.7, 0.2, 0.5], [0.1, 0.9, 0.3]].map((w) => {
+        const t = dot(normal, w) / dot(normal, normal)
+        return w.map((x, i) => x - t * normal[i])
+      })
       for (const [i, v] of inPlane.entries()) {
         expect(dot(normal, v), `${kind} probe ${i} is not actually on the hinge`).toBeCloseTo(0, 10)
         expect(widest(apply(m1, v), apply(m2, v)), `${kind} halves disagree on the hinge`)
@@ -277,6 +300,63 @@ describe('the Brettel 1997 two-half-plane model', () => {
       expect(sharpest, `${kind} halves are interchangeable, so the hinge is decorative`)
         .toBeGreaterThan(0.01)
     }
+  })
+
+  it('pins one output per half, because the table can be swapped without breaking a rule', () => {
+    // ⚠️ THE HOLE THE PREVIOUS TEST LEAVES, and it is not a small one: exchange
+    // `m1` and `m2` inside the BRETTEL literal and every structural property still
+    // passes. Rows still sum to 1, both are still projections, the halves still
+    // agree on the hinge by construction, `sides` still contains both — and the
+    // selection check compares `collapseLinear` against `apply(onM1 ? m1 : m2, v)`
+    // read from the SAME swapped table, so the two agree about being wrong. The
+    // rule-based check catches a sign flip in the code and is blind to one in the
+    // data. (Negating `normal` is the same mutation and equally invisible.)
+    //
+    // Only a literal fixes that: these six vectors were measured once, from the
+    // published constants, and they do not come from the table at run time. A swap
+    // moves each of them by ~0.03 to 0.45 — four to five orders of magnitude above
+    // the tolerance below.
+    //
+    // Each probe is the colour furthest from its condition's hinge on that side,
+    // so the pin is nowhere near the boundary where the halves legitimately agree.
+    const PINS: Array<[(typeof KINDS)[number], 'm1' | 'm2', string, [number, number, number]]> = [
+      ['protan', 'm1', '#FFFF00', [1.34528, 0.95628, -0.00156]],
+      ['protan', 'm2', '#0000FF', [-0.30742, 0.03892, 1.00139]],
+      ['deutan', 'm1', '#0000FF', [-0.22858, 0.09462, 0.99278]],
+      ['deutan', 'm2', '#FFFF00', [1.25464, 0.8946, 0.00804]],
+      ['tritan', 'm1', '#FF0000', [1.01277, -0.01243, 0.07589]],
+      ['tritan', 'm2', '#00FFFF', [0.06322, 0.93846, 1.37563]],
+    ]
+    for (const [kind, half, hex, expected] of PINS) {
+      // The half named in the row is the half the sign rule must select, stated
+      // here so the row is readable as a fact rather than as six loose numbers.
+      const onM1 = dot(BRETTEL[kind].normal, linOf(hex)) >= 0
+      expect(onM1 ? 'm1' : 'm2', `${hex} is no longer on ${kind}'s ${half} side`).toBe(half)
+      const out = collapseLinear(hex, kind)!
+      for (const c of [0, 1, 2]) {
+        expect(out[c], `${kind} ${half} ${hex} channel ${c}`).toBeCloseTo(expected[c], 5)
+      }
+    }
+  })
+
+  it('does not call publication rounding a gamut clip', () => {
+    // ⚠️ THE FUNCTION HAD NO TOLERANCE AND THE MATRICES ARE ROUNDED, so a colour
+    // sitting exactly on a face of the cube reported a clip that never happened.
+    // White is the case: deutan's middle row sums to 1.00001, so linear [1,1,1]
+    // maps to [1, 1.00001, 1] and the error read 1e-5 — while `simulateDichromacy`
+    // returned '#ffffff' with nothing clipped at all. No SERIES colour happens to
+    // land on a face, so `charts/theme.test`'s empty table stayed green by luck;
+    // the re-palette ticket picking any near-white would have produced a red whose
+    // printed error rounded to the string "0".
+    for (const kind of KINDS) {
+      expect(dichromacyGamutError('#FFFFFF', kind), `white clips under ${kind}`).toBe(0)
+      expect(simulateDichromacy('#FFFFFF', kind), `white moved under ${kind}`).toBe('#ffffff')
+    }
+    // …and the tolerance must not have swallowed real clipping. These are three
+    // orders of magnitude above it.
+    expect(dichromacyGamutError('#FFFF00', 'protan')).toBeCloseTo(0.34528, 5)
+    expect(dichromacyGamutError('#00FFFF', 'tritan')).toBeCloseTo(0.37563, 5)
+    expect(dichromacyGamutError('nonsense', 'tritan')).toBeNaN()
   })
 
   it('returns null for a malformed hex instead of projecting garbage', () => {
