@@ -268,7 +268,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
   deterministic, no cost — identical to CI; new suites: test_snapshots, test_graph,
-  test_ba, test_automl, test_ai_cost, test_usage_quota, test_rls_mode). Frontend Vitest (749) covers `lib/*`, hooks, and Zustand
+  test_ba, test_automl, test_ai_cost, test_usage_quota, test_rls_mode). Frontend Vitest (777) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, the advanced-analytics
   stores/panels — metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
@@ -484,7 +484,7 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   `<svg>` into a standalone document, which has no `:root` to resolve `var()` against, so a
   token-coloured mark loses its colour in the exported PNG. Hex travels. That constraint is why the
   palette needs its own guard instead of inheriting the app's.
-  **What each round found, since the order is the useful part** — four PRs, four rounds: (1) value
+  **What each round found, since the order is the useful part** — six PRs, six rounds: (1) value
   labels were painted in palette colours, which are picked against the 3:1 *graphics* floor and not
   the 4.5:1 text one, so they moved to ink (#30). (2) The same mistake one element over: axis tick
   text and titles sat on `AXIS` — labels moved to `INK_SOFT`, the axis *line* stayed on `AXIS`
@@ -494,6 +494,13 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   simulated dichromacy the closest pair measured **ΔE 2.2 dark / 5.2 light**, invisible to every
   check the repo had (#35). ⚠️ Separating the colliding hues does nothing: dichromacy deletes an
   opponent axis rather than dulling it, so the palette was respread by lightness with hues kept.
+  (5) The trust ring told severity by hue alone, and dimmed itself below the floor while doing it —
+  each severity got a `stroke-dasharray` plus a tooltip word, and dimming moved from opacity to
+  **width** (2.5 → 1.5px), because measured, *no* opacity below `RING_OPACITY` clears 3:1 (#37).
+  (6) The instrument itself was wrong: the simulator was Viénot's single plane and the metric was
+  CIE76. Fixing both did not improve the palette — it **revealed** it: tritan gamut clipping went
+  from six colours to zero, so every tritan figure the repo had ever quoted was partly a
+  measurement of a silent clamp (#38).
   **The guard** (`theme.test.ts`) scores every pair a chart can place side by side — six series plus
   the folded-"other" `INK_FAINT` pie wedge, which is why `PieChartWidget.TOP_N` is derived from
   `SERIES_COUNT` rather than chosen — in normal vision and under all three dichromacies, plus 3:1
@@ -575,7 +582,7 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   `modulepreload` for it, and that defeats the `lazy()` wrapper (it pulled ~261 kB gzip onto every
   page load, login included). Left alone, Rollup names the chunk itself — that is where `axis-*`
   comes from. `rollup-plugin-visualizer` (env-gated, `npm run analyze`) emits a treemap.
-- **Test depth + blocking E2E:** Vitest grew to 65 *at the time of this round* (749 today — see the
+- **Test depth + blocking E2E:** Vitest grew to 65 *at the time of this round* (777 today — see the
   Testing bullet above; this line is a snapshot of that round, not a current count) (lib / hooks / store reducers, incl. the
   collab epoch-guard via a fake `WebSocket`); a blocking Playwright `e2e` CI job runs the
   login→query→dashboards smoke against a demo backend. Two CI-specific fixes underpin it: AI mocks
