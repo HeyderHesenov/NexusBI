@@ -516,14 +516,29 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   table. The metric is **CIEDE2000**, validated against all 34 published Sharma/Wu/Dalal pairs in
   `lib/ciede2000.sharma.test.ts`; CIE76 was deleted rather than kept, since after the switch its
   only remaining callers were its own two assertions.
-  **Known limits, deliberately not papered over.** Greyscale is *not* covered and cannot be by these
-  tests — every dichromacy model preserves lightness (worst pair ΔL\* 0.4); monochrome print is its
-  own ticket. **The palette does not meet its own floor**: measured correctly, 14 of the 40 scored
-  pairs fall under ΔE00 10 — worst light `SERIES[4]`/`INK_FAINT` at **3.24** under tritanopia, worst
-  dark `SERIES[4]`/`SERIES[5]` at **3.99**. They are named with their worst reader in the `DEBT`
-  table in `theme.test.ts`, pinned in both directions, with a set-equality assertion so a new
-  failure cannot be added quietly and a fixed one cannot be left behind. The floor was **not**
-  lowered to fit them. Re-picking those colours is the open ticket, and `DEBT` is its worklist.
+  **Both palettes were then re-picked against those instruments, and both floors are now met.** The
+  `DEBT` table that named 14 of the 40 scored pairs as under ΔE00 10 (worst light
+  `SERIES[4]`/`INK_FAINT` at 3.24 under tritanopia, dark `SERIES[4]`/`SERIES[5]` at 3.99) is
+  **empty**, and empty is asserted rather than absent: the set-equality check reads "no pair is under
+  the floor", which can fail. The floor was **not** lowered — 10 is the digit it was when fourteen
+  pairs failed it. `SERIES[1..5]` moved in both modes; `SERIES[0]` is frozen to `--accent` and
+  `INK_FAINT` is untouched, both being app-wide tokens. The colours were chosen by **minimising the
+  largest per-slot move** from the previous set subject to every floor, not by maximising separation
+  — that objective pushes an optimiser to the ends of the lightness axis and returns a set nobody
+  would recognise as this product. What the shipped sets achieve is pinned as `MARGIN` by name, value
+  and worst reader: closest pair **12.21** (light `SERIES[0]`/`[1]`, protanopia) and **13.58** (dark,
+  same pair) — because `>=` cannot tell 12.21 from 40, and emptying `DEBT` would otherwise have
+  deleted every pinned ΔE00 in the file.
+  **Greyscale is now covered too, by a second floor with its own assertion.** Every dichromacy model
+  preserves lightness, so nothing in the ΔE00 loop can see two colours that photocopy to the same
+  grey — the previous set had a pair at **ΔL\* 0.4** that scored 28.93 under deuteranopia and passed
+  everything. That pair is the new test's **positive control**: it must fail the ΔL\* floor while
+  passing the ΔE00 one, so the guard proves it reaches a reader the other cannot. Worst ΔL\* is now
+  **5.05** (light) and **5.51** (dark) against a floor asserted at **4.5** — not the 5 the ticket
+  aimed at, because the search shows half a point more margin costs a shift of ΔE00 29.2, i.e. a
+  different palette rather than this one adjusted, and asserting 5 against a measured 5.05 would be a
+  tripwire rather than a requirement. Both floors score the same population through one helper and
+  both assert its size, so they cannot drift onto different pairs.
   ⚠️ The pre-Brettel figures this section used to quote (5.37/5.34, and "6 of the 12 series colours
   gamut-clipped under tritan") were partly measurements of a silent clamp: under the two-half-plane
   model **nothing in the palette clips**, so the test asserts an empty table alongside a positive

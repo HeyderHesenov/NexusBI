@@ -489,21 +489,26 @@ Viénot & Mollon (1997)**-dir — neytral ox boyunca menteşələnmiş iki yarı
 edilməsi) — ilk üçü tək başına «həmişə birinci yarımı işlət» qüsurunu, yəni əvəz olunan 1999
 modelini, **tuta bilmir**.
 
-⚠️ **Örtülməyən iki şey — bilərəkdən, ölçülmüş halda:**
-1. **Boz-ton / monoxrom çap.** Hər dixromatiya modeli işıqlılığı **saxlayır**, ona görə o testlər
-   boz-tonda birləşməni prinsipcə görə bilmir. Ən pis cüt **ΔL\* 0.4**. Hələ açıqdır.
-2. **Palitranın özü öz həddini keçmir.** Düzgün model və düzgün metrik ilə ölçüləndə skorlanan
-   40 cütdən **14-ü** ΔE00 10-dan aşağıdır — ən pisi açıq `SERIES[4]`/`INK_FAINT` **3.24**
-   (tritanopiya), qaranlıq `SERIES[4]`/`SERIES[5]` **3.99**. **Bu, regres deyil**: palitra
-   CIE76 və Viénot-un tək müstəvisi ilə seçilmişdi, yəni rəqəmlər həmişə belə idi.
-   ⚠️ **Hədd aşağı salınmadı** — cütlər `theme.test.ts`-dəki `DEBT` cədvəlində dəyəri **və** ən pis
-   şəraiti ilə adbaad yazılıb, üstəlik **çoxluq bərabərliyi** iddiası var ki, nə yeni qüsur
-   səssizcə əlavə oluna bilsin, nə də düzələn cüt siyahıda qalsın. Palitranın yenidən seçilməsi
-   ayrıca biletdir və `DEBT` onun iş siyahısıdır.
+✅ **İki palitra da yenidən seçildi — hər iki hədd indi ödənilir.**
+1. **Rəng həddi.** 40 skorlanan cütdən 14-ü ΔE00 10-dan aşağı idi (ən pisi açıq
+   `SERIES[4]`/`INK_FAINT` **3.24**, qaranlıq `SERIES[4]`/`SERIES[5]` **3.99**) — `DEBT` cədvəli
+   indi **boşdur** və boşluq **iddia edilir**: çoxluq bərabərliyi «heç bir cüt həddən aşağı deyil»
+   deməkdir, yəni düşə bilən iddiadır. ⚠️ **Hədd aşağı salınmadı** — 10 rəqəmi 14 cüt düşəndə də
+   eyni idi; dəyişən **rənglər** oldu. `SERIES[1..5]` hər iki rejimdə tərpəndi, `SERIES[0]`
+   (`--accent`) və `INK_FAINT` **toxunulmadı**. Seçim meyarı: **köhnə palitradan ən böyük sürüşməni
+   MİNİMALLAŞDIRMAQ** (ayırmanı maksimallaşdırmaq optimizatoru işıqlığın uclarına itələyir və
+   məhsulu tanınmaz edir). Əldə olunan **`MARGIN`** kimi pinlənir: ən yaxın cüt açıqda **12.21**,
+   qaranlıqda **13.58** (hər ikisi protanopiya) — çünki `>=` 12.21 ilə 40-ı ayırd edə bilmir.
+2. **Boz-ton / monoxrom çap — indi ayrıca hədlə örtülüdür.** Hər dixromatiya modeli işıqlılığı
+   **saxlayır**, ona görə rəng testi boz-tonda birləşməni prinsipcə görə bilmir: köhnə dəstin
+   **ΔL\* 0.4**-lük cütü deutan altında 28.93 alıb hər şeyi keçirdi. Həmin cüt indi yeni testin
+   **müsbət kontroludur** — ΔL\* həddini **düşürməli**, ΔE00 həddini isə **keçməlidir**. Ən pis
+   ΔL\* indi **5.05** (açıq) və **5.51** (qaranlıq), hədd **4.5**-dədir: 5 yox, çünki yarım bal
+   artıq marja palitranı ΔE00 29.2 sürüşdürür, 5.05-ə qarşı 5 iddia etmək isə tələb yox, tələ olardı.
 
-✅ **Bağlanmış iki köhnə bənd** (əvvəl bu siyahıda idi): *trust-ring şiddəti rəng-tək idi* → #37-də
-hər şiddətə dash + tooltip verildi; *sönükləşdirilmiş halqa 3:1-dən aşağı düşürdü* → eyni PR-da
-sönükləşdirmə **enə** keçdi, opaklıq `RING_OPACITY`-də sabit qaldı. *Metrik CIE76 idi* → #38.
+✅ **Bağlanmış köhnə bəndlər**: *trust-ring şiddəti rəng-tək idi* → #37-də hər şiddətə dash +
+tooltip verildi; *sönükləşdirilmiş halqa 3:1-dən aşağı düşürdü* → eyni PR-da sönükləşdirmə **enə**
+keçdi, opaklıq `RING_OPACITY`-də sabit qaldı. *Metrik CIE76 idi* → #38.
 
 `GRAPH_TYPE_COLORS` bu hədə **qarşı ölçülmür** və bu qəsdəndir: doqquz düyün tipinin hər birində
 per-tip ikon + sözlə yazılmış ad var, yəni rəng tək kanal deyil (açıq rejimin 36 düyün cütündən

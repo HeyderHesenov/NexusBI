@@ -69,8 +69,10 @@ export const SERIES_COUNT = 6
  * BOTH DIRECTIONS. An early version claimed a clean rule — "every failing pair had
  * ΔL* under 5 and every passing pair had ΔL* over 12" — which the palette it cited
  * did not show. A later one said lightness "does most of the work", while that same
- * set had a pair at ΔL* 0.4 scoring ΔE 43.1 under deuteranopia, i.e. carried
- * entirely by surviving hue.
+ * set had a pair at ΔL* 0.4 scoring ΔE00 28.9 under deuteranopia, i.e. carried
+ * entirely by surviving hue. (The 43.1 this sentence used to quote was that pair
+ * in CIE76, from before the metric changed — it is 41.9 in ΔE00 for normal
+ * vision, and the deuteranope's 28.9 is the figure the argument needs.)
  *
  * Measured on the sets below: strip the hue and the worst pair falls to ΔE00 4.41
  * (light) and 4.59 (dark), less than half the floor. So lightness ALONE never

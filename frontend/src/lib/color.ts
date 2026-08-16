@@ -383,10 +383,12 @@ export function dichromacyGamutError(hex: string, kind: Dichromacy): number {
  * Used to assert that two chart series stay apart for a reader who cannot use
  * hue. ⚠️ Dichromacy deletes ONE opponent axis, it does not leave lightness
  * alone: a deuteranope loses red-green and keeps blue-yellow, so two colours at
- * identical lightness can still be far apart — SERIES[1]/SERIES[4] are 0.4 L*
- * apart and score ΔE00 28.9 here. An earlier version of this comment claimed
- * lightness was "the only signal left", which is what made the palette's own
- * justification wrong.
+ * identical lightness can still be far apart — the SERIES[1]/SERIES[4] of two
+ * palettes ago sat 0.4 L* apart and scored ΔE00 28.9 here, which is exactly why
+ * `theme.test` now asserts a SECOND, lightness-only floor that no function in
+ * this file can satisfy on a palette's behalf. An earlier version of this comment
+ * claimed lightness was "the only signal left", which is what made the palette's
+ * own justification wrong.
  *
  * See `dichromacyGamutError` before trusting a tritan number.
  */
