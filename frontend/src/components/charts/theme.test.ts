@@ -16,6 +16,7 @@ import {
   hexToRgb,
   relativeLuminance,
   simulateDichromacy,
+  toLab,
 } from '../../lib/color'
 import type { Dichromacy } from '../../lib/color'
 import type { GraphHealthStatus } from '../../types'
@@ -36,25 +37,27 @@ const TEXT = 4.5
  * dichromacy, in **CIEDE2000** — the ticket that asked for it is closed, and the
  * tritan gamut fix it had to follow landed with it.
  *
- * ⚠️ THE DIGIT DID NOT MOVE WHEN THE METRIC DID, and that is a decision, not an
- * oversight. Under ΔE00 this palette has 14 pairs below 10 (they are named in
- * DEBT, below), so re-deriving the floor downward until they passed was available
- * and was refused: a floor chosen to fit the numbers it grades stops being a
- * requirement and becomes a description of the status quo. What licenses keeping
- * the same digit is that the two metrics are anchored at the same place — black
- * to white is exactly 100 in both — so "10" means the same tenth of the lightness
- * range on either scale.
+ * ⚠️ THE DIGIT DID NOT MOVE WHEN THE METRIC DID, AND IT DID NOT MOVE WHEN THE
+ * PALETTE DID EITHER. Adopting ΔE00 left 14 pairs below 10, and re-deriving the
+ * floor downward until they passed was available and was refused: a floor chosen
+ * to fit the numbers it grades stops being a requirement and becomes a description
+ * of the status quo. The colours were re-picked instead, and they now clear it with
+ * air — see MARGIN, below. What licenses keeping the same digit across the metric
+ * change is that the two are anchored at the same place — black to white is exactly
+ * 100 in both — so "10" means the same tenth of the lightness range on either scale.
  *
  * ⚠️ "10 ≈ four JNDs" IS STILL THE WRONG WAY TO READ IT. That arithmetic (~2.3
  * per JND) belongs to CIE76 and was wrong there too, since CIE76 is not uniform.
  * 10 is a working floor for a small mark on a busy chart, not four of anything.
  *
  * ⚠️ AND EVERY NUMBER THIS DOCSTRING USED TO QUOTE WAS A MEASUREMENT OF A BUG.
- * It said the weakest pairs were 5.37 (light) and 5.34 (dark); under the Brettel
- * model they are 3.24 and 3.99, and the tritan figures moved most because the old
- * single-plane model threw those colours out of gamut and the simulator clamped
- * them silently. The old "3-5× better than the palette it replaced" claim is not
- * restated here for the same reason — it was computed against the same clamp.
+ * It said the weakest pairs were 5.37 (light) and 5.34 (dark); measured under the
+ * Brettel model the same set scored 3.24 and 3.99, and the tritan figures moved
+ * most because the old single-plane model threw those colours out of gamut and the
+ * simulator clamped them silently. That set is two generations back now — what the
+ * shipped one scores is in MARGIN — and the old "3-5× better than the palette it
+ * replaced" claim is not restated for the same reason: it was computed against the
+ * same clamp.
  *
  * ⚠️ WHICH PALETTES THIS IS POINTED AT, AND WHY NOT THE OTHERS. It scores the
  * marks a single chart can place side by side: the six SERIES, plus the INK_FAINT
@@ -77,6 +80,32 @@ const TEXT = 4.5
  */
 const SEPARATION = 10
 const DICHROMACIES = ['protan', 'deutan', 'tritan'] as const
+
+/**
+ * Lightness distance the same pairs must keep, in L* — the monochrome floor.
+ *
+ * WHY THIS EXISTS SEPARATELY. Every dichromacy model above PRESERVES lightness, so
+ * nothing in the SEPARATION loop can see a pair that differs only in hue, however
+ * many conditions it scores. The set two generations back had a pair at ΔL* 0.4 —
+ * two colours that photocopy to the same grey — while scoring ΔE 43.1 under
+ * deuteranopia, i.e. passing everything here with room to spare. A monochrome
+ * reader is not a dichromat with the volume turned down; they are a different
+ * reader, and this is the only assertion in the file that reaches them.
+ *
+ * ⚠️ AND THE TWO FLOORS DO NOT IMPLY EACH OTHER IN EITHER DIRECTION. Strip the hue
+ * from the palette below and the worst pair falls to ΔE00 4.41 (light) and 4.59
+ * (dark), so clearing ΔL* does not deliver SEPARATION; and the 0.4 pair above shows
+ * clearing SEPARATION does not deliver ΔL*. Two requirements, two assertions.
+ *
+ * ⚠️ WHY 4.5 AND NOT THE 5 THE TICKET ASKED FOR. Measured across the search space:
+ * the light set reaches ΔL* 5.05 while moving no colour more than ΔE00 12.1 from
+ * its predecessor, but half a point more margin costs a shift of 29.2 — a different
+ * palette rather than this one adjusted. Asserting 5 against a measured 5.05 makes
+ * the guard a tripwire rather than a requirement, which is the "margin 0.2" mistake
+ * this repo has made once already. 4.5 leaves 0.55 (light) and 1.01 (dark) of real
+ * air, and MARGIN pins what was actually achieved so the gap is written down.
+ */
+const GREYSCALE = 4.5
 
 /**
  * Ring severities that actually paint a ring — DERIVED from `RING_DASH`, which
@@ -129,6 +158,60 @@ const separations = (pa: string, pb: string) =>
  * about which entry was worst if the sort were ever made unstable.
  */
 const worstOf = (pa: string, pb: string) => separations(pa, pb)[0]
+
+/** L*, with the malformed-hex failure named where it happens rather than as NaN. */
+const lightness = (hex: string) => {
+  const rgb = hexToRgb(hex)
+  if (!rgb) throw new Error(`malformed palette hex: ${hex}`)
+  return toLab(rgb)[0]
+}
+
+type Mark = { hex: string; label: string }
+
+/**
+ * The pairs a chart can actually put side by side — the set BOTH palette floors
+ * are scored over, so neither can drift onto a different population than the other.
+ *
+ * ⚠️ THE SET IS "MARKS", NOT "SERIES". Scoring SERIES×SERIES alone let a real
+ * collision ship: a folded pie paints its "other" wedge in INK_FAINT, a neutral
+ * grey that measured ΔE 1.26 from the neutral-grey SERIES[5] in light mode — in the
+ * one widget with no on-arc labels, which is the widget these floors exist for.
+ * `TOP_N` is imported rather than reasoned about so the two cannot drift.
+ *
+ * ⚠️ AND THAT SAME S5/INK_FAINT PAIR IS DELIBERATELY NOT SCORED, which is easy to
+ * misread as an omission — the two sit ΔL* 1.9 apart in light, under the greyscale
+ * floor below. `coexists` excludes it because SERIES[5] is the one series a folded
+ * pie never paints: the wedge that would have used it IS the "other" wedge, and that
+ * wedge is INK_FAINT. The two cannot appear in the same chart, so the distance
+ * between them is not a defect. Every other INK_FAINT pair is scored.
+ *
+ * ⚠️ BY INDEX, NOT BY HEX. This used to ask `MARKS[x].hex !== INK_FAINT`, which
+ * identifies the mark by VALUE — so a palette that happened to give a SERIES colour
+ * the same hex as INK_FAINT would send that SERIES pair down the else branch, fail
+ * `Math.max(x, y) === INK_INDEX`, and be skipped: no floor assertion, and absent
+ * from `below`, so the ratchet would not notice either. Two marks being identical is
+ * precisely the case these tests exist to catch.
+ */
+function scoredPairs(mode: 'light' | 'dark'): Array<[Mark, Mark]> {
+  const { SERIES, INK_FAINT } = chartTheme(mode)
+  const MARKS: Mark[] = [
+    ...SERIES.map((hex, i) => ({ hex, label: `S${i}` })),
+    { hex: INK_FAINT, label: 'INK_FAINT' },
+  ]
+  const INK_INDEX = MARKS.length - 1
+  const coexists = (x: number, y: number) =>
+    Math.max(x, y) !== INK_INDEX || Math.min(x, y) < TOP_N
+  const out: Array<[Mark, Mark]> = []
+  for (let i = 0; i < MARKS.length; i++) {
+    for (let j = i + 1; j < MARKS.length; j++) {
+      if (coexists(i, j)) out.push([MARKS[i], MARKS[j]])
+    }
+  }
+  return out
+}
+
+/** Every SERIES pair, plus INK_FAINT against the series a folded pie can paint. */
+const SCORED_PAIR_COUNT = (SERIES_COUNT * (SERIES_COUNT - 1)) / 2 + TOP_N
 
 /**
  * The surfaces a chart can sit on, READ OUT of `index.css` rather than copied.
@@ -441,50 +524,46 @@ describe('chart ink measures up to the rule it is used under', () => {
   })
 
   /**
-   * THE PAIRS THIS PALETTE DOES NOT YET KEEP APART, named and measured.
+   * THE DEBT REGISTER, NOW EMPTY — and empty is an assertion here, not an absence.
    *
-   * Not a softened floor — `SEPARATION` is unchanged and every pair absent from
-   * this table still has to clear it. This is a debt register, on the precedent
-   * `theme.contrast.test` set with its `<=16` lock: state the shortfall exactly,
-   * so it cannot grow, cannot be added to quietly, and cannot be forgotten.
+   * This table used to name 14 pairs that fell under `SEPARATION`, on the precedent
+   * `theme.contrast.test` set with its `<=16` lock. The palette was re-picked and
+   * every row was deleted. The set-equality assertion at the end of the loop below
+   * is what makes the emptiness load-bearing: with no rows, it reads "no pair is
+   * under the floor", which is a claim that can fail.
    *
-   * WHY THE DEBT EXISTS AT ALL. These 14 pairs are not a regression. The palette
-   * was picked against CIE76 distances computed through the Viénot single plane,
-   * which threw six of these colours out of gamut under tritanopia and clamped
-   * them silently — so the numbers it was chosen by were partly measurements of
-   * that clamp. Fixing the model and the metric is what made the real distances
-   * visible, and the worst of them is light S4/INK_FAINT at 3.24: mauve against
-   * the folded-pie grey, for a tritanope, in the one widget with no on-arc labels.
-   *
-   * ⚠️ RE-PICKING THE COLOURS IS A SEPARATE TICKET, deliberately. It is a design
-   * decision with a person's taste in it, it touches every chart in the product,
-   * and doing it in the same commit as the model would mean choosing colours and
-   * grading them with the same instrument in one motion — which is how the
-   * previous palette got picked against a broken measurement in the first place.
-   *
-   * The value is the worst over normal vision and all three dichromacies; the
-   * condition is which reader is worst off. Both are pinned, because a metric that
-   * drifted onto the same number for a different reader would otherwise pass.
+   * ⚠️ DO NOT ADD A ROW TO MAKE A FAILING PAIR GO AWAY. That is what the register
+   * was for while the palette was known-bad and the instrument had just been fixed;
+   * it is not a place to park a regression introduced by an edit. A new row means
+   * the colours moved and the ΔE00 floor stopped being met — fix the colours.
    */
   const DEBT: Record<'light' | 'dark', Record<string, [number, Dichromacy | 'none']>> = {
-    light: {
-      'S0/S2': [5.19, 'tritan'],
-      'S0/S3': [9.88, 'deutan'],
-      'S1/S5': [7.49, 'deutan'],
-      'S1/INK_FAINT': [7.25, 'deutan'],
-      'S2/S4': [9.24, 'protan'],
-      'S4/S5': [3.8, 'tritan'],
-      'S4/INK_FAINT': [3.24, 'tritan'],
-    },
-    dark: {
-      'S0/S1': [9.96, 'protan'],
-      'S0/S2': [8.9, 'tritan'],
-      'S0/S3': [6.61, 'protan'],
-      'S0/S5': [7.34, 'deutan'],
-      'S1/S2': [7.19, 'tritan'],
-      'S4/S5': [3.99, 'tritan'],
-      'S4/INK_FAINT': [6.33, 'tritan'],
-    },
+    light: {},
+    dark: {},
+  }
+
+  /**
+   * WHAT THE PALETTE ACTUALLY ACHIEVES, pinned — the replacement for the numbers
+   * the DEBT rows used to carry.
+   *
+   * ⚠️ WITHOUT THIS, EMPTYING DEBT WOULD HAVE DELETED EVERY PINNED ΔE00 IN THE
+   * PALETTE HALF OF THIS FILE. The loop below asserts inequalities (`>= SEPARATION`),
+   * and an inequality cannot tell 12.21 from 40: a metric that drifted upward, a
+   * simulator that got weaker, a palette edit that quietly spent all its margin —
+   * every one of those keeps a `>=` green. So the worst pair of each mode is pinned
+   * by NAME, VALUE and WORST READER, the same three-part pin the DEBT rows used, and
+   * the greyscale floor gets the same treatment in its own row.
+   *
+   * These are measured, not chosen: `T = 12` was used while searching so the shipped
+   * palette would not sit on the floor it is graded against, and this is where that
+   * air is recorded. Light 12.21 and dark 13.58 against a floor of 10.
+   */
+  const MARGIN: Record<'light' | 'dark', {
+    sep: [string, number, Dichromacy | 'none']
+    grey: [string, number]
+  }> = {
+    light: { sep: ['S0/S1', 12.21, 'protan'], grey: ['S1/S4', 5.05] },
+    dark: { sep: ['S0/S1', 13.58, 'protan'], grey: ['S0/S3', 5.51] },
   }
 
   it.each(MODES)('keeps every SERIES pair apart without hue in %s mode', (mode) => {
@@ -501,79 +580,48 @@ describe('chart ink measures up to the rule it is used under', () => {
     // relative luminance is not perceptual, so a "legal" gap at one end of the
     // scale is a much smaller difference than the same gap at the other.
     //
-    // ⚠️ WHAT THIS FLOOR DOES NOT DO IS SUBSUME THE OLD ONE, which an earlier
+    // ⚠️ WHAT THIS FLOOR DOES NOT DO IS SUBSUME A LIGHTNESS ONE, which an earlier
     // draft of this comment claimed on the reasoning that "two colours cannot
     // clear 10 ΔE for a deuteranope without a real lightness difference, because
-    // that reader has nothing else to go on". Measured, that is false, and the
-    // palette in this very file disproves it: SERIES[1] #009562 vs SERIES[4]
-    // #9776B3 sit 0.4 L* apart and still score ΔE00 28.9 under deuteranopia. A
-    // deuteranope has plenty to go on — deuteranopia deletes red-green and
-    // leaves blue-yellow standing, and green-vs-violet rides that surviving axis.
+    // that reader has nothing else to go on". Measured, that is false. The set two
+    // generations back had SERIES[1] #009562 and SERIES[4] #9776B3 sitting 0.4 L*
+    // apart while scoring ΔE00 28.9 under deuteranopia, and the palette in this
+    // file still shows the effect: S1/S4 clears the lightness floor by 0.55 and
+    // scores 40.5 under deuteranopia. A deuteranope has plenty to go on —
+    // deuteranopia deletes red-green and leaves blue-yellow standing, and
+    // green-vs-violet rides that surviving axis.
     //
-    // So the two properties are INDEPENDENT, not nested. Every dichromacy model
-    // preserves lightness, which means no assertion in this test can ever see a
-    // greyscale collision; scored separately, this palette has 4 light pairs and
-    // 8 dark under the same floor in greyscale, worst 0.4. Neither did the check
-    // this replaced actually cover that — its light set measured 8 such pairs
-    // while passing. Greyscale is an open ticket, not a thing proven below.
-    const { SERIES, INK_FAINT } = chartTheme(mode)
-    expect(SERIES).toHaveLength(SERIES_COUNT)
-
-    // ⚠️ THE SET SCORED IS "MARKS A CHART CAN PUT SIDE BY SIDE", NOT "SERIES".
-    // Scoring SERIES×SERIES alone let a real collision ship: a folded pie paints
-    // its "other" wedge in INK_FAINT, a neutral grey that measured ΔE 1.26 from
-    // the neutral-grey SERIES[5] in light mode — in the one widget with no on-arc
-    // labels, which is the widget this floor's docstring names as its reason.
-    // TOP_N is imported rather than reasoned about so the two cannot drift.
-    //
-    // ⚠️ THAT SAME S5/INK_FAINT PAIR IS STILL THE CLOSEST TWO COLOURS IN THE LIGHT
-    // SET — ΔE00 1.15 raw, 1.07 under tritanopia — and it is deliberately NOT
-    // scored, which is easy to misread as an omission. `coexists` excludes it
-    // because SERIES[5] is the one series a folded pie never paints: the wedge that
-    // would have used it is the "other" wedge, and that wedge is INK_FAINT. The two
-    // cannot appear in the same chart, so the distance between them is not a defect.
+    // So the two properties are INDEPENDENT, not nested, and both are now asserted:
+    // this test owns ΔE00 under simulated vision, and the greyscale test below owns
+    // ΔL*. Neither may be dropped on the grounds that the other passes.
+    expect(chartTheme(mode).SERIES).toHaveLength(SERIES_COUNT)
     expect(TOP_N, 'a folded pie must leave one series unused for the other wedge')
       .toBeLessThanOrEqual(SERIES_COUNT - 1)
-    const MARKS = [
-      ...SERIES.map((hex, i) => ({ hex, label: `S${i}` })),
-      { hex: INK_FAINT, label: 'INK_FAINT' },
-    ]
-    // INK_FAINT only ever shares a pie with the first TOP_N series, so it is
-    // scored against those and not against the one held in reserve.
-    //
-    // ⚠️ BY INDEX, NOT BY HEX. This used to ask `MARKS[x].hex !== INK_FAINT`,
-    // which identifies the mark by VALUE — so a palette that happened to give a
-    // SERIES colour the same hex as INK_FAINT would send that SERIES pair down the
-    // else branch, fail `Math.max(x, y) === INK_INDEX`, and be skipped: no floor
-    // assertion, and absent from `below`, so the ratchet would not notice either.
-    // Two marks being identical is precisely the case this test exists to catch,
-    // and the re-palette ticket is the next one to touch these colours.
-    const INK_INDEX = MARKS.length - 1
-    const coexists = (x: number, y: number) =>
-      Math.max(x, y) !== INK_INDEX || Math.min(x, y) < TOP_N
+    // Both floors read the same helper now, so a helper that returned fewer pairs
+    // — or none — would quietly weaken TWO tests at once and leave both green.
+    expect(scoredPairs(mode), `${mode}: the scored population changed size`)
+      .toHaveLength(SCORED_PAIR_COUNT)
 
     const below: string[] = []
-    for (let i = 0; i < MARKS.length; i++) {
-      for (let j = i + 1; j < MARKS.length; j++) {
-        if (!coexists(i, j)) continue
-        const [A, B] = [MARKS[i], MARKS[j]]
-        const key = `${A.label}/${B.label}`
-        const [condition, worst] = worstOf(A.hex, B.hex)
-        const owed = DEBT[mode][key]
-        const where = `${A.label} ${A.hex} vs ${B.label} ${B.hex} (${mode}), worst under ${condition}`
-        if (owed) {
-          // A recorded debt is pinned in BOTH directions, value and condition. A
-          // one-sided ratchet would let the palette ticket land silently; this way
-          // the fix has to come here and delete the row, which is where the reader
-          // finds out the floor is met again.
-          expect.soft(worst, `${where} — recorded debt moved`).toBeCloseTo(owed[0], 1)
-          expect.soft(condition, `${where} — recorded debt changed reader`).toBe(owed[1])
-        } else {
-          expect.soft(worst, `${where} — below the floor and not a recorded debt`)
-            .toBeGreaterThanOrEqual(SEPARATION)
-        }
-        if (worst < SEPARATION) below.push(key)
+    let weakest: [string, number, Dichromacy | 'none'] | null = null
+    for (const [A, B] of scoredPairs(mode)) {
+      const key = `${A.label}/${B.label}`
+      const [condition, worst] = worstOf(A.hex, B.hex)
+      const owed = DEBT[mode][key]
+      const where = `${A.label} ${A.hex} vs ${B.label} ${B.hex} (${mode}), worst under ${condition}`
+      if (owed) {
+        // A recorded debt is pinned in BOTH directions, value and condition. A
+        // one-sided ratchet would let the palette ticket land silently; this way
+        // the fix has to come here and delete the row, which is where the reader
+        // finds out the floor is met again.
+        expect.soft(worst, `${where} — recorded debt moved`).toBeCloseTo(owed[0], 1)
+        expect.soft(condition, `${where} — recorded debt changed reader`).toBe(owed[1])
+      } else {
+        expect.soft(worst, `${where} — below the floor and not a recorded debt`)
+          .toBeGreaterThanOrEqual(SEPARATION)
       }
+      if (worst < SEPARATION) below.push(key)
+      if (!weakest || worst < weakest[1]) weakest = [key, worst, condition]
     }
     // ⚠️ THE ASSERTION THAT MAKES THE TABLE A RATCHET RATHER THAN A SNAPSHOT.
     // Without it a future failing pair could be waved through by adding a row, and
@@ -582,18 +630,76 @@ describe('chart ink measures up to the rule it is used under', () => {
     // and never consult the floor. Set equality consults it twice.
     expect(below.sort(), `${mode}: the set of pairs under the floor is not the recorded debt`)
       .toEqual(Object.keys(DEBT[mode]).sort())
+
+    // …and the margin the palette was searched for, pinned by name, value and
+    // reader. `below` being empty says "nothing is under 10"; this says how far
+    // over 10 the closest pair actually is, which is the number that erodes first
+    // when someone nudges a colour.
+    if (!weakest) throw new Error(`${mode}: no pair was scored at all`)
+    const [wKey, wVal, wCond] = weakest
+    const [mKey, mVal, mCond] = MARGIN[mode].sep
+    expect.soft(wKey, `${mode}: a different pair is now the closest`).toBe(mKey)
+    expect.soft(wVal, `${mode}: the closest pair moved`).toBeCloseTo(mVal, 1)
+    expect.soft(wCond, `${mode}: the closest pair changed reader`).toBe(mCond)
+  })
+
+  it.each(MODES)('keeps every SERIES pair apart in greyscale too in %s mode', (mode) => {
+    // The assertion no dichromacy model above can make, because every one of them
+    // PRESERVES lightness: a photocopy, a greyscale print, a monochrome e-ink
+    // reader and full achromatopsia all keep L* and delete everything else.
+    //
+    // ⚠️ POSITIVE CONTROL FIRST, and it is not decorative — a guard whose measure
+    // returns a comfortable number for every input passes forever. These two lines
+    // use the pair the set two generations back actually collided on, so they also
+    // prove the floor catches something `SEPARATION` cannot: ΔL* 0.43 is two colours
+    // that photocopy to the same grey, while ΔE00 scores 28.93 at its worst reader
+    // and sails over a floor of 10. That is the whole reason this test exists as a
+    // second assertion rather than as a comment under the first one.
+    const [OLD_A, OLD_B] = ['#009562', '#9776B3']
+    expect(Math.abs(lightness(OLD_A) - lightness(OLD_B)), 'the control pair must FAIL this floor')
+      .toBeLessThan(GREYSCALE)
+    expect(worstOf(OLD_A, OLD_B)[1], 'the control pair must PASS the ΔE00 floor while failing this one')
+      .toBeGreaterThanOrEqual(SEPARATION)
+    // …and a measure that is not measuring distance at all — one that returns a
+    // constant, say — fails here instead of passing everything above.
+    expect(Math.abs(lightness(OLD_A) - lightness(OLD_A)), 'a colour must be zero from itself').toBe(0)
+
+    const pairs = scoredPairs(mode)
+    expect(pairs, `${mode}: the scored population changed size`).toHaveLength(SCORED_PAIR_COUNT)
+
+    let weakest: [string, number] | null = null
+    for (const [A, B] of pairs) {
+      const gap = Math.abs(lightness(A.hex) - lightness(B.hex))
+      // `expect.soft`, like the loop above: a hard throw on the first collision
+      // reports a twenty-row table as one row, which this file has already been
+      // caught by once.
+      expect.soft(
+        gap,
+        `${A.label} ${A.hex} vs ${B.label} ${B.hex} (${mode}) — ΔL* ${gap.toFixed(2)}, they photocopy to the same grey`,
+      ).toBeGreaterThanOrEqual(GREYSCALE)
+      if (!weakest || gap < weakest[1]) weakest = [`${A.label}/${B.label}`, gap]
+    }
+    // The same three-part pin the ΔE00 side uses, minus the reader: greyscale has
+    // only one. Without it, `>= 4.5` cannot tell 5.05 from 40 — and 5.05 is the
+    // number that erodes first, since it is the one the search bought last.
+    if (!weakest) throw new Error(`${mode}: no pair was scored at all`)
+    const [gKey, gVal] = MARGIN[mode].grey
+    expect.soft(weakest[0], `${mode}: a different pair is now the closest in greyscale`).toBe(gKey)
+    expect.soft(weakest[1], `${mode}: the closest greyscale pair moved`).toBeCloseTo(gVal, 1)
   })
 
   it.each(MODES)('keeps the SERIES span the mode-split was justified by in %s mode', (mode) => {
     // The deleted luminance-neighbour check took a second assertion down with it:
     // theme.ts still argues the split is worth it because each set spans further
-    // than the 1.50:1 a shared palette is capped at, and quotes 2.65:1 and 2.11:1.
+    // than the 1.50:1 a shared palette is capped at, and quotes 2.90:1 and 3.18:1.
     // Those are load-bearing numbers with nothing holding them. The pairwise floor
     // does NOT imply them — pairs can separate on hue.
     //
-    // ⚠️ Deliberately not a neighbour-gap check. The new light set's smallest
-    // neighbour gap is 0.0041, against the 0.02 the deleted test demanded, and
-    // that is the greyscale ticket rather than something to re-assert here.
+    // ⚠️ Deliberately still not a neighbour-gap check, even though the re-picked
+    // sets would now pass one (smallest luminance gap 0.0245 light, 0.0563 dark,
+    // against the 0.02 the deleted test demanded). Neighbour gaps were the wrong
+    // quantity, not a too-low threshold: what the monochrome reader needs is the
+    // pairwise ΔL* floor asserted above, which covers pairs two steps apart too.
     const lum = chartTheme(mode).SERIES.map((hex) => {
       const rgb = hexToRgb(hex)
       if (!rgb) throw new Error(`malformed palette hex: ${hex}`)
