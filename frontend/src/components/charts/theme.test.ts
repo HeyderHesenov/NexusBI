@@ -159,12 +159,39 @@ const separations = (pa: string, pb: string) =>
  */
 const worstOf = (pa: string, pb: string) => separations(pa, pb)[0]
 
-/** L*, with the malformed-hex failure named where it happens rather than as NaN. */
-const lightness = (hex: string) => {
+/** `hexToRgb` with the failure named where it happens rather than as a null two frames on. */
+const parseHex = (hex: string) => {
   const rgb = hexToRgb(hex)
   if (!rgb) throw new Error(`malformed palette hex: ${hex}`)
-  return toLab(rgb)[0]
+  return rgb
 }
+
+/** L* of a hex, for the monochrome floor. */
+const lightness = (hex: string) => toLab(parseHex(hex))[0]
+
+/**
+ * SYNTHETIC PAIRS THAT STRADDLE EACH FLOOR — the only thing in this file that reads
+ * the digits themselves.
+ *
+ * ⚠️ WITHOUT THESE BOTH FLOORS COULD BE MOVED AT WILL, and that was measured, not
+ * feared: with the palette clean and `DEBT` empty, `SEPARATION = 1` and
+ * `GREYSCALE = 0.5` each left the whole file green. Every other assertion about
+ * them is an inequality pointing the same way — a palette that clears 10 also
+ * clears 1 — so lowering a floor to fit a future palette was a one-digit edit that
+ * no test could see. (The `DEBT` set-equality used to catch it, but only while
+ * `DEBT` had rows: once emptied, `[] === []` holds for any floor.)
+ *
+ * Greys are used on purpose: every dichromacy model preserves them, so the same
+ * pair measures the same distance under all four conditions and the probe cannot
+ * drift with the simulator. The measured values are pinned too, so a metric change
+ * has to come here and restate them rather than quietly re-scale both sides.
+ */
+const FLOOR_PROBES = {
+  // ΔE00, worst of four conditions: 9.27 must read as "under", 10.09 as "over".
+  separation: { under: ['#606060', '#787878', 9.27], over: ['#606060', '#7A7A7A', 10.09] },
+  // ΔL*: 4.28 must read as "under", 4.67 as "over".
+  greyscale: { under: ['#808080', '#8B8B8B', 4.28], over: ['#808080', '#8C8C8C', 4.67] },
+} as const
 
 type Mark = { hex: string; label: string }
 
@@ -290,6 +317,12 @@ describe.each(['light', 'dark'] as const)('HEALTH_COLOR (%s)', (mode) => {
 describe('chart ink measures up to the rule it is used under', () => {
   const MODES = ['light', 'dark'] as const
 
+  /** The SERIES colour with the least room over the 3:1 graphics floor, per mode. */
+  const TIGHTEST_CONTRAST: Record<'light' | 'dark', [string, number]> = {
+    light: ['S5', 3.04],
+    dark: ['S5', 3.24],
+  }
+
   it.each(MODES)('reads the %s surfaces out of index.css', (mode) => {
     // Pinned on the parse, because a regex that quietly matches nothing would
     // leave every ratio below iterating an empty list and passing vacuously.
@@ -333,11 +366,23 @@ describe('chart ink measures up to the rule it is used under', () => {
     // green for as long as the bug existed.
     const { SERIES } = chartTheme(mode)
     expect(SERIES).toHaveLength(SERIES_COUNT)
+    const worst: Array<[string, number]> = []
     for (const [i, hex] of SERIES.entries()) {
       for (const [name, bg] of backgrounds(mode)) {
         expect(contrastRatio(hex, bg), `SERIES[${i}] ${hex} on ${name} (${mode})`).toBeGreaterThanOrEqual(GRAPHIC)
       }
+      worst.push([`S${i}`, Math.min(...backgrounds(mode).map(([, bg]) => contrastRatio(hex, bg)))])
     }
+    // ⚠️ AND THE HEADROOM, PINNED — for the same reason MARGIN exists on the ΔE00
+    // side: `>= 3` cannot tell 3.04 from 8. The re-pick spent most of what was
+    // there (light S5 3.12 → 3.04, dark S5 4.63 → 3.24), and no assertion recorded
+    // that it had moved. INK_FAINT's own comment calls 3.24 "the margin that
+    // disappears without anyone noticing"; light S5 now has a sixth of that, so it
+    // is written down where an edit that spends the rest has to restate it.
+    const tightest = worst.reduce((a, b) => (b[1] < a[1] ? b : a))
+    const [cKey, cVal] = TIGHTEST_CONTRAST[mode]
+    expect.soft(tightest[0], `${mode}: a different colour is now the tightest`).toBe(cKey)
+    expect.soft(tightest[1], `${mode}: the tightest colour's contrast moved`).toBeCloseTo(cVal, 2)
   })
 
   it.each(MODES)('DANGER clears the graphics floor in %s mode', (mode) => {
@@ -524,46 +569,47 @@ describe('chart ink measures up to the rule it is used under', () => {
   })
 
   /**
-   * THE DEBT REGISTER, NOW EMPTY — and empty is an assertion here, not an absence.
+   * WHAT THE PALETTE ACHIEVES, pinned — and the reason the DEBT table that used to
+   * stand here is gone rather than merely emptied.
    *
-   * This table used to name 14 pairs that fell under `SEPARATION`, on the precedent
-   * `theme.contrast.test` set with its `<=16` lock. The palette was re-picked and
-   * every row was deleted. The set-equality assertion at the end of the loop below
-   * is what makes the emptiness load-bearing: with no rows, it reads "no pair is
-   * under the floor", which is a claim that can fail.
+   * THAT TABLE NAMED 14 PAIRS under `SEPARATION`, on the precedent
+   * `theme.contrast.test` set with its `<=16` lock, and its set-equality assertion
+   * was what made the floor load-bearing: `below` had to equal the recorded keys, so
+   * moving `SEPARATION` changed `below` and went red. Emptying it silently removed
+   * that property — `[] === []` holds for any floor — which is measured in
+   * `FLOOR_PROBES` above and is why the digits are now held there instead. An empty
+   * register that reads as a ratchet but is not one is worse than no register.
    *
-   * ⚠️ DO NOT ADD A ROW TO MAKE A FAILING PAIR GO AWAY. That is what the register
-   * was for while the palette was known-bad and the instrument had just been fixed;
-   * it is not a place to park a regression introduced by an edit. A new row means
-   * the colours moved and the ΔE00 floor stopped being met — fix the colours.
-   */
-  const DEBT: Record<'light' | 'dark', Record<string, [number, Dichromacy | 'none']>> = {
-    light: {},
-    dark: {},
-  }
-
-  /**
-   * WHAT THE PALETTE ACTUALLY ACHIEVES, pinned — the replacement for the numbers
-   * the DEBT rows used to carry.
+   * ⚠️ AND AN INEQUALITY CANNOT TELL 12.21 FROM 40. The loop below asserts
+   * `>= SEPARATION`, so a metric that drifted upward, a simulator that got weaker,
+   * or a palette edit that quietly spent all its margin all keep it green. So the
+   * closest pairs of each mode are pinned by NAME, VALUE and WORST READER.
    *
-   * ⚠️ WITHOUT THIS, EMPTYING DEBT WOULD HAVE DELETED EVERY PINNED ΔE00 IN THE
-   * PALETTE HALF OF THIS FILE. The loop below asserts inequalities (`>= SEPARATION`),
-   * and an inequality cannot tell 12.21 from 40: a metric that drifted upward, a
-   * simulator that got weaker, a palette edit that quietly spent all its margin —
-   * every one of those keeps a `>=` green. So the worst pair of each mode is pinned
-   * by NAME, VALUE and WORST READER, the same three-part pin the DEBT rows used, and
-   * the greyscale floor gets the same treatment in its own row.
+   * ⚠️ NAME IS A **SET**, because two pairs can be closer to each other than the
+   * value pin's own tolerance. Light's two tightest sit 12.208 and 12.275 apart and
+   * in greyscale 5.052 and 5.066 — 0.014 in the second case, against a
+   * `toBeCloseTo(_, 1)` window of 0.1. Pinning a single winner there is a tripwire
+   * that one 8-bit nudge or one float-order change flips, with no accessibility
+   * meaning; pinning everything within `TIE` of the minimum says what is actually
+   * true, and still fails when a genuinely different pair becomes the weakest.
    *
    * These are measured, not chosen: `T = 12` was used while searching so the shipped
    * palette would not sit on the floor it is graded against, and this is where that
    * air is recorded. Light 12.21 and dark 13.58 against a floor of 10.
    */
+  const TIE = 0.1
   const MARGIN: Record<'light' | 'dark', {
-    sep: [string, number, Dichromacy | 'none']
-    grey: [string, number]
+    sep: [string[], number, Dichromacy | 'none']
+    grey: [string[], number]
   }> = {
-    light: { sep: ['S0/S1', 12.21, 'protan'], grey: ['S1/S4', 5.05] },
-    dark: { sep: ['S0/S1', 13.58, 'protan'], grey: ['S0/S3', 5.51] },
+    light: { sep: [['S0/S1', 'S0/S2'], 12.21, 'protan'], grey: [['S0/S4', 'S1/S4'], 5.05] },
+    dark: { sep: [['S0/S1'], 13.58, 'protan'], grey: [['S0/S3'], 5.51] },
+  }
+
+  /** Everything within `TIE` of the smallest score, sorted — the pinned identity. */
+  const tiedAt = (rows: Array<[string, number]>) => {
+    const min = Math.min(...rows.map(([, v]) => v))
+    return rows.filter(([, v]) => v <= min + TIE).map(([k]) => k).sort()
   }
 
   it.each(MODES)('keeps every SERIES pair apart without hue in %s mode', (mode) => {
@@ -597,50 +643,88 @@ describe('chart ink measures up to the rule it is used under', () => {
     expect(chartTheme(mode).SERIES).toHaveLength(SERIES_COUNT)
     expect(TOP_N, 'a folded pie must leave one series unused for the other wedge')
       .toBeLessThanOrEqual(SERIES_COUNT - 1)
-    // Both floors read the same helper now, so a helper that returned fewer pairs
-    // — or none — would quietly weaken TWO tests at once and leave both green.
-    expect(scoredPairs(mode), `${mode}: the scored population changed size`)
-      .toHaveLength(SCORED_PAIR_COUNT)
+    // ONE call, then assert and iterate the SAME array. Calling `scoredPairs` twice
+    // meant the length assertion spoke for a different object than the loop scored —
+    // harmless while the helper is pure, and exactly the kind of "harmless" that
+    // stops being true after someone adds caching or ordering to it. Both floors
+    // read this helper, so a version returning fewer pairs — or none — would weaken
+    // two tests at once and leave both green.
+    const pairs = scoredPairs(mode)
+    expect(pairs, `${mode}: the scored population changed size`).toHaveLength(SCORED_PAIR_COUNT)
 
     const below: string[] = []
+    const scores: Array<[string, number]> = []
     let weakest: [string, number, Dichromacy | 'none'] | null = null
-    for (const [A, B] of scoredPairs(mode)) {
+    for (const [A, B] of pairs) {
       const key = `${A.label}/${B.label}`
       const [condition, worst] = worstOf(A.hex, B.hex)
-      const owed = DEBT[mode][key]
       const where = `${A.label} ${A.hex} vs ${B.label} ${B.hex} (${mode}), worst under ${condition}`
-      if (owed) {
-        // A recorded debt is pinned in BOTH directions, value and condition. A
-        // one-sided ratchet would let the palette ticket land silently; this way
-        // the fix has to come here and delete the row, which is where the reader
-        // finds out the floor is met again.
-        expect.soft(worst, `${where} — recorded debt moved`).toBeCloseTo(owed[0], 1)
-        expect.soft(condition, `${where} — recorded debt changed reader`).toBe(owed[1])
-      } else {
-        expect.soft(worst, `${where} — below the floor and not a recorded debt`)
-          .toBeGreaterThanOrEqual(SEPARATION)
-      }
+      expect.soft(worst, `${where} — under the floor`).toBeGreaterThanOrEqual(SEPARATION)
       if (worst < SEPARATION) below.push(key)
+      scores.push([key, worst])
       if (!weakest || worst < weakest[1]) weakest = [key, worst, condition]
     }
-    // ⚠️ THE ASSERTION THAT MAKES THE TABLE A RATCHET RATHER THAN A SNAPSHOT.
-    // Without it a future failing pair could be waved through by adding a row, and
-    // — the direction that actually bites — `SEPARATION` could be mutated to 0 or
-    // 1e9 with every pin above still passing, because the pins measure distances
-    // and never consult the floor. Set equality consults it twice.
-    expect(below.sort(), `${mode}: the set of pairs under the floor is not the recorded debt`)
-      .toEqual(Object.keys(DEBT[mode]).sort())
+    // The aggregate form of the same claim, so one run names every offender rather
+    // than leaving the reader to collect them from soft failures.
+    expect(below.sort(), `${mode}: these pairs are under the floor`).toEqual([])
 
-    // …and the margin the palette was searched for, pinned by name, value and
-    // reader. `below` being empty says "nothing is under 10"; this says how far
-    // over 10 the closest pair actually is, which is the number that erodes first
-    // when someone nudges a colour.
+    // …and the margin the palette was searched for. `below` being empty says
+    // "nothing is under 10"; this says how far over 10 the closest pairs actually
+    // are, which is the number that erodes first when someone nudges a colour.
     if (!weakest) throw new Error(`${mode}: no pair was scored at all`)
-    const [wKey, wVal, wCond] = weakest
-    const [mKey, mVal, mCond] = MARGIN[mode].sep
-    expect.soft(wKey, `${mode}: a different pair is now the closest`).toBe(mKey)
+    const [, wVal, wCond] = weakest
+    const [mKeys, mVal, mCond] = MARGIN[mode].sep
+    expect.soft(tiedAt(scores), `${mode}: a different pair is now the closest`).toEqual([...mKeys].sort())
     expect.soft(wVal, `${mode}: the closest pair moved`).toBeCloseTo(mVal, 1)
     expect.soft(wCond, `${mode}: the closest pair changed reader`).toBe(mCond)
+  })
+
+  it('holds each floor to the digit it is written as', () => {
+    // ⚠️ THE ONLY ASSERTIONS IN THIS FILE THAT READ THE FLOORS THEMSELVES, and they
+    // exist because their absence was measured: with the palette clean, `SEPARATION`
+    // could be moved 10 → 1 and `GREYSCALE` 4.5 → 0.5 with all 45 tests green. Every
+    // other assertion about a floor is an inequality pointing one way, and a palette
+    // that clears 10 clears 1 just as well.
+    //
+    // Each probe is a pair of greys straddling the digit: the "under" one must be
+    // judged under, the "over" one must pass. Move the floor in either direction and
+    // one of the four fails. Values are pinned too, so a metric change has to
+    // restate them here rather than re-scale both sides unnoticed.
+    const { separation, greyscale } = FLOOR_PROBES
+    for (const [side, [a, b, expected]] of Object.entries(separation)) {
+      const [, measured] = worstOf(a, b)
+      expect(measured, `${a}/${b} is the ΔE00 ${side} probe`).toBeCloseTo(expected, 1)
+      if (side === 'under') expect(measured, `${a}/${b} must read as under the floor`).toBeLessThan(SEPARATION)
+      else expect(measured, `${a}/${b} must clear the floor`).toBeGreaterThanOrEqual(SEPARATION)
+    }
+    for (const [side, [a, b, expected]] of Object.entries(greyscale)) {
+      const measured = Math.abs(lightness(a) - lightness(b))
+      expect(measured, `${a}/${b} is the ΔL* ${side} probe`).toBeCloseTo(expected, 1)
+      if (side === 'under') expect(measured, `${a}/${b} must read as under the floor`).toBeLessThan(GREYSCALE)
+      else expect(measured, `${a}/${b} must clear the floor`).toBeGreaterThanOrEqual(GREYSCALE)
+    }
+  })
+
+  it('measures lightness rather than returning a number that looks like one', () => {
+    // The greyscale floor's real positive control, and it is NOT the
+    // `|L(x) - L(x)| === 0` this file tried first: that is a tautology for any pure
+    // function, so a `lightness` stubbed to return 42 passed it — and passed the
+    // "control pair must fail the floor" line too, since |42-42| = 0 is under 4.5.
+    // Both controls were green while the measure was a constant. These two anchor
+    // the ends of the scale instead, which no constant can satisfy.
+    expect(lightness('#000000'), 'black must sit at the bottom of L*').toBeCloseTo(0, 1)
+    expect(lightness('#FFFFFF'), 'white must sit at the top of L*').toBeCloseTo(100, 1)
+
+    // …and the pair the palette two generations back collided on, pinned by value:
+    // it must FAIL the lightness floor while PASSING the ΔE00 one, which is the
+    // whole reason greyscale is asserted separately at all.
+    const [A, B] = ['#009562', '#9776B3']
+    expect(Math.abs(lightness(A) - lightness(B)), 'the control pair is 0.43 L* apart')
+      .toBeCloseTo(0.43, 1)
+    expect(Math.abs(lightness(A) - lightness(B)), 'the control pair must FAIL the greyscale floor')
+      .toBeLessThan(GREYSCALE)
+    expect(worstOf(A, B)[1], 'the control pair must PASS the ΔE00 floor while failing that one')
+      .toBeGreaterThanOrEqual(SEPARATION)
   })
 
   it.each(MODES)('keeps every SERIES pair apart in greyscale too in %s mode', (mode) => {
@@ -648,26 +732,13 @@ describe('chart ink measures up to the rule it is used under', () => {
     // PRESERVES lightness: a photocopy, a greyscale print, a monochrome e-ink
     // reader and full achromatopsia all keep L* and delete everything else.
     //
-    // ⚠️ POSITIVE CONTROL FIRST, and it is not decorative — a guard whose measure
-    // returns a comfortable number for every input passes forever. These two lines
-    // use the pair the set two generations back actually collided on, so they also
-    // prove the floor catches something `SEPARATION` cannot: ΔL* 0.43 is two colours
-    // that photocopy to the same grey, while ΔE00 scores 28.93 at its worst reader
-    // and sails over a floor of 10. That is the whole reason this test exists as a
-    // second assertion rather than as a comment under the first one.
-    const [OLD_A, OLD_B] = ['#009562', '#9776B3']
-    expect(Math.abs(lightness(OLD_A) - lightness(OLD_B)), 'the control pair must FAIL this floor')
-      .toBeLessThan(GREYSCALE)
-    expect(worstOf(OLD_A, OLD_B)[1], 'the control pair must PASS the ΔE00 floor while failing this one')
-      .toBeGreaterThanOrEqual(SEPARATION)
-    // …and a measure that is not measuring distance at all — one that returns a
-    // constant, say — fails here instead of passing everything above.
-    expect(Math.abs(lightness(OLD_A) - lightness(OLD_A)), 'a colour must be zero from itself').toBe(0)
-
+    // The measure itself, and the pair that proves this floor reaches a reader the
+    // ΔE00 one does not, are anchored in their own test above — mode-invariant
+    // claims do not belong inside a per-mode `each`, where one defect reports as two.
     const pairs = scoredPairs(mode)
     expect(pairs, `${mode}: the scored population changed size`).toHaveLength(SCORED_PAIR_COUNT)
 
-    let weakest: [string, number] | null = null
+    const gaps: Array<[string, number]> = []
     for (const [A, B] of pairs) {
       const gap = Math.abs(lightness(A.hex) - lightness(B.hex))
       // `expect.soft`, like the loop above: a hard throw on the first collision
@@ -677,15 +748,16 @@ describe('chart ink measures up to the rule it is used under', () => {
         gap,
         `${A.label} ${A.hex} vs ${B.label} ${B.hex} (${mode}) — ΔL* ${gap.toFixed(2)}, they photocopy to the same grey`,
       ).toBeGreaterThanOrEqual(GREYSCALE)
-      if (!weakest || gap < weakest[1]) weakest = [`${A.label}/${B.label}`, gap]
+      gaps.push([`${A.label}/${B.label}`, gap])
     }
-    // The same three-part pin the ΔE00 side uses, minus the reader: greyscale has
-    // only one. Without it, `>= 4.5` cannot tell 5.05 from 40 — and 5.05 is the
-    // number that erodes first, since it is the one the search bought last.
-    if (!weakest) throw new Error(`${mode}: no pair was scored at all`)
-    const [gKey, gVal] = MARGIN[mode].grey
-    expect.soft(weakest[0], `${mode}: a different pair is now the closest in greyscale`).toBe(gKey)
-    expect.soft(weakest[1], `${mode}: the closest greyscale pair moved`).toBeCloseTo(gVal, 1)
+    // The same pin the ΔE00 side uses, minus the reader: greyscale has only one.
+    // Without it, `>= 4.5` cannot tell 5.05 from 40 — and 5.05 is the number that
+    // erodes first, since it is the one the search bought last.
+    const [gKeys, gVal] = MARGIN[mode].grey
+    expect.soft(tiedAt(gaps), `${mode}: a different pair is now the closest in greyscale`)
+      .toEqual([...gKeys].sort())
+    expect.soft(Math.min(...gaps.map(([, v]) => v)), `${mode}: the closest greyscale pair moved`)
+      .toBeCloseTo(gVal, 1)
   })
 
   it.each(MODES)('keeps the SERIES span the mode-split was justified by in %s mode', (mode) => {
@@ -700,11 +772,9 @@ describe('chart ink measures up to the rule it is used under', () => {
     // against the 0.02 the deleted test demanded). Neighbour gaps were the wrong
     // quantity, not a too-low threshold: what the monochrome reader needs is the
     // pairwise ΔL* floor asserted above, which covers pairs two steps apart too.
-    const lum = chartTheme(mode).SERIES.map((hex) => {
-      const rgb = hexToRgb(hex)
-      if (!rgb) throw new Error(`malformed palette hex: ${hex}`)
-      return relativeLuminance(rgb)
-    }).sort((a, b) => a - b)
+    const lum = chartTheme(mode).SERIES
+      .map((hex) => relativeLuminance(parseHex(hex)))
+      .sort((a, b) => a - b)
     const span = (lum[lum.length - 1] + 0.05) / (lum[0] + 0.05)
     expect(span, `${mode} SERIES spans only ${span.toFixed(2)}:1 end to end`).toBeGreaterThan(1.5)
   })
@@ -753,9 +823,10 @@ describe('chart ink measures up to the rule it is used under', () => {
     // They are also the only IDENTITIES left on the chromatic path: every other
     // ΔE00 assertion outside the palette tables is an inequality, and the two
     // remaining equalities (`#000000`/`#FFFFFF`, `#101010`/`#383838`) are greys,
-    // which drive dL/Sl alone and exercise none of G, T, Sc, Sh or Rt. Without
-    // these six numbers the whole chromatic half of CIEDE2000 would be pinned only
-    // by DEBT and WORST — the two tables the re-palette ticket is going to rewrite.
+    // which drive dL/Sl alone and exercise none of G, T, Sc, Sh or Rt. That matters
+    // more since the re-palette landed: `DEBT` used to carry 14 pinned chromatic
+    // distances and is gone, so outside these six the chromatic half of CIEDE2000 is
+    // pinned only by `WORST` and the two `MARGIN` values.
     for (const { kind, a, b, collapse, normal } of ANCHORS) {
       const under = (k: Dichromacy) => deltaE2000(simulate(a, k), simulate(b, k))
       expect(under(kind), `${a}/${b} sits on the ${kind} confusion line and must collapse`)
@@ -793,7 +864,7 @@ describe('chart ink measures up to the rule it is used under', () => {
     // touched, and every tritan distance in the repo moved anyway.
     // ⚠️ EVERY MARK THIS FILE MEASURES A ΔE FOR, not just SERIES. The loop used to
     // sweep the six SERIES alone — 36 checks under a docstring claiming 33 colours
-    // — while INK_FAINT appears in five of the seven light DEBT rows and the ring
+    // — while INK_FAINT is scored in five of the twenty pairs above and the ring
     // colours are measured through the same simulator by the WORST table. The
     // control exists to guarantee that no pinned ΔE is partly a measurement of the
     // clamp, so it has to cover the colours that are pinned. None of the added

@@ -422,7 +422,7 @@ Rəqəmin sərhədi: harness suala **RAG kontekstsiz** cavab verir (istehsalda
 oluna bilməsi üçün qəsdən belədir. Dizayn və yeni hal əlavə etmə qaydası:
 `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
-**Frontend Vitest (777 test / 98 fayl):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (781 test / 98 fayl):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · CIEDE2000 (34 Sharma cütü) · Brettel dixromatiya modeli (struktur xassələr) ·
 notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
@@ -447,7 +447,8 @@ Bundle analizi: `cd frontend && npm run analyze` → `stats.html`.
 
 ## Əlçatanlıq (qrafiklərin rəngi)
 
-Altı PR-lıq zəncir: **#30 → #32 → #33 → #35 → #37 → #38**.
+Yeddi PR-lıq zəncir: **#30 → #32 → #33 → #35 → #37 → #38 → (bu branch: palitranın yenidən
+seçilməsi + boz-ton həddi)**.
 
 Testlə kilidli olan **hədlərdir** (`charts/theme.test.ts`, `charts/theme.contrast.test.ts`,
 `lib/color.test.ts`, `lib/ciede2000.sharma.test.ts`): mətn ≥4.5:1, qrafika ≥3:1,
