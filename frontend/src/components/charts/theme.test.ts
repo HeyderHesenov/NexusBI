@@ -574,7 +574,11 @@ describe('chart ink measures up to the rule it is used under', () => {
     for (const [path, src] of Object.entries(sources as Record<string, string>)) {
       if (path.includes('.test.')) continue
       const hits = (src.match(/stroke=\{[^}]*INK_SOFT[^}]*\}/g) ?? []).length
-      if (hits) drawn.push(`${path.replace('../', '')} ×${hits}`)
+      // Anchored, so it strips the ONE prefix the glob adds and nothing else. A
+      // plain `.replace('../', '')` removes the first occurrence wherever it sits,
+      // which CodeQL flags as incomplete sanitization — correctly, in the sense
+      // that the name it produces would depend on the rest of the path.
+      if (hits) drawn.push(`${path.replace(/^\.\.\//, '')} ×${hits}`)
     }
     // Positive control: the scan has to be able to see something, or an expression
     // that matched nothing would agree with any list at all.
