@@ -504,8 +504,13 @@ modelini, **tuta bilmir**.
    MİNİMALLAŞDIRMAQ** (ayırmanı maksimallaşdırmaq optimizatoru işıqlığın uclarına itələyir və
    məhsulu tanınmaz edir). Əldə olunan **`MARGIN`** kimi pinlənir: ən yaxın cüt açıqda
    `SERIES[2]`/`SERIES[5]` **12.12** (tritanopiya), qaranlıqda `SERIES[1]`/`SERIES[5]` **12.01**
-   (deuteranopiya) — çünki `>=` 12.12 ilə 40-ı ayırd edə bilmir. Pin **çoxluqdur**: açıqda üç cüt
-   0.1 bal içindədir, tək qalib yazmaq bir 8-bitlik təkanla çevrilən tələ olardı.
+   (deuteranopiya) — çünki `>=` 12.12 ilə 40-ı ayırd edə bilmir. Pin **çoxluqdur**: pəncərə ΔE00-da
+   **0.2**, ΔL\*-da **0.1**, və açıqda **dörd** cüt onun içindədir (12.123 · 12.161 · 12.208 ·
+   12.275); tək qalib yazmaq bir 8-bitlik təkanla çevrilən tələ olardı. Pəncərənin eni də özbaşına
+   deyil: 0.1-də kəsim növbəti cütdən cəmi **0.052** aralı düşürdü, yəni tələ çoxluğun kənarına
+   köçürdü. İndi `GAP` hər kəsimdən sonra **0.25** təmiz su tələb edir, və `TIE` ilə `GAP`
+   sintetik cütlərlə (`WINDOW_PROBES`) öz rəqəmlərinə bağlanıb — onlarsız `GAP = 0` və
+   `TIE.grey = 0.05` heç bir testin görmədiyi bir-rəqəmli redaktələr idi.
 2. **Boz-ton / monoxrom çap — indi ayrıca hədlə örtülüdür.** Hər dixromatiya modeli işıqlılığı
    **saxlayır**, ona görə rəng testi boz-tonda birləşməni prinsipcə görə bilmir: köhnə dəstin
    **ΔL\* 0.4**-lük cütü deutan altında 28.93 alıb hər şeyi keçirdi. Həmin cüt indi yeni testin

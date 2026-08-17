@@ -39,6 +39,16 @@ describe('effectiveOpacity', () => {
     expect(effectiveOpacity(mark(outer, inner))).toBeCloseTo(expected, 10)
   })
 
+  it('lets the style win over the attribute on the SAME element, as the cascade says', () => {
+    // Moved here from `ForceGraph.test`, which held a second copy of this whole
+    // suite after the helper was extracted. Two hand-written suites for one
+    // instrument is the shape of the disagreement that produced its first three
+    // versions; this was the one case the copy asserted and this file did not.
+    const el = mark('', 'opacity="1" style="opacity: 0.4"')
+    expect(effectiveOpacity(el)).toBeCloseTo(0.4, 10)
+    expect(levelOpacity(el, 'opacity')).toBeCloseTo(0.4, 10)
+  })
+
   it('multiplies group opacity down the chain but does NOT multiply the inherited channel', () => {
     // `opacity` composites per group, so two 0.5s make 0.25…
     expect(effectiveOpacity(mark('opacity="0.5"', 'opacity="0.5"'))).toBeCloseTo(0.25, 10)
@@ -58,6 +68,21 @@ describe('effectiveOpacity', () => {
     expect(effectiveOpacity(mark('', 'fill-opacity="0.08"'), 'fill')).toBeCloseTo(0.08, 10)
     expect(effectiveOpacity(mark('', 'fill-opacity="0.08"'), 'stroke')).toBe(1)
     expect(effectiveOpacity(mark('', 'stroke-opacity="0.3"'), 'fill')).toBe(1)
+  })
+
+  it('refuses a CSS-class fade rather than reporting the mark as opaque', () => {
+    // The fourth spelling, and the one this reader genuinely cannot resolve: a
+    // Tailwind utility resolves through neither `style` nor the attribute, and
+    // jsdom loads no stylesheet to resolve it from. Both callers ask "is this 1?"
+    // or "is this at least 3:1?", so a silent 1 here reads as a pass on a mark the
+    // browser is fading. It throws instead.
+    expect(() => effectiveOpacity(mark('class="opacity-40"'))).toThrow(/CSS-class fade/)
+    expect(() => effectiveOpacity(mark('', 'class="opacity-[0.4]"'))).toThrow(/CSS-class fade/)
+    // …but a CONDITIONAL utility is not a fade until its condition holds, and
+    // evaluating that is not this function's job. The repo ships several.
+    expect(effectiveOpacity(mark('class="disabled:opacity-40 hover:opacity-60"'))).toBe(1)
+    // And an unrelated class must not trip it — the regex is anchored for this.
+    expect(effectiveOpacity(mark('class="opacity-guard fill-opacity-x"'))).toBe(1)
   })
 
   it('refuses a value it cannot read rather than returning NaN', () => {

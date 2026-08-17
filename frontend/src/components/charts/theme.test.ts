@@ -3,6 +3,7 @@ import {
   chartTheme,
   GLYPH,
   GRAPH_TYPES,
+  inkFraction,
   RING_DASH,
   RING_OPACITY,
   RINGED_STATUSES,
@@ -277,14 +278,26 @@ const SCORED_PAIR_COUNT = ((SERIES_COUNT + 1) * SERIES_COUNT) / 2
  * omission with a pinned price cannot rot the same way — a palette edit that walks
  * a series into one of these has to come here and restate the number.
  *
- * `INK_SOFT` — its only GRAPHIC use is the KPI target `ReferenceLine`
- * (`targetLine.ts`, used by the line, area and bar widgets). Every other use is
- * text: tick labels, axis titles, `LabelList` values, all scored at 4.5:1 by
- * "INK_SOFT clears AA for text". The reference line is exempt on the same grounds
- * as `GRAPH_TYPE_COLORS`: it carries a dash pattern AND its own word ("Hədəf") on
- * top of it, so two channels besides colour say which mark it is — and the test
- * below asserts both, since an exemption that rests on a second channel is only
- * as good as the channel staying there.
+ * ⚠️ AND THE FIRST VERSION OF THIS TABLE PRICED THE WRONG THING, because the
+ * sentence it was built on was false. It said INK_SOFT's only GRAPHIC use was the
+ * KPI target `ReferenceLine` and that "every other use is text". `TrajectoryChart`
+ * draws a DATA LINE in it — the counterfactual projection — directly beside a data
+ * line in `ACCENT`, which IS `SERIES[0]`, the pair this very table prices at ΔE00
+ * 6.56 / ΔL* 0.37 in dark mode. So the exemption was not "a labelled rule beside
+ * the series" at all; it was two data lines a dash apart, and nothing asserted
+ * that dash: deleting `strokeDasharray="5 5"` from the component left all 808
+ * tests green. The three graphic uses are now named here and the second channel of
+ * each is read off a RENDERED chart in `palette.recharts.test`, not off this file's
+ * own literals handed back to it.
+ *
+ * `INK_SOFT` — three graphic uses, each carrying a channel besides colour:
+ *   1. the KPI target `ReferenceLine` (`targetLine.ts`, in the line, area and bar
+ *      widgets) — dash `'6 4'` AND its own word ("Hədəf");
+ *   2. `TrajectoryChart`'s counterfactual line — dash `'5 5'` AND a legend name,
+ *      against a `realized` line that stays solid;
+ *   3. `TrajectoryChart`'s baseline `ReferenceLine` — dash `'4 4'` AND a word.
+ * Every other use is text: tick labels, axis titles, `LabelList` values, all
+ * scored at 4.5:1 by "INK_SOFT clears AA for text".
  *
  * ⚠️ AND ADOPTING THE RULE IS NOT AVAILABLE, WHICH IS THE HONEST REASON THE LINE
  * IS DRAWN HERE. `SERIES[0]` is frozen to `--accent`, and it measures ΔE00 3.79 /
@@ -297,11 +310,28 @@ const SCORED_PAIR_COUNT = ((SERIES_COUNT + 1) * SERIES_COUNT) / 2
  * `tooltipItem`), inside the tooltip box, never as a mark beside a series on the
  * plot. It is listed because the re-picked SERIES[5] sits close to it in both
  * modes and a future reader will wonder whether that was noticed. It was.
+ *
+ * ⚠️ BOTH METRICS GET THEIR OWN CLOSEST SERIES. The first version measured ΔL*
+ * for whichever series won on ΔE00, so a palette edit that walked a DIFFERENT
+ * series into the token's lightness would have moved nothing here — in a table
+ * whose stated purpose is that such an edit has to come and restate the number.
+ * Measured, the two already disagree: light INK_SOFT is closest to S0 in ΔE00
+ * (3.79) but to **S2** in lightness (2.61 L*), and 2.61 is under the greyscale
+ * floor — a fact the ΔE00-winner's own 3.65 never mentioned.
  */
-const UNSCORED_CANVAS_INK: Record<'light' | 'dark', Record<string, [string, number, number]>> = {
-  // token → [closest series, its worst ΔE00, its ΔL*]
-  light: { INK_SOFT: ['S0', 3.79, 3.65], ink: ['S5', 8.50, 12.59] },
-  dark: { INK_SOFT: ['S0', 6.56, 0.37], ink: ['S5', 5.48, 1.89] },
+type PricedInk = { de: [string, number]; dl: [string, number] }
+/** The tokens this table must account for — see `holds its own shape`, below. */
+const EXEMPT_CANVAS_INK = ['INK_SOFT', 'ink'] as const
+const UNSCORED_CANVAS_INK: Record<'light' | 'dark', Record<string, PricedInk>> = {
+  // token → closest series by ΔE00, and (separately) closest by ΔL*
+  light: {
+    INK_SOFT: { de: ['S0', 3.79], dl: ['S2', 2.61] },
+    ink: { de: ['S5', 8.50], dl: ['S5', 12.59] },
+  },
+  dark: {
+    INK_SOFT: { de: ['S0', 6.56], dl: ['S0', 0.37] },
+    ink: { de: ['S5', 5.48], dl: ['S5', 1.89] },
+  },
 }
 
 /**
@@ -501,32 +531,74 @@ describe('chart ink measures up to the rule it is used under', () => {
 
   it.each(MODES)('prices the ink tokens it leaves out of the scored set in %s mode', (mode) => {
     // The exemption, measured. See UNSCORED_CANVAS_INK for why each is out.
+    //
+    // ⚠️ THE TABLE'S OWN SHAPE IS ASSERTED FIRST, and that is not ceremony: this
+    // loop iterates the register's entries, so an EMPTIED register runs zero
+    // iterations and passes — which is precisely the property `DEBT` was deleted
+    // rather than emptied over, rebuilt one screen up in the same file. Measured:
+    // `light: {}` left all 220 chart tests green.
+    expect(Object.keys(UNSCORED_CANVAS_INK[mode]).sort(), `${mode}: the exemption register changed shape`)
+      .toEqual([...EXEMPT_CANVAS_INK].sort())
     const t = chartTheme(mode)
     const tokenHex: Record<string, string> = { INK_SOFT: t.INK_SOFT, ink: tokens(mode)['--ink'] }
-    for (const [name, [pinnedKey, pinnedDE, pinnedDL]] of Object.entries(UNSCORED_CANVAS_INK[mode])) {
+    for (const [name, { de, dl }] of Object.entries(UNSCORED_CANVAS_INK[mode])) {
       const hex = tokenHex[name]
       expect(hex, `${mode}: no hex for ${name}`).toMatch(/^#[0-9A-Fa-f]{6}$/)
-      const rows = t.SERIES.map((s, i) => [`S${i}`, worstOf(s, hex)[1], Math.abs(lightness(s) - lightness(hex))] as const)
-      const closest = rows.reduce((a, b) => (b[1] < a[1] ? b : a))
-      expect.soft(closest[0], `${mode}: a different series is now closest to ${name}`).toBe(pinnedKey)
-      expect.soft(closest[1], `${mode}: ${name} vs ${closest[0]} moved in ΔE00`).toBeCloseTo(pinnedDE, 1)
-      expect.soft(
-        rows.find(([k]) => k === pinnedKey)![2],
-        `${mode}: ${name} vs ${pinnedKey} moved in ΔL*`,
-      ).toBeCloseTo(pinnedDL, 1)
+      const rows = t.SERIES.map(
+        (s, i) => [`S${i}`, worstOf(s, hex)[1], Math.abs(lightness(s) - lightness(hex))] as const,
+      )
+      // Two reductions, one per metric: they pick different series (light INK_SOFT
+      // is nearest S0 in ΔE00 and S2 in lightness), and reading ΔL* off the ΔE00
+      // winner left the lightness half of this register unable to move.
+      const nearestDE = rows.reduce((a, b) => (b[1] < a[1] ? b : a))
+      const nearestDL = rows.reduce((a, b) => (b[2] < a[2] ? b : a))
+      expect.soft(nearestDE[0], `${mode}: a different series is now closest to ${name} in ΔE00`).toBe(de[0])
+      expect.soft(nearestDE[1], `${mode}: ${name} vs ${nearestDE[0]} moved in ΔE00`).toBeCloseTo(de[1], 1)
+      expect.soft(nearestDL[0], `${mode}: a different series is now closest to ${name} in ΔL*`).toBe(dl[0])
+      expect.soft(nearestDL[2], `${mode}: ${name} vs ${nearestDL[0]} moved in ΔL*`).toBeCloseTo(dl[1], 1)
     }
   })
 
-  it('keeps the two channels the target line is exempt on the strength of', () => {
-    // INK_SOFT is left out of the scored population because its one graphic use
-    // says which mark it is by dash AND by word, not by colour. Delete either and
-    // the exemption above stops being true — silently, since nothing else looks.
+  it('draws no graphic mark in the exempt ink that this file has not priced', () => {
+    // WHY A SOURCE SCAN. The register above is only honest while it names every
+    // place the exempt ink reaches a canvas, and the way it stopped being honest
+    // was silent: `TrajectoryChart` had been stroking a DATA LINE in INK_SOFT the
+    // whole time while this file's docstring said the target rule was the only
+    // graphic use. Nothing measured the claim, so nothing reported it.
+    //
+    // A stroke is the tell: in this codebase text is `fill`ed and never stroked,
+    // so `stroke={…INK_SOFT}` is exactly the set of graphic marks drawn in it. A
+    // new one has to be added here — and, being a mark beside a series, priced.
+    const sources = import.meta.glob('../**/*.tsx', { query: '?raw', import: 'default', eager: true })
+    const drawn: string[] = []
+    for (const [path, src] of Object.entries(sources as Record<string, string>)) {
+      if (path.includes('.test.')) continue
+      const hits = (src.match(/stroke=\{[^}]*INK_SOFT[^}]*\}/g) ?? []).length
+      if (hits) drawn.push(`${path.replace('../', '')} ×${hits}`)
+    }
+    // Positive control: the scan has to be able to see something, or an expression
+    // that matched nothing would agree with any list at all.
+    expect(drawn.length, 'the source scan found no stroked INK_SOFT at all').toBeGreaterThan(0)
+    expect(drawn.sort(), 'a graphic mark is drawn in exempt ink that is not priced above').toEqual([
+      // The counterfactual line and the baseline rule — uses 2 and 3 above.
+      'decision/TrajectoryChart.tsx ×2',
+    ])
+  })
+
+  it('keeps the dash the target line is exempt on the strength of', () => {
+    // What `targetLine.ts` itself contributes to the exemption — the dash, which is
+    // the module's own constant. The WORD and the INK come from the three widgets
+    // that call it, so they are asserted where they are chosen: on a rendered chart
+    // in `palette.recharts.test`. Calling this helper with literals and asserting
+    // they come back — which is what stood here — holds for any function that
+    // forwards its arguments, and measured, all three widgets could be changed to
+    // pass an EMPTY label with the whole suite green.
+    //
+    // `toBeTruthy` stood here too, and `'0'` satisfies it while painting an
+    // unbroken line. `inkFraction` is the quantity a dash IS: solid reads 1, and an
+    // all-zero pattern throws rather than passing quietly.
     const props = targetLineProps('Hədəf', chartTheme('light').INK_SOFT)
-    expect(props.strokeDasharray, 'the target line lost its dash').toBeTruthy()
-    expect(props.label.value, 'the target line lost its word').toBe('Hədəf')
-    expect(props.stroke, 'the target line is drawn in the ink it is scored as').toBe(
-      chartTheme('light').INK_SOFT,
-    )
+    expect(inkFraction(props.strokeDasharray), 'the target line lost its dash').toBeLessThan(1)
   })
 
   it.each(MODES)('AXIS and INK_FAINT are one mark in %s mode', (mode) => {
@@ -731,6 +803,29 @@ describe('chart ink measures up to the rule it is used under', () => {
   const TIE = { sep: 0.2, grey: 0.1 } as const
   /** The clear water a tie window must have after it, so membership is not a coin flip. */
   const GAP = 0.25
+  /**
+   * The straddles that hold `TIE` and `GAP` to their digits — the same argument
+   * as `FLOOR_PROBES`, for the same reason, found the same way.
+   *
+   * ⚠️ THESE TWO WERE FLOOR-SHAPED CONSTANTS THAT NOTHING READ. Every assertion
+   * they appear in is an inequality pointing one way, so lowering them is
+   * invisible: measured, `GAP = 0` and `TIE.grey = 0.05` each left all 220 chart
+   * tests green — `gapAfter(...) >= 0` is true of any table at all, and a smaller
+   * tie window simply names fewer pairs, which the pins then agree with. Only
+   * `TIE.sep` was anchored, and only by the accident that light's tied set happens
+   * to shrink from four names to three at 0.1.
+   *
+   * ⚠️ AND THE NUMBERS HERE ARE ABSOLUTE, NOT DERIVED FROM THE CONSTANTS. A probe
+   * built as `TIE - 0.01` moves with the thing it is supposed to pin and cannot
+   * fail — the self-pinning helper this repo has already shipped twice.
+   */
+  const WINDOW_PROBES = {
+    // A synthetic score table: the second row must land INSIDE the tie window and
+    // the third OUTSIDE it, which fails if the window moves in either direction.
+    tie: { sep: { inside: 0.19, outside: 0.21 }, grey: { inside: 0.09, outside: 0.11 } },
+    // Clear water after the cutoff: 0.24 must be judged too tight, 0.26 wide enough.
+    gap: { under: 0.24, over: 0.26 },
+  } as const
   const MARGIN: Record<'light' | 'dark', {
     sep: [string[], number, Array<Dichromacy | 'none'>]
     grey: [string[], number]
@@ -829,7 +924,6 @@ describe('chart ink measures up to the rule it is used under', () => {
     const scores: Array<[string, number]> = []
     /** Which reader saw each pair worst — kept so MARGIN can pin them as a set. */
     const conditionOf = new Map<string, Dichromacy | 'none'>()
-    let weakest: [string, number, Dichromacy | 'none'] | null = null
     for (const [A, B] of pairs) {
       const key = `${A.label}/${B.label}`
       const [condition, worst] = worstOf(A.hex, B.hex)
@@ -838,7 +932,6 @@ describe('chart ink measures up to the rule it is used under', () => {
       expect.soft(worst, `${where} — under the floor`).toBeGreaterThanOrEqual(SEPARATION)
       if (worst < SEPARATION) below.push(key)
       scores.push([key, worst])
-      if (!weakest || worst < weakest[1]) weakest = [key, worst, condition]
     }
     // The aggregate form of the same claim, so one run names every offender rather
     // than leaving the reader to collect them from soft failures.
@@ -847,7 +940,10 @@ describe('chart ink measures up to the rule it is used under', () => {
     // …and the margin the palette was searched for. `below` being empty says
     // "nothing is under 10"; this says how far over 10 the closest pairs actually
     // are, which is the number that erodes first when someone nudges a colour.
-    if (!weakest) throw new Error(`${mode}: no pair was scored at all`)
+    // No "was anything scored at all?" guard here: `toHaveLength(SCORED_PAIR_COUNT)`
+    // above is that assertion, and a hard one. The accumulator that used to carry
+    // this was written for the strict-minimum version of the pins and outlived it —
+    // its value and its reader are both recomputed from `scores` below.
     const [mKeys, mVal, mConds] = MARGIN[mode].sep
     const tied = tiedAt(scores, TIE.sep)
     expect.soft(tied, `${mode}: a different pair is now the closest`).toEqual([...mKeys].sort())
@@ -886,19 +982,45 @@ describe('chart ink measures up to the rule it is used under', () => {
     // judged under, the "over" one must pass. Move the floor in either direction and
     // one of the four fails. Values are pinned too, so a metric change has to
     // restate them here rather than re-scale both sides unnoticed.
+    // `expect.soft` throughout, for the reason this file states three times over:
+    // a hard throw on the first probe reports one row of a four-row table, so a
+    // metric change that re-scaled both probes would hide its second half — and a
+    // `GREYSCALE` edit would never report at all, the separation loop having
+    // thrown first.
     const { separation, greyscale } = FLOOR_PROBES
     for (const [side, [a, b, expected]] of Object.entries(separation)) {
       const [, measured] = worstOf(a, b)
-      expect(measured, `${a}/${b} is the ΔE00 ${side} probe`).toBeCloseTo(expected, 1)
-      if (side === 'under') expect(measured, `${a}/${b} must read as under the floor`).toBeLessThan(SEPARATION)
-      else expect(measured, `${a}/${b} must clear the floor`).toBeGreaterThanOrEqual(SEPARATION)
+      expect.soft(measured, `${a}/${b} is the ΔE00 ${side} probe`).toBeCloseTo(expected, 1)
+      if (side === 'under') expect.soft(measured, `${a}/${b} must read as under the floor`).toBeLessThan(SEPARATION)
+      else expect.soft(measured, `${a}/${b} must clear the floor`).toBeGreaterThanOrEqual(SEPARATION)
     }
     for (const [side, [a, b, expected]] of Object.entries(greyscale)) {
       const measured = Math.abs(lightness(a) - lightness(b))
-      expect(measured, `${a}/${b} is the ΔL* ${side} probe`).toBeCloseTo(expected, 1)
-      if (side === 'under') expect(measured, `${a}/${b} must read as under the floor`).toBeLessThan(GREYSCALE)
-      else expect(measured, `${a}/${b} must clear the floor`).toBeGreaterThanOrEqual(GREYSCALE)
+      expect.soft(measured, `${a}/${b} is the ΔL* ${side} probe`).toBeCloseTo(expected, 1)
+      if (side === 'under') expect.soft(measured, `${a}/${b} must read as under the floor`).toBeLessThan(GREYSCALE)
+      else expect.soft(measured, `${a}/${b} must clear the floor`).toBeGreaterThanOrEqual(GREYSCALE)
     }
+  })
+
+  it('holds the tie window and its clear-water rule to the digits they are written as', () => {
+    // The same construction as the floor probes, on the two constants that decide
+    // WHICH pairs get pinned rather than how far apart they must be. See
+    // WINDOW_PROBES for what each of these was measured to allow before it existed.
+    for (const metric of ['sep', 'grey'] as const) {
+      const { inside, outside } = WINDOW_PROBES.tie[metric]
+      const rows: Array<[string, number]> = [['A', 10], ['B', 10 + inside], ['C', 10 + outside]]
+      expect.soft(tiedAt(rows, TIE[metric]), `TIE.${metric} no longer cuts between ${inside} and ${outside}`)
+        .toEqual(['A', 'B'])
+    }
+    // GAP is read through `gapAfter`, so the probe runs through it too: a table
+    // with less clear water than the rule requires must FAIL the rule, and one
+    // with more must satisfy it. The first line is what `GAP = 0` cannot survive.
+    const tight: Array<[string, number]> = [['A', 10], ['B', 10 + TIE.sep + WINDOW_PROBES.gap.under]]
+    expect.soft(gapAfter(tight, TIE.sep), `${WINDOW_PROBES.gap.under} of water must be too little`)
+      .toBeLessThan(GAP)
+    const loose: Array<[string, number]> = [['A', 10], ['B', 10 + TIE.sep + WINDOW_PROBES.gap.over]]
+    expect.soft(gapAfter(loose, TIE.sep), `${WINDOW_PROBES.gap.over} of water must be enough`)
+      .toBeGreaterThanOrEqual(GAP)
   })
 
   it('measures lightness rather than returning a number that looks like one', () => {

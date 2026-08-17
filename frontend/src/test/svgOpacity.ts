@@ -25,6 +25,19 @@
  * for a <path stroke-opacity="0.5"> inside a <g stroke-opacity="0.5"> where the
  * browser paints 0.5.
  *
+ * ⚠️ WHAT THIS STILL CANNOT SEE, STATED RATHER THAN IMPLIED. It reads two sources:
+ * the inline `style` and the presentation ATTRIBUTE. A value arriving from a CSS
+ * RULE — a stylesheet, or a Tailwind `opacity-40` utility, both of which this repo
+ * uses elsewhere — reaches neither, and jsdom will not resolve the utility either,
+ * so no amount of `getComputedStyle` would recover it here. The list above is a
+ * list of misses, so leaving a fourth one unnamed inside it would read as
+ * completeness. Instead of returning 1 for a mark that a class fades, the walk
+ * below THROWS when it meets an unconditional `opacity-*` class: the callers state
+ * their conclusions as inequalities, which a reader returning 1 always satisfies,
+ * so a loud failure is the only form that cannot be mistaken for a pass. Variant
+ * utilities (`hover:`, `disabled:`) are left alone — they are conditional, and the
+ * condition is not this function's to evaluate.
+ *
  * Shared rather than copied: two suites now measure painted marks — the trust ring
  * and the chart palette — and a second hand-written copy is how the versions above
  * came to disagree about what "opacity" meant in the first place.
@@ -64,6 +77,22 @@ export const effectiveOpacity = (el: Element, channel: Channel = 'stroke'): numb
     }
   }
   let group = 1
-  for (let n: Element | null = el; n; n = n.parentElement) group *= levelOpacity(n, 'opacity')
+  for (let n: Element | null = el; n; n = n.parentElement) {
+    refuseClassFade(n)
+    group *= levelOpacity(n, 'opacity')
+  }
   return channelOpacity * group
+}
+
+/** An unconditional Tailwind opacity utility — the fade this reader cannot measure. */
+const CLASS_FADE = /^opacity-(\d+|\[.+\])$/
+const refuseClassFade = (n: Element) => {
+  const faded = (n.getAttribute('class') ?? '').split(/\s+/).filter((c) => CLASS_FADE.test(c))
+  if (faded.length) {
+    throw new Error(
+      `effectiveOpacity cannot read a CSS-class fade: <${n.tagName} class="${faded.join(' ')}">. ` +
+        'Reading it would report full opacity for a mark the browser fades — assert the class, ' +
+        'or express the fade as a style/attribute the walk can see.',
+    )
+  }
 }

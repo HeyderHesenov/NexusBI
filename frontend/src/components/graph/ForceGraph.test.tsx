@@ -202,42 +202,6 @@ describe('ForceGraph trust ring', () => {
     )
   })
 
-  it('reads an opacity however it is spelled, at every level', () => {
-    // The guard's own guard, pinned by identities rather than through the
-    // inequalities every other test here uses. Two versions of `effectiveOpacity`
-    // shipped a defect: the first read one element, the second read one SPELLING,
-    // and both times the suite went green while the ring painted at 0.18. A
-    // helper that only ever appears inside `toBeGreaterThanOrEqual` cannot fail
-    // in the direction that matters — reading TOO HIGH always looks like a pass.
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    const outer = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-    const inner = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-    const mark = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-    svg.append(outer)
-    outer.append(inner)
-    inner.append(mark)
-
-    expect(effectiveOpacity(mark)).toBe(1)
-    // The attribute spelling, on an ancestor.
-    outer.setAttribute('opacity', '0.5')
-    expect(effectiveOpacity(mark)).toBeCloseTo(0.5, 10)
-    // The style spelling — the one that came back as a live defect. It must count
-    // for the same as the attribute, and it must MULTIPLY with the level above.
-    inner.style.opacity = '0.4'
-    expect(effectiveOpacity(mark)).toBeCloseTo(0.2, 10)
-    // Style wins over the attribute on the SAME element, as the cascade says.
-    inner.setAttribute('opacity', '1')
-    expect(effectiveOpacity(mark)).toBeCloseTo(0.2, 10)
-    // stroke-opacity fades a stroke on its own and used to be invisible here.
-    mark.setAttribute('stroke-opacity', '0.5')
-    expect(effectiveOpacity(mark)).toBeCloseTo(0.1, 10)
-    // Percentages are legal SVG; `Number('50%')` is NaN, and a NaN would sail
-    // through every comparison rather than failing.
-    mark.setAttribute('stroke-opacity', '50%')
-    expect(effectiveOpacity(mark)).toBeCloseTo(0.1, 10)
-    mark.setAttribute('stroke-opacity', 'inherit')
-    expect(() => effectiveOpacity(mark)).toThrow(/unreadable/)
-  })
 
   it('ranks the dash code the same way it ranks severity', () => {
     // NOT "the three patterns differ" — that is what the previous pair of guards

@@ -552,8 +552,13 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   and worst reader: closest pair **12.12** (light `SERIES[2]`/`[5]`, tritanopia) and **12.01** (dark
   `SERIES[1]`/`[5]`, deuteranopia) — because `>=` cannot tell 12.12 from 40, and emptying `DEBT`
   would otherwise have deleted every pinned ΔE00 in the file. The pin is a **set**, everything
-  within 0.1 of the minimum: light's three closest sit inside that window, and naming a single
-  winner is a tripwire one 8-bit nudge flips.
+  within `TIE` of the minimum — **0.2** on ΔE00 and **0.1** on ΔL\* — because naming a single winner
+  is a tripwire one 8-bit nudge flips. Light's **four** closest sit inside the ΔE00 window (12.123,
+  12.161, 12.208, 12.275). The width is not free-hand: at 0.1 the cutoff fell 0.052 from the next
+  pair, i.e. the tripwire moved to the set's own edge, so `GAP` now asserts **0.25** of clear water
+  after each cutoff, and both `TIE` and `GAP` are held to their digits by synthetic straddles
+  (`WINDOW_PROBES`) — without them `GAP = 0` and `TIE.grey = 0.05` were one-digit edits no test
+  could see.
   **Greyscale is now covered too, by a second floor with its own assertion.** Every dichromacy model
   preserves lightness, so nothing in the ΔE00 loop can see two colours that photocopy to the same
   grey — the previous set had a pair at **ΔL\* 0.4** that scored 28.93 under deuteranopia and passed
