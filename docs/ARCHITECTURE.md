@@ -268,7 +268,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
   deterministic, no cost — identical to CI; new suites: test_snapshots, test_graph,
-  test_ba, test_automl, test_ai_cost, test_usage_quota, test_rls_mode). Frontend Vitest (781) covers `lib/*`, hooks, and Zustand
+  test_ba, test_automl, test_ai_cost, test_usage_quota, test_rls_mode). Frontend Vitest (791) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, the advanced-analytics
   stores/panels — metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
@@ -501,14 +501,30 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   CIE76. Fixing both did not improve the palette — it **revealed** it: tritan gamut clipping went
   from six colours to zero, so every tritan figure the repo had ever quoted was partly a
   measurement of a silent clamp (#38).
-  (7) With a working instrument the palette itself was the thing left: 14 of the 40 scored pairs sat
+  (7) With a working instrument the palette itself was the thing left: 14 of the 40 pairs then scored (21 per mode now, see below) sat
   under the floor, so **both sets were re-picked** — and the round added the floor no dichromacy
   model can express, since all of them preserve lightness, so a pair differing only in hue had
-  always been invisible to this guard (this branch).
+  always been invisible to this guard. The re-pick then produced a defect of its own, which is the
+  second half of the same round: spreading six colours evenly by lightness landed the last of them
+  on `AXIS` — the same hex as `INK_FAINT` — so the sixth data line measured **ΔE00 0.91** from the
+  axis rule drawn beside it. The guard was blind to it by construction: it skipped the
+  `SERIES[5]`/`INK_FAINT` pair because a folded pie never paints `SERIES[5]`, which is true of the
+  pie and says nothing about the axis. ⚠️ The fix is not local — `AXIS` must clear 3:1 yet stay
+  under 4.5:1, which pins it inside one lightness band, so no ΔL\* separation is available there and
+  `SERIES[5]` has to leave: measured, the only room is `L* ≤ 24` (light) and `L* ≈ 78` or `≥ 90`
+  (dark). It is now a near-black / near-white neutral, the loudest mark rather than the quietest
+  (this branch).
   **The guard** (`theme.test.ts`) scores every pair a chart can place side by side — six series plus
-  the folded-"other" `INK_FAINT` pie wedge, which is why `PieChartWidget.TOP_N` is derived from
-  `SERIES_COUNT` rather than chosen — in normal vision and under all three dichromacies, plus 3:1
-  against every surface. `simulateDichromacy` is **Brettel, Viénot & Mollon (1997)** — two
+  the faint-ink mark, which is the folded-"other" pie wedge and the axis rule at one hex, an equality
+  the suite pins so the single mark is licensed rather than assumed; `PieChartWidget.TOP_N` is still
+  derived from `SERIES_COUNT` rather than chosen, since a folded pie must leave one series unused —
+  in normal vision and under all three dichromacies, plus 3:1 against every surface. Every pair is
+  scored: the population is held by a **degree count** (each of the seven marks against all six
+  others) rather than by its total, because restoring the old exclusion *and* the total together
+  left the suite green. ⚠️ Those are distances between HEXES, and they describe the screen only
+  while the chart paints those hexes at full opacity — so `palette.recharts.test.tsx` renders the
+  real library and reads the strokes back off the DOM (six series, the axis rule, and painted
+  opacity walked through ancestors via the shared `test/svgOpacity`). `simulateDichromacy` is **Brettel, Viénot & Mollon (1997)** — two
   half-planes hinged on the neutral axis, not the 1999 single plane, whose own text limits that
   simplification to protan and deutan. Each condition is anchored by a pair built on **its own
   confusion line** (scale only the missing cone in LMS), so replacing any one matrix with the
@@ -521,7 +537,7 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   `lib/ciede2000.sharma.test.ts`; CIE76 was deleted rather than kept, since after the switch its
   only remaining callers were its own two assertions.
   **Both palettes were then re-picked against those instruments, and both floors are now met.** The
-  `DEBT` table that named 14 of the 40 scored pairs as under ΔE00 10 (worst light
+  `DEBT` table that named 14 of the 40 pairs then scored as under ΔE00 10 (worst light
   `SERIES[4]`/`INK_FAINT` at 3.24 under tritanopia, dark `SERIES[4]`/`SERIES[5]` at 3.99) is
   **empty**, and empty is asserted rather than absent: the set-equality check reads "no pair is under
   the floor", which can fail. The floor was **not** lowered — 10 is the digit it was when fourteen
@@ -530,15 +546,17 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   largest per-slot move** from the previous set subject to every floor, not by maximising separation
   — that objective pushes an optimiser to the ends of the lightness axis and returns a set nobody
   would recognise as this product. What the shipped sets achieve is pinned as `MARGIN` by name, value
-  and worst reader: closest pair **12.21** (light `SERIES[0]`/`[1]`, protanopia) and **13.58** (dark,
-  same pair) — because `>=` cannot tell 12.21 from 40, and emptying `DEBT` would otherwise have
-  deleted every pinned ΔE00 in the file.
+  and worst reader: closest pair **12.12** (light `SERIES[2]`/`[5]`, tritanopia) and **12.01** (dark
+  `SERIES[1]`/`[5]`, deuteranopia) — because `>=` cannot tell 12.12 from 40, and emptying `DEBT`
+  would otherwise have deleted every pinned ΔE00 in the file. The pin is a **set**, everything
+  within 0.1 of the minimum: light's three closest sit inside that window, and naming a single
+  winner is a tripwire one 8-bit nudge flips.
   **Greyscale is now covered too, by a second floor with its own assertion.** Every dichromacy model
   preserves lightness, so nothing in the ΔE00 loop can see two colours that photocopy to the same
   grey — the previous set had a pair at **ΔL\* 0.4** that scored 28.93 under deuteranopia and passed
   everything. That pair is the new test's **positive control**: it must fail the ΔL\* floor while
   passing the ΔE00 one, so the guard proves it reaches a reader the other cannot. Worst ΔL\* is now
-  **5.05** (light) and **5.51** (dark) against a floor asserted at **4.5** — not the 5 the ticket
+  **5.04** (light) and **5.11** (dark) against a floor asserted at **4.5** — not the 5 the ticket
   aimed at, because the search shows half a point more margin costs a shift of ΔE00 29.2, i.e. a
   different palette rather than this one adjusted, and asserting 5 against a measured 5.05 would be a
   tripwire rather than a requirement. Both floors score the same population through one helper and
@@ -601,7 +619,7 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   `modulepreload` for it, and that defeats the `lazy()` wrapper (it pulled ~261 kB gzip onto every
   page load, login included). Left alone, Rollup names the chunk itself — that is where `axis-*`
   comes from. `rollup-plugin-visualizer` (env-gated, `npm run analyze`) emits a treemap.
-- **Test depth + blocking E2E:** Vitest grew to 65 *at the time of this round* (781 today — see the
+- **Test depth + blocking E2E:** Vitest grew to 65 *at the time of this round* (791 today — see the
   Testing bullet above; this line is a snapshot of that round, not a current count) (lib / hooks / store reducers, incl. the
   collab epoch-guard via a fake `WebSocket`); a blocking Playwright `e2e` CI job runs the
   login→query→dashboards smoke against a demo backend. Two CI-specific fixes underpin it: AI mocks

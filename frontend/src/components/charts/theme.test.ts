@@ -205,19 +205,26 @@ type Mark = { hex: string; label: string }
  * one widget with no on-arc labels, which is the widget these floors exist for.
  * `TOP_N` is imported rather than reasoned about so the two cannot drift.
  *
- * ⚠️ AND THAT SAME S5/INK_FAINT PAIR IS DELIBERATELY NOT SCORED, which is easy to
- * misread as an omission — the two sit ΔL* 1.9 apart in light, under the greyscale
- * floor below. `coexists` excludes it because SERIES[5] is the one series a folded
- * pie never paints: the wedge that would have used it IS the "other" wedge, and that
- * wedge is INK_FAINT. The two cannot appear in the same chart, so the distance
- * between them is not a defect. Every other INK_FAINT pair is scored.
+ * ⚠️ THE S5/INK_FAINT PAIR USED TO BE EXCLUDED HERE, AND THE ARGUMENT FOR THAT WAS
+ * TRUE OF ONE CONTEXT AND FALSE OF THE OTHER. `coexists` skipped it because
+ * SERIES[5] is the one series a folded pie never paints — the wedge that would have
+ * used it IS the "other" wedge, and that wedge is INK_FAINT — so within a pie the
+ * two genuinely cannot appear together. But INK_FAINT is byte-identical to AXIS,
+ * and the axis rule is drawn beside every series in every cartesian chart
+ * (`BarChartWidget`, `LineChartWidget`, `ScatterChartWidget`, `ForecastChartWidget`,
+ * `ScenarioPanel`, and the AXIS-coloured baseline in `MonteCarloPanel`). The
+ * exclusion was reasoning about the pie and silencing the axis, and it hid a
+ * measured ΔE00 0.91 (dark) and 1.76 (light) between SERIES[5] and the rule beside
+ * it. Every pair is scored now; the `AXIS === INK_FAINT` pin below is what licenses
+ * scoring one mark for both roles.
  *
- * ⚠️ BY INDEX, NOT BY HEX. This used to ask `MARKS[x].hex !== INK_FAINT`, which
- * identifies the mark by VALUE — so a palette that happened to give a SERIES colour
- * the same hex as INK_FAINT would send that SERIES pair down the else branch, fail
- * `Math.max(x, y) === INK_INDEX`, and be skipped: no floor assertion, and absent
- * from `below`, so the ratchet would not notice either. Two marks being identical is
- * precisely the case these tests exist to catch.
+ * ⚠️ BY INDEX, NOT BY HEX — the note that outlived the predicate. When there WAS a
+ * skip it asked `MARKS[x].hex !== INK_FAINT`, identifying the mark by VALUE, so a
+ * palette that gave a SERIES colour the same hex as INK_FAINT would have sent that
+ * pair down the else branch and skipped it: no floor assertion, and absent from
+ * `below`, so the ratchet would not have noticed either. Two marks being identical
+ * is precisely the case these tests exist to catch. Any future exclusion has to be
+ * positional for the same reason.
  */
 function scoredPairs(mode: 'light' | 'dark'): Array<[Mark, Mark]> {
   const { SERIES, INK_FAINT } = chartTheme(mode)
@@ -225,20 +232,21 @@ function scoredPairs(mode: 'light' | 'dark'): Array<[Mark, Mark]> {
     ...SERIES.map((hex, i) => ({ hex, label: `S${i}` })),
     { hex: INK_FAINT, label: 'INK_FAINT' },
   ]
-  const INK_INDEX = MARKS.length - 1
-  const coexists = (x: number, y: number) =>
-    Math.max(x, y) !== INK_INDEX || Math.min(x, y) < TOP_N
   const out: Array<[Mark, Mark]> = []
   for (let i = 0; i < MARKS.length; i++) {
-    for (let j = i + 1; j < MARKS.length; j++) {
-      if (coexists(i, j)) out.push([MARKS[i], MARKS[j]])
-    }
+    for (let j = i + 1; j < MARKS.length; j++) out.push([MARKS[i], MARKS[j]])
   }
   return out
 }
 
-/** Every SERIES pair, plus INK_FAINT against the series a folded pie can paint. */
-const SCORED_PAIR_COUNT = (SERIES_COUNT * (SERIES_COUNT - 1)) / 2 + TOP_N
+/**
+ * Every pair of the six series and the faint-ink mark — 21 of them.
+ *
+ * `TOP_N` still appears in the assertions below, but as the premise it always
+ * was: a folded pie has to leave one series unused for its "other" wedge. It is
+ * no longer part of this arithmetic, because no pair is skipped any more.
+ */
+const SCORED_PAIR_COUNT = ((SERIES_COUNT + 1) * SERIES_COUNT) / 2
 
 /**
  * The surfaces a chart can sit on, READ OUT of `index.css` rather than copied.
@@ -319,8 +327,8 @@ describe('chart ink measures up to the rule it is used under', () => {
 
   /** The SERIES colour with the least room over the 3:1 graphics floor, per mode. */
   const TIGHTEST_CONTRAST: Record<'light' | 'dark', [string, number]> = {
-    light: ['S5', 3.04],
-    dark: ['S5', 3.24],
+    light: ['S1', 3.94],
+    dark: ['S4', 4.04],
   }
 
   it.each(MODES)('reads the %s surfaces out of index.css', (mode) => {
@@ -374,11 +382,13 @@ describe('chart ink measures up to the rule it is used under', () => {
       worst.push([`S${i}`, Math.min(...backgrounds(mode).map(([, bg]) => contrastRatio(hex, bg)))])
     }
     // ⚠️ AND THE HEADROOM, PINNED — for the same reason MARGIN exists on the ΔE00
-    // side: `>= 3` cannot tell 3.04 from 8. The re-pick spent most of what was
-    // there (light S5 3.12 → 3.04, dark S5 4.63 → 3.24), and no assertion recorded
-    // that it had moved. INK_FAINT's own comment calls 3.24 "the margin that
-    // disappears without anyone noticing"; light S5 now has a sixth of that, so it
-    // is written down where an edit that spends the rest has to restate it.
+    // side: `>= 3` cannot tell 3.04 from 8. The re-pick had spent most of what was
+    // there (light S5 3.12 → 3.04, dark S5 4.63 → 3.24) with no assertion recording
+    // that it had moved. Moving S5 off the axis then handed that headroom back and
+    // more — it now sits at 10.50 and 11.81, the loudest of the six — so the
+    // tightest colour is a different one in each mode, and naming WHICH is half of
+    // what this pin is for. A palette edit that puts the neutral back in the band
+    // it left has to restate this line.
     const tightest = worst.reduce((a, b) => (b[1] < a[1] ? b : a))
     const [cKey, cVal] = TIGHTEST_CONTRAST[mode]
     expect.soft(tightest[0], `${mode}: a different colour is now the tightest`).toBe(cKey)
@@ -431,6 +441,18 @@ describe('chart ink measures up to the rule it is used under', () => {
     // drift tomorrow, and the drift would be invisible — the two are only ever
     // seen in different places, so nothing on screen would look wrong.
     expect(chartTheme(mode).INK_FAINT.toLowerCase()).toBe(tokens(mode)['--ink-faint'])
+  })
+
+  it.each(MODES)('AXIS and INK_FAINT are one mark in %s mode', (mode) => {
+    // What licenses `scoredPairs` scoring a single faint-ink mark for two roles.
+    // The pie's "other" wedge and the axis rule are the same hex today, so one
+    // entry covers both; if they ever diverge, the population above silently
+    // stops scoring the axis against anything — every series would be measured
+    // against the wedge alone, which is the narrower of the two claims. This
+    // fails first and says which.
+    const { AXIS, INK_FAINT } = chartTheme(mode)
+    expect(AXIS, `${mode}: AXIS and INK_FAINT have diverged — scoredPairs must now carry both marks`)
+      .toBe(INK_FAINT)
   })
 
   it.each(MODES)('every health ring clears the floor AS COMPOSITED in %s mode', (mode) => {
@@ -595,16 +617,49 @@ describe('chart ink measures up to the rule it is used under', () => {
    *
    * These are measured, not chosen: `T = 12` was used while searching so the shipped
    * palette would not sit on the floor it is graded against, and this is where that
-   * air is recorded. Light 12.21 and dark 13.58 against a floor of 10.
+   * air is recorded. Light 12.12 and dark 12.01 against a floor of 10.
    */
   const TIE = 0.1
   const MARGIN: Record<'light' | 'dark', {
     sep: [string[], number, Dichromacy | 'none']
     grey: [string[], number]
   }> = {
-    light: { sep: [['S0/S1', 'S0/S2'], 12.21, 'protan'], grey: [['S0/S4', 'S1/S4'], 5.05] },
-    dark: { sep: [['S0/S1'], 13.58, 'protan'], grey: [['S0/S3'], 5.51] },
+    light: {
+      sep: [['S0/S1', 'S2/S5', 'S3/S5'], 12.12, 'tritan'],
+      grey: [['S0/S4', 'S1/S4', 'S3/S5'], 5.04],
+    },
+    dark: { sep: [['S1/S5'], 12.01, 'deutan'], grey: [['S1/S5'], 5.11] },
   }
+
+  it.each(MODES)('excuses no pair from the scored set in %s mode', (mode) => {
+    // ⚠️ THE SIZE PIN ALONE DOES NOT HOLD THIS, and that was measured rather than
+    // feared: restoring the S5/INK_FAINT exclusion AND `SCORED_PAIR_COUNT` together
+    // — which is what a consistent revert looks like — left all 49 tests green.
+    // The MARGIN pins do not notice either, because the closest pairs in both modes
+    // are SERIES/SERIES ones that stay scored either way. So the defect this file
+    // was changed to catch could walk straight back in through the tidy edit.
+    //
+    // A degree count is a different construction from the loop that builds the
+    // pairs, which is the point: every one of the seven marks must be scored
+    // against all six others, so dropping ANY pair takes two of them to five and
+    // fails here whatever the total is edited to say.
+    const pairs = scoredPairs(mode)
+    const degree = new Map<string, number>()
+    for (const [A, B] of pairs) {
+      for (const m of [A, B]) degree.set(m.label, (degree.get(m.label) ?? 0) + 1)
+    }
+    const marks = [...Array(SERIES_COUNT).keys()].map((i) => `S${i}`).concat('INK_FAINT')
+    for (const label of marks) {
+      expect.soft(degree.get(label), `${mode}: ${label} is not scored against every other mark`)
+        .toBe(marks.length - 1)
+    }
+    // Named separately because it is the pair that was excused, and the reason it
+    // was — a folded pie never paints SERIES[5] — is true of the pie and silent
+    // about the axis, which wears the same hex. See `scoredPairs`.
+    const keys = pairs.map(([A, B]) => `${A.label}/${B.label}`)
+    expect(keys, `${mode}: S5 must be scored against the faint-ink mark (it IS the axis rule)`)
+      .toContain(`S${SERIES_COUNT - 1}/INK_FAINT`)
+  })
 
   /** Everything within `TIE` of the smallest score, sorted — the pinned identity. */
   const tiedAt = (rows: Array<[string, number]>) => {
@@ -763,20 +818,25 @@ describe('chart ink measures up to the rule it is used under', () => {
   it.each(MODES)('keeps the SERIES span the mode-split was justified by in %s mode', (mode) => {
     // The deleted luminance-neighbour check took a second assertion down with it:
     // theme.ts still argues the split is worth it because each set spans further
-    // than the 1.50:1 a shared palette is capped at, and quotes 2.90:1 and 3.18:1.
-    // Those are load-bearing numbers with nothing holding them. The pairwise floor
-    // does NOT imply them — pairs can separate on hue.
+    // than the 1.50:1 a shared palette is capped at, and quotes 2.67:1 and 2.93:1.
+    // Those are load-bearing numbers, so both the floor AND the achieved value are
+    // asserted — `> 1.5` alone cannot tell 2.67 from 12, and the comment it is
+    // holding honest names a specific figure, not an inequality.
     //
-    // ⚠️ Deliberately still not a neighbour-gap check, even though the re-picked
-    // sets would now pass one (smallest luminance gap 0.0245 light, 0.0563 dark,
-    // against the 0.02 the deleted test demanded). Neighbour gaps were the wrong
-    // quantity, not a too-low threshold: what the monochrome reader needs is the
-    // pairwise ΔL* floor asserted above, which covers pairs two steps apart too.
+    // ⚠️ Deliberately NOT a neighbour-gap check, and the shipped set is now the
+    // proof rather than an argument: its smallest luminance gap is 0.0175 (light),
+    // which FAILS the 0.02 the deleted test demanded, while every pair — including
+    // the ones two steps apart, which that test never looked at — clears ΔL* 4.5
+    // above. A set can be worse by the old measure and better by the one that
+    // reaches the reader. That is what "wrong quantity, not too low a threshold"
+    // means, stated in numbers.
+    const SPAN = { light: 2.67, dark: 2.93 } as const
     const lum = chartTheme(mode).SERIES
       .map((hex) => relativeLuminance(parseHex(hex)))
       .sort((a, b) => a - b)
     const span = (lum[lum.length - 1] + 0.05) / (lum[0] + 0.05)
     expect(span, `${mode} SERIES spans only ${span.toFixed(2)}:1 end to end`).toBeGreaterThan(1.5)
+    expect.soft(span, `${mode}: theme.ts quotes ${SPAN[mode]}:1 for this set`).toBeCloseTo(SPAN[mode], 2)
   })
 
   it('simulates each dichromacy rather than trusting the helper', () => {

@@ -422,7 +422,7 @@ Rəqəmin sərhədi: harness suala **RAG kontekstsiz** cavab verir (istehsalda
 oluna bilməsi üçün qəsdən belədir. Dizayn və yeni hal əlavə etmə qaydası:
 `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
-**Frontend Vitest (781 test / 98 fayl):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (791 test / 99 fayl):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · CIEDE2000 (34 Sharma cütü) · Brettel dixromatiya modeli (struktur xassələr) ·
 notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
@@ -448,7 +448,7 @@ Bundle analizi: `cd frontend && npm run analyze` → `stats.html`.
 ## Əlçatanlıq (qrafiklərin rəngi)
 
 Yeddi PR-lıq zəncir: **#30 → #32 → #33 → #35 → #37 → #38 → (bu branch: palitranın yenidən
-seçilməsi + boz-ton həddi)**.
+seçilməsi + boz-ton həddi + altıncı rəngin ox xəttindən ayrılması)**.
 
 Testlə kilidli olan **hədlərdir** (`charts/theme.test.ts`, `charts/theme.contrast.test.ts`,
 `lib/color.test.ts`, `lib/ciede2000.sharma.test.ts`): mətn ≥4.5:1, qrafika ≥3:1,
@@ -481,8 +481,9 @@ saxlayan bir palitra düzəlişi onları səssizcə köhnəldə bilər və suite
   rəqəmi qismən klampın ölçüsü imiş.
 
 **Qoruyucu nə zəmanət verir** — `theme.test.ts` bir qrafikin yan-yana qoya biləcəyi **hər cütü**
-(altı seriya + katlanmış pie-ın «Digər» dilimi) normal görmədə **və** hər üç dixromatiyada
-10 ΔE00 həddinə qarşı ölçür, üstəlik hər rəngi hər səthə 3:1-ə qarşı. Simulyator **Brettel,
+(altı seriya + solğun mürəkkəb markası, yəni katlanmış pie-ın «Digər» dilimi **və ox xətti** —
+ikisi eyni hexdir və bu bərabərlik ayrıca pinlənib) — cəmi **21 cüt** — normal görmədə **və**
+hər üç dixromatiyada 10 ΔE00 həddinə qarşı ölçür, üstəlik hər rəngi hər səthə 3:1-ə qarşı. Simulyator **Brettel,
 Viénot & Mollon (1997)**-dir — neytral ox boyunca menteşələnmiş iki yarım-müstəvi; hər şərait öz
 **qarışıqlıq xətti** üzərində qurulmuş cütlə anchor-lanıb, yəni matrisin biri identity-yə
 çevrilsə test düşür. Transkripsiya edilmiş 27 sabit dörd struktur xassəsi ilə saxlanılır
@@ -491,21 +492,34 @@ edilməsi) — ilk üçü tək başına «həmişə birinci yarımı işlət» q
 modelini, **tuta bilmir**.
 
 ✅ **İki palitra da yenidən seçildi — hər iki hədd indi ödənilir.**
-1. **Rəng həddi.** 40 skorlanan cütdən 14-ü ΔE00 10-dan aşağı idi (ən pisi açıq
+1. **Rəng həddi.** O vaxt skorlanan 40 cütdən 14-ü ΔE00 10-dan aşağı idi (ən pisi açıq
    `SERIES[4]`/`INK_FAINT` **3.24**, qaranlıq `SERIES[4]`/`SERIES[5]` **3.99**) — `DEBT` cədvəli
    indi **boşdur** və boşluq **iddia edilir**: çoxluq bərabərliyi «heç bir cüt həddən aşağı deyil»
    deməkdir, yəni düşə bilən iddiadır. ⚠️ **Hədd aşağı salınmadı** — 10 rəqəmi 14 cüt düşəndə də
    eyni idi; dəyişən **rənglər** oldu. `SERIES[1..5]` hər iki rejimdə tərpəndi, `SERIES[0]`
    (`--accent`) və `INK_FAINT` **toxunulmadı**. Seçim meyarı: **köhnə palitradan ən böyük sürüşməni
    MİNİMALLAŞDIRMAQ** (ayırmanı maksimallaşdırmaq optimizatoru işıqlığın uclarına itələyir və
-   məhsulu tanınmaz edir). Əldə olunan **`MARGIN`** kimi pinlənir: ən yaxın cüt açıqda **12.21**,
-   qaranlıqda **13.58** (hər ikisi protanopiya) — çünki `>=` 12.21 ilə 40-ı ayırd edə bilmir.
+   məhsulu tanınmaz edir). Əldə olunan **`MARGIN`** kimi pinlənir: ən yaxın cüt açıqda
+   `SERIES[2]`/`SERIES[5]` **12.12** (tritanopiya), qaranlıqda `SERIES[1]`/`SERIES[5]` **12.01**
+   (deuteranopiya) — çünki `>=` 12.12 ilə 40-ı ayırd edə bilmir. Pin **çoxluqdur**: açıqda üç cüt
+   0.1 bal içindədir, tək qalib yazmaq bir 8-bitlik təkanla çevrilən tələ olardı.
 2. **Boz-ton / monoxrom çap — indi ayrıca hədlə örtülüdür.** Hər dixromatiya modeli işıqlılığı
    **saxlayır**, ona görə rəng testi boz-tonda birləşməni prinsipcə görə bilmir: köhnə dəstin
    **ΔL\* 0.4**-lük cütü deutan altında 28.93 alıb hər şeyi keçirdi. Həmin cüt indi yeni testin
    **müsbət kontroludur** — ΔL\* həddini **düşürməli**, ΔE00 həddini isə **keçməlidir**. Ən pis
-   ΔL\* indi **5.05** (açıq) və **5.51** (qaranlıq), hədd **4.5**-dədir: 5 yox, çünki yarım bal
+   ΔL\* indi **5.04** (açıq) və **5.11** (qaranlıq), hədd **4.5**-dədir: 5 yox, çünki yarım bal
    artıq marja palitranı ΔE00 29.2 sürüşdürür, 5.05-ə qarşı 5 iddia etmək isə tələb yox, tələ olardı.
+3. **Altıncı rəng ox xəttindən ayrıldı.** `AXIS` tokeni `INK_FAINT` ilə **eyni baytlardır**, və
+   yenidən seçilmiş palitra altı rəngi bərabər işıqlıq nərdivanına düzəndə son pillə elə ox
+   rənginin üstünə düşdü: qaranlıqda **ΔE00 0.91**, açıqda **1.76** — altıncı data xətti qrafikin
+   öz cizgisinin içində itirdi. Qoruyucu bunu görmürdü, çünki `S5`/`INK_FAINT` cütü **qəsdən**
+   kənarlaşdırılmışdı: «katlanmış pie S5-i heç vaxt çəkmir» arqumenti **pie üçün doğru**, ox xətti
+   üçün **yanlışdır**. İndi bütün 21 cüt skorlanır. Düzəliş bahadır və həndəsə səbəbdir: `AXIS`
+   3:1-i keçməli, 4.5:1-dən **aşağı** qalmalıdır (iki test onu hər iki tərəfdən sıxır), yəni bir
+   kontrast — deməli bir işıqlıq — zolağına bağlıdır; S5 də orada idi. Ölçüldü: açıq rejimdə
+   S5 üçün yeganə yer **L\* ≤ 24**, qaranlıqda **L\* ≈ 78 və ya ≥ 90**. Hər iki rejimdə uc seçildi,
+   ona görə S5 **neytral qalır** (açıq `#3D3835`, qaranlıq `#E1E5F0`), amma artıq kətanın ən
+   **sakit** yox, ən **gur** markasıdır — ayrılığın qiyməti budur.
 
 ✅ **Bağlanmış köhnə bəndlər**: *trust-ring şiddəti rəng-tək idi* → #37-də hər şiddətə dash +
 tooltip verildi; *sönükləşdirilmiş halqa 3:1-dən aşağı düşürdü* → eyni PR-da sönükləşdirmə **enə**
