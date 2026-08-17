@@ -422,7 +422,7 @@ Rəqəmin sərhədi: harness suala **RAG kontekstsiz** cavab verir (istehsalda
 oluna bilməsi üçün qəsdən belədir. Dizayn və yeni hal əlavə etmə qaydası:
 `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
-**Frontend Vitest (791 test / 99 fayl):** lib (CSV formula-injection escape · sample queries · login hint ·
+**Frontend Vitest (808 test / 100 fayl):** lib (CSV formula-injection escape · sample queries · login hint ·
 **color/contrast · CIEDE2000 (34 Sharma cütü) · Brettel dixromatiya modeli (struktur xassələr) ·
 notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
@@ -494,8 +494,11 @@ modelini, **tuta bilmir**.
 ✅ **İki palitra da yenidən seçildi — hər iki hədd indi ödənilir.**
 1. **Rəng həddi.** O vaxt skorlanan 40 cütdən 14-ü ΔE00 10-dan aşağı idi (ən pisi açıq
    `SERIES[4]`/`INK_FAINT` **3.24**, qaranlıq `SERIES[4]`/`SERIES[5]` **3.99**) — `DEBT` cədvəli
-   indi **boşdur** və boşluq **iddia edilir**: çoxluq bərabərliyi «heç bir cüt həddən aşağı deyil»
-   deməkdir, yəni düşə bilən iddiadır. ⚠️ **Hədd aşağı salınmadı** — 10 rəqəmi 14 cüt düşəndə də
+   indi **boşaldılmayıb, SİLİNİB**, və fərq qəsdəndir: onun çoxluq bərabərliyi həddin **rəqəmini**
+   oxuyan yeganə iddia idi, boşalanda isə `[] === []` istənilən hədd üçün doğrudur — yəni ratchet
+   kimi görünən, amma ratchet olmayan reyestr qalırdı. Rəqəmi indi həddi **iki tərəfdən sıxan boz
+   cütlər** saxlayır (`FLOOR_PROBES`, 0.007 və 0.005 aralıq). «Heç bir cüt həddən aşağı deyil»
+   iddiası isə qalır və düşə bilər. ⚠️ **Hədd aşağı salınmadı** — 10 rəqəmi 14 cüt düşəndə də
    eyni idi; dəyişən **rənglər** oldu. `SERIES[1..5]` hər iki rejimdə tərpəndi, `SERIES[0]`
    (`--accent`) və `INK_FAINT` **toxunulmadı**. Seçim meyarı: **köhnə palitradan ən böyük sürüşməni
    MİNİMALLAŞDIRMAQ** (ayırmanı maksimallaşdırmaq optimizatoru işıqlığın uclarına itələyir və

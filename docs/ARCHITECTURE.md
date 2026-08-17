@@ -268,7 +268,7 @@ dashboards, and the analysis panels keep working. Demo/no-datasource is gated on
   leaks an own attribute that shadows later class patches). The suite is **hermetic** — `conftest`
   sets `AI_API_KEY=""` so embeddings use the hash fallback and Text2SQL uses rule-based (offline,
   deterministic, no cost — identical to CI; new suites: test_snapshots, test_graph,
-  test_ba, test_automl, test_ai_cost, test_usage_quota, test_rls_mode). Frontend Vitest (791) covers `lib/*`, hooks, and Zustand
+  test_ba, test_automl, test_ai_cost, test_usage_quota, test_rls_mode). Frontend Vitest (808) covers `lib/*`, hooks, and Zustand
   store reducers (`src/**/*.test.*`, incl. decision-measure, the advanced-analytics
   stores/panels — metric-tree/data-contract/Dropdown/color — and the studio round:
   twinStore/metricTreeMath/baStore/BCGMatrix/automlStore; e2e specs belong to
@@ -539,8 +539,11 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   **Both palettes were then re-picked against those instruments, and both floors are now met.** The
   `DEBT` table that named 14 of the 40 pairs then scored as under ΔE00 10 (worst light
   `SERIES[4]`/`INK_FAINT` at 3.24 under tritanopia, dark `SERIES[4]`/`SERIES[5]` at 3.99) is
-  **empty**, and empty is asserted rather than absent: the set-equality check reads "no pair is under
-  the floor", which can fail. The floor was **not** lowered — 10 is the digit it was when fourteen
+  **gone, not emptied** — a distinction the code makes deliberately. Its set-equality was the only
+  assertion that ever read the floor DIGIT, and once the table is empty `[] === []` holds for any
+  floor, so an empty register reads as a ratchet while no longer being one. It was deleted and the
+  digit is now held by synthetic grey pairs straddling it (`FLOOR_PROBES`). What survives of the
+  ratchet is the aggregate "no pair is under the floor", which can still fail. The floor was **not** lowered — 10 is the digit it was when fourteen
   pairs failed it. `SERIES[1..5]` moved in both modes; `SERIES[0]` is frozen to `--accent` and
   `INK_FAINT` is untouched, both being app-wide tokens. The colours were chosen by **minimising the
   largest per-slot move** from the previous set subject to every floor, not by maximising separation
@@ -619,7 +622,7 @@ queries); `format_demo_schema` sends real column types + sample values to the pr
   `modulepreload` for it, and that defeats the `lazy()` wrapper (it pulled ~261 kB gzip onto every
   page load, login included). Left alone, Rollup names the chunk itself — that is where `axis-*`
   comes from. `rollup-plugin-visualizer` (env-gated, `npm run analyze`) emits a treemap.
-- **Test depth + blocking E2E:** Vitest grew to 65 *at the time of this round* (791 today — see the
+- **Test depth + blocking E2E:** Vitest grew to 65 *at the time of this round* (808 today — see the
   Testing bullet above; this line is a snapshot of that round, not a current count) (lib / hooks / store reducers, incl. the
   collab epoch-guard via a fake `WebSocket`); a blocking Playwright `e2e` CI job runs the
   login→query→dashboards smoke against a demo backend. Two CI-specific fixes underpin it: AI mocks

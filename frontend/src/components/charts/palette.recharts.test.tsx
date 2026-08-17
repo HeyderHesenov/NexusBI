@@ -10,10 +10,11 @@
  * MULTIPLYING its own 0.6 default into an explicit fill opacity is a regression
  * this codebase has already shipped once (see `ForecastChartWidget`).
  *
- * So this renders the real library and reads the marks back off the DOM. What it
- * covers is narrow on purpose: the multi-series line chart, which is the widget
- * that can put all six colours plus the axis rule on one canvas at once, and
- * therefore the one the palette floors are written for.
+ * Both multi-series widgets are covered, because they carry the palette
+ * differently: the line chart paints strokes only, while the area chart paints the
+ * same hex twice — an opaque stroke that carries the series identity and a 0.08
+ * wash that does not. The floors apply to the stroke; the wash is asserted
+ * separately so "we paint at full opacity" cannot quietly become false for it.
  *
  * `ResponsiveContainer` measures to 0×0 under jsdom and renders nothing, so it —
  * and only it — is replaced by a fixed-size pass-through. Everything else is real
@@ -22,6 +23,7 @@
 import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AreaChartWidget } from './AreaChartWidget'
 import { LineChartWidget } from './LineChartWidget'
 import type { ChartConfig } from '../../types'
 import { chartTheme } from './theme'
@@ -33,7 +35,7 @@ import { effectiveOpacity } from '../../test/svgOpacity'
  * clones its child with measured `width`/`height`, and a chart left at 0×0 draws
  * an empty <svg>. A pass-through that only rendered a sized <div> produced zero
  * lines and zero axis rules — and the opacity assertion below went green on the
- * empty list, which is why it now refuses an empty one.
+ * empty list, which is why every query here asserts its own length first.
  */
 vi.mock('recharts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('recharts')>()),
@@ -52,11 +54,30 @@ const DATA = ['Jan', 'Feb', 'Mar'].flatMap((month, i) =>
 )
 const CONFIG: ChartConfig = { chart_type: 'line', x_axis: 'month', y_axis: 'v', color_by: 'cat' }
 
-const lineStrokes = (c: HTMLElement) =>
-  [...c.querySelectorAll('path.recharts-line-curve')].map((el) => ({
-    el,
-    stroke: el.getAttribute('stroke') ?? '',
-  }))
+/** Render one widget in one mode, and hand back the marks it drew. */
+function draw(mode: 'light' | 'dark', Widget: typeof LineChartWidget | typeof AreaChartWidget) {
+  useThemeStore.setState({ mode })
+  const { container } = render(<Widget data={[...DATA]} config={{ ...CONFIG }} />)
+  const pick = (sel: string, expected: number) => {
+    const els = [...container.querySelectorAll(sel)]
+    // Every query asserts its own count: a selector that silently matches nothing
+    // turns each loop below into a vacuous pass, which is how this file's first
+    // run reported an opacity claim it had not measured.
+    expect(els, `${mode}: expected ${expected} of "${sel}", drew ${els.length}`).toHaveLength(expected)
+    return els
+  }
+  // Lazy, so a widget that legitimately draws none of one kind does not fail the
+  // tests that never asked about it.
+  return {
+    strokes: () => pick('path.recharts-line-curve, path.recharts-area-curve', 6),
+    areas: () => pick('path.recharts-area-area', 6),
+    // ONE rule, not two: `valueYAxisProps` sets `axisLine: false`, so the Y axis
+    // contributes ticks and labels but no line. Pinned at the count rather than
+    // "at least one", since a Y rule appearing would be a design change that puts
+    // a second AXIS-coloured mark on the canvas.
+    rules: () => pick('.recharts-cartesian-axis-line', 1),
+  }
+}
 
 describe.each(['light', 'dark'] as const)('the %s palette reaches the canvas', (mode) => {
   afterEach(() => {
@@ -64,35 +85,35 @@ describe.each(['light', 'dark'] as const)('the %s palette reaches the canvas', (
     useThemeStore.setState({ mode: 'light' })
   })
 
-  it('paints the six series in the exact hexes theme.test scores', () => {
-    useThemeStore.setState({ mode })
-    const { container } = render(<LineChartWidget data={[...DATA]} config={{ ...CONFIG }} />)
-    const drawn = lineStrokes(container)
-    // Six, not "at least one": a pivot that quietly folded two categories would
-    // leave the sixth colour untested here while the table still scored it.
-    expect(drawn, `${mode}: the chart drew ${drawn.length} series, not 6`).toHaveLength(6)
-    expect(drawn.map((d) => d.stroke.toUpperCase())).toEqual(chartTheme(mode).SERIES)
-  })
-
-  it('paints them at full opacity, so the scored distances are the painted ones', () => {
-    useThemeStore.setState({ mode })
-    const { container } = render(<LineChartWidget data={[...DATA]} config={{ ...CONFIG }} />)
-    const drawn = lineStrokes(container)
-    // Without this the loop below is green on an empty list — which is exactly
-    // what happened the first time this file ran.
-    expect(drawn, `${mode}: nothing was drawn to measure`).toHaveLength(6)
-    for (const { el, stroke } of drawn) {
+  it.each([
+    ['line', LineChartWidget],
+    ['area', AreaChartWidget],
+  ] as const)('paints the six %s series in the exact hexes theme.test scores', (_kind, Widget) => {
+    const strokes = draw(mode, Widget).strokes()
+    expect(strokes.map((el) => el.getAttribute('stroke')?.toUpperCase())).toEqual(chartTheme(mode).SERIES)
+    for (const el of strokes) {
       // Ancestors included, style before attribute: a wrapper <g> fading the
       // layer would move every ΔE00 in `theme.test` without touching a hex.
-      expect(effectiveOpacity(el), `${mode}: series ${stroke} is not painted at full opacity`).toBe(1)
+      expect(effectiveOpacity(el), `${mode}: ${el.getAttribute('stroke')} is not painted at full opacity`).toBe(1)
     }
   })
 
+  it('washes the area fill without letting it stand in for the stroke', () => {
+    // The one place a SERIES colour IS composited. Pinned rather than waved past:
+    // the wash may not creep up toward the stroke (which would make two marks of
+    // one series and blur the boundary the floors are drawn at), and the stroke
+    // beside it may not be dragged down with it.
+    const { strokes, areas } = draw(mode, AreaChartWidget)
+    for (const el of areas()) {
+      expect(el.getAttribute('fill')?.toUpperCase(), `${mode}: the wash left the palette`)
+        .toBeOneOf(chartTheme(mode).SERIES)
+      expect(effectiveOpacity(el, 'fill'), `${mode}: the area wash moved off 0.08`).toBeCloseTo(0.08, 4)
+    }
+    for (const el of strokes()) expect(effectiveOpacity(el)).toBe(1)
+  })
+
   it('paints the axis rule in AXIS, which is the mark S5 is scored against', () => {
-    useThemeStore.setState({ mode })
-    const { container } = render(<LineChartWidget data={[...DATA]} config={{ ...CONFIG }} />)
-    const rules = [...container.querySelectorAll('.recharts-cartesian-axis-line')]
-    expect(rules, `${mode}: no axis rule was drawn`).not.toHaveLength(0)
+    const rules = draw(mode, LineChartWidget).rules()
     for (const rule of rules) {
       expect(rule.getAttribute('stroke')?.toUpperCase()).toBe(chartTheme(mode).AXIS)
       expect(effectiveOpacity(rule), `${mode}: the axis rule is faded`).toBe(1)
