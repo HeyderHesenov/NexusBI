@@ -141,10 +141,15 @@ const hueDeg = (b: number, a: number) => {
  * depend on every future caller choosing one direction.
  *
  * WHY CIE76 IS GONE RATHER THAN KEPT ALONGSIDE. It was plain Euclidean distance
- * in a space that is not actually uniform, and on this repo's own palette it did
- * not agree with CIEDE2000 about WHICH pair is weakest — measured after the
- * tritan model was fixed, CIE76 ranks light S0/S2 at 7.50 and puts S4/INK_FAINT
- * at 2.87, while ΔE00 reverses them (5.19 and 3.24). Keeping both would leave a
+ * in a space that is not actually uniform, and on the palette this repo shipped at
+ * the time it did not agree with CIEDE2000 about WHICH pair was weakest — measured
+ * after the tritan model was fixed, CIE76 ranked that light S0/S2 at 7.50 and put
+ * S4/INK_FAINT at 2.87, while ΔE00 reversed them (5.19 and 3.24). ⚠️ Those four
+ * figures belong to a palette two generations back and are kept as the worked
+ * example only; the sets shipping now score 12.27 and 15.65 for the same two pairs,
+ * so re-deriving the argument from today's colours would not reproduce it — the
+ * disagreement was a property of where those colours sat, not a standing fact.
+ * Keeping both metrics would leave a
  * weaker metric one import away for the next caller, and would leave CIE76 itself
  * anchored only by its own two assertions — the shape of guard this repo has been
  * caught by before. Both of those anchors moved here intact: black-to-white is
@@ -383,10 +388,12 @@ export function dichromacyGamutError(hex: string, kind: Dichromacy): number {
  * Used to assert that two chart series stay apart for a reader who cannot use
  * hue. ⚠️ Dichromacy deletes ONE opponent axis, it does not leave lightness
  * alone: a deuteranope loses red-green and keeps blue-yellow, so two colours at
- * identical lightness can still be far apart — SERIES[1]/SERIES[4] are 0.4 L*
- * apart and score ΔE00 28.9 here. An earlier version of this comment claimed
- * lightness was "the only signal left", which is what made the palette's own
- * justification wrong.
+ * identical lightness can still be far apart — the SERIES[1]/SERIES[4] of two
+ * palettes ago sat 0.4 L* apart and scored ΔE00 28.9 here, which is exactly why
+ * `theme.test` now asserts a SECOND, lightness-only floor that no function in
+ * this file can satisfy on a palette's behalf. An earlier version of this comment
+ * claimed lightness was "the only signal left", which is what made the palette's
+ * own justification wrong.
  *
  * See `dichromacyGamutError` before trusting a tritan number.
  */

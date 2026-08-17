@@ -34,17 +34,16 @@ type Mode = 'light' | 'dark'
  * lightest and darkest of six hues can differ by at most 1.50:1. Everything is
  * then within half a stop of everything else, and the set collapses into one
  * tone for anyone who cannot use hue. Splitting by mode gives each canvas the
- * full range instead: the light set below spans 2.65:1 end to end and the dark
- * set 2.11:1, against the 1.50:1 a shared palette is capped at.
+ * full range instead: the light set below spans 2.67:1 end to end and the dark
+ * set 2.93:1, against the 1.50:1 a shared palette is capped at.
  *
- * ⚠️ The gain is in RANGE, not in neighbour separation — adjacent pairs in the
- * light set sit 1.02–1.46:1 apart, which is no better than the packed
- * alternative and would be dishonest to claim as the win. Nor does the span buy
- * greyscale legibility, which an earlier version of this paragraph claimed: two
- * of the light six sit 0.4 L* apart and photocopy to the same grey. What the
- * palette is actually chosen against is the pairwise dichromacy floor described
- * below — greyscale is a separate and still-open property, measured there rather
- * than implied here.
+ * ⚠️ The gain is in RANGE, and it used NOT to be in neighbour separation — the
+ * previous sets sat 1.02–1.46:1 apart between luminance neighbours, no better
+ * than the packed alternative, and this paragraph said so rather than claim a win
+ * it did not have. The re-pick changed that as a side effect of asserting a
+ * greyscale floor: neighbours now sit 1.19–1.26:1 (light) and 1.15–1.44:1 (dark),
+ * i.e. evenly spread rather than clumped. That is a consequence of the ΔL* floor
+ * below, not an independent property, and it is not what the palette is graded on.
  *
  * Both sets were re-picked against that floor, so neither is what shipped before
  * the split. Each colour was measured against `--bg` / `--surface` /
@@ -66,78 +65,120 @@ export const SERIES_COUNT = 6
  * that differ only along the missing axis merge completely, however far apart
  * they look to everyone else.
  *
- * These six hues sit close together on the surviving axis (four of them are
- * green-through-blue), so in practice lightness was carrying much of it. That is
- * a fact about THIS palette's hues, not a general law — a set built on opposite
- * ends of blue-yellow could stay apart with less lightness range.
+ * ⚠️ NEITHER AXIS CARRIES THIS ALONE, AND THE FILE HAS BEEN WRONG ABOUT THAT IN
+ * BOTH DIRECTIONS. An early version claimed a clean rule — "every failing pair had
+ * ΔL* under 5 and every passing pair had ΔL* over 12" — which the palette it cited
+ * did not show. A later one said lightness "does most of the work", while that same
+ * set had a pair at ΔL* 0.4 scoring ΔE00 28.9 under deuteranopia, i.e. carried
+ * entirely by surviving hue. (The 43.1 this sentence used to quote was that pair
+ * in CIE76, from before the metric changed — it is 41.9 in ΔE00 for normal
+ * vision, and the deuteranope's 28.9 is the figure the argument needs.)
  *
- * ⚠️ AN EARLIER VERSION PUT A CLEAN RULE HERE — "every failing pair had ΔL* under
- * 5 and every passing pair had ΔL* over 12, in both modes" — and the old palette
- * it cites does not show one. Passing light pairs run 3.1, 5.9, 7.6, 8.9, 9.4,
- * 10.5 …; the dark set has a FAILING pair at ΔL* 9.8 and passing pairs at 3.9 and
- * 4.1. There is no 5/12 separation in either mode, so "hence, spread by
- * lightness" never followed from the numbers quoted for it. Lightness genuinely
- * helps here; it was not the clean lever that sentence described.
+ * Measured on the sets below: strip the hue and the worst pair falls to ΔE00 3.62
+ * (light) and 3.15 (dark), around a third of the floor. So lightness ALONE never
+ * satisfies the 10 ΔE requirement, and the two properties are separate
+ * requirements rather than one implying the other — which is exactly why there are
+ * now two floors, scored by two different assertions, and why neither can be
+ * dropped on the grounds that the other passes.
  *
- * ⚠️ And lightness describes the SEARCH, not the RESULT — the difference matters
- * because two pairs clear the floor on surviving hue alone: light `[1]`/`[4]` at
- * ΔL* 0.4 and dark `[3]`/`[0]` at ΔL* 1.7. The first scores ΔE 43.1 under
- * deuteranopia at essentially equal lightness — deuteranopia removes red-green
- * and leaves blue-yellow standing, and green-vs-violet is exactly that axis.
- * Lightness does most of the work in this set. It does not do all of it, and a
- * future edit that trusts "spread by lightness" as an invariant will be wrong
- * about those two pairs.
+ * The hues are spread wider than they used to be as a result: light runs 60°, 77°,
+ * 131°, 162°, 287°, 318°, where four of the previous six sat green-through-blue.
+ * That is a fact about THIS palette, not a general law.
  *
- * That is why an earlier framing of this ticket — "separate the hues of the two
- * pairs that collide" — was abandoned after measurement. Changing a hue cannot
- * help a reader who has no hue.
+ * That is also why an earlier framing of this ticket — "separate the hues of the
+ * two pairs that collide" — was abandoned after measurement. Changing a hue cannot
+ * help a reader who has no hue; it is the lightness floor that reaches them, and it
+ * had to be asserted separately to exist at all.
  *
  * WHAT IS ASSERTED. `theme.test` scores every pair a chart can actually paint
- * side by side — the six against each other AND against the folded-"other"
- * INK_FAINT wedge — at a 10 ΔE floor in normal vision and under all three
- * dichromacies, plus every colour against every surface at 3:1. The dichromacy
- * floor is the binding one: the palette this replaced measured 2.2 (dark) and
- * 5.2 (light) there while passing everything else, which is exactly how it
- * shipped unnoticed.
+ * side by side — the six against each other AND against the faint-ink mark, which
+ * is the folded-"other" pie wedge and the AXIS line at the same hex — at a 10 ΔE
+ * floor in normal vision and under all three dichromacies, at a 4.5 ΔL* floor for
+ * monochrome, and every colour against every surface at 3:1. The dichromacy floor
+ * is the binding one: the palette two generations back measured 2.2 (dark) and 5.2
+ * (light) there while passing everything else, which is exactly how it shipped
+ * unnoticed.
  *
  * ⚠️ The light figure was written as 6.5 one paragraph from a test asserting 5.2.
  * 5.2 is right; 6.5 was the protan/deutan minimum with tritanopia dropped, and
  * the same omission is what miscounted the node-colour pairs further down.
  *
- * ⚠️ AND THE FLOOR IS NOT MET. That ticket — adopt CIEDE2000, after fixing the
- * tritan model — is done, and both halves of it moved the numbers this paragraph
- * used to quote. It said the weakest pairs were light [0]/[2] at 5.37 and dark
- * [1]/[2] at 5.34; measured through Brettel's two half-planes instead of Viénot's
- * single one, they are light [4]/INK_FAINT at 3.24 and dark [4]/[5] at 3.99. The
- * old figures were partly measurements of a silent gamut clamp: the single plane
- * threw six of these colours outside the displayable cube under tritanopia, and
- * the simulator clipped them without saying so.
+ * ✅ AND THE FLOOR IS NOW MET. Two tickets ran through this paragraph and both are
+ * closed. The first — adopt CIEDE2000, after fixing the tritan model — moved every
+ * number it used to quote: it had said the weakest pairs were light [0]/[2] at 5.37
+ * and dark [1]/[2] at 5.34, but those were partly measurements of a silent gamut
+ * clamp, since Viénot's single plane threw six of these colours outside the
+ * displayable cube under tritanopia and the simulator clipped them without saying
+ * so. Measured through Brettel's two half-planes they were light [4]/INK_FAINT at
+ * 3.24 and dark [4]/[5] at 3.99, and FOURTEEN pairs sat under the floor.
  *
- * FOURTEEN pairs now sit under the floor, seven per mode, and they are named with
- * their worst reader in the DEBT table in `charts/theme.test`. They are not a
- * regression — they are what this palette always was, seen with an instrument
- * that works. RE-PICKING THESE COLOURS IS AN OPEN TICKET; the floor was
- * deliberately NOT lowered to fit them, because a floor chosen to fit the numbers
- * it grades has stopped being a requirement.
+ * The second ticket was re-picking these colours, which is what the sets below are.
+ * The debt is zero in both modes. The floor was never lowered to reach it — 10 is
+ * the same digit it was when fourteen pairs failed it, because a floor chosen to
+ * fit the numbers it grades has stopped being a requirement. What moved was the
+ * palette: worst pair light [2]/[5] at 12.12 under tritanopia — with [3]/[5] and
+ * [0]/[1] inside the same tenth of a point, so MARGIN pins all three as the
+ * closest SET rather than picking a winner one 8-bit nudge could change — and
+ * dark [1]/[5] at 12.01 under deuteranopia, all pinned in `charts/theme.test`.
  *
- * WHAT IS NOT: greyscale. Every dichromacy model PRESERVES lightness, so no
- * simulation in that test can see a pair that differs only in hue, and the check
- * this replaced could not either — a luminance gap between sorted NEIGHBOURS
- * says nothing about the pair two steps apart. Scored properly, 4 light pairs
- * and 8 dark fall under the same 10 ΔE floor in greyscale, worst 0.4. That is
- * not something this palette broke (the one it replaced measured 8 and 9, worst
- * 1.1) and not something any version here has ever covered. Monochrome print is
- * its own ticket; do not read a dichromacy pass as standing in for it.
+ * ⚠️ AND THE SIXTH COLOUR IS WHERE IT IS BECAUSE OF THE AXIS LINE, which is worth
+ * a paragraph because nothing about #3D3835 or #E1E5F0 looks chosen otherwise.
+ * The re-pick above put the six on an even lightness ladder, and the last rung
+ * landed on `AXIS` — which is the same hex as INK_FAINT, so the sixth data line
+ * measured ΔE00 0.91 from the axis rule it is drawn beside (dark; 1.76 light).
+ * The guard could not see it: the scored set excluded the [5]/INK_FAINT pair on
+ * the grounds that a folded pie never paints [5], which is true of the PIE and
+ * false of the AXIS, and the two are one colour.
+ *
+ * The fix is expensive and the geometry is why. AXIS has to clear 3:1 as a graphic
+ * and stay UNDER 4.5:1 so it is never mistaken for text — two assertions squeezing
+ * it into one contrast band, i.e. one lightness band, which is where [5] sat too.
+ * A ΔL* ≥ 4.5 separation inside a shared band is not available, so one of them had
+ * to leave, and it cannot be the axis. Measured, light's other five occupy
+ * L* 29.0–50.9 in steps of 5–6 with the axis at 56.5 — no interior gap fits, and
+ * above the axis a colour loses 3:1 against white — so the only room is BELOW,
+ * at L* ≤ 24. Dark is the mirror: L* ≈ 78 or L* ≥ 90. The sets below take the
+ * far end in both modes, which keeps [5] a neutral in both and costs it ΔE00 30.9
+ * (light) and 33.7 (dark) from the colour it replaces. It is now the loudest mark
+ * on the canvas rather than the quietest, and that is the price of the separation,
+ * not an oversight.
+ *
+ * AND GREYSCALE IS COVERED TOO, which it never was before. Every dichromacy model
+ * PRESERVES lightness, so no simulation in that test can see a pair that differs
+ * only in hue; the check this replaced could not either, since a luminance gap
+ * between sorted NEIGHBOURS says nothing about the pair two steps apart. The old
+ * sets had 4 light pairs and 8 dark colliding in greyscale, worst ΔL* 0.4 — two
+ * colours that photocopy to the same grey. The sets below are chosen against an
+ * explicit ΔL* floor as well, worst 5.04 (light, three pairs tied) and 5.11
+ * (dark [1]/[5]).
+ *
+ * ⚠️ THE ΔL* FLOOR IS ASSERTED AT 4.5, NOT AT THE 5 THIS TICKET SET OUT TO HOLD,
+ * and the half-point is worth the sentence. Measured over the search space as it
+ * stood before the axis was added to it: light could reach ΔL* 5.05 while moving
+ * no colour more than ΔE00 12.1 from its predecessor, but buying half a point more
+ * margin cost a shift of 29.2 — a different palette, not this one adjusted. So 5
+ * was reachable and 5.5 was not, at any shift a reader would recognise as the same
+ * product. Asserting 5 against a measured 5.05 would be a tripwire rather than a
+ * requirement, which is the same "margin 0.2" mistake this repo made once already;
+ * asserting 4.5 leaves 0.54 (light) and 0.61 (dark) of real air, and the achieved
+ * values are pinned exactly in MARGIN so the gap between "required" and "got" is
+ * written down, not hidden.
+ *
+ * ⚠️ THAT "NO COLOUR MOVES MORE THAN 12.1" NO LONGER DESCRIBES THE SHIPPED SET,
+ * and the sentence above is left in the past tense rather than deleted because the
+ * floor is still 4.5 for the reason it gives. Adding the axis to the scored set
+ * moved [5] by 30.9 and 33.7 — the shift budget that argument was costed against
+ * does not survive the paragraph above it.
  *
  * ⚠️ BEFORE ADDING A SEVENTH COLOUR, note that the arithmetic this docblock used
  * to offer for "a seventh does not fit" was wrong twice over. It said six colours
- * want ~50 L* units of room — but the shipped six span only 26.9 L* (light) and
- * 23.8 (dark) and clear the floor anyway, precisely because pairs can also
- * separate on surviving hue, which this same docblock says two paragraphs up. It
- * also counted intervals wrongly elsewhere (nine colours is eight gaps, not
- * nine). The room is genuinely tight — dark leaves 52.8 L* above the 3:1 floor —
- * but "does not fit" was asserted, not shown. A seventh needs measuring, not a
- * rule of thumb.
+ * want ~50 L* units of room — but six clear the floor inside 27.0 L* (light) and
+ * 35.4 (dark), precisely because pairs can also separate on surviving hue, which
+ * this same docblock says two paragraphs up. It also counted intervals wrongly
+ * elsewhere (nine colours is eight gaps, not nine). The room is genuinely tight —
+ * dark leaves 52.8 L* above the 3:1 floor, and a seventh colour now has to clear
+ * the ΔL* floor too, which is the constraint that actually binds — but "does not
+ * fit" was asserted, not shown. A seventh needs measuring, not a rule of thumb.
  *
  * `[0]` is the `--accent` token exactly, in BOTH modes. It was only ever true
  * of light: dark shipped #0E9F6E against an --accent of #10B981, so the comment
@@ -145,22 +186,37 @@ export const SERIES_COUNT = 6
  * the sentence true and closes the last chart/app colour divergence.
  */
 // Ratios are worst-of-three background contrast, as everywhere else in this file.
+// Both sets were chosen by minimising the LARGEST move from the palette they
+// replace, subject to every floor above — not by maximising separation, which
+// pushes an optimiser to the ends of the lightness axis where hue stops meaning
+// anything and returns a set no one would recognise as this product.
+//
+// [5] is the exception, and it is not one the objective was free to make: adding
+// the axis to the scored set left it no interior room at all, so the same
+// "smallest move" search returned a colour at the far end of the lightness axis
+// in both modes. Where the search offered a family — dark also allows a gold at
+// L* 78 — the neutral was taken, because [5] is the palette's quiet slot in light
+// mode too and a second ochre beside [3] would cost the set a hue family.
+//
+// The search enforced 12 ΔE00 and 5.0 ΔL* rather than the 10 and 4.5 the tests
+// assert. Shipping a colour that clears a floor by 0.04 makes the guard a
+// tripwire; the air is deliberate and MARGIN records what it bought.
 const SERIES_LIGHT = [
   '#0A6E4C', // emerald (accent)    5.69  — frozen: this IS the --accent token
-  '#009562', // light emerald       3.48
-  '#50698D', // dusty blue          5.09
-  '#594529', // tan                 8.26
-  '#9776B3', // mauve               3.43
-  '#8F8A80', // neutral             3.12  — the tightest of the six
+  '#5C8444', // moss green          3.94  — the tightest of the six
+  '#4C5068', // slate blue          7.18
+  '#58401C', // umber               8.80
+  '#9450B0', // violet              4.72
+  '#3D3835', // near-black neutral 10.50  — parked below the axis; see AXIS, below
 ]
 
 const SERIES_DARK = [
   '#10B981', // emerald (accent)    5.87  — frozen: this IS the --accent token
-  '#86D7B2', // light emerald       8.77
-  '#93B1D9', // dusty blue          6.75
-  '#BE985F', // tan                 5.56
-  '#977CAC', // mauve               4.11  — the tightest of the six
-  '#948F86', // neutral             4.65
+  '#90E8C4', // mint               10.29
+  '#A8B4CC', // pale slate          7.13
+  '#BC8C28', // ochre               4.90
+  '#8080B8', // periwinkle          4.04  — the tightest of the six
+  '#E1E5F0', // near-white neutral 11.81  — parked above the axis; see AXIS, below
 ]
 
 /**
@@ -409,6 +465,18 @@ const GRAPH_DARK: Record<GraphNodeType, string> = {
 
 export interface ChartTheme {
   SERIES: string[]
+  /**
+   * Axis rules, tick marks and reference lines.
+   *
+   * ⚠️ THE SAME HEX AS `INK_FAINT`, in both modes, and `theme.test` pins that
+   * equality rather than leaving it to coincidence. It matters because the two are
+   * scored as ONE mark: a chart that draws this rule beside a data line is putting
+   * the faint ink next to every series, so all six have to stay clear of it. That
+   * was missed once — the scored set skipped SERIES[5] against the faint mark
+   * because a folded pie never paints SERIES[5], which is true of the pie and says
+   * nothing about the axis. If these two ever diverge, the pin fails and the marks
+   * have to be split rather than the pin relaxed.
+   */
   AXIS: string
   GRID: string
   ACCENT: string
@@ -422,7 +490,8 @@ export interface ChartTheme {
   SURFACE: string
   /** Secondary ink — readable node labels. */
   INK_SOFT: string
-  /** Faint ink — the folded "other" wedge, and anything else deliberately quiet. */
+  /** Faint ink — the folded "other" wedge, the axis rule (see AXIS), and anything
+   * else deliberately quiet. */
   INK_FAINT: string
   /** Graph edge stroke — stronger than GRID so directional links read. */
   EDGE: string

@@ -422,8 +422,9 @@ Rəqəmin sərhədi: harness suala **RAG kontekstsiz** cavab verir (istehsalda
 oluna bilməsi üçün qəsdən belədir. Dizayn və yeni hal əlavə etmə qaydası:
 `docs/superpowers/specs/2026-08-02-nl2sql-eval-design.md`.
 
-**Frontend Vitest (749 test / 97 fayl):** lib (CSV formula-injection escape · sample queries · login hint ·
-**color/contrast · notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
+**Frontend Vitest (808 test / 100 fayl):** lib (CSV formula-injection escape · sample queries · login hint ·
+**color/contrast · CIEDE2000 (34 Sharma cütü) · Brettel dixromatiya modeli (struktur xassələr) ·
+notification kateqoriyaları · metricTreeMath (twin riyaziyyatı) · snapshotDiff**) ·
 hook-lar (chart zoom · history delete · typewriter · force layout) ·
 Zustand store reducer-ləri (live-update · query thread · copilot plan-guard · theme · notifications ·
 collab epoch-guard · decision measure · **metric-tree ·
@@ -446,10 +447,14 @@ Bundle analizi: `cd frontend && npm run analyze` → `stats.html`.
 
 ## Əlçatanlıq (qrafiklərin rəngi)
 
-Dörd PR-lıq zəncir: **#30 → #32 → #33 → #35**.
+Yeddi PR-lıq zəncir: **#30 → #32 → #33 → #35 → #37 → #38 → (bu branch: palitranın yenidən
+seçilməsi + boz-ton həddi + altıncı rəngin ox xəttindən ayrılması)**.
 
-Testlə kilidli olan **hədlərdir** (`charts/theme.test.ts`, `charts/theme.contrast.test.ts`):
-mətn ≥4.5:1, qrafika ≥3:1, cüt ayrılığı ≥10 ΔE, üstəlik gamut cədvəli birbaşa pinlənib.
+Testlə kilidli olan **hədlərdir** (`charts/theme.test.ts`, `charts/theme.contrast.test.ts`,
+`lib/color.test.ts`, `lib/ciede2000.sharma.test.ts`): mətn ≥4.5:1, qrafika ≥3:1,
+cüt ayrılığı **≥10 ΔE00**, gamut cədvəli boş (üstəlik hələ də kəsilən rənglərlə **müsbət
+kontrol**, çünki boş cədvəl tək başına düşə bilmir), halqa ayrılıqları dəyəri **və ən pis
+şəraiti** ilə pinlənib, Brettel matrisləri dörd struktur xassəsi + yarım başına bir çıxış pini ilə.
 ⚠️ Aşağıdakı **konkret rəqəmlər ölçülüb, amma kilidlənməyib** — hər rəngi öz həddinin üstündə
 saxlayan bir palitra düzəlişi onları səssizcə köhnəldə bilər və suite yaşıl qalar.
 
@@ -465,44 +470,79 @@ saxlayan bir palitra düzəlişi onları səssizcə köhnəldə bilər və suite
   idi (ən yaxın cüt: qaranlıqda ΔE 2.2, açıqda 5.2 — heç bir mövcud yoxlama bunu görmürdü).
   ⚠️ «Toqquşan iki hue-nu ayır» **işləmir**: dixromatiya hue-nu küyləmir, **oxu silir**.
   Palitra luminans boyunca yayıldı, hue-lar saxlanıldı.
+- **(5) Etibar halqasına rəngdən başqa kanal** (#37) — qraf düyünlərinin `warn`/`danger`/`unknown`
+  halqası yalnız hue ilə ayrılırdı. İndi hər şiddətin öz **`stroke-dasharray`**-i və tooltip sözü var
+  (dash-ı öyrədən açar). Seçim zamanı sönükləşdirmə də **opaklıqdan enə** keçdi (2.5 → 1.5px):
+  ölçüldü, **heç bir opaklıq 3:1-i keçmir** (0.8 → 2.97), yəni «az sönükləşdir» variantı yox idi.
+- **(6) Düzgün model və düzgün metrik** (#38) — dixromatiya simulyatoru **Viénot 1999-un tək
+  müstəvisindən Brettel, Viénot & Mollon (1997)-in iki yarım-müstəvisinə** keçdi, metrik isə
+  **CIE76-dan CIEDE2000-ə** (CIE76 tam silindi). Bu, mövcud qüsurları **üzə çıxardı**: tritan
+  gamut kəsilməsi **6 rəngdən sıfıra** düşdü, yəni repo-nun indiyə qədər yazdığı hər tritan
+  rəqəmi qismən klampın ölçüsü imiş.
 
 **Qoruyucu nə zəmanət verir** — `theme.test.ts` bir qrafikin yan-yana qoya biləcəyi **hər cütü**
-(altı seriya + katlanmış pie-ın «Digər» dilimi) normal görmədə **və** hər üç dixromatiyada
-10 ΔE həddinə qarşı ölçür, üstəlik hər rəngi hər səthə 3:1-ə qarşı. Simulyator
-Viénot–Brettel–Mollon-dur; hər şərait öz **qarışıqlıq xətti** üzərində qurulmuş cütlə
-anchor-lanıb, yəni matrisin biri identity-yə çevrilsə test düşür.
+(altı seriya + solğun mürəkkəb markası, yəni katlanmış pie-ın «Digər» dilimi **və ox xətti** —
+ikisi eyni hexdir və bu bərabərlik ayrıca pinlənib) — cəmi **21 cüt** — normal görmədə **və**
+hər üç dixromatiyada 10 ΔE00 həddinə qarşı ölçür, üstəlik hər rəngi hər səthə 3:1-ə qarşı. Simulyator **Brettel,
+Viénot & Mollon (1997)**-dir — neytral ox boyunca menteşələnmiş iki yarım-müstəvi; hər şərait öz
+**qarışıqlıq xətti** üzərində qurulmuş cütlə anchor-lanıb, yəni matrisin biri identity-yə
+çevrilsə test düşür. Transkripsiya edilmiş 27 sabit dörd struktur xassəsi ilə saxlanılır
+(sətir cəmləri · `P·P = P` · menteşədə üst-üstə düşmə · yarımlar arasında seçimin **həqiqətən**
+edilməsi) — ilk üçü tək başına «həmişə birinci yarımı işlət» qüsurunu, yəni əvəz olunan 1999
+modelini, **tuta bilmir**.
 
-⚠️ **Örtülməyən dörd şey — bilərəkdən, ölçülmüş halda:**
-1. **Boz-ton / monoxrom çap.** Hər dixromatiya modeli işıqlılığı **saxlayır**, ona görə o testlər
-   boz-tonda birləşməni prinsipcə görə bilmir. Ən pis cüt **ΔL\* 0.4**.
-2. **Trust-ring şiddəti** (`warn`/`danger`) kətanda yalnız hue ilə ayrılır. Ən pis hal —
-   **açıq rejim, deuteranopiya: ΔE 4.81**, halqanın həqiqətən boyandığı kompozitdə
-   (`RING_OPACITY` 0.9, `--surface` üzərində); xam hexdə 6.04. Qaranlıqda ən pisi tritanopiyadır:
-   kompozit 5.74, xam 6.59. ⚠️ Burada əvvəl «tritanopiyada 6.6» yazılırdı — o, qaranlığın **xam**
-   rəqəmidir, yəni həm yanlış şərait, həm də `theme.ts`-in öz qaydasını («fonu göstər, yoxsa rəqəm
-   heç nə demir») pozan ölçü. Halqanın *mövcudluğu* «ok deyil»i rəngsiz daşıyır; ayrıd edilməyən
-   yalnız şiddətdir.
-3. **Metrik CIE76-dır, CIEDE2000 deyil** — və CIE76 öz ən zəif cütünü tapmır (CIEDE2000-də
-   5.37/5.34, CIE76 onlara 17.8/12.0 verir). Qazanc yenə real, amma rejimlər üzrə eyni deyil:
-   köhnə palitra CIEDE2000-də 2.85 (açıq) və 1.02 (qaranlıq), yəni **açıqda ~1.9×, qaranlıqda
-   ~5.2×**. ⚠️ Tritan sütunu həm də **gamut kəsilməsindən** keçir — 12 seriya rəngindən **6-sı**:
-   qaranlıqda dördü (0.139–0.773), açıqda ikisi (`light[1]` 0.027, `light[3]` 0.099). Ona görə
-   sıra belədir: **əvvəlcə tritan modeli (Brettel), sonra metrik, sonra palitra.**
-4. **Sönükləşdirilmiş halqa.** Düyün seçiləndə qonşu olmayanların hamısı `opacity 0.4`-ə düşür
-   (`ForceGraph.tsx:535`), test isə halqanı yalnız `RING_OPACITY`-də (0.9) ölçür. 0.4-də kompozit
-   nisbətlər: açıq 1.64–1.89, qaranlıq 1.83–2.40 — hamısı 3:1-dən aşağı. Yəni yuxarıdakı «hər rəng
-   hər səthə 3:1» zəmanəti **boyanmış bir vəziyyət** üçün doğrudur, bütün vəziyyətlər üçün yox.
-   Kod qəsdən dəyişdirilmədi: sönükləşdirmə seçimin vurğu effektidir, onu qaldırmaq qrafın diqqət
-   dizaynını dəyişir — ayrıca bilet.
+✅ **İki palitra da yenidən seçildi — hər iki hədd indi ödənilir.**
+1. **Rəng həddi.** O vaxt skorlanan 40 cütdən 14-ü ΔE00 10-dan aşağı idi (ən pisi açıq
+   `SERIES[4]`/`INK_FAINT` **3.24**, qaranlıq `SERIES[4]`/`SERIES[5]` **3.99**) — `DEBT` cədvəli
+   indi **boşaldılmayıb, SİLİNİB**, və fərq qəsdəndir: onun çoxluq bərabərliyi həddin **rəqəmini**
+   oxuyan yeganə iddia idi, boşalanda isə `[] === []` istənilən hədd üçün doğrudur — yəni ratchet
+   kimi görünən, amma ratchet olmayan reyestr qalırdı. Rəqəmi indi həddi **iki tərəfdən sıxan boz
+   cütlər** saxlayır (`FLOOR_PROBES`, 0.007 və 0.005 aralıq). «Heç bir cüt həddən aşağı deyil»
+   iddiası isə qalır və düşə bilər. ⚠️ **Hədd aşağı salınmadı** — 10 rəqəmi 14 cüt düşəndə də
+   eyni idi; dəyişən **rənglər** oldu. `SERIES[1..5]` hər iki rejimdə tərpəndi, `SERIES[0]`
+   (`--accent`) və `INK_FAINT` **toxunulmadı**. Seçim meyarı: **köhnə palitradan ən böyük sürüşməni
+   MİNİMALLAŞDIRMAQ** (ayırmanı maksimallaşdırmaq optimizatoru işıqlığın uclarına itələyir və
+   məhsulu tanınmaz edir). Əldə olunan **`MARGIN`** kimi pinlənir: ən yaxın cüt açıqda
+   `SERIES[2]`/`SERIES[5]` **12.12** (tritanopiya), qaranlıqda `SERIES[1]`/`SERIES[5]` **12.01**
+   (deuteranopiya) — çünki `>=` 12.12 ilə 40-ı ayırd edə bilmir. Pin **çoxluqdur**: pəncərə ΔE00-da
+   **0.2**, ΔL\*-da **0.1**, və açıqda **dörd** cüt onun içindədir (12.123 · 12.161 · 12.208 ·
+   12.275); tək qalib yazmaq bir 8-bitlik təkanla çevrilən tələ olardı. Pəncərənin eni də özbaşına
+   deyil: 0.1-də kəsim növbəti cütdən cəmi **0.052** aralı düşürdü, yəni tələ çoxluğun kənarına
+   köçürdü. İndi `GAP` hər kəsimdən sonra **0.25** təmiz su tələb edir, və `TIE` ilə `GAP`
+   sintetik cütlərlə (`WINDOW_PROBES`) öz rəqəmlərinə bağlanıb — onlarsız `GAP = 0` və
+   `TIE.grey = 0.05` heç bir testin görmədiyi bir-rəqəmli redaktələr idi.
+2. **Boz-ton / monoxrom çap — indi ayrıca hədlə örtülüdür.** Hər dixromatiya modeli işıqlılığı
+   **saxlayır**, ona görə rəng testi boz-tonda birləşməni prinsipcə görə bilmir: köhnə dəstin
+   **ΔL\* 0.4**-lük cütü deutan altında 28.93 alıb hər şeyi keçirdi. Həmin cüt indi yeni testin
+   **müsbət kontroludur** — ΔL\* həddini **düşürməli**, ΔE00 həddini isə **keçməlidir**. Ən pis
+   ΔL\* indi **5.04** (açıq) və **5.11** (qaranlıq), hədd **4.5**-dədir: 5 yox, çünki yarım bal
+   artıq marja palitranı ΔE00 29.2 sürüşdürür, 5.05-ə qarşı 5 iddia etmək isə tələb yox, tələ olardı.
+3. **Altıncı rəng ox xəttindən ayrıldı.** `AXIS` tokeni `INK_FAINT` ilə **eyni baytlardır**, və
+   yenidən seçilmiş palitra altı rəngi bərabər işıqlıq nərdivanına düzəndə son pillə elə ox
+   rənginin üstünə düşdü: qaranlıqda **ΔE00 0.91**, açıqda **1.76** — altıncı data xətti qrafikin
+   öz cizgisinin içində itirdi. Qoruyucu bunu görmürdü, çünki `S5`/`INK_FAINT` cütü **qəsdən**
+   kənarlaşdırılmışdı: «katlanmış pie S5-i heç vaxt çəkmir» arqumenti **pie üçün doğru**, ox xətti
+   üçün **yanlışdır**. İndi bütün 21 cüt skorlanır. Düzəliş bahadır və həndəsə səbəbdir: `AXIS`
+   3:1-i keçməli, 4.5:1-dən **aşağı** qalmalıdır (iki test onu hər iki tərəfdən sıxır), yəni bir
+   kontrast — deməli bir işıqlıq — zolağına bağlıdır; S5 də orada idi. Ölçüldü: açıq rejimdə
+   S5 üçün yeganə yer **L\* ≤ 24**, qaranlıqda **L\* ≈ 78 və ya ≥ 90**. Hər iki rejimdə uc seçildi,
+   ona görə S5 **neytral qalır** (açıq `#3D3835`, qaranlıq `#E1E5F0`), amma artıq kətanın ən
+   **sakit** yox, ən **gur** markasıdır — ayrılığın qiyməti budur.
+
+✅ **Bağlanmış köhnə bəndlər**: *trust-ring şiddəti rəng-tək idi* → #37-də hər şiddətə dash +
+tooltip verildi; *sönükləşdirilmiş halqa 3:1-dən aşağı düşürdü* → eyni PR-da sönükləşdirmə **enə**
+keçdi, opaklıq `RING_OPACITY`-də sabit qaldı. *Metrik CIE76 idi* → #38.
 
 `GRAPH_TYPE_COLORS` bu hədə **qarşı ölçülmür** və bu qəsdəndir: doqquz düyün tipinin hər birində
 per-tip ikon + sözlə yazılmış ad var, yəni rəng tək kanal deyil (açıq rejimin 36 düyün cütündən
 11-i hansısa dixromatiyada birləşir, ən pisi ΔE 1.0 — bunlar qüsur deyil).
 
-`HEALTH_COLOR` da ölçülmür, amma **başqa səbəbdən, «qüsur deyil» kimi yox**: halqada nə ikon var,
-nə ad — `ForceGraph.tsx:526-537` sadəcə rəngli `<circle>` çəkir. Ona görə o, yuxarıdakı 2-ci bənddə
-açıq bilet kimi durur. (Halqanın rəngləri **3:1 səth həddinə** qarşı ayrıca ölçülür — ölçülməyən
-yalnız şiddətlərin bir-birindən ΔE ayrılığıdır.) Səbəblər `theme.ts`-də yazılıb ki, növbəti oxucu
+`HEALTH_COLOR` **ayrıca ölçülür**, çünki ödəməli olduğu cümlə başqadır: «bu rənglər bir-birindən
+uzaqdır» yox, «şiddət **nəyəsə** görə ayrıd edilir» — və bunu hue əvəzinə `stroke-dasharray`
+ödəyir. Ölçülmüş vəziyyət: `warn` vs `danger` açıq rejimdə deuteranopiya altında, halqanın
+həqiqətən boyandığı kompozitdə **ΔE00 4.50** — yəni **hələ də həddən aşağı**, dash-ın mövcudluq
+səbəbi budur. (Halqanın rəngləri **3:1 səth həddinə** qarşı da ayrıca ölçülür.)
+Səbəblər `theme.ts`-də yazılıb ki, növbəti oxucu
 qoruyucunu genişləndirib **olmayan** bug-lar bildirməsin.
 
 ---
