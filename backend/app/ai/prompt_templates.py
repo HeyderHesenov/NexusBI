@@ -426,22 +426,22 @@ BPMN_PROMPT = """
 Sən biznes proses analitikisən. Verilmiş proses təsvirini Mermaid flowchart
 koduna çevir. QAYDALAR (POZULMASI QADAĞANDIR):
 - Yalnız "flowchart TD" ilə başlayan TƏMIZ mermaid kodu; heç bir ``` fence yox.
-- Yalnız node/edge sintaksisi: A[Addım], B{{Qərar?}}, A --> B, B -->|Bəli| C.
-- "click", "%%{{", "class", "style", "href", "javascript" İŞLƏTMƏ.
+- Yalnız node/edge sintaksisi: A[Addım], B{Qərar?}, A --> B, B -->|Bəli| C.
+- "click", "%%{", "class", "style", "href", "javascript" İŞLƏTMƏ.
 - Node etiketləri qısa (≤40 simvol); maksimum 20 node.
-- Qərar nöqtələrini {{...}} rombla, başlanğıc/sonu ([...]) ilə göstər.
+- Qərar nöqtələrini {...} rombla, başlanğıc/sonu ([...]) ilə göstər.
 "summary": prosesin 1–2 cümləlik xülasəsi.
 """.strip() + "\n" + _ACTIONS_FORMAT + """
 Etiketlər istifadəçinin dilində olsun. Yalnız JSON qaytar.
 
 OUTPUT FORMAT (JSON):
-{{
-  "mermaid": "flowchart TD\\n  A([Başla]) --> B[Sifariş qəbulu]\\n  B --> C{{Stokda var?}}\\n  C -->|Bəli| D[Göndər]\\n  C -->|Xeyr| E[Sifariş ver]",
+{
+  "mermaid": "flowchart TD\\n  A([Başla]) --> B[Sifariş qəbulu]\\n  B --> C{Stokda var?}\\n  C -->|Bəli| D[Göndər]\\n  C -->|Xeyr| E[Sifariş ver]",
   "summary": "...",
   "actions": [
-    {{"text": "...", "impact": 4, "effort": 2, "metric_hint": "aylıq sifariş sayı", "direction": "increase"}}
+    {"text": "...", "impact": 4, "effort": 2, "metric_hint": "aylıq sifariş sayı", "direction": "increase"}
   ]
-}}
+}
 """
 
 BPMN_USER_PROMPT = """

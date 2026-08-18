@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -51,13 +52,19 @@ _RAW_SYSTEM_PROMPTS = {
     "BPMN_PROMPT": prompt_templates.BPMN_PROMPT,
 }
 
-# Known broken, and this list may only ever SHRINK. Fixing them changes the model
-# input for nine unrelated features, so they are a separate ticket rather than a
-# drive-by in a requirements branch — but they must not multiply in the meantime.
+# Known broken, and this list may only ever SHRINK.
+#
+# Measured 2026-08-18, real gpt-4o calls: for these nine the doubling changes
+# NOTHING the user can see, because chat_json sends
+# response_format={"type": "json_object"} — the structure is constrained server
+# side, and Porter came back with identical keys and force list under both
+# prompts (2 runs each). So fixing them is hygiene, not a bug fix, and it would
+# alter the model input of nine working features at once. BPMN was the exception
+# and is fixed: see test_the_bpmn_example_draws_decisions_as_rhombuses.
 _DOUBLED_BRACE_DEBT = {
     "CHART_SELECTOR_PROMPT", "ROOT_CAUSE_PROMPT", "DASHBOARD_PLANNER_PROMPT",
     "DATA_PREP_PROMPT", "INSIGHT_DIGEST_PROMPT", "DATA_STORY_PROMPT",
-    "SWOT_PROMPT", "PORTER_PROMPT", "BCG_ADVICE_PROMPT", "BPMN_PROMPT",
+    "SWOT_PROMPT", "PORTER_PROMPT", "BCG_ADVICE_PROMPT",
 }
 
 
@@ -94,6 +101,37 @@ def test_a_fixed_prompt_ships_a_json_example_that_is_json(name):
         for kpi in example["kpis"]:
             unknown = set(kpi) - set(KpiItem.model_fields)
             assert not unknown, f"prompt advertises keys KpiItem lacks: {sorted(unknown)}"
+
+
+def test_the_bpmn_example_draws_decisions_as_rhombuses():
+    """In mermaid `{...}` is the decision rhombus; `{{...}}` is a HEXAGON.
+
+    So BPMN's doubled braces were never only a formatting slip — they also told
+    the model to draw every decision with the wrong shape, and it obeyed:
+    measured 2026-08-18 with real gpt-4o calls, the doubled example produced
+    `C{{Stokda var?}}` in the generated mermaid 3 times out of 3, the un-doubled
+    one produced `C{Stokda var?}` 3 out of 3.
+
+    This cannot be folded into the JSON-parse guard above. The mermaid lives
+    INSIDE a JSON string, where a doubled brace is still perfectly valid JSON —
+    that guard would stay green while every generated diagram drew hexagons.
+    """
+    _, marker, block = prompt_templates.BPMN_PROMPT.partition("OUTPUT FORMAT (JSON):")
+    assert marker, "BPMN prompt lost its OUTPUT FORMAT block"
+    mermaid = json.loads(block)["mermaid"]
+
+    assert "{{" not in mermaid and "}}" not in mermaid, (
+        f"the example draws hexagons, not decisions: {mermaid!r}"
+    )
+    # Positive control: an example with no decision node at all would satisfy the
+    # assertion above while teaching the model nothing about rhombuses.
+    assert re.search(r"\w\{[^{}]+\}", mermaid), "the example shows no decision node"
+
+    # The prose must agree with the syntax it describes, or the model is given two
+    # different answers and the example is only one of them.
+    rules = prompt_templates.BPMN_PROMPT
+    assert "{...} rombla" in rules, "the rule text still names the wrong shape"
+    assert '"%%{"' in rules, "the forbidden-directive token is not what mermaid parses"
 
 
 def test_rule_based_extraction():
