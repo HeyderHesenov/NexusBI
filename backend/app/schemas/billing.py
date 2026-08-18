@@ -20,6 +20,14 @@ class UsageResponse(BaseModel):
     remaining: int
     period_start: str | None = None
     resets_at: str | None = None
+    # Which upgrade path the client should offer. Sent with usage because the
+    # pricing page already fetches it and must decide before rendering.
+    payments_enabled: bool = False
+    # An ACTIVE subscription (plan changes go through the portal) versus merely
+    # having paid once (the portal itself stays reachable, since a customer
+    # outlives their subscription).
+    has_subscription: bool = False
+    has_billing_account: bool = False
 
 
 class UpgradeRequest(BaseModel):

@@ -62,6 +62,11 @@ def test_execute_select_is_only_called_from_query_service():
 _UNLIMITED_MUTATING_ROUTES = frozenset({
     "POST /api/v1/auth/google",
     "POST /api/v1/billing/checkout",
+    # Stripe delivers from a shared pool of IPs and batches invoices at the
+    # top of a billing cycle, so an IP limit here drops entitlement changes
+    # for unrelated customers. The signature is the gate (billing.webhook),
+    # and an unsigned request never reaches a write.
+    "POST /api/v1/billing/webhook",
     "POST /api/v1/billing/upgrade",
     "PUT /api/v1/brand",
     "POST /api/v1/chat/ai/approve",

@@ -9,15 +9,50 @@ const HIGHLIGHT = 'max' // visually featured plan
 
 export function PricingPage() {
   const { t } = useTranslation()
-  const { plans, usage, loading, loadPlans, loadUsage, upgrade } = useBillingStore()
+  const { plans, usage, loading, loadPlans, loadUsage, upgrade, startCheckout, openPortal, armButtons } =
+    useBillingStore()
 
   useEffect(() => {
     loadPlans().catch(() => undefined)
     loadUsage().catch(() => undefined)
   }, [loadPlans, loadUsage])
 
+  // Leaving for Stripe deliberately leaves the buttons disabled, but the browser
+  // serves this page from bfcache on Back — same React tree, same store, so
+  // nothing re-mounts and every button would stay dead until a hard reload.
+  useEffect(() => {
+    const restored = (e: PageTransitionEvent) => {
+      if (e.persisted) armButtons()
+    }
+    window.addEventListener('pageshow', restored)
+    return () => window.removeEventListener('pageshow', restored)
+  }, [armButtons])
+
   const currentTier = usage?.tier ?? 'free'
   const unlimited = (usage?.limit ?? 0) < 0
+  const paid = usage?.payments_enabled ?? false
+  const subscribed = usage?.has_subscription ?? false
+  // A customer OUTLIVES their subscription — after cancelling they still have
+  // invoices to read and a card to update, so the portal stays reachable.
+  const billingAccount = usage?.has_billing_account ?? false
+
+  // Three buttons, one decision, made from what the server reports rather than
+  // from a build-time flag: with Stripe configured a paid plan starts a real
+  // checkout and LEAVING a paid plan happens in Stripe's portal, because a
+  // subscription the customer still pays for cannot be cancelled by us flipping
+  // a column. Without Stripe (demo) the existing mock stays.
+  const select = (planKey: string) => {
+    if (!paid) return upgrade(planKey)
+    // While a subscription is live, EVERY change goes through the portal: a
+    // second checkout session does not replace the first, Stripe bills both.
+    if (subscribed) return openPortal()
+    return startCheckout(planKey)
+  }
+
+  // A button that does nothing reads as a broken app. With payments on, the free
+  // plan is only actionable for someone who has something to cancel.
+  const actionable = (planKey: string, price: number) =>
+    !paid || price > 0 || subscribed || planKey === currentTier
 
   return (
     <div className="w-full">
@@ -48,11 +83,27 @@ export function PricingPage() {
             plan={plan}
             current={plan.key === currentTier}
             featured={plan.key === HIGHLIGHT}
-            loading={loading}
-            onSelect={() => upgrade(plan.key)}
+            loading={loading || !actionable(plan.key, plan.price_usd)}
+            onSelect={() => select(plan.key)}
           />
         ))}
       </div>
+
+      {subscribed && (
+        <p className="mt-4 text-center text-xs text-ink-faint">{t('pricingPage.planChangeHint')}</p>
+      )}
+
+      {billingAccount && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => openPortal()}
+            disabled={loading}
+            className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-60"
+          >
+            {t('pricingPage.manageSubscription')}
+          </button>
+        </div>
+      )}
 
       {usage && !unlimited && (
         <p className="mt-6 text-center font-mono text-xs text-ink-faint">

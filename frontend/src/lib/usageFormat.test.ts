@@ -10,6 +10,9 @@ const usage = (over: Partial<Usage>): Usage => ({
   remaining: 300,
   period_start: null,
   resets_at: null,
+  payments_enabled: false,
+  has_subscription: false,
+  has_billing_account: false,
   ...over,
 })
 

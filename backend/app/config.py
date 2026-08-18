@@ -167,6 +167,10 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = Field(default="")
     STRIPE_SUCCESS_URL: str = Field(default="http://localhost:5173/pricing?paid=1")
     STRIPE_CANCEL_URL: str = Field(default="http://localhost:5173/pricing")
+    # The endpoint secret (whsec_…) shown when the webhook is created. Unset
+    # means the webhook refuses everything — see billing.stripe_signature.
+    STRIPE_WEBHOOK_SECRET: str = Field(default="")
+    STRIPE_PORTAL_RETURN_URL: str = Field(default="http://localhost:5173/pricing")
 
     # ─── Workflow integrations (Slack / Teams / email) — mock-first ───
     # When False, channel deliveries are mocked (logged) so demo never makes
