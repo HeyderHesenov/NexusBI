@@ -7,8 +7,9 @@ import { formatNumber } from '../lib/format'
 import { Sparkline } from '../components/charts/Sparkline'
 import { RevealText } from '../components/charts/RevealText'
 import { FIELD } from '../components/ui/form'
+import { ImpactBadge } from '../components/decision/ImpactBadge'
 import * as decisionApi from '../api/decision'
-import type { Decision, DecisionStatus, DecisionTrajectory, ImpactStatus } from '../types'
+import type { Decision, DecisionStatus, DecisionTrajectory } from '../types'
 
 // recharts is heavy — keep it out of the Decisions bundle until a card is expanded.
 const TrajectoryChart = lazy(() =>
@@ -25,14 +26,6 @@ const STATUS_STYLE: Record<DecisionStatus, string> = {
   open: 'border-line text-ink-soft',
   in_progress: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
   done: 'border-accent/40 bg-accent-soft text-accent',
-}
-
-const IMPACT: Record<ImpactStatus, { labelKey: string; cls: string }> = {
-  pending: { labelKey: 'decisionsPage.impactPending', cls: 'border-line text-ink-faint' },
-  on_track: { labelKey: 'decisionsPage.impactOnTrack', cls: 'border-accent/40 bg-accent-soft text-accent' },
-  achieved: { labelKey: 'decisionsPage.impactAchieved', cls: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' },
-  missed: { labelKey: 'decisionsPage.impactMissed', cls: 'border-amber-500/40 bg-amber-500/10 text-amber-300' },
-  regressed: { labelKey: 'decisionsPage.impactRegressed', cls: 'border-red-500/40 bg-red-500/10 text-red-400' },
 }
 
 const fmt = (n: number | null) => (n == null ? '—' : formatNumber(n, { compact: true, decimals: 2 }))
@@ -136,7 +129,6 @@ function DecisionCard({
     }
   }
 
-  const impact = IMPACT[d.impact_status]
   const delta =
     d.baseline_value != null && d.realized_value != null && d.baseline_value !== 0
       ? ((d.realized_value - d.baseline_value) / Math.abs(d.baseline_value)) * 100
@@ -170,7 +162,7 @@ function DecisionCard({
       {tracked && (
         <div className="mt-3 rounded-xl border border-line bg-surface-2/50 p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className={`rounded-full border px-2 py-0.5 text-xs ${impact.cls}`}>{t(impact.labelKey)}</span>
+            <ImpactBadge status={d.impact_status} />
             <button
               onClick={doMeasure}
               disabled={busy}

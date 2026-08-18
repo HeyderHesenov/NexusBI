@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { trajectoryRows } from './trajectory'
+import { staleAsOf, trajectoryRows } from './trajectory'
 import type { DecisionTrajectory } from '../types'
 
 const pt = (id: string, measured_at: string, value: number, data_as_of: string | null = null) => ({
@@ -76,5 +76,23 @@ describe('trajectoryRows', () => {
     it('ignores an unparseable stamp instead of rendering NaN', () => {
       expect(rowsFor('2026-01-10T12:00:00Z', 'not-a-date')[0].asOf).toBeUndefined()
     })
+  })
+})
+
+describe('staleAsOf', () => {
+  // Absolute stamps, never Date.now() arithmetic: a case written as
+  // `now - STALE_AFTER_MS` moves with the threshold and cannot notice it change.
+  const TAKEN = '2026-01-10T12:00:00Z'
+
+  it('reports the data age when the number is materially older than the reading', () => {
+    expect(staleAsOf(TAKEN, '2026-01-10T09:00:00Z')).toBe('2026-01-10T09:00:00Z')
+  })
+
+  it('stays quiet when the number is essentially as fresh as the reading', () => {
+    expect(staleAsOf(TAKEN, '2026-01-10T11:59:30Z')).toBeUndefined()
+  })
+
+  it('treats an unknown age as unknown, not as equal', () => {
+    expect(staleAsOf(TAKEN, null)).toBeUndefined()
   })
 })

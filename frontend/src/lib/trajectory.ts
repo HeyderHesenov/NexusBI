@@ -55,7 +55,7 @@ export function trajectoryRows(trajectory: DecisionTrajectory): TrajectoryRow[] 
  *  would otherwise plot a day-old number on today's tick with nothing saying so.
  *  `null` means unknown (a row written before the column existed) and must not be
  *  shown as if it were equal. */
-function staleAsOf(measuredAt: string, dataAsOf: string | null): string | undefined {
+export function staleAsOf(measuredAt: string, dataAsOf: string | null): string | undefined {
   if (!dataAsOf) return undefined
   // `parseInstant`, not `Date.parse`: both stamps happen to share a convention
   // today (same column type, same serializer), so the raw difference is right by

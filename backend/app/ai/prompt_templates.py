@@ -209,15 +209,22 @@ biznes tələbləri) ÖLÇÜLƏ BİLƏN KPI-ları çıxar.
   - question: təbii dildə analitik sual (dashboard onu icra edəcək)
   - rationale: niyə vacibdir (bir cümlə)
   - requirement_ref: mətndən qısa istinad/sitat (hansı tələbdən gəlir)
+  - target_value: tələbdə AÇIQ yazılmış rəqəmsal hədəf (yoxdursa null).
+      Yalnız mətndəki rəqəmi götür — TƏXMİN ETMƏ, uydurma.
+      Faizi olduğu kimi yaz: "15%" → 15 (0.15 YOX).
+      Diapazon verilibsə ("10–20") null qaytar.
+  - direction: hədəfə çatmaq üçün metrik hansı istiqamətə getməlidir —
+      "increase" və ya "decrease". Bilinmirsə null.
 İstifadəçi hansı dildə yazıbsa, o dildə cavab ver.
 
 OUTPUT FORMAT (JSON):
-{{
+{
   "kpis": [
-    {{"name": "Aylıq gəlir", "question": "Aylıq gəlir trendi necədir?",
-      "rationale": "Gəlir artımını izləmək üçün", "requirement_ref": "gəlir artımı izlənməli"}}
+    {"name": "Aylıq gəlir", "question": "Aylıq gəlir trendi necədir?",
+     "rationale": "Gəlir artımını izləmək üçün", "requirement_ref": "gəlir artımı izlənməli",
+     "target_value": 15, "direction": "increase"}
   ]
-}}
+}
 """.strip()
 
 REQUIREMENTS_USER_PROMPT = """
