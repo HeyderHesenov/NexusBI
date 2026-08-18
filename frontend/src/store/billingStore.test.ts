@@ -63,9 +63,25 @@ describe('billingStore.startCheckout', () => {
   })
 
   it('leaves the button disabled after a successful hand-off', async () => {
+    // The tab is on its way to Stripe; re-arming here invites a second session.
     checkout.mockResolvedValue('https://checkout.stripe.test/c/pay_1')
     await useBillingStore.getState().startCheckout('pro')
     expect(useBillingStore.getState().loading).toBe(true)
+  })
+
+  it('is re-armed by armButtons, which is the way back', async () => {
+    // Back from Stripe is a bfcache restore: same store, nothing remounts, so
+    // without this the whole pricing page comes back dead. PricingPage calls
+    // this from `pageshow`.
+    checkout.mockResolvedValue('https://checkout.stripe.test/c/pay_1')
+    await useBillingStore.getState().startCheckout('pro')
+    expect(useBillingStore.getState().loading).toBe(true)
+
+    useBillingStore.getState().armButtons()
+    expect(useBillingStore.getState().loading).toBe(false)
+
+    await useBillingStore.getState().startCheckout('max')
+    expect(checkout).toHaveBeenCalledTimes(2)
   })
 })
 

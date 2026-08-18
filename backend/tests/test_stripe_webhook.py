@@ -6,6 +6,7 @@ so these tests exercise the real verification path rather than bypassing it.
 from __future__ import annotations
 
 import json
+import time
 
 import pytest
 from sqlalchemy import select
@@ -64,14 +65,16 @@ async def _post(client, body: bytes, header: str | None = None):
     )
 
 
-def _checkout(user_id: str, tier: str = "pro") -> bytes:
+def _checkout(user_id: str, tier: str = "pro", **over) -> bytes:
     return _event(
         "checkout.session.completed",
         {
             "client_reference_id": user_id,
             "customer": "cus_1",
             "subscription": "sub_1",
+            "payment_status": "paid",
             "metadata": {"tier": tier},
+            **over,
         },
     )
 
@@ -229,3 +232,86 @@ async def test_a_signed_body_that_is_not_json_is_refused(client):
     body = b"not json at all"
     resp = await _post(client, body)
     assert resp.status_code == 400
+
+
+# ─── review findings ───
+
+@pytest.mark.parametrize("status", ["unpaid", "no_payment_required", None, ""])
+async def test_only_a_paid_session_grants_the_tier(client, auth, status):
+    """`checkout.session.completed` also fires for delayed-notification methods
+    (SEPA, Bacs, Boleto) with the money not yet taken — the arrival signal there
+    is `async_payment_succeeded`. Payment methods are enabled in Stripe's
+    dashboard, so without this check switching one on there would quietly turn
+    checkout into "start it, get the tier, never pay"."""
+    user = await _user(client, auth)
+    body = _checkout(user.id, payment_status=status)
+    assert (await _post(client, body)).status_code == 200
+
+    expected = "pro" if status == "no_payment_required" else "free"
+    assert (await _reload(user.id)).subscription_tier == expected
+
+
+async def test_a_session_without_a_subscription_grants_nothing(client, auth):
+    """A grant that cannot be reversed is worse than no grant.
+
+    `_cancelled` matches on the subscription id, so a session that carries none —
+    mode=payment, a dashboard Payment Link, a replayed event with a trimmed
+    object — would leave the user on a paid tier no webhook could take back.
+    """
+    user = await _user(client, auth)
+    resp = await _post(client, _checkout(user.id, subscription=None))
+    assert resp.status_code == 200
+    fresh = await _reload(user.id)
+    assert fresh.subscription_tier == "free"
+    assert fresh.stripe_subscription_id is None
+
+
+async def test_a_plan_switch_inside_the_portal_is_logged_not_silently_dropped(client, auth):
+    """`customer.subscription.updated` is deliberately unhandled, and that is
+    only safe while the portal cannot switch plans (checkout builds inline
+    price_data, which the portal cannot offer). The acknowledgement stays 200."""
+    await _user(client, auth)
+    resp = await _post(client, _event("customer.subscription.updated", {"id": "sub_1"}))
+    assert resp.status_code == 200
+
+
+async def test_an_oversized_body_is_refused_before_it_is_read(client, auth):
+    """Unauthenticated AND exempt from the IP rate limit, so an unbounded read
+    buffers whatever anyone sends before a byte of it is authenticated."""
+    user = await _user(client, auth)
+    body = _checkout(user.id)
+    resp = await client.post(
+        WEBHOOK,
+        content=body,
+        headers={
+            "Stripe-Signature": sign(body, SECRET),
+            "Content-Type": "application/json",
+            "Content-Length": str(2_000_000),
+        },
+    )
+    assert resp.status_code == 413
+    assert (await _reload(user.id)).subscription_tier == "free"
+
+
+async def test_a_mangled_signature_header_is_a_refusal_not_a_crash(client, auth):
+    """`hmac.compare_digest` raises TypeError on a non-ASCII str: uncaught, an
+    unauthenticated request turns into a 500 anyone can trigger at will.
+
+    Sent as BYTES on purpose. An HTTP header cannot carry non-ASCII text, and a
+    client that builds one from a `str` refuses before it reaches the wire — so
+    a test written that way proves nothing about the server. High bytes on the
+    wire are legal, and ASGI decodes them latin-1, which is exactly how a
+    non-ASCII `str` lands in the verifier.
+    """
+    user = await _user(client, auth)
+    body = _checkout(user.id)
+    resp = await client.post(
+        WEBHOOK,
+        content=body,
+        headers={
+            b"Stripe-Signature": b"t=%d,v1=" % int(time.time()) + b"\xfc" * 64,
+            b"Content-Type": b"application/json",
+        },
+    )
+    assert resp.status_code == 400, resp.text
+    assert (await _reload(user.id)).subscription_tier == "free"

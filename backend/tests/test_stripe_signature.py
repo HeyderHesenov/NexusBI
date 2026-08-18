@@ -87,10 +87,23 @@ def test_during_a_secret_rotation_any_candidate_may_match():
     verify(BODY, header, SECRET)
 
 
-def test_a_candidate_of_the_wrong_length_does_not_crash_the_compare():
+@pytest.mark.parametrize(
+    "candidate",
+    [
+        "abc",                # too short
+        "ü" * 64,             # RIGHT length, non-ASCII: compare_digest RAISES on this
+        "z" * 64,             # right length, not hex
+        "üstü" * 16,
+        "",
+    ],
+)
+def test_a_malformed_candidate_is_a_refusal_not_a_crash(candidate):
+    """`hmac.compare_digest` raises TypeError on a non-ASCII str, and this
+    endpoint is unauthenticated: an exception that is not SignatureError leaves
+    the 400 path and becomes a 500 anyone can trigger at will."""
     ts = int(time.time())
     with pytest.raises(SignatureError):
-        verify(BODY, f"t={ts},v1=abc", SECRET)
+        verify(BODY, f"t={ts},v1={candidate}", SECRET)
 
 
 @pytest.mark.parametrize(

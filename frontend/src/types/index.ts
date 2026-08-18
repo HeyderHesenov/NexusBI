@@ -402,8 +402,11 @@ export interface Usage {
   resets_at: string | null
   /** Stripe is configured server-side, so real checkout exists. */
   payments_enabled: boolean
-  /** The user has a Stripe customer, i.e. they have paid at least once. */
+  /** An ACTIVE subscription: every plan change has to go through the portal. */
   has_subscription: boolean
+  /** A Stripe customer exists — it outlives the subscription, so the portal
+   *  stays reachable after a cancellation (invoices, card on file). */
+  has_billing_account: boolean
 }
 
 export interface AuthProviders {

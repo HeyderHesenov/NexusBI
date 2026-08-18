@@ -578,6 +578,7 @@
     "total": "Total"
   },
   "pricingPage": {
+    "planChangeHint": "To change plan, cancel the current subscription in the portal first.",
     "manageSubscription": "Manage subscription",
     "currentPlan": "Current plan",
     "demoUnlimitedLabel": "Demo · Unlimited",

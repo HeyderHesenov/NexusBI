@@ -37,6 +37,24 @@ async def _by_customer(db: AsyncSession, customer_id: str | None) -> User | None
 
 async def _granted(db: AsyncSession, obj: dict[str, Any]) -> str:
     """checkout.session.completed — the only place a paid tier is granted."""
+    # This event also fires for delayed-notification methods (SEPA, Bacs, Boleto,
+    # several bank redirects) with the money not yet taken; the arrival signal
+    # there is `async_payment_succeeded`. Since payment methods are switched on in
+    # Stripe's dashboard rather than in this code, without this check enabling one
+    # there would quietly turn checkout into "start it, get the tier, never pay".
+    if str(obj.get("payment_status") or "") not in ("paid", "no_payment_required"):
+        _log.info("stripe_session_not_paid", status=str(obj.get("payment_status"))[:32])
+        return "not_paid"
+
+    subscription_id = str(obj.get("subscription") or "")
+    if not subscription_id:
+        # A grant that cannot be reversed is worse than no grant: `_cancelled`
+        # matches on the subscription id, so a session without one (mode=payment,
+        # a dashboard Payment Link, a trimmed replay) would leave the user on a
+        # paid tier no webhook could ever take back.
+        _log.warning("stripe_session_without_subscription")
+        return "no_subscription"
+
     tier = str((obj.get("metadata") or {}).get("tier") or "")
     if tier not in PURCHASABLE:
         # The same rule /billing/upgrade enforces: `metadata` is client-shaped
@@ -57,7 +75,7 @@ async def _granted(db: AsyncSession, obj: dict[str, Any]) -> str:
         return "unknown_user"
 
     user.stripe_customer_id = str(obj.get("customer") or "") or user.stripe_customer_id
-    user.stripe_subscription_id = str(obj.get("subscription") or "") or None
+    user.stripe_subscription_id = subscription_id
     user.subscription_tier = tier
     await db.flush()
     _log.info("stripe_tier_granted", user_id=user.id, tier=tier)
@@ -120,4 +138,13 @@ async def apply(db: AsyncSession, event: dict[str, Any]) -> str:
         return await _cancelled(db, obj)
     if event_type == "invoice.payment_failed":
         return await _payment_failed(db, obj)
+    if event_type == "customer.subscription.updated":
+        # Deliberately not handled, and logged rather than dropped silently: a
+        # plan switch inside the Billing Portal would arrive HERE and nowhere
+        # else. It cannot happen with the current configuration — checkout builds
+        # inline `price_data`, and the portal can only switch between prices
+        # configured as products — so the portal must keep plan switching off.
+        # If that ever changes, this log is the first place it shows up.
+        _log.info("stripe_subscription_updated_unhandled", id=str(obj.get("id"))[:64])
+        return "ignored_update"
     return "ignored_type"

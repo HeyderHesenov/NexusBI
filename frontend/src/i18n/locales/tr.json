@@ -578,6 +578,7 @@
     "total": "Toplam"
   },
   "pricingPage": {
+    "planChangeHint": "Planı değiştirmek için önce mevcut aboneliği portalda iptal et.",
     "manageSubscription": "Aboneliği yönet",
     "currentPlan": "Mevcut plan",
     "demoUnlimitedLabel": "Demo · Sınırsız",

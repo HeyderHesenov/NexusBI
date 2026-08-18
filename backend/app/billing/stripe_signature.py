@@ -14,12 +14,19 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 import time
 
 # Stripe's own libraries default to five minutes. Both sides matter: a window
 # that only bounds the past accepts a signature minted with a far-future `t`,
 # which is a replay token with an expiry date the attacker chooses.
 TOLERANCE_SECONDS = 300
+
+# A v1 candidate is a SHA-256 digest in hex and nothing else. Checked before the
+# comparison, because `hmac.compare_digest` RAISES TypeError on a non-ASCII str
+# — on an unauthenticated endpoint that turns a mangled header into a 500 and,
+# for a real delivery, into three days of Stripe retrying an error we caused.
+_HEX_DIGEST = re.compile(r"\A[0-9a-fA-F]{64}\Z")
 
 
 class SignatureError(Exception):
@@ -70,5 +77,5 @@ def verify(raw_body: bytes, header: str, secret: str, *, now: float | None = Non
     ).hexdigest()
     # compare_digest over every candidate: during a secret rotation Stripe signs
     # one delivery with each active endpoint secret.
-    if not any(hmac.compare_digest(expected, c) for c in candidates):
+    if not any(_HEX_DIGEST.match(c) and hmac.compare_digest(expected, c) for c in candidates):
         raise SignatureError("Stripe imzası uyğun gəlmir.")

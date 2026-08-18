@@ -5,6 +5,7 @@ import type { Plan, Usage } from '../types'
 const upgrade = vi.fn()
 const startCheckout = vi.fn()
 const openPortal = vi.fn()
+const armButtons = vi.fn()
 const loadPlans = vi.fn()
 const loadUsage = vi.fn()
 
@@ -34,6 +35,7 @@ const usage = (over: Partial<Usage> = {}): Usage => ({
   resets_at: null,
   payments_enabled: false,
   has_subscription: false,
+  has_billing_account: false,
   ...over,
 })
 
@@ -41,6 +43,7 @@ const setup = (over: Partial<Usage> = {}) => {
   upgrade.mockReset()
   startCheckout.mockReset()
   openPortal.mockReset()
+  armButtons.mockReset()
   state = {
     plans: [plan('free', 0), plan('pro', 20)],
     usage: usage(over),
@@ -50,6 +53,7 @@ const setup = (over: Partial<Usage> = {}) => {
     upgrade,
     startCheckout,
     openPortal,
+    armButtons,
   }
   return render(<PricingPage />)
 }
@@ -80,19 +84,47 @@ describe('PricingPage payment path', () => {
     expect(startCheckout).not.toHaveBeenCalled()
   })
 
-  it('cancels through the portal instead of flipping the column locally', () => {
-    // Choosing Free while paying is a CANCELLATION. The mock upgrade would set
-    // the tier while Stripe kept billing — the two would disagree until someone
-    // noticed on the invoice.
-    setup({ payments_enabled: true, has_subscription: true, tier: 'pro' })
+  it('sends every change through the portal while a subscription is live', () => {
+    // Choosing Free while paying is a CANCELLATION, and choosing another paid
+    // plan is a SWITCH — Stripe does not replace a subscription when a second
+    // session completes, it bills both. Both belong in the portal.
+    setup({ payments_enabled: true, has_subscription: true, has_billing_account: true, tier: 'pro' })
     fireEvent.click(screen.getByRole('button', { name: SWITCH }))
-
     expect(openPortal).toHaveBeenCalled()
     expect(upgrade).not.toHaveBeenCalled()
+    expect(startCheckout).not.toHaveBeenCalled()
+  })
+
+  it('does not offer a dead button when there is nothing to switch to', () => {
+    // payments on, no customer, tier set outside Stripe (demo upgrade, or by
+    // hand): "Switch to Free" had nothing to call and said nothing about it.
+    setup({ payments_enabled: true, has_subscription: false, tier: 'pro' })
+    expect(screen.getByRole('button', { name: SWITCH })).toBeDisabled()
+  })
+
+  it('re-arms the buttons when the browser restores the page from bfcache', () => {
+    // Back from Stripe restores this exact tree — same store, nothing remounts —
+    // so without this the page comes back with every button dead.
+    setup({ payments_enabled: true })
+    window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }))
+    expect(armButtons).toHaveBeenCalled()
+  })
+
+  it('does not re-arm on an ordinary load', () => {
+    setup({ payments_enabled: true })
+    window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: false }))
+    expect(armButtons).not.toHaveBeenCalled()
   })
 
   it('offers the portal to a subscriber', () => {
-    setup({ payments_enabled: true, has_subscription: true, tier: 'pro' })
+    setup({ payments_enabled: true, has_subscription: true, has_billing_account: true, tier: 'pro' })
+    fireEvent.click(screen.getByRole('button', { name: MANAGE }))
+    expect(openPortal).toHaveBeenCalled()
+  })
+
+  it('keeps the portal reachable after a cancellation', () => {
+    // The customer outlives the subscription: invoices to read, a card on file.
+    setup({ payments_enabled: true, has_subscription: false, has_billing_account: true })
     fireEvent.click(screen.getByRole('button', { name: MANAGE }))
     expect(openPortal).toHaveBeenCalled()
   })

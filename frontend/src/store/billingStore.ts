@@ -16,6 +16,8 @@ interface BillingState {
   startCheckout: (tier: string) => Promise<void>
   /** Stripe's hosted portal — the only place a customer can cancel or fix a card. */
   openPortal: () => Promise<void>
+  /** Re-enable the buttons after a hand-off the user came back from. */
+  armButtons: () => void
 }
 
 /** Hop to a hosted payment page. One named seam rather than two inline calls:
@@ -42,7 +44,8 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     set({ loading: true })
     try {
       // No `finally { loading: false }` on the success path: the tab is leaving,
-      // and re-enabling the button first invites a second checkout session.
+      // and re-enabling the button first invites a second checkout session. The
+      // way BACK is `armButtons`, called on bfcache restore — see PricingPage.
       leaveTo(await billingApi.checkout(tier))
     } catch {
       set({ loading: false }) // stayed on the page — the error toast came from the interceptor
@@ -57,6 +60,7 @@ export const useBillingStore = create<BillingState>((set, get) => ({
       set({ loading: false })
     }
   },
+  armButtons: () => set({ loading: false }),
   upgrade: async (tier) => {
     set({ loading: true })
     try {

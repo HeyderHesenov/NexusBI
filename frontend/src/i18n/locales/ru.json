@@ -578,6 +578,7 @@
     "total": "Итого"
   },
   "pricingPage": {
+    "planChangeHint": "Чтобы сменить план, сначала отмените текущую подписку в портале.",
     "manageSubscription": "Управление подпиской",
     "currentPlan": "Текущий тариф",
     "demoUnlimitedLabel": "Демо · Без ограничений",
