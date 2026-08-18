@@ -6,7 +6,7 @@ import json
 import pytest
 
 from app.ai import requirements
-from app.ai.prompt_templates import REQUIREMENTS_PROMPT
+from app.ai import prompt_templates
 from app.ai.types import ChartConfig, Text2SQLResult
 from app.schemas.requirement import KpiItem
 from app.services import query_service
@@ -32,25 +32,68 @@ def _mock_ai(monkeypatch):
     monkeypatch.setattr(query_service, "generate_insight", fake_insight)
 
 
-def test_requirements_prompt_ships_a_json_example_that_is_json():
+# Every prompt constant handed to chat_json as the SYSTEM message, i.e. never
+# passed through .format(). Whatever braces are in the source are literally what
+# the model reads, so a `{{` escape here is not an escape — it is a JSON example
+# that is not JSON. (SQL_REPAIR_SYSTEM_PROMPT is absent on purpose: it genuinely
+# is .format()ed at text2sql.py:74, so its doubling is correct.)
+_RAW_SYSTEM_PROMPTS = {
+    "REQUIREMENTS_PROMPT": prompt_templates.REQUIREMENTS_PROMPT,
+    "CHART_SELECTOR_PROMPT": prompt_templates.CHART_SELECTOR_PROMPT,
+    "ROOT_CAUSE_PROMPT": prompt_templates.ROOT_CAUSE_PROMPT,
+    "DASHBOARD_PLANNER_PROMPT": prompt_templates.DASHBOARD_PLANNER_PROMPT,
+    "DATA_PREP_PROMPT": prompt_templates.DATA_PREP_PROMPT,
+    "INSIGHT_DIGEST_PROMPT": prompt_templates.INSIGHT_DIGEST_PROMPT,
+    "DATA_STORY_PROMPT": prompt_templates.DATA_STORY_PROMPT,
+    "SWOT_PROMPT": prompt_templates.SWOT_PROMPT,
+    "PORTER_PROMPT": prompt_templates.PORTER_PROMPT,
+    "BCG_ADVICE_PROMPT": prompt_templates.BCG_ADVICE_PROMPT,
+    "BPMN_PROMPT": prompt_templates.BPMN_PROMPT,
+}
+
+# Known broken, and this list may only ever SHRINK. Fixing them changes the model
+# input for nine unrelated features, so they are a separate ticket rather than a
+# drive-by in a requirements branch — but they must not multiply in the meantime.
+_DOUBLED_BRACE_DEBT = {
+    "CHART_SELECTOR_PROMPT", "ROOT_CAUSE_PROMPT", "DASHBOARD_PLANNER_PROMPT",
+    "DATA_PREP_PROMPT", "INSIGHT_DIGEST_PROMPT", "DATA_STORY_PROMPT",
+    "SWOT_PROMPT", "PORTER_PROMPT", "BCG_ADVICE_PROMPT", "BPMN_PROMPT",
+}
+
+
+def test_the_doubled_brace_debt_only_shrinks():
+    """A ratchet, not a snapshot: a NEW raw prompt with `{{` fails immediately.
+
+    Set equality rather than a count — a count is satisfied by fixing one prompt
+    and breaking another, which is exactly the drift this is here to stop.
+    """
+    actual = {name for name, text in _RAW_SYSTEM_PROMPTS.items() if "{{" in text}
+    assert actual == _DOUBLED_BRACE_DEBT, (
+        "doubled-brace debt changed. Removing a name is the goal — delete it from "
+        f"_DOUBLED_BRACE_DEBT too. Adding one is a regression. Now: {sorted(actual)}"
+    )
+
+
+@pytest.mark.parametrize(
+    "name", sorted(set(_RAW_SYSTEM_PROMPTS) - _DOUBLED_BRACE_DEBT)
+)
+def test_a_fixed_prompt_ships_a_json_example_that_is_json(name):
     """The system prompt reaches the model UNFORMATTED (`ai/requirements.py:67`
     passes it straight to `chat_json`; only the USER prompt gets `.format()`).
-    So whatever braces sit in the source are literally what the model reads —
-    and this block was once escaped `{{`/`}}` for a `.format()` that never
-    happens, i.e. the "OUTPUT FORMAT (JSON)" example was not JSON.
 
-    The key check is deliberate too: an example advertising a key the schema
-    does not have teaches the model to emit a field the normalizer then drops.
+    The key check is deliberate too: an example advertising a key the schema does
+    not have teaches the model to emit a field the normalizer then drops.
     """
-    _, marker, block = REQUIREMENTS_PROMPT.partition("OUTPUT FORMAT (JSON):")
-    assert marker, "prompt lost its OUTPUT FORMAT block — this guard now checks nothing"
+    _, marker, block = _RAW_SYSTEM_PROMPTS[name].partition("OUTPUT FORMAT (JSON):")
+    assert marker, f"{name} lost its OUTPUT FORMAT block — this guard now checks nothing"
 
     example = json.loads(block)  # doubled braces raise here
 
-    assert example["kpis"], "the example must show at least one KPI, else the keys below are vacuous"
-    for kpi in example["kpis"]:
-        unknown = set(kpi) - set(KpiItem.model_fields)
-        assert not unknown, f"prompt advertises keys KpiItem does not have: {sorted(unknown)}"
+    if name == "REQUIREMENTS_PROMPT":
+        assert example["kpis"], "the example must show at least one KPI"
+        for kpi in example["kpis"]:
+            unknown = set(kpi) - set(KpiItem.model_fields)
+            assert not unknown, f"prompt advertises keys KpiItem lacks: {sorted(unknown)}"
 
 
 def test_rule_based_extraction():
