@@ -361,3 +361,122 @@ async def test_listing_does_not_grow_a_query_per_document(client, auth):
     # A literal, not len(docs)+k: a budget expressed in terms of the thing it
     # bounds cannot detect the loop moving inside the per-document iteration.
     assert len(seen) <= 4, f"{len(seen)} SELECTs for one list: {seen}"
+
+
+# ─── regressions found in review ───
+
+async def test_promote_returns_the_verdict_it_just_produced(client, auth):
+    """The response must carry the joined outcome, not just the link.
+
+    The client swaps this document straight into its store. With outcome=null the
+    criterion row falls back to the "enter a target" form, so the verdict would
+    not appear until a full page reload — the feature would look like it did
+    nothing.
+    """
+    doc_id = await _extract(client, auth)
+    resp = await _promote(client, auth, doc_id, target_value=20.0, direction="increase")
+    assert resp.status_code == 201, resp.text
+
+    kpi = resp.json()["requirement"]["kpis"][0]
+    assert kpi["decision_id"] == resp.json()["decision"]["id"]
+    assert kpi["outcome"] is not None, "the promoted KPI came back with no outcome"
+    assert kpi["outcome"]["predicted_value"] == 20.0
+    assert kpi["outcome"]["baseline_value"] is not None
+    # A sibling that was never promoted still has none.
+    assert resp.json()["requirement"]["kpis"][1]["outcome"] is None
+
+
+async def test_a_failed_baseline_can_be_retried(client, auth, monkeypatch):
+    """"Check the source" has to be advice the user can act on.
+
+    A decision whose baseline never captured is permanently unmeasurable —
+    measure() only writes realized_value, and _compute_impact_status stays
+    "pending" while baseline_value is None. So a repeat promote must retry the
+    capture rather than returning the broken decision unchanged.
+    """
+    from app.services import query_service as qs
+
+    real = qs.process_nl_query
+    calls = {"n": 0}
+
+    async def flaky(*a, **kw):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("source unreachable")
+        return await real(*a, **kw)
+
+    monkeypatch.setattr(qs, "process_nl_query", flaky)
+
+    doc_id = await _extract(client, auth)
+    first = await _promote(client, auth, doc_id, target_value=20.0)
+    assert first.status_code == 201, first.text
+    assert first.json()["decision"]["baseline_value"] is None, "expected a failed capture"
+    assert first.json()["requirement"]["kpis"][0]["outcome"]["baseline_value"] is None
+
+    # The user fixes the source and tries again.
+    second = await _promote(client, auth, doc_id, target_value=25.0)
+    assert second.status_code == 201, second.text
+    assert second.json()["decision"]["id"] == first.json()["decision"]["id"], (
+        "retrying must repair the existing decision, not fork a second one"
+    )
+    assert second.json()["decision"]["baseline_value"] is not None
+    # The retry also commits the corrected criterion.
+    assert second.json()["decision"]["predicted_value"] == 25.0
+
+    async with AsyncSessionLocal() as fresh:
+        assert await fresh.scalar(select(func.count()).select_from(Decision)) == 1
+
+
+async def test_a_healthy_decision_is_not_re_measured_by_a_repeat_promote(client, auth):
+    """The retry path must not become a way to re-run the baseline at will."""
+    doc_id = await _extract(client, auth)
+    first = await _promote(client, auth, doc_id, target_value=20.0)
+    baseline_at = first.json()["decision"]["baseline_at"]
+
+    second = await _promote(client, auth, doc_id, target_value=999.0)
+    assert second.json()["decision"]["baseline_at"] == baseline_at
+    assert second.json()["decision"]["predicted_value"] == 20.0, (
+        "an established criterion is not silently re-targeted"
+    )
+
+
+async def test_a_corrupt_stored_value_costs_one_prefill_not_the_whole_list(client, auth):
+    """Bad data drops a field, never a document — and never every document."""
+    doc_id = await _extract(client, auth)
+    async with AsyncSessionLocal() as db:
+        doc = await db.get(RequirementDoc, doc_id)
+        kpis = list(doc.extracted_kpis)
+        kpis[0] = {**kpis[0], "direction": "up", "target_value": "15%"}
+        doc.extracted_kpis = kpis
+        await db.commit()
+
+    resp = await client.get("/api/v1/requirements", headers=auth)
+    assert resp.status_code == 200, resp.text
+    kpis = resp.json()[0]["kpis"]
+    assert kpis[0]["question"] == "Çıxma faizi nədir?", "the KPI itself must survive"
+    assert kpis[0]["direction"] is None and kpis[0]["target_value"] is None
+    assert kpis[1]["question"] == "Aylıq gəlir nədir?"
+
+
+async def test_promoting_does_not_delete_a_non_dict_entry(client, auth):
+    doc_id = await _extract(client, auth)
+    async with AsyncSessionLocal() as db:
+        doc = await db.get(RequirementDoc, doc_id)
+        doc.extracted_kpis = ["legacy junk", *doc.extracted_kpis]
+        await db.commit()
+
+    # index 0 still addresses the first DICT, not the string
+    resp = await _promote(client, auth, doc_id, kpi_index=0)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["decision"]["metric_query"] == "Çıxma faizi nədir?"
+
+    async with AsyncSessionLocal() as fresh:
+        doc = await fresh.get(RequirementDoc, doc_id)
+        assert doc.extracted_kpis[0] == "legacy junk", "a read filter must not delete data"
+        assert doc.extracted_kpis[1]["decision_id"] == resp.json()["decision"]["id"]
+
+
+async def test_the_promote_target_shares_the_extraction_bound(client, auth):
+    doc_id = await _extract(client, auth)
+    assert (await _promote(client, auth, doc_id, target_value=1e16)).status_code == 422
+    assert (await _promote(client, auth, doc_id, target_value=1e15)).status_code == 201

@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai import requirements
 from app.config import settings
 from app.core.exceptions import SchemaNotFoundError
+from app.core.logging import get_logger
 from app.models.dashboard import Dashboard
 from app.models.decision import Decision, DecisionMeasurement
 from app.models.requirement import RequirementDoc
@@ -24,6 +26,8 @@ from app.services import datasource_service as ds_service
 from app.services import decision_service
 from app.services.cache_service import CacheService
 
+_log = get_logger("nexusbi.requirements")
+
 
 def _derive_name(text: str) -> str:
     first = (text or "").strip().splitlines()[0] if text.strip() else "Tələb sənədi"
@@ -37,6 +41,9 @@ _PERSISTED_KPI_FIELDS = (
     "name", "question", "rationale", "requirement_ref",
     "target_value", "direction", "decision_id",
 )
+# The subset that cannot fail validation (plain strings), so a KPI with a corrupt
+# target still renders its question and its link rather than vanishing.
+_ALWAYS_PARSEABLE = ("name", "question", "rationale", "requirement_ref")
 
 
 def to_response(
@@ -48,9 +55,17 @@ def to_response(
     for raw in doc.extracted_kpis or []:
         if not isinstance(raw, dict):
             continue
-        item = KpiItem(
-            **{f: raw[f] for f in _PERSISTED_KPI_FIELDS if raw.get(f) is not None}
-        )
+        fields = {f: raw[f] for f in _PERSISTED_KPI_FIELDS if raw.get(f) is not None}
+        try:
+            item = KpiItem(**fields)
+        except ValidationError:
+            # A row written before the coercers shipped, restored from a backup or
+            # hand-edited can hold direction="up" or target_value="15%", and
+            # KpiItem's Literal/float would reject it. Dropping the unparseable
+            # FIELDS costs one pre-fill; letting the error escape 500s every
+            # document the user owns, which is a far worse answer to bad data.
+            _log.warning("requirement_kpi_unparseable", doc_id=doc.id, fields=sorted(fields))
+            item = KpiItem(**{f: v for f, v in fields.items() if f in _ALWAYS_PARSEABLE})
         if outcomes and item.decision_id:
             item.outcome = outcomes.get(item.decision_id)
         kpis.append(item)
@@ -151,6 +166,13 @@ async def _outcomes_for(
     return out
 
 
+async def response_for(
+    db: AsyncSession, user_id: str, doc: RequirementDoc
+) -> RequirementResponse:
+    """One already-loaded document, with its KPIs' outcomes joined."""
+    return to_response(doc, await _outcomes_for(db, user_id, _linked_decision_ids([doc])))
+
+
 async def list_response(db: AsyncSession, user_id: str) -> list[RequirementResponse]:
     docs = await list_for_user(db, user_id)
     outcomes = await _outcomes_for(db, user_id, _linked_decision_ids(docs))
@@ -160,9 +182,7 @@ async def list_response(db: AsyncSession, user_id: str) -> list[RequirementRespo
 async def get_response(
     db: AsyncSession, user_id: str, doc_id: str
 ) -> RequirementResponse:
-    doc = await get(db, user_id, doc_id)
-    outcomes = await _outcomes_for(db, user_id, _linked_decision_ids([doc]))
-    return to_response(doc, outcomes)
+    return await response_for(db, user_id, await get(db, user_id, doc_id))
 
 
 async def extract_and_save(
@@ -226,10 +246,16 @@ async def promote_kpi(
     longer resolves, so the stale link is replaced with a fresh decision.
     """
     doc = await get(db, user_id, doc_id)  # 404s another user's document
-    kpis = [k for k in (doc.extracted_kpis or []) if isinstance(k, dict)]
-    if payload.kpi_index >= len(kpis):
+    stored = list(doc.extracted_kpis or [])
+    # Index into the ORIGINAL list. Rewriting the column from a dict-filtered copy
+    # would delete any non-dict entry (a legacy row, a half-migrated import) the
+    # first time any KPI in the document is promoted — a read path's defensive
+    # filter turned into a destructive write.
+    positions = [i for i, k in enumerate(stored) if isinstance(k, dict)]
+    if payload.kpi_index >= len(positions):
         raise SchemaNotFoundError("Bu KPI sənəddə yoxdur.")
-    kpi = kpis[payload.kpi_index]
+    slot = positions[payload.kpi_index]
+    kpi = stored[slot]
 
     if existing_id := kpi.get("decision_id"):
         try:
@@ -237,9 +263,25 @@ async def promote_kpi(
             # exactly as untrusted as any client input, so an unscoped db.get
             # here would hand back another user's decision (the IDOR that
             # _capture_baseline's comment describes for query_log_id).
-            return await decision_service.get(db, user_id, str(existing_id)), doc
+            existing = await decision_service.get(db, user_id, str(existing_id))
         except SchemaNotFoundError:
             pass  # user deleted it — fall through and create a new one
+        else:
+            if existing.baseline_value is not None:
+                return existing, doc
+            # Linked, but the baseline capture failed (_capture_baseline logs and
+            # returns early), which leaves the KPI permanently unmeasurable:
+            # measure() only sets realized_value, and _compute_impact_status stays
+            # "pending" forever while baseline_value is None. Returning here would
+            # make "check the source" advice the user cannot act on, so a repeat
+            # promote RETRIES the capture — and may rebind the source and target.
+            if payload.datasource_id:
+                await ds_service.get_datasource_for_user(db, user_id, payload.datasource_id)
+                existing.datasource_id = payload.datasource_id
+            existing.predicted_value = payload.target_value
+            existing.predicted_direction = payload.direction
+            await decision_service.recapture_baseline(db, cache, existing)
+            return existing, doc
 
     if payload.datasource_id:
         # Validate BEFORE creating. _capture_baseline swallows a failed metric run
@@ -278,8 +320,8 @@ async def promote_kpi(
     # not see nested in-place mutation, so the whole list is REASSIGNED. Mutating
     # kpis[i] in place here would emit no UPDATE and the idempotency above would
     # silently stop working after the session ends.
-    new_kpis = list(kpis)
-    new_kpis[payload.kpi_index] = {**kpi, "decision_id": decision.id}
+    new_kpis = list(stored)
+    new_kpis[slot] = {**kpi, "decision_id": decision.id}
     doc.extracted_kpis = new_kpis
     await db.flush()
     return decision, doc

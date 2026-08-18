@@ -84,5 +84,9 @@ async def promote_kpi(
     decision, doc = await svc.promote_kpi(db, cache, user.id, doc_id, payload)
     return RequirementPromoteResponse(
         decision=DecisionResponse.model_validate(decision),
-        requirement=svc.to_response(doc),
+        # WITH the outcomes joined. Without them every KPI returns outcome=null,
+        # the client swaps that document in, and the row falls back to the "enter
+        # a target" form — so the verdict this endpoint just produced would not
+        # appear until a full page reload.
+        requirement=await svc.response_for(db, user.id, doc),
     )

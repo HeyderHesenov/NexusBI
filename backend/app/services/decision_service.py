@@ -249,6 +249,20 @@ async def _capture_baseline(db: AsyncSession, cache: CacheService, d: Decision) 
     ))
 
 
+async def recapture_baseline(db: AsyncSession, cache: CacheService, d: Decision) -> Decision:
+    """Retry a baseline that failed at create time (leaving baseline_value None).
+
+    Exposed because a caller that links a decision to something else — a
+    requirement's KPI — has no other way to make a failed capture recoverable:
+    measure() only ever writes realized_value, and _compute_impact_status stays
+    "pending" for as long as the baseline is missing.
+    """
+    await _capture_baseline(db, cache, d)
+    await db.flush()
+    await db.refresh(d)
+    return d
+
+
 async def measure(
     db: AsyncSession, cache: CacheService, d: Decision, *, allow_ai_fallback: bool = True
 ) -> Decision:
