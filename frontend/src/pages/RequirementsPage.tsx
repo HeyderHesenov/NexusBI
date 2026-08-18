@@ -9,7 +9,8 @@ import { useDatasourceStore } from '../store/datasourceStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { ImpactBadge } from '../components/decision/ImpactBadge'
 import { FIELD } from '../components/ui/form'
-import { formatNumber, formatDate } from '../lib/format'
+import { formatNumber } from '../lib/format'
+import { useFormatDate } from '../hooks/useFormatDate'
 import { staleAsOf } from '../lib/trajectory'
 import type { DecisionDirection, KpiItem } from '../types'
 
@@ -42,6 +43,7 @@ function CriterionRow({
   onMeasure: (decisionId: string) => Promise<void>
 }) {
   const { t } = useTranslation()
+  const fmtDate = useFormatDate()
   const [target, setTarget] = useState(kpi.target_value == null ? '' : String(kpi.target_value))
   const [direction, setDirection] = useState<string>(kpi.direction ?? '')
 
@@ -62,7 +64,13 @@ function CriterionRow({
           <>
             <span className="font-mono text-[11px] text-ink-soft">
               {t('requirementsPage.targetVsReal', {
-                target: formatNumber(outcome.predicted_value ?? 0, { compact: true, decimals: 2 }),
+                // '—', never 0: a null prediction rendered as "Hədəf 0" tells the
+                // user the requirement demanded zero, which is a criterion nobody
+                // wrote — the same fabrication the backend refuses to make.
+                target:
+                  outcome.predicted_value == null
+                    ? '—'
+                    : formatNumber(outcome.predicted_value, { compact: true, decimals: 2 }),
                 real:
                   outcome.realized_value == null
                     ? '—'
@@ -79,7 +87,7 @@ function CriterionRow({
             </button>
             {asOf && (
               <span className="font-mono text-[10px] text-ink-faint">
-                {t('decisionsPage.dataAsOf', { at: formatDate(asOf, { mode: 'short' }) })}
+                {t('decisionsPage.dataAsOf', { at: fmtDate(asOf, { mode: 'short' }) })}
               </span>
             )}
           </>
@@ -276,7 +284,13 @@ export function RequirementsPage() {
               const on = selected.has(k.question)
               return (
                 <li
-                  key={i}
+                  // Keyed on the document too: CriterionRow seeds its target and
+                  // direction with useState, which only runs at mount. On a plain
+                  // index key a second extraction reuses the same instances, so
+                  // the previous document's typed target survives into the new
+                  // one and Track would promote a threshold written for another
+                  // requirement.
+                  key={`${doc.id}:${i}`}
                   onClick={() => toggle(k.question)}
                   className={`cursor-pointer rounded-xl border p-3 transition ${
                     on ? 'border-accent/40 bg-accent-soft' : 'border-line bg-surface-2'
@@ -317,6 +331,11 @@ export function RequirementsPage() {
             <SourceSelect
               value={datasourceId}
               onChange={setDatasourceId}
+              // One picker, TWO consumers: the dashboard build and the metric
+              // source of every KPI tracked from this page. The label says both
+              // because the second binding outlives the visit — DecisionUpdate
+              // has no datasource_id, so only a promote whose baseline failed can
+              // still rebind it.
               label={t('requirementsPage.sourceLabel')}
               demoLabel={t('requirementsPage.demoData')}
               sources={sources}

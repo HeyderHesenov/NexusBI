@@ -713,7 +713,7 @@
     "noTargetHint": "Hedef sayı gir",
     "sampleButton": "Örnek",
     "sampleText": "İş gereksinimleri:\n- Aylık gelir trendi izlenmelidir.\n- En çok satan 5 ürün gösterilmelidir.\n- Bölgeye göre satış payı analiz edilmelidir.\n- Müşteri sayısının aylık değişimi önemlidir.",
-    "sourceLabel": "Dashboard'un oluşturulacağı kaynak",
+    "sourceLabel": "Dashboard ve izleme için kaynak",
     "subtitle": "Bir BRD veya user story yapıştırın — NexusBI ölçülebilir KPI'ları çıkarıp dashboard oluşturur.",
     "targetPlaceholder": "Hedef",
     "targetVsReal": "Hedef {{target}} · Gerçek {{real}}",

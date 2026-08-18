@@ -54,8 +54,13 @@ export const useRequirementStore = create<RequirementState>((set, get) => ({
   },
   promote: async (body) => {
     const doc = get().doc
-    if (!doc || get().promoting) return
-    set({ promoting: `${doc.id}:${body.kpi_index}` })
+    if (!doc) return
+    const key = `${doc.id}:${body.kpi_index}`
+    // Per-KPI, matching what the UI greys out. A global in-flight guard would
+    // silently drop clicks on every OTHER row while their buttons stayed enabled
+    // — a dead button with no toast, which reads as the app ignoring you.
+    if (get().promoting === key) return
+    set({ promoting: key })
     try {
       const res = await api.promoteKpi(doc.id, body)
       // The server's document, not a locally patched one: it already carries the
@@ -69,7 +74,7 @@ export const useRequirementStore = create<RequirementState>((set, get) => ({
   },
   measureKpi: async (decisionId) => {
     const doc = get().doc
-    if (!doc || get().measuring) return
+    if (!doc || get().measuring === decisionId) return
     set({ measuring: decisionId })
     try {
       await decisionApi.measure(decisionId)

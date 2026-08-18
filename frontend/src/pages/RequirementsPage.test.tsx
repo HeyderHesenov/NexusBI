@@ -1,6 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DataSource, KpiItem, KpiOutcome, RequirementDoc } from '../types'
 
 const build = vi.fn()
@@ -25,6 +25,7 @@ vi.mock('../store/dashboardStore', () => ({
 }))
 
 import { RequirementsPage } from './RequirementsPage'
+import { useLocaleStore } from '../store/localeStore'
 
 const source = (id: string, name: string): DataSource => ({
   id,
@@ -68,7 +69,7 @@ const docWith = (...kpis: KpiItem[]): RequirementDoc => ({
 const doc: RequirementDoc = docWith(kpi())
 
 // Test i18n is initialized with Azerbaijani (see src/test/setup.ts).
-const SOURCE_LABEL = 'Dashboard-un qurulacağı mənbə'
+const SOURCE_LABEL = 'Dashboard və izləmə üçün mənbə'
 const BUILD = /Dashboard qur/
 
 const renderPage = () =>
@@ -231,5 +232,81 @@ describe('RequirementsPage acceptance criterion', () => {
     setup(kpi({ decision_id: 'dec-1', outcome: outcome() }))
     fireEvent.click(screen.getByRole('button', { name: 'Ölç' }))
     expect(measureKpi).toHaveBeenCalledWith('dec-1')
+  })
+})
+
+describe('RequirementsPage criterion regressions', () => {
+  const TARGET = 'Qəbul meyarı'
+
+  const setupDoc = (docId: string, ...kpis: KpiItem[]) => {
+    promote.mockReset().mockResolvedValue(undefined)
+    measureKpi.mockReset().mockResolvedValue(undefined)
+    loadSources.mockReset().mockResolvedValue(undefined)
+    reqState = {
+      doc: { ...docWith(...kpis), id: docId },
+      extracting: false,
+      building: false,
+      promoting: null,
+      measuring: null,
+      extract: vi.fn(),
+      build,
+      promote,
+      measureKpi,
+      reset: vi.fn(),
+    }
+    dsState = { sources: [], load: loadSources }
+    return renderPage()
+  }
+
+  // act(): the store has live subscribers until RTL's own cleanup runs, and
+  // this hook is registered later, so it fires first.
+  afterEach(() => act(() => useLocaleStore.setState({ lang: 'az' })))
+
+  it('shows an unknown target as unknown, not as a demand for zero', () => {
+    // A null prediction rendered as "Hədəf 0" tells the user the requirement
+    // demanded zero — a criterion nobody wrote.
+    setupDoc('doc-1', kpi({ decision_id: 'dec-1', outcome: outcome({ predicted_value: null }) }))
+    expect(screen.getByText(/Hədəf — /)).toBeInTheDocument()
+    expect(screen.queryByText(/Hədəf 0 /)).not.toBeInTheDocument()
+  })
+
+  it('does not carry a typed target into a freshly extracted document', () => {
+    // CriterionRow seeds target/direction with useState, which runs at MOUNT
+    // only. Keyed by index alone, a second extraction reuses the same instances,
+    // so a threshold typed for the previous requirement stays in the box — and
+    // İzlə would promote it against a KPI nobody wrote it for.
+    const { rerender } = setupDoc('doc-1', kpi())
+    fireEvent.change(screen.getByLabelText(TARGET), { target: { value: '42' } })
+    expect(screen.getByLabelText(TARGET)).toHaveValue(42)
+
+    reqState.doc = { ...docWith(kpi()), id: 'doc-2' }
+    rerender(
+      <MemoryRouter>
+        <RequirementsPage />
+      </MemoryRouter>,
+    )
+    expect(screen.getByLabelText(TARGET)).toHaveValue(null)
+  })
+
+  it('dates the number in the language the user picked, not in a hardcoded one', () => {
+    // formatDate's locale DEFAULTS to 'az-AZ', so calling it directly renders an
+    // Azerbaijani date to a Russian or English user. The two renders below are
+    // the assertion: same instant, different language, and the strings must
+    // differ — comparing one against a literal would also pass on the frozen
+    // default, since that default IS az.
+    const stale = () =>
+      setupDoc('doc-1', kpi({ decision_id: 'dec-1', outcome: outcome({ data_as_of: '2026-01-10T09:00:00Z' }) }))
+
+    const view = stale()
+    const az = screen.getByText(/data:/).textContent ?? ''
+    view.unmount()
+
+    act(() => useLocaleStore.setState({ lang: 'en' }))
+    stale()
+    const en = screen.getByText(/data:/).textContent ?? ''
+
+    expect(az).toMatch(/10\.01\.26/) // az-AZ: day-first, dotted
+    expect(en).toMatch(/1\/10\/26/) // en-US: month-first, slashed
+    expect(en).not.toBe(az)
   })
 })
