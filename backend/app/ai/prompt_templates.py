@@ -212,12 +212,12 @@ biznes tələbləri) ÖLÇÜLƏ BİLƏN KPI-ları çıxar.
 İstifadəçi hansı dildə yazıbsa, o dildə cavab ver.
 
 OUTPUT FORMAT (JSON):
-{{
+{
   "kpis": [
-    {{"name": "Aylıq gəlir", "question": "Aylıq gəlir trendi necədir?",
-      "rationale": "Gəlir artımını izləmək üçün", "requirement_ref": "gəlir artımı izlənməli"}}
+    {"name": "Aylıq gəlir", "question": "Aylıq gəlir trendi necədir?",
+     "rationale": "Gəlir artımını izləmək üçün", "requirement_ref": "gəlir artımı izlənməli"}
   ]
-}}
+}
 """.strip()
 
 REQUIREMENTS_USER_PROMPT = """

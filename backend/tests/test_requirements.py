@@ -1,10 +1,14 @@
 """Requirements → dashboard: KPI extraction (AI + fallback) and build."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.ai import requirements
+from app.ai.prompt_templates import REQUIREMENTS_PROMPT
 from app.ai.types import ChartConfig, Text2SQLResult
+from app.schemas.requirement import KpiItem
 from app.services import query_service
 
 
@@ -26,6 +30,27 @@ def _mock_ai(monkeypatch):
     monkeypatch.setattr(query_service.Text2SQLEngine, "generate_sql", fake_sql)
     monkeypatch.setattr(query_service, "select_chart_type", fake_chart)
     monkeypatch.setattr(query_service, "generate_insight", fake_insight)
+
+
+def test_requirements_prompt_ships_a_json_example_that_is_json():
+    """The system prompt reaches the model UNFORMATTED (`ai/requirements.py:67`
+    passes it straight to `chat_json`; only the USER prompt gets `.format()`).
+    So whatever braces sit in the source are literally what the model reads —
+    and this block was once escaped `{{`/`}}` for a `.format()` that never
+    happens, i.e. the "OUTPUT FORMAT (JSON)" example was not JSON.
+
+    The key check is deliberate too: an example advertising a key the schema
+    does not have teaches the model to emit a field the normalizer then drops.
+    """
+    _, marker, block = REQUIREMENTS_PROMPT.partition("OUTPUT FORMAT (JSON):")
+    assert marker, "prompt lost its OUTPUT FORMAT block — this guard now checks nothing"
+
+    example = json.loads(block)  # doubled braces raise here
+
+    assert example["kpis"], "the example must show at least one KPI, else the keys below are vacuous"
+    for kpi in example["kpis"]:
+        unknown = set(kpi) - set(KpiItem.model_fields)
+        assert not unknown, f"prompt advertises keys KpiItem does not have: {sorted(unknown)}"
 
 
 def test_rule_based_extraction():
