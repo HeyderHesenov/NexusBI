@@ -7,6 +7,11 @@ from pydantic import BaseModel, Field
 
 from app.schemas.decision import DecisionResponse, Direction
 
+# Beyond this a Float column is not meaningfully precise and a "target" is noise.
+# Lives here because BOTH writers of Decision.predicted_value must share it: the
+# extraction proposal (ai.requirements._coerce_target) and the promote request.
+MAX_TARGET_MAGNITUDE = 1e15
+
 
 class KpiOutcome(BaseModel):
     """What the tracked decision behind a KPI currently says.
@@ -65,7 +70,9 @@ class RequirementPromoteRequest(BaseModel):
     # promoted without a number carries no testable criterion at all.
     # allow_inf_nan closes the JSON `1e400` → inf path, which would make
     # `realized >= predicted` permanently False rather than merely wrong.
-    target_value: float = Field(allow_inf_nan=False)
+    target_value: float = Field(
+        allow_inf_nan=False, ge=-MAX_TARGET_MAGNITUDE, le=MAX_TARGET_MAGNITUDE
+    )
     direction: Direction | None = None
     datasource_id: str | None = None
 

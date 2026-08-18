@@ -73,6 +73,25 @@ def test_separators_and_noise(value, expected):
 
 
 @pytest.mark.parametrize(
+    ("value", "expected"),
+    [("0.500", 0.5), ("0,500", 0.5), ("0.125", 0.125), ("-0.500", -0.5), ("0,75", 0.75)],
+)
+def test_a_leading_zero_is_a_fraction_not_a_thousands_group(value, expected):
+    # No real thousands group starts with a bare 0, so "0.125" is a ratio target.
+    # Reading it as 125 invents a threshold a thousand times the one written —
+    # through the one branch that assumes rather than refuses.
+    assert _coerce_target(value) == expected
+
+
+def test_an_oversized_integer_refuses_instead_of_raising():
+    # json.loads returns UNBOUNDED ints, and float(10**400) raises OverflowError
+    # rather than returning inf. Uncaught, it escapes extract_kpis' broad handler
+    # and costs every KPI in the document over one bad number.
+    assert _coerce_target(10**400) is None
+    assert _coerce_target(-(10**400)) is None
+
+
+@pytest.mark.parametrize(
     "value", ["12%-15%", "10 to 20", "between 5 and 9", "10–20", "5, 6, 7"]
 )
 def test_a_range_is_refused_rather_than_halved(value):
@@ -158,7 +177,8 @@ def test_non_strings_are_not_directions(value):
 _HOSTILE = [
     None, True, False, 0, 1, -1, 1.5, -0.0, 1e400, float("nan"), float("inf"),
     "", " ", "\n", "null", "NULL", "n/a", "-", "—", "yes", "true", "abc",
-    "15", "15%", "15,5", "1,500", "1.234,56", "12%-15%", "10 to 20", "1e15",
+    "15", "15%", "15,5", "1,500", "1.234,56", "12%-15%", "10 to 20", "1e15", "0.125",
+    10**400, -(10**400),
     "increase", "DECREASE", "artım", "increase then decrease", "↑", "↓",
     {"a": 1}, [1, 2], (1,), {1}, object(), b"15", "٢٥", "２５", "٪15",
 ]

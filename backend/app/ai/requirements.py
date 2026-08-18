@@ -12,6 +12,7 @@ from typing import Any
 from app.ai.client import chat_json
 from app.ai.prompt_templates import REQUIREMENTS_PROMPT, REQUIREMENTS_USER_PROMPT
 from app.core.logging import get_logger
+from app.schemas.requirement import MAX_TARGET_MAGNITUDE
 
 _log = get_logger("nexusbi.ai")
 _MAX_CHARS = 12000  # cap prompt size
@@ -33,8 +34,7 @@ _METRIC_HINTS = re.compile(
 # target simply means the form asks the human for the number, whereas a fabricated
 # one becomes an acceptance criterion nobody wrote.
 
-# Beyond this a Float column is not meaningfully precise and the "target" is noise.
-_MAX_TARGET_MAGNITUDE = 1e15
+_MAX_TARGET_MAGNITUDE = MAX_TARGET_MAGNITUDE  # shared with the promote request
 
 _NOT_A_NUMBER = frozenset(
     {"", "null", "none", "nan", "n/a", "na", "-", "—", "yes", "no", "true", "false"}
@@ -110,9 +110,12 @@ def _normalize_separators(token: str) -> str:
     if t.count(sep) > 1:
         return t.replace(sep, "")  # only grouping can repeat: 1.234.567
     head, _, tail = t.partition(sep)
-    if len(tail) == 3 and head.lstrip("+-").isdigit():
+    digits = head.lstrip("+-")
+    if len(tail) == 3 and digits.isdigit() and not digits.startswith("0"):
         # Exactly three trailing digits is a thousands group far more often than a
-        # three-decimal KPI threshold, so "1,500" and "1.500" both mean 1500.
+        # three-decimal KPI threshold, so "1,500" and "1.500" both mean 1500. But
+        # no real group starts with a bare 0, and "0.125" is a ratio target —
+        # reading it as 125 invents exactly the threshold this module refuses to.
         return head + tail
     return t.replace(sep, ".")
 
@@ -126,7 +129,13 @@ def _coerce_target(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
-        return _finite(float(value))
+        try:
+            return _finite(float(value))
+        except OverflowError:
+            # json.loads returns UNBOUNDED ints, and float(10**400) raises rather
+            # than returning inf. Uncaught it escapes into extract_kpis' broad
+            # handler and costs every KPI in the document, not just this number.
+            return None
     if not isinstance(value, str):
         return None
 
