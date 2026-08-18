@@ -1,10 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DataSource, RequirementDoc } from '../types'
+import type { DataSource, KpiItem, KpiOutcome, RequirementDoc } from '../types'
 
 const build = vi.fn()
 const loadSources = vi.fn()
+const promote = vi.fn()
+const measureKpi = vi.fn()
 
 let reqState: Record<string, unknown>
 let dsState: { sources: DataSource[]; load: typeof loadSources }
@@ -31,13 +33,39 @@ const source = (id: string, name: string): DataSource => ({
   created_at: '2024-01-01T00:00:00Z',
 })
 
-const doc: RequirementDoc = {
+const kpi = (over: Partial<KpiItem> = {}): KpiItem => ({
+  name: 'Gəlir',
+  question: 'Aylıq gəlir nədir?',
+  rationale: '',
+  requirement_ref: 'R1',
+  target_value: null,
+  direction: null,
+  decision_id: null,
+  outcome: null,
+  ...over,
+})
+
+const outcome = (over: Partial<KpiOutcome> = {}): KpiOutcome => ({
+  decision_id: 'dec-1',
+  impact_status: 'achieved',
+  baseline_value: 10,
+  predicted_value: 20,
+  predicted_direction: 'increase',
+  realized_value: 25,
+  measured_at: '2026-01-10T12:00:00Z',
+  data_as_of: '2026-01-10T12:00:00Z',
+  ...over,
+})
+
+const docWith = (...kpis: KpiItem[]): RequirementDoc => ({
   id: 'doc-1',
   name: 'BRD',
-  kpis: [{ name: 'Gəlir', question: 'Aylıq gəlir nədir?', rationale: '', requirement_ref: 'R1' }],
+  kpis,
   dashboard_id: null,
   created_at: '2024-01-01T00:00:00Z',
-}
+})
+
+const doc: RequirementDoc = docWith(kpi())
 
 // Test i18n is initialized with Azerbaijani (see src/test/setup.ts).
 const SOURCE_LABEL = 'Dashboard-un qurulacağı mənbə'
@@ -54,7 +82,20 @@ describe('RequirementsPage source selection', () => {
   beforeEach(() => {
     build.mockReset().mockResolvedValue(null)
     loadSources.mockReset().mockResolvedValue(undefined)
-    reqState = { doc, extracting: false, building: false, extract: vi.fn(), build, reset: vi.fn() }
+    promote.mockReset().mockResolvedValue(undefined)
+    measureKpi.mockReset().mockResolvedValue(undefined)
+    reqState = {
+      doc,
+      extracting: false,
+      building: false,
+      promoting: null,
+      measuring: null,
+      extract: vi.fn(),
+      build,
+      promote,
+      measureKpi,
+      reset: vi.fn(),
+    }
     dsState = { sources: [source('a', 'Acme Postgres'), source('b', 'Sales CSV')], load: loadSources }
   })
 
@@ -103,5 +144,92 @@ describe('RequirementsPage source selection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: BUILD }))
     expect(build).toHaveBeenCalledWith('a', ['Aylıq gəlir nədir?'])
+  })
+})
+
+describe('RequirementsPage acceptance criterion', () => {
+  const TARGET = 'Qəbul meyarı'
+  const DIRECTION = 'İstiqamət'
+  const TRACK = 'İzlə'
+
+  const setup = (...kpis: KpiItem[]) => {
+    promote.mockReset().mockResolvedValue(undefined)
+    measureKpi.mockReset().mockResolvedValue(undefined)
+    loadSources.mockReset().mockResolvedValue(undefined)
+    reqState = {
+      doc: docWith(...kpis),
+      extracting: false,
+      building: false,
+      promoting: null,
+      measuring: null,
+      extract: vi.fn(),
+      build,
+      promote,
+      measureKpi,
+      reset: vi.fn(),
+    }
+    dsState = { sources: [source('a', 'Acme Postgres')], load: loadSources }
+    return renderPage()
+  }
+
+  it("pre-fills the criterion the extraction proposed", () => {
+    setup(kpi({ target_value: 15, direction: 'decrease' }))
+    expect(screen.getByLabelText(TARGET)).toHaveValue(15)
+    expect(screen.getByLabelText(DIRECTION)).toHaveValue('decrease')
+  })
+
+  it('sends the target as a number, not as the raw input string', () => {
+    setup(kpi())
+    fireEvent.change(screen.getByLabelText(TARGET), { target: { value: '20' } })
+    fireEvent.change(screen.getByLabelText(DIRECTION), { target: { value: 'decrease' } })
+    fireEvent.click(screen.getByRole('button', { name: TRACK }))
+    // Pydantic would coerce a string, so only this assertion notices.
+    expect(promote).toHaveBeenCalledWith({
+      kpi_index: 0,
+      target_value: 20,
+      direction: 'decrease',
+      datasource_id: null,
+    })
+  })
+
+  it('will not track a KPI with no number, because there is nothing to test', () => {
+    setup(kpi())
+    expect(screen.getByRole('button', { name: TRACK })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(TARGET), { target: { value: '5' } })
+    expect(screen.getByRole('button', { name: TRACK })).toBeEnabled()
+  })
+
+  it('does not deselect the KPI when you type its target', () => {
+    // The whole row lives inside the <li>'s selection onClick, so without
+    // stopPropagation every interaction with the form toggles the KPI off.
+    setup(kpi())
+    const box = screen.getByRole('checkbox') as HTMLInputElement
+    expect(box.checked).toBe(true)
+    fireEvent.click(screen.getByLabelText(TARGET))
+    expect(box.checked).toBe(true)
+  })
+
+  it('reports a stale verdict with the age of the number behind it', () => {
+    setup(kpi({ decision_id: 'dec-1', outcome: outcome({ data_as_of: '2026-01-10T09:00:00Z' }) }))
+    expect(screen.getByText('Nail olundu')).toBeInTheDocument()
+    expect(screen.getByText(/data:/)).toBeInTheDocument()
+  })
+
+  it('says nothing about age when the number is as fresh as the reading', () => {
+    setup(kpi({ decision_id: 'dec-1', outcome: outcome({ data_as_of: '2026-01-10T11:59:30Z' }) }))
+    expect(screen.getByText('Nail olundu')).toBeInTheDocument()
+    expect(screen.queryByText(/data:/)).not.toBeInTheDocument()
+  })
+
+  it('distinguishes a baseline that failed from one still awaiting a measure', () => {
+    setup(kpi({ decision_id: 'dec-1', outcome: outcome({ impact_status: 'pending', baseline_value: null }) }))
+    expect(screen.getByText(/Başlanğıc ölçü alınmadı/)).toBeInTheDocument()
+    expect(screen.queryByText(/Hədəf/)).not.toBeInTheDocument()
+  })
+
+  it('measures through the store, which re-reads the document afterwards', () => {
+    setup(kpi({ decision_id: 'dec-1', outcome: outcome() }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ölç' }))
+    expect(measureKpi).toHaveBeenCalledWith('dec-1')
   })
 })

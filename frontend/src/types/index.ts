@@ -614,11 +614,29 @@ export interface CausalResult {
   caveats: string[]
 }
 
+export interface KpiOutcome {
+  decision_id: string
+  impact_status: ImpactStatus
+  /** null means the baseline capture failed — that KPI can never be measured,
+   *  which must not read the same as one still awaiting its first measure. */
+  baseline_value: number | null
+  predicted_value: number | null
+  predicted_direction: DecisionDirection | null
+  realized_value: number | null
+  measured_at: string | null
+  /** How old the NUMBER was, not when it was read. Null means unknown. */
+  data_as_of: string | null
+}
+
 export interface KpiItem {
   name: string
   question: string
   rationale: string
   requirement_ref: string
+  target_value: number | null
+  direction: DecisionDirection | null
+  decision_id: string | null
+  outcome: KpiOutcome | null
 }
 
 export interface RequirementDoc {
