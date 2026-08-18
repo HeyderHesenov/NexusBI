@@ -41,16 +41,26 @@ def test_a_different_secret_is_rejected():
 
 
 def test_the_timestamp_is_part_of_what_is_signed():
-    """Not merely present — moving it must invalidate the digest.
+    """Not merely present in the header — INSIDE the digest.
 
     A verifier that checks the age of `t` but hashes only the body would accept a
     captured request forever, one edited timestamp at a time.
+
+    The assertion is a signature over the body ALONE, with a positive control on
+    the next line. "Move `t` and expect a rejection" reads like the same test but
+    is satisfied by ANY broken digest — it passed against a verifier that hashed
+    the body only, because there the honest signature stopped matching too.
     """
-    real = int(time.time())
-    header = sign(BODY, timestamp=real)
-    moved = header.replace(f"t={real}", f"t={real - 1}")
+    ts = int(time.time())
+    body_only = hmac.new(SECRET.encode(), BODY, hashlib.sha256).hexdigest()
     with pytest.raises(SignatureError):
-        verify(BODY, moved, SECRET)
+        verify(BODY, f"t={ts},v1={body_only}", SECRET)
+    verify(BODY, sign(BODY, timestamp=ts), SECRET)  # control: the real scheme still passes
+
+    # And `t` is bound to the digest, not merely adjacent to it.
+    header = sign(BODY, timestamp=ts)
+    with pytest.raises(SignatureError):
+        verify(BODY, header.replace(f"t={ts}", f"t={ts - 1}"), SECRET)
 
 
 def test_an_old_delivery_is_refused():
