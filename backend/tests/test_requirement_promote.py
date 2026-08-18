@@ -331,8 +331,7 @@ async def test_another_users_decision_is_never_rendered(client, auth):
 async def test_listing_does_not_grow_a_query_per_document(client, auth):
     """Five documents, three promoted KPIs each — still a fixed number of SELECTs."""
     from sqlalchemy import event
-
-    from app.db.session import engine
+    from sqlalchemy.engine import Engine
 
     for _ in range(5):
         doc_id = await _extract(client, auth)
@@ -345,14 +344,20 @@ async def test_listing_does_not_grow_a_query_per_document(client, auth):
         if statement.lstrip().upper().startswith("SELECT"):
             seen.append(statement)
 
-    event.listen(engine.sync_engine, "before_cursor_execute", record)
+    # Listen on the Engine CLASS, not on app.db.session.engine: conftest builds
+    # its own engine and overrides get_db, so a listener bound to the app's
+    # engine records nothing and the budget below passes on an empty list.
+    event.listen(Engine, "before_cursor_execute", record)
     try:
         resp = await client.get("/api/v1/requirements", headers=auth)
     finally:
-        event.remove(engine.sync_engine, "before_cursor_execute", record)
+        event.remove(Engine, "before_cursor_execute", record)
 
     assert resp.status_code == 200, resp.text
     assert len(resp.json()) == 5
+    # Positive control. Without it an empty `seen` satisfies any ceiling, which
+    # is precisely how this test passed while measuring nothing at all.
+    assert seen, "no SELECT was observed — the listener is attached to the wrong engine"
     # A literal, not len(docs)+k: a budget expressed in terms of the thing it
     # bounds cannot detect the loop moving inside the per-document iteration.
     assert len(seen) <= 4, f"{len(seen)} SELECTs for one list: {seen}"
