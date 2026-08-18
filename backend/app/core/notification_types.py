@@ -14,3 +14,4 @@ class NotificationCategory:
     INSIGHT = "insight"        # smart insight
     DECISION = "decision"      # decision impact (achieved / regressed)
     MENTION = "mention"        # @mention in a dashboard comment
+    BILLING = "billing"        # payment failed / subscription state

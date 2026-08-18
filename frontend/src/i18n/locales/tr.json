@@ -578,6 +578,7 @@
     "total": "Toplam"
   },
   "pricingPage": {
+    "manageSubscription": "Aboneliği yönet",
     "currentPlan": "Mevcut plan",
     "demoUnlimitedLabel": "Demo · Sınırsız",
     "demoUnlimitedText": "— hesabınızda limit yok, her özelliği serbestçe deneyebilirsiniz.",

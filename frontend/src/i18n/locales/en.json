@@ -578,6 +578,7 @@
     "total": "Total"
   },
   "pricingPage": {
+    "manageSubscription": "Manage subscription",
     "currentPlan": "Current plan",
     "demoUnlimitedLabel": "Demo · Unlimited",
     "demoUnlimitedText": "— your account has no limits, feel free to try every feature.",

@@ -20,6 +20,10 @@ class UsageResponse(BaseModel):
     remaining: int
     period_start: str | None = None
     resets_at: str | None = None
+    # Which upgrade path the client should offer. Sent with usage because the
+    # pricing page already fetches it and must decide before rendering.
+    payments_enabled: bool = False
+    has_subscription: bool = False
 
 
 class UpgradeRequest(BaseModel):

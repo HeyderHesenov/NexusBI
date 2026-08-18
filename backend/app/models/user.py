@@ -25,6 +25,16 @@ class User(Base, TimestampMixin):
 
     # Billing / rate limiting.
     subscription_tier: Mapped[str] = mapped_column(String(20), default="free", nullable=False)
+    # Stripe linkage. The customer OUTLIVES the subscription (it carries the
+    # payment method and the invoice history), which is why cancelling clears
+    # only the subscription id. Indexed because `invoice.payment_failed`
+    # identifies the user by customer and nothing else.
+    stripe_customer_id: Mapped[str | None] = mapped_column(
+        String(64), index=True, nullable=True
+    )
+    stripe_subscription_id: Mapped[str | None] = mapped_column(
+        String(64), index=True, nullable=True
+    )
     ai_calls_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     usage_period_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

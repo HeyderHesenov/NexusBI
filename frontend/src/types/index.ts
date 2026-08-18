@@ -400,6 +400,10 @@ export interface Usage {
   remaining: number
   period_start: string | null
   resets_at: string | null
+  /** Stripe is configured server-side, so real checkout exists. */
+  payments_enabled: boolean
+  /** The user has a Stripe customer, i.e. they have paid at least once. */
+  has_subscription: boolean
 }
 
 export interface AuthProviders {

@@ -9,7 +9,8 @@ const HIGHLIGHT = 'max' // visually featured plan
 
 export function PricingPage() {
   const { t } = useTranslation()
-  const { plans, usage, loading, loadPlans, loadUsage, upgrade } = useBillingStore()
+  const { plans, usage, loading, loadPlans, loadUsage, upgrade, startCheckout, openPortal } =
+    useBillingStore()
 
   useEffect(() => {
     loadPlans().catch(() => undefined)
@@ -18,6 +19,19 @@ export function PricingPage() {
 
   const currentTier = usage?.tier ?? 'free'
   const unlimited = (usage?.limit ?? 0) < 0
+  const paid = usage?.payments_enabled ?? false
+  const subscribed = usage?.has_subscription ?? false
+
+  // Three buttons, one decision, made from what the server reports rather than
+  // from a build-time flag: with Stripe configured a paid plan starts a real
+  // checkout and LEAVING a paid plan happens in Stripe's portal, because a
+  // subscription the customer still pays for cannot be cancelled by us flipping
+  // a column. Without Stripe (demo) the existing mock stays.
+  const select = (planKey: string, price: number) => {
+    if (!paid) return upgrade(planKey)
+    if (price > 0) return startCheckout(planKey)
+    return subscribed ? openPortal() : Promise.resolve()
+  }
 
   return (
     <div className="w-full">
@@ -49,10 +63,22 @@ export function PricingPage() {
             current={plan.key === currentTier}
             featured={plan.key === HIGHLIGHT}
             loading={loading}
-            onSelect={() => upgrade(plan.key)}
+            onSelect={() => select(plan.key, plan.price_usd)}
           />
         ))}
       </div>
+
+      {subscribed && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => openPortal()}
+            disabled={loading}
+            className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-60"
+          >
+            {t('pricingPage.manageSubscription')}
+          </button>
+        </div>
+      )}
 
       {usage && !unlimited && (
         <p className="mt-6 text-center font-mono text-xs text-ink-faint">

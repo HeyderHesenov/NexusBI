@@ -578,6 +578,7 @@
     "total": "Итого"
   },
   "pricingPage": {
+    "manageSubscription": "Управление подпиской",
     "currentPlan": "Текущий тариф",
     "demoUnlimitedLabel": "Демо · Без ограничений",
     "demoUnlimitedText": "— в вашем аккаунте нет ограничений, вы можете свободно опробовать все возможности.",
