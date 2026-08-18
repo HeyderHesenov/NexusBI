@@ -1,19 +1,27 @@
 """Requirements → dashboard endpoints (BRD/user-story → KPIs → panel)."""
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
+from app.core.rate_limit import rate_limit
 from app.dependencies import CacheDep, CurrentUser, DbDep, RateLimitedUser
 from app.schemas.dashboard import DashboardResponse
+from app.schemas.decision import DecisionResponse
 from app.schemas.requirement import (
     RequirementBuildRequest,
     RequirementExtractRequest,
+    RequirementPromoteRequest,
+    RequirementPromoteResponse,
     RequirementResponse,
 )
 from app.services import dashboard_service
 from app.services import requirement_service as svc
 
 router = APIRouter(prefix="/requirements", tags=["requirements"])
+
+# Promoting captures a Decision baseline, which can run a metric query — the same
+# reason /ba/{id}/promote carries a burst limit on top of the monthly AI counter.
+_promote_limit = rate_limit("requirement_promote", limit=20, window_seconds=60)
 
 
 @router.post("/extract", response_model=RequirementResponse, status_code=status.HTTP_201_CREATED)
@@ -41,3 +49,28 @@ async def build(
     """Build a dashboard from the document's KPIs (fans out into several queries)."""
     dash = await svc.build(db, cache, user.id, doc_id, payload.datasource_id, payload.questions)
     return await dashboard_service.to_response(db, user.id, dash)
+
+
+@router.post(
+    "/{doc_id}/promote",
+    response_model=RequirementPromoteResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_promote_limit)],
+)
+async def promote_kpi(
+    doc_id: str,
+    payload: RequirementPromoteRequest,
+    user: RateLimitedUser,
+    db: DbDep,
+    cache: CacheDep,
+) -> RequirementPromoteResponse:
+    """Bind one extracted KPI to a tracked Decision (idempotent per KPI).
+
+    Uses the AI quota: the KPI's question becomes the decision's metric query, so
+    capturing the baseline runs a full NL→SQL pass rather than reusing a log.
+    """
+    decision, doc = await svc.promote_kpi(db, cache, user.id, doc_id, payload)
+    return RequirementPromoteResponse(
+        decision=DecisionResponse.model_validate(decision),
+        requirement=svc.to_response(doc),
+    )
