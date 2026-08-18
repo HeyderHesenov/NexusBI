@@ -5,12 +5,19 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.decision import Direction
+
 
 class KpiItem(BaseModel):
     name: str = ""
     question: str = ""
     rationale: str = ""
     requirement_ref: str = ""
+    # The acceptance criterion, PROPOSED by extraction and confirmed by the user
+    # at promote time. Null is the normal case: most requirement lines state a
+    # metric without stating a number, and extraction is forbidden from guessing.
+    target_value: float | None = None
+    direction: Direction | None = None
 
 
 class RequirementExtractRequest(BaseModel):

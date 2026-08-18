@@ -60,6 +60,59 @@ def test_rule_based_extraction():
     assert all(k["question"] for k in out["kpis"])
 
 
+async def test_extraction_normalises_a_sloppy_criterion(client, auth, monkeypatch):
+    """The model's proposal reaches the client already coerced, or not at all."""
+
+    async def fake_chat_json(system, user, **kw):
+        return {
+            "kpis": [
+                {"question": "Çıxma faizi nədir?", "target_value": "15%", "direction": "azalma"},
+                {"question": "Gəlir nədir?", "target_value": "10-20", "direction": "artsın da azalsın"},
+            ]
+        }
+
+    monkeypatch.setattr(requirements, "chat_json", fake_chat_json)
+    resp = await client.post(
+        "/api/v1/requirements/extract",
+        json={"text": "Çıxma faizi 15%-ə düşməlidir."},
+        headers=auth,
+    )
+    assert resp.status_code == 201, resp.text
+    kpis = resp.json()["kpis"]
+
+    # "15%" is stored as 15, NOT 0.15 — the metric query answers 15 too.
+    assert kpis[0]["target_value"] == 15.0
+    assert kpis[0]["direction"] == "decrease"
+    # A range and an ambiguous phrase both degrade to "no proposal" without
+    # costing the KPI itself, which is still extracted and still usable.
+    assert kpis[1]["target_value"] is None
+    assert kpis[1]["direction"] is None
+    assert kpis[1]["question"] == "Gəlir nədir?"
+
+
+async def test_offline_fallback_proposes_no_criterion(client, auth, monkeypatch):
+    """The rule-based path extracts KPIs but never a number.
+
+    Regexing a threshold out of a bullet would fabricate an acceptance criterion
+    from text that never stated one — worse than asking the user to type it.
+    """
+
+    async def boom(system, user, **kw):
+        raise RuntimeError("no AI configured")
+
+    monkeypatch.setattr(requirements, "chat_json", boom)
+    resp = await client.post(
+        "/api/v1/requirements/extract",
+        json={"text": "Aylıq gəlir 15% artmalıdır.\nMüştəri sayı 200 olmalıdır."},
+        headers=auth,
+    )
+    assert resp.status_code == 201, resp.text
+    kpis = resp.json()["kpis"]
+    assert kpis, "the offline path must still extract the KPIs themselves"
+    assert all(k["target_value"] is None for k in kpis)
+    assert all(k["direction"] is None for k in kpis)
+
+
 async def test_extract_endpoint_ai(client, auth, monkeypatch):
     async def fake_chat_json(system, user, **kw):
         return {
