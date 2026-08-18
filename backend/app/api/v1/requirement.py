@@ -35,7 +35,19 @@ async def extract(
 
 @router.get("", response_model=list[RequirementResponse])
 async def list_docs(user: CurrentUser, db: DbDep) -> list[RequirementResponse]:
-    return [svc.to_response(d) for d in await svc.list_for_user(db, user.id)]
+    return await svc.list_response(db, user.id)
+
+
+@router.get("/{doc_id}", response_model=RequirementResponse)
+async def get_doc(doc_id: str, user: CurrentUser, db: DbDep) -> RequirementResponse:
+    """One document with its KPIs' current outcomes.
+
+    The client re-reads this after measuring rather than patching from the
+    measure response: DecisionROI carries the values but no data_as_of, so
+    patching locally would quietly drop the freshness signal on the one path
+    where the number just changed.
+    """
+    return await svc.get_response(db, user.id, doc_id)
 
 
 @router.post("/{doc_id}/build", response_model=DashboardResponse, status_code=status.HTTP_201_CREATED)

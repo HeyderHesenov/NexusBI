@@ -10,6 +10,7 @@ it for BA actions — and the first test here is the one that pattern has never 
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import func, select
@@ -17,7 +18,7 @@ from sqlalchemy import func, select
 from app.ai import requirements
 from app.ai.types import ChartConfig, Text2SQLResult
 from app.db.session import AsyncSessionLocal
-from app.models.decision import Decision
+from app.models.decision import Decision, DecisionMeasurement
 from app.models.requirement import RequirementDoc
 from app.services import decision_service, query_service
 
@@ -223,3 +224,135 @@ async def test_an_unusable_datasource_fails_loudly(client, auth):
     async with AsyncSessionLocal() as fresh:
         count = await fresh.scalar(select(func.count()).select_from(Decision))
         assert count == 0, "a rejected promote must not leave a decision behind"
+
+
+# ─── the outcome, and how old the number is ───
+
+def _at(hours: int) -> datetime:
+    return datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc) + timedelta(hours=hours)
+
+
+async def _promoted_decision(client, auth) -> tuple[str, str]:
+    doc_id = await _extract(client, auth)
+    resp = await _promote(client, auth, doc_id, target_value=20.0, direction="increase")
+    assert resp.status_code == 201, resp.text
+    return doc_id, resp.json()["decision"]["id"]
+
+
+async def _rewrite_measurements(decision_id: str, points: list[tuple[int, int | None]]):
+    """Replace a decision's trajectory with (measured_at, data_as_of) hour offsets."""
+    async with AsyncSessionLocal() as db:
+        for m in (
+            await db.execute(
+                select(DecisionMeasurement).where(
+                    DecisionMeasurement.decision_id == decision_id
+                )
+            )
+        ).scalars():
+            await db.delete(m)
+        for measured, as_of in points:
+            db.add(
+                DecisionMeasurement(
+                    decision_id=decision_id,
+                    value=1.0,
+                    measured_at=_at(measured),
+                    data_as_of=None if as_of is None else _at(as_of),
+                )
+            )
+        await db.commit()
+
+
+async def test_the_outcome_reports_the_latest_measurement(client, auth):
+    doc_id, decision_id = await _promoted_decision(client, auth)
+    # Baseline four hours stale, then a genuinely fresh re-measure. Inserted
+    # oldest-last so that "whatever the DB returns first" is the WRONG answer.
+    await _rewrite_measurements(decision_id, [(0, 0), (-1, -4)])
+
+    body = (await client.get("/api/v1/requirements", headers=auth)).json()
+    outcome = body[0]["kpis"][0]["outcome"]
+    assert outcome["decision_id"] == decision_id
+    assert outcome["measured_at"].startswith("2026-01-10T12:00")
+    assert outcome["data_as_of"].startswith("2026-01-10T12:00")
+
+
+async def test_a_stale_number_is_not_reported_as_fresh(client, auth):
+    """The single measurement was TAKEN now but describes four-hour-old data."""
+    doc_id, decision_id = await _promoted_decision(client, auth)
+    await _rewrite_measurements(decision_id, [(0, -4)])
+
+    outcome = (
+        await client.get(f"/api/v1/requirements/{doc_id}", headers=auth)
+    ).json()["kpis"][0]["outcome"]
+    assert outcome["measured_at"].startswith("2026-01-10T12:00")
+    assert outcome["data_as_of"].startswith("2026-01-10T08:00"), (
+        "the age of the NUMBER must not be replaced by the time it was taken"
+    )
+
+
+async def test_an_unknown_age_stays_unknown(client, auth):
+    doc_id, decision_id = await _promoted_decision(client, auth)
+    await _rewrite_measurements(decision_id, [(0, None)])
+
+    outcome = (
+        await client.get(f"/api/v1/requirements/{doc_id}", headers=auth)
+    ).json()["kpis"][0]["outcome"]
+    assert outcome["measured_at"] is not None
+    assert outcome["data_as_of"] is None, "unknown must not be rounded up to 'now'"
+
+
+async def test_an_unpromoted_kpi_has_no_outcome(client, auth):
+    doc_id, _ = await _promoted_decision(client, auth)
+    kpis = (await client.get(f"/api/v1/requirements/{doc_id}", headers=auth)).json()["kpis"]
+    assert kpis[0]["outcome"] is not None
+    assert kpis[1]["outcome"] is None
+    assert kpis[1]["decision_id"] is None
+
+
+async def test_another_users_decision_is_never_rendered(client, auth):
+    """A document carrying someone else's decision id must show nothing at all."""
+    doc_id, decision_id = await _promoted_decision(client, auth)
+    other = await _second_user(client)
+    other_doc_id = await _extract(client, other)
+
+    # Hand-write user A's decision id into user B's document.
+    async with AsyncSessionLocal() as db:
+        doc = await db.get(RequirementDoc, other_doc_id)
+        kpis = list(doc.extracted_kpis)
+        kpis[0] = {**kpis[0], "decision_id": decision_id}
+        doc.extracted_kpis = kpis
+        await db.commit()
+
+    resp = await client.get(f"/api/v1/requirements/{other_doc_id}", headers=other)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["kpis"][0]["outcome"] is None
+    assert "20.0" not in resp.text and '"predicted_value":20' not in resp.text
+
+
+async def test_listing_does_not_grow_a_query_per_document(client, auth):
+    """Five documents, three promoted KPIs each — still a fixed number of SELECTs."""
+    from sqlalchemy import event
+
+    from app.db.session import engine
+
+    for _ in range(5):
+        doc_id = await _extract(client, auth)
+        for i in (0, 1):
+            assert (await _promote(client, auth, doc_id, kpi_index=i)).status_code == 201
+
+    seen: list[str] = []
+
+    def record(conn, cursor, statement, params, context, executemany):
+        if statement.lstrip().upper().startswith("SELECT"):
+            seen.append(statement)
+
+    event.listen(engine.sync_engine, "before_cursor_execute", record)
+    try:
+        resp = await client.get("/api/v1/requirements", headers=auth)
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", record)
+
+    assert resp.status_code == 200, resp.text
+    assert len(resp.json()) == 5
+    # A literal, not len(docs)+k: a budget expressed in terms of the thing it
+    # bounds cannot detect the loop moving inside the per-document iteration.
+    assert len(seen) <= 4, f"{len(seen)} SELECTs for one list: {seen}"

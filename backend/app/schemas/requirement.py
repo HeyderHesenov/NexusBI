@@ -8,6 +8,28 @@ from pydantic import BaseModel, Field
 from app.schemas.decision import DecisionResponse, Direction
 
 
+class KpiOutcome(BaseModel):
+    """What the tracked decision behind a KPI currently says.
+
+    Joined at read time, never stored on the document.
+    """
+
+    decision_id: str
+    impact_status: str  # pending | on_track | achieved | missed | regressed
+    # None means the baseline capture FAILED (decision_service._capture_baseline
+    # logs and returns early). That decision can never be measured, which must
+    # not render identically to one that is simply awaiting its first measure.
+    baseline_value: float | None = None
+    predicted_value: float | None = None
+    predicted_direction: str | None = None
+    realized_value: float | None = None
+    # From the latest DecisionMeasurement. `measured_at` is where the point sits
+    # on the decision's timeline; `data_as_of` is how old the NUMBER was, and it
+    # stays None when unknown rather than being rounded up to measured_at.
+    measured_at: datetime | None = None
+    data_as_of: datetime | None = None
+
+
 class KpiItem(BaseModel):
     name: str = ""
     question: str = ""
@@ -18,6 +40,8 @@ class KpiItem(BaseModel):
     # metric without stating a number, and extraction is forbidden from guessing.
     target_value: float | None = None
     direction: Direction | None = None
+    decision_id: str | None = None
+    outcome: KpiOutcome | None = None
 
 
 class RequirementExtractRequest(BaseModel):
